@@ -4,6 +4,15 @@
  */
 
 /**
+ * Checks if desktop access should be allowed (development mode only)
+ * @returns true if in development mode, false in production
+ */
+export function isDevelopmentMode(): boolean {
+  // In Vite, import.meta.env.DEV is true in development, false in production
+  return import.meta.env.DEV === true
+}
+
+/**
  * Detects if the current device is a mobile device
  * @returns true if device is mobile/tablet, false if desktop
  */
@@ -41,5 +50,20 @@ export function isMobileDevice(): boolean {
     isMobileUserAgent && (hasTouchSupport || screenWidth < 1200)
   
   return isMobile
+}
+
+/**
+ * Determines if the app should allow access (mobile devices or development mode)
+ * @returns true if access should be allowed, false if blocked
+ * 
+ * NOTE: Temporarily allowing desktop access for testing purposes
+ */
+export function shouldAllowAccess(): boolean {
+  // TEMPORARY: Allow all access for testing
+  // TODO: Re-enable mobile-only restriction after testing
+  return true
+  
+  // Original logic (commented out for testing):
+  // return isMobileDevice() || isDevelopmentMode()
 }
 

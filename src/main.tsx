@@ -2,11 +2,12 @@ import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import App from './App.tsx'
 import { MobileOnlyGate } from './components/MobileOnlyGate.tsx'
-import { isMobileDevice } from './lib/deviceDetection.ts'
+import { isMobileDevice, shouldAllowAccess } from './lib/deviceDetection.ts'
 import './styles/index.css'
 
-// Check device type
+// Check device type and access permissions
 const isMobile = isMobileDevice()
+const allowAccess = shouldAllowAccess()
 
 // Register service worker for PWA only on mobile devices (deferred to not block initial render)
 if (isMobile && 'serviceWorker' in navigator) {
@@ -24,18 +25,18 @@ if (isMobile && 'serviceWorker' in navigator) {
   }
 }
 
-// Render app based on device type
+// Render app based on device type and environment
 const root = createRoot(document.getElementById('root')!)
 
-if (isMobile) {
-  // Mobile device: render full app
+if (allowAccess) {
+  // Mobile device or development mode: render full app
   root.render(
     <StrictMode>
       <App />
     </StrictMode>,
   )
 } else {
-  // Desktop device: show blocking message
+  // Desktop device in production: show blocking message
   root.render(
     <StrictMode>
       <MobileOnlyGate />
