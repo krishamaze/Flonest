@@ -23,7 +23,7 @@ export function ProductsPage() {
           *,
           product:master_products(*)
         `)
-        .eq('tenant_id', user.tenantId)
+        .eq('org_id', user.orgId)
         .order('created_at', { ascending: false })
 
       if (error) throw error

@@ -22,7 +22,7 @@ export function InventoryPage() {
       const { data, error } = await supabase
         .from('invoices')
         .select('*')
-        .eq('tenant_id', user.tenantId)
+        .eq('org_id', user.orgId)
         .order('created_at', { ascending: false })
         .limit(50)
 

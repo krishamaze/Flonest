@@ -1,6 +1,6 @@
 /**
  * MobileOnlyGate - Blocks desktop users and shows a message
- * This component is displayed when the app is accessed from a desktop browser
+ * This component is displayed when the app is accessed from a desktop browser in production
  */
 
 export function MobileOnlyGate() {

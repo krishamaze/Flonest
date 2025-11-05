@@ -49,37 +49,39 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const loadUserProfile = async (authUser: User) => {
     try {
-      // First, try to get existing profile
-      const { data, error } = await supabase
-        .from('team_members')
-        .select('*')
-        .eq('user_id', authUser.id)
+      // First, try to get existing membership with profile and org
+      const { data: membership, error } = await supabase
+        .from('memberships')
+        .select('*, profiles(*), orgs(*)')
+        .eq('profile_id', authUser.id)
         .maybeSingle()
 
       if (error) throw error
 
-      // If profile doesn't exist, sync it automatically
-      if (!data) {
+      // If membership doesn't exist, sync it automatically
+      if (!membership) {
         console.log('User profile not found, syncing...')
-        const syncedProfile = await syncUserProfile(authUser)
+        const syncedData = await syncUserProfile(authUser)
 
-        if (syncedProfile && syncedProfile.user_id && syncedProfile.email && syncedProfile.tenant_id) {
+        if (syncedData && syncedData.profile && syncedData.membership && syncedData.org) {
           setUser({
-            id: syncedProfile.user_id,
-            email: syncedProfile.email,
-            tenantId: syncedProfile.tenant_id,
-            role: (syncedProfile.role || 'viewer') as 'owner' | 'staff' | 'viewer',
+            id: syncedData.profile.id,
+            email: syncedData.profile.email,
+            orgId: syncedData.org.id,
+            role: (syncedData.membership.role || 'viewer') as 'owner' | 'staff' | 'viewer',
           })
         } else {
           console.error('Failed to sync user profile')
         }
-      } else if (data && data.user_id && data.email && data.tenant_id) {
-        // Profile exists, use it
+      } else if (membership && membership.profiles && membership.orgs) {
+        // Membership exists, use it
+        const profile = membership.profiles as any
+        const org = membership.orgs as any
         setUser({
-          id: data.user_id,
-          email: data.email,
-          tenantId: data.tenant_id,
-          role: (data.role || 'viewer') as 'owner' | 'staff' | 'viewer',
+          id: profile.id,
+          email: profile.email,
+          orgId: org.id,
+          role: (membership.role || 'viewer') as 'owner' | 'staff' | 'viewer',
         })
       }
     } catch (error) {
@@ -103,7 +105,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       password,
     })
     if (error) throw error
-    // Note: User must be added to team_members table manually or via database trigger
+    // Note: User profile and membership will be created automatically on first login via syncUserProfile
   }
 
   const signOut = async () => {

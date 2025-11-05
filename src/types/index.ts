@@ -1,7 +1,8 @@
 import type { Database } from './database'
 
-export type Tenant = Database['public']['Tables']['tenants']['Row']
-export type TeamMember = Database['public']['Tables']['team_members']['Row']
+export type Profile = Database['public']['Tables']['profiles']['Row']
+export type Org = Database['public']['Tables']['orgs']['Row']
+export type Membership = Database['public']['Tables']['memberships']['Row']
 export type MasterProduct = Database['public']['Tables']['master_products']['Row']
 export type Inventory = Database['public']['Tables']['inventory']['Row']
 export type Invoice = Database['public']['Tables']['invoices']['Row']
@@ -14,7 +15,7 @@ export type InvoiceStatus = 'draft' | 'finalized' | 'cancelled'
 export interface AuthUser {
   id: string
   email: string
-  tenantId: string
+  orgId: string
   role: UserRole
 }
 

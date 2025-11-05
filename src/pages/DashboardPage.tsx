@@ -31,15 +31,15 @@ export function DashboardPage() {
         supabase
           .from('inventory')
           .select('*', { count: 'exact', head: true })
-          .eq('tenant_id', user.tenantId),
+          .eq('org_id', user.orgId),
         supabase
           .from('inventory')
           .select('quantity, cost_price, selling_price')
-          .eq('tenant_id', user.tenantId),
+          .eq('org_id', user.orgId),
         supabase
           .from('invoices')
           .select('*', { count: 'exact', head: true })
-          .eq('tenant_id', user.tenantId)
+          .eq('org_id', user.orgId)
       ])
 
       const inventory = inventoryResult.data || []
