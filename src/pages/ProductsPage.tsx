@@ -65,30 +65,33 @@ export function ProductsPage() {
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
+      {/* Page Header */}
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-gray-900">Products</h1>
-        <Button variant="primary" size="sm" className="flex items-center gap-2">
-          <PlusIcon className="h-5 w-5" />
-          <span className="hidden sm:inline">Add Product</span>
+        <h1 className="text-xl font-semibold text-gray-900">Products</h1>
+        <Button variant="primary" size="sm" className="flex items-center gap-1.5">
+          <PlusIcon className="h-4 w-4" />
+          <span className="hidden sm:inline text-sm">Add Product</span>
         </Button>
       </div>
 
+      {/* Search Bar */}
       <div className="relative">
-        <MagnifyingGlassIcon className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-gray-400" />
+        <MagnifyingGlassIcon className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
         <input
           type="text"
           placeholder="Search products..."
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
-          className="w-full rounded-lg border border-gray-300 bg-white py-2 pl-10 pr-4 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/20"
+          className="w-full rounded-lg border border-gray-300 bg-white py-2.5 pl-10 pr-4 text-sm focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/20"
         />
       </div>
 
+      {/* Products List */}
       {filteredProducts.length === 0 ? (
-        <Card>
+        <Card className="shadow-sm">
           <CardContent className="py-12 text-center">
-            <p className="text-gray-600">
+            <p className="text-sm text-gray-600">
               {searchQuery ? 'No products found' : 'No products yet. Add your first product to get started.'}
             </p>
           </CardContent>
@@ -101,33 +104,33 @@ export function ProductsPage() {
             if (!product) return null
 
             return (
-              <Card key={item.id} className="hover:shadow-md transition-shadow">
+              <Card key={item.id} className="shadow-sm hover:shadow-md transition-shadow">
                 <CardContent className="p-4">
                   <div className="flex items-start justify-between gap-4">
                     <div className="flex-1 min-w-0">
-                      <h3 className="font-semibold text-gray-900 truncate">
+                      <h3 className="text-base font-medium text-gray-900 truncate">
                         {product.name}
                       </h3>
-                      <p className="text-sm text-gray-600 mt-1">SKU: {product.sku}</p>
+                      <p className="text-xs text-gray-600 mt-1">SKU: {product.sku}</p>
                       <div className="mt-2 flex flex-wrap items-center gap-2">
-                        <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${stockStatus.color}`}>
+                        <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${stockStatus.color}`}>
                           {stockStatus.label}
                         </span>
-                        <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
+                        <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
                           product.status === 'active' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'
                         }`}>
                           {product.status}
                         </span>
                       </div>
                     </div>
-                    <div className="text-right">
-                      <p className="text-lg font-bold text-gray-900">
+                    <div className="text-right shrink-0">
+                      <p className="text-base font-semibold text-gray-900">
                         ${item.selling_price.toFixed(2)}
                       </p>
-                      <p className="text-sm text-gray-500">
+                      <p className="text-xs text-gray-500 mt-0.5">
                         Cost: ${item.cost_price.toFixed(2)}
                       </p>
-                      <p className="text-sm text-gray-600 mt-1">
+                      <p className="text-xs text-gray-600 mt-1">
                         Qty: {item.quantity}
                       </p>
                     </div>

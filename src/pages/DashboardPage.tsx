@@ -80,64 +80,67 @@ export function DashboardPage() {
 
   return (
     <div className="space-y-6">
+      {/* Page Header */}
       <div>
-        <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
+        <h1 className="text-xl font-semibold text-gray-900">Dashboard</h1>
         <p className="mt-1 text-sm text-gray-600">
           Welcome back, {user?.email}
         </p>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <Card>
-          <CardContent className="flex items-center gap-4 p-6">
-            <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-primary-100">
-              <CubeIcon className="h-6 w-6 text-primary-600" />
+      {/* Stats Cards - 12px gap, 16px padding */}
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <Card className="shadow-sm">
+          <CardContent className="flex items-center gap-3 p-4">
+            {/* Card icon: 20px max */}
+            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary-100">
+              <CubeIcon className="h-5 w-5 text-primary-600" />
             </div>
-            <div>
-              <p className="text-sm text-gray-600">Total Products</p>
-              <p className="text-2xl font-bold text-gray-900">
+            <div className="flex-1 min-w-0">
+              <p className="text-xs font-medium text-gray-600">Total Products</p>
+              <p className="text-xl font-semibold text-gray-900">
                 {stats?.totalProducts || 0}
               </p>
             </div>
           </CardContent>
         </Card>
 
-        <Card>
-          <CardContent className="flex items-center gap-4 p-6">
-            <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-yellow-100">
-              <ExclamationTriangleIcon className="h-6 w-6 text-yellow-600" />
+        <Card className="shadow-sm">
+          <CardContent className="flex items-center gap-3 p-4">
+            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-yellow-100">
+              <ExclamationTriangleIcon className="h-5 w-5 text-yellow-600" />
             </div>
-            <div>
-              <p className="text-sm text-gray-600">Low Stock</p>
-              <p className="text-2xl font-bold text-gray-900">
+            <div className="flex-1 min-w-0">
+              <p className="text-xs font-medium text-gray-600">Low Stock</p>
+              <p className="text-xl font-semibold text-gray-900">
                 {stats?.lowStockItems || 0}
               </p>
             </div>
           </CardContent>
         </Card>
 
-        <Card>
-          <CardContent className="flex items-center gap-4 p-6">
-            <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-green-100">
-              <ArrowTrendingUpIcon className="h-6 w-6 text-green-600" />
+        <Card className="shadow-sm">
+          <CardContent className="flex items-center gap-3 p-4">
+            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-green-100">
+              <ArrowTrendingUpIcon className="h-5 w-5 text-green-600" />
             </div>
-            <div>
-              <p className="text-sm text-gray-600">Total Value</p>
-              <p className="text-2xl font-bold text-gray-900">
+            <div className="flex-1 min-w-0">
+              <p className="text-xs font-medium text-gray-600">Total Value</p>
+              <p className="text-xl font-semibold text-gray-900">
                 ${stats?.totalValue.toFixed(2) || '0.00'}
               </p>
             </div>
           </CardContent>
         </Card>
 
-        <Card>
-          <CardContent className="flex items-center gap-4 p-6">
-            <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-blue-100">
-              <ArrowTrendingDownIcon className="h-6 w-6 text-blue-600" />
+        <Card className="shadow-sm">
+          <CardContent className="flex items-center gap-3 p-4">
+            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-100">
+              <ArrowTrendingDownIcon className="h-5 w-5 text-blue-600" />
             </div>
-            <div>
-              <p className="text-sm text-gray-600">Total Invoices</p>
-              <p className="text-2xl font-bold text-gray-900">
+            <div className="flex-1 min-w-0">
+              <p className="text-xs font-medium text-gray-600">Total Invoices</p>
+              <p className="text-xl font-semibold text-gray-900">
                 {stats?.totalInvoices || 0}
               </p>
             </div>
@@ -145,24 +148,25 @@ export function DashboardPage() {
         </Card>
       </div>
 
-      <Card>
+      {/* Quick Actions Card */}
+      <Card className="shadow-sm">
         <CardHeader>
-          <CardTitle>Quick Actions</CardTitle>
+          <CardTitle className="text-base font-medium">Quick Actions</CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="p-4 pt-0">
           <div className="grid gap-3 sm:grid-cols-2">
-            <button className="flex items-center gap-3 rounded-lg border border-gray-200 p-4 text-left transition-colors hover:bg-gray-50">
-              <CubeIcon className="h-6 w-6 text-primary-600" />
-              <div>
-                <p className="font-medium text-gray-900">Add Product</p>
-                <p className="text-sm text-gray-600">Create new inventory item</p>
+            <button className="flex items-center gap-3 rounded-lg border border-gray-200 p-4 text-left transition-all hover:bg-gray-50 hover:border-gray-300 active:scale-[0.98]">
+              <CubeIcon className="h-5 w-5 text-primary-600 shrink-0" />
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium text-gray-900">Add Product</p>
+                <p className="text-xs text-gray-600">Create new inventory item</p>
               </div>
             </button>
-            <button className="flex items-center gap-3 rounded-lg border border-gray-200 p-4 text-left transition-colors hover:bg-gray-50">
-              <ArrowTrendingUpIcon className="h-6 w-6 text-green-600" />
-              <div>
-                <p className="font-medium text-gray-900">Stock In</p>
-                <p className="text-sm text-gray-600">Add inventory</p>
+            <button className="flex items-center gap-3 rounded-lg border border-gray-200 p-4 text-left transition-all hover:bg-gray-50 hover:border-gray-300 active:scale-[0.98]">
+              <ArrowTrendingUpIcon className="h-5 w-5 text-green-600 shrink-0" />
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium text-gray-900">Stock In</p>
+                <p className="text-xs text-gray-600">Add inventory</p>
               </div>
             </button>
           </div>

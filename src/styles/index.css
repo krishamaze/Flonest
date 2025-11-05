@@ -135,9 +135,9 @@ button, a, input, select, textarea {
   color: rgb(55 65 81);
 }
 
-/* Mobile-optimized spacing */
+/* Mobile-optimized spacing - Professional Design System */
 .container-mobile {
-  padding-left: 1rem;
+  padding-left: 1rem;  /* 16px global padding */
   padding-right: 1rem;
   padding-top: 1rem;
   padding-bottom: 1rem;
@@ -150,6 +150,19 @@ button, a, input, select, textarea {
     padding-top: 1.5rem;
     padding-bottom: 1.5rem;
   }
+}
+
+/* Professional spacing utilities */
+.space-section {
+  margin-bottom: 1.5rem; /* 24px between major sections */
+}
+
+.space-cards {
+  gap: 0.75rem; /* 12px between cards */
+}
+
+.card-padding {
+  padding: 1rem; /* 16px card internal padding */
 }
 
 /* Safe area for mobile devices */

@@ -7,15 +7,16 @@ export function Header() {
 
   return (
     <header className="sticky top-0 z-50 border-b border-gray-200 bg-white safe-top">
-      <div className="container-mobile mx-auto flex h-16 items-center justify-between">
+      <div className="mx-auto flex h-14 items-center justify-between px-4">
         <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary-600">
-            <span className="text-xl font-bold text-white">I</span>
+          {/* Logo: 32px × 32px */}
+          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary-600 shadow-sm">
+            <span className="text-lg font-bold text-white">I</span>
           </div>
           <div>
-            <h1 className="text-lg font-bold text-gray-900">Inventory</h1>
+            <h1 className="text-base font-semibold text-gray-900">Inventory</h1>
             {user && (
-              <p className="text-xs text-gray-500">{user.email}</p>
+              <p className="text-xs text-gray-500 truncate max-w-[150px]">{user.email}</p>
             )}
           </div>
         </div>
@@ -25,10 +26,11 @@ export function Header() {
             variant="ghost"
             size="sm"
             onClick={() => signOut()}
-            className="flex items-center gap-2"
+            className="flex items-center gap-1.5 -mr-2"
           >
-            <ArrowRightOnRectangleIcon className="h-5 w-5" />
-            <span className="hidden sm:inline">Sign Out</span>
+            {/* Header icon: 16px */}
+            <ArrowRightOnRectangleIcon className="h-4 w-4" />
+            <span className="hidden sm:inline text-sm">Sign Out</span>
           </Button>
         </div>
       </div>
