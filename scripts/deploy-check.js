@@ -83,7 +83,9 @@ function checkPWAAssets() {
   
   const optionalAssets = [
     'public/pwa-192x192.png',
+    'public/pwa-192x192.svg',
     'public/pwa-512x512.png',
+    'public/pwa-512x512.svg',
     'public/apple-touch-icon.png',
     'public/favicon.ico'
   ];
@@ -92,18 +94,32 @@ function checkPWAAssets() {
     checkFile(asset, `Required: ${asset}`);
   });
   
-  let missingOptional = 0;
-  optionalAssets.forEach(asset => {
-    const fullPath = join(projectRoot, asset);
-    if (!existsSync(fullPath)) {
-      missingOptional++;
+  // Check for PWA icons (either PNG or SVG)
+  const hasPwa192 = existsSync(join(projectRoot, 'public/pwa-192x192.png')) ||
+                    existsSync(join(projectRoot, 'public/pwa-192x192.svg'));
+  const hasPwa512 = existsSync(join(projectRoot, 'public/pwa-512x512.png')) ||
+                    existsSync(join(projectRoot, 'public/pwa-512x512.svg'));
+
+  if (!hasPwa192 || !hasPwa512) {
+    const missing = [];
+    if (!hasPwa192) missing.push('192x192');
+    if (!hasPwa512) missing.push('512x512');
+    checks.warnings.push(`⚠ PWA icon(s) missing (${missing.join(', ')}) - app won't be installable`);
+  } else {
+    checks.passed.push('✓ PWA icons present (192x192, 512x512)');
+  }
+
+  // Check for other optional assets
+  const otherOptional = ['public/apple-touch-icon.png', 'public/favicon.ico'];
+  let missingOther = 0;
+  otherOptional.forEach(asset => {
+    if (!existsSync(join(projectRoot, asset))) {
+      missingOther++;
     }
   });
-  
-  if (missingOptional > 0) {
-    checks.warnings.push(`⚠ ${missingOptional} PWA icon(s) missing - app won't be installable`);
-  } else {
-    checks.passed.push('✓ All PWA assets present');
+
+  if (missingOther === 0) {
+    checks.passed.push('✓ All optional assets present');
   }
 }
 
