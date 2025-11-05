@@ -99,3 +99,4 @@ runner.py
 # TypeScript
 *.tsbuildinfo
 .tsbuildinfo
+.vercel

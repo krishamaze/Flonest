@@ -93,7 +93,7 @@ export function DashboardPage() {
         <Card className="shadow-sm">
           <CardContent className="flex items-center gap-3 p-4">
             {/* Card icon: 20px max */}
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary-100">
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary-100">
               <CubeIcon className="h-5 w-5 text-primary-600" />
             </div>
             <div className="flex-1 min-w-0">
@@ -107,7 +107,7 @@ export function DashboardPage() {
 
         <Card className="shadow-sm">
           <CardContent className="flex items-center gap-3 p-4">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-yellow-100">
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-yellow-100">
               <ExclamationTriangleIcon className="h-5 w-5 text-yellow-600" />
             </div>
             <div className="flex-1 min-w-0">
@@ -121,7 +121,7 @@ export function DashboardPage() {
 
         <Card className="shadow-sm">
           <CardContent className="flex items-center gap-3 p-4">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-green-100">
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-green-100">
               <ArrowTrendingUpIcon className="h-5 w-5 text-green-600" />
             </div>
             <div className="flex-1 min-w-0">
@@ -135,7 +135,7 @@ export function DashboardPage() {
 
         <Card className="shadow-sm">
           <CardContent className="flex items-center gap-3 p-4">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-100">
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-100">
               <ArrowTrendingDownIcon className="h-5 w-5 text-blue-600" />
             </div>
             <div className="flex-1 min-w-0">
