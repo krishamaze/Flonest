@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react'
 import { User, Session } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabase'
+import { syncUserProfile } from '../lib/userSync'
 import type { AuthUser } from '../types'
 
 interface AuthContextType {
@@ -48,6 +49,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const loadUserProfile = async (authUser: User) => {
     try {
+      // First, try to get existing profile
       const { data, error } = await supabase
         .from('team_members')
         .select('*')
@@ -56,7 +58,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       if (error) throw error
 
-      if (data && data !== null) {
+      // If profile doesn't exist, sync it automatically
+      if (!data) {
+        console.log('User profile not found, syncing...')
+        const syncedProfile = await syncUserProfile(authUser)
+
+        if (syncedProfile) {
+          setUser({
+            id: syncedProfile.user_id,
+            email: syncedProfile.email,
+            tenantId: syncedProfile.tenant_id,
+            role: syncedProfile.role as 'owner' | 'staff' | 'viewer',
+          })
+        } else {
+          console.error('Failed to sync user profile')
+        }
+      } else {
+        // Profile exists, use it
         const userData = data as any
         setUser({
           id: userData.user_id,

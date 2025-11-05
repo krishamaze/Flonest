@@ -1,87 +1,96 @@
-import { useState, FormEvent } from 'react'
-import { useAuth } from '../contexts/AuthContext'
-import { Input } from '../components/ui/Input'
-import { Button } from '../components/ui/Button'
-import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card'
+import { Auth } from '@supabase/auth-ui-react'
+import { ThemeSupa } from '@supabase/auth-ui-shared'
+import { supabase } from '../lib/supabase'
+import { customAuthTheme } from '../lib/authTheme'
 
 export function LoginPage() {
-  const { signIn } = useAuth()
-  const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
-  const [isLoading, setIsLoading] = useState(false)
-  const [error, setError] = useState('')
-
-  const handleSubmit = async (e: FormEvent) => {
-    e.preventDefault()
-    setError('')
-    setIsLoading(true)
-
-    try {
-      await signIn(email, password)
-    } catch (err) {
-      setError('Invalid email or password')
-    } finally {
-      setIsLoading(false)
-    }
-  }
-
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gray-50 px-4">
+    <div className="flex min-h-screen items-center justify-center bg-gray-50 px-4 py-12">
       <div className="w-full max-w-md">
+        {/* Header */}
         <div className="mb-8 text-center">
-          <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-primary-600">
+          <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-primary-600 shadow-lg">
             <span className="text-3xl font-bold text-white">I</span>
           </div>
           <h1 className="text-3xl font-bold text-gray-900">Inventory System</h1>
           <p className="mt-2 text-gray-600">Sign in to manage your inventory</p>
         </div>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Sign In</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              {error && (
-                <div className="rounded-lg bg-red-50 p-3 text-sm text-red-600">
-                  {error}
-                </div>
-              )}
+        {/* Auth UI Card */}
+        <div className="rounded-lg bg-white p-8 shadow-sm border border-gray-200">
+          <Auth
+            supabaseClient={supabase}
+            appearance={{
+              theme: ThemeSupa,
+              variables: customAuthTheme,
+              className: {
+                container: 'auth-container',
+                button: 'auth-button',
+                input: 'auth-input',
+                label: 'auth-label',
+                anchor: 'auth-anchor',
+                divider: 'auth-divider',
+                loader: 'auth-loader',
+                message: 'auth-message',
+              },
+            }}
+            providers={[]}
+            redirectTo={window.location.origin}
+            onlyThirdPartyProviders={false}
+            magicLink={false}
+            view="sign_in"
+            showLinks={true}
+            localization={{
+              variables: {
+                sign_in: {
+                  email_label: 'Email',
+                  password_label: 'Password',
+                  email_input_placeholder: 'you@example.com',
+                  password_input_placeholder: '••••••••',
+                  button_label: 'Sign In',
+                  loading_button_label: 'Signing in...',
+                  social_provider_text: 'Sign in with {{provider}}',
+                  link_text: "Don't have an account? Sign up",
+                },
+                sign_up: {
+                  email_label: 'Email',
+                  password_label: 'Password',
+                  email_input_placeholder: 'you@example.com',
+                  password_input_placeholder: '••••••••',
+                  button_label: 'Sign Up',
+                  loading_button_label: 'Signing up...',
+                  social_provider_text: 'Sign up with {{provider}}',
+                  link_text: 'Already have an account? Sign in',
+                  confirmation_text: 'Check your email for the confirmation link',
+                },
+                forgotten_password: {
+                  email_label: 'Email',
+                  password_label: 'Password',
+                  email_input_placeholder: 'you@example.com',
+                  button_label: 'Send reset password instructions',
+                  loading_button_label: 'Sending...',
+                  link_text: 'Forgot your password?',
+                  confirmation_text: 'Check your email for the password reset link',
+                },
+              },
+            }}
+          />
+        </div>
 
-              <Input
-                type="email"
-                label="Email"
-                placeholder="you@example.com"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-                autoComplete="email"
-              />
+        {/* Demo credentials hint */}
+        <div className="mt-6 rounded-lg bg-blue-50 border border-blue-200 p-4">
+          <p className="text-sm text-blue-800 font-medium mb-1">Demo Account</p>
+          <p className="text-xs text-blue-600">
+            Email: <span className="font-mono">demo@example.com</span>
+          </p>
+          <p className="text-xs text-blue-600 mt-1">
+            Or sign up to create your own account with automatic tenant setup
+          </p>
+        </div>
 
-              <Input
-                type="password"
-                label="Password"
-                placeholder="••••••••"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-                autoComplete="current-password"
-              />
-
-              <Button
-                type="submit"
-                variant="primary"
-                className="w-full"
-                isLoading={isLoading}
-              >
-                Sign In
-              </Button>
-            </form>
-          </CardContent>
-        </Card>
-
-        <p className="mt-4 text-center text-sm text-gray-600">
-          Demo credentials: demo@example.com / password
+        {/* Footer */}
+        <p className="mt-6 text-center text-xs text-gray-500">
+          Powered by Supabase Auth • Secure & Reliable
         </p>
       </div>
     </div>
