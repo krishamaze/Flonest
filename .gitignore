@@ -1,0 +1,14 @@
+# Supabase
+supabase/.branches
+supabase/.temp
+supabase/logs
+
+# Local binaries
+bin/
+
+# Environment files
+.env
+
+# Temporary scripts
+download-supabase.ps1
+
