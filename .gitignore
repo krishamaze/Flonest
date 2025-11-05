@@ -2,11 +2,15 @@
 node_modules/
 .pnp
 .pnp.js
+.yarn/
+.npm/
+.pnpm-store/
 
 # Production
 dist/
 dist-ssr/
 build/
+*.tsbuildinfo
 
 # Environment
 .env
@@ -27,25 +31,68 @@ lerna-debug.log*
 # IDE
 .vscode/*
 !.vscode/extensions.json
+!.vscode/settings.json
 .idea/
 *.suo
 *.ntvs*
 *.njsproj*
 *.sln
 *.sw?
+.fleet/
+.project
+.classpath
+.settings/
 
 # OS
 .DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
 Thumbs.db
+Desktop.ini
 
 # PWA
-dev-dist
+dev-dist/
+sw.js.map
+workbox-*.js.map
 
 # Testing
 coverage/
+.nyc_output/
 *.test.js.snap
+.vitest/
 
 # Temporary files
 *.tmp
 *.temp
 .cache/
+*.swp
+*.swo
+*~
+
+# Supabase
+supabase/.branches/
+supabase/.temp/
+supabase/logs/
+supabase/functions/.venv/
+
+# Python (if using Python scripts)
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+ENV/
+env/
+.venv/
+
+# Vercel
+.vercel/
+.turbo/
+
+# TypeScript
+*.tsbuildinfo
+.tsbuildinfo
