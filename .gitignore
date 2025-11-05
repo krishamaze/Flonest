@@ -92,6 +92,9 @@ env/
 # Local dev tools
 runner.py
 
+# Local Supabase CLI binary
+bin/
+
 # Vercel
 .vercel/
 .turbo/

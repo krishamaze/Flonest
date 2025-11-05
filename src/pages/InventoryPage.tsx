@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useMemo, useCallback } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { supabase } from '../lib/supabase'
 import type { Invoice } from '../types'
@@ -15,11 +15,7 @@ export function InventoryPage() {
   const [invoices, setInvoices] = useState<Invoice[]>([])
   const [loading, setLoading] = useState(true)
 
-  useEffect(() => {
-    loadInvoices()
-  }, [user])
-
-  const loadInvoices = async () => {
+  const loadInvoices = useCallback(async () => {
     if (!user) return
 
     try {
@@ -37,7 +33,20 @@ export function InventoryPage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [user])
+
+  useEffect(() => {
+    loadInvoices()
+  }, [loadInvoices])
+
+  // Memoize status calculations to avoid recalculating on every render
+  const invoiceStats = useMemo(() => {
+    return {
+      finalized: invoices.filter((inv) => inv.status === 'finalized').length,
+      drafts: invoices.filter((inv) => inv.status === 'draft').length,
+      total: invoices.length
+    }
+  }, [invoices])
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -88,7 +97,7 @@ export function InventoryPage() {
             <DocumentTextIcon className="mx-auto h-5 w-5 text-green-600 mb-2" />
             <p className="text-xs font-medium text-gray-600">Finalized</p>
             <p className="text-xl font-semibold text-gray-900">
-              {invoices.filter((inv) => inv.status === 'finalized').length}
+              {invoiceStats.finalized}
             </p>
           </CardContent>
         </Card>
@@ -98,7 +107,7 @@ export function InventoryPage() {
             <DocumentTextIcon className="mx-auto h-5 w-5 text-yellow-600 mb-2" />
             <p className="text-xs font-medium text-gray-600">Drafts</p>
             <p className="text-xl font-semibold text-gray-900">
-              {invoices.filter((inv) => inv.status === 'draft').length}
+              {invoiceStats.drafts}
             </p>
           </CardContent>
         </Card>
@@ -108,7 +117,7 @@ export function InventoryPage() {
             <DocumentTextIcon className="mx-auto h-5 w-5 text-blue-600 mb-2" />
             <p className="text-xs font-medium text-gray-600">Total</p>
             <p className="text-xl font-semibold text-gray-900">
-              {invoices.length}
+              {invoiceStats.total}
             </p>
           </CardContent>
         </Card>

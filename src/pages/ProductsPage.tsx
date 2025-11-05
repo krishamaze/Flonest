@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useMemo, useCallback } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { supabase } from '../lib/supabase'
 import type { InventoryWithProduct } from '../types'
@@ -13,11 +13,7 @@ export function ProductsPage() {
   const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')
 
-  useEffect(() => {
-    loadProducts()
-  }, [user])
-
-  const loadProducts = async () => {
+  const loadProducts = useCallback(async () => {
     if (!user) return
 
     try {
@@ -43,12 +39,22 @@ export function ProductsPage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [user])
 
-  const filteredProducts = products.filter((product) =>
-    product.product?.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    product.product?.sku.toLowerCase().includes(searchQuery.toLowerCase())
-  )
+  useEffect(() => {
+    loadProducts()
+  }, [loadProducts])
+
+  // Memoize filtered products to avoid recalculating on every render
+  const filteredProducts = useMemo(() => {
+    if (!searchQuery.trim()) return products
+    
+    const query = searchQuery.toLowerCase()
+    return products.filter((product) =>
+      product.product?.name.toLowerCase().includes(query) ||
+      product.product?.sku.toLowerCase().includes(query)
+    )
+  }, [products, searchQuery])
 
   const getStockStatus = (product: InventoryWithProduct) => {
     if (product.quantity === 0) return { label: 'Out of Stock', color: 'text-red-600 bg-red-50' }

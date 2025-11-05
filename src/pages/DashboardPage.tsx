@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { supabase } from '../lib/supabase'
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card'
@@ -22,53 +22,52 @@ export function DashboardPage() {
   const [stats, setStats] = useState<DashboardStats | null>(null)
   const [loading, setLoading] = useState(true)
 
-  useEffect(() => {
-    loadDashboardStats()
-  }, [user])
-
-  const loadDashboardStats = async () => {
+  const loadDashboardStats = useCallback(async () => {
     if (!user) return
 
     try {
-      // Get total inventory items
-      const { count: totalProducts } = await supabase
-        .from('inventory')
-        .select('*', { count: 'exact', head: true })
-        .eq('tenant_id', user.tenantId)
+      // Execute all queries in parallel for better performance
+      const [inventoryCountResult, inventoryResult, invoicesCountResult] = await Promise.all([
+        supabase
+          .from('inventory')
+          .select('*', { count: 'exact', head: true })
+          .eq('tenant_id', user.tenantId),
+        supabase
+          .from('inventory')
+          .select('quantity, cost_price, selling_price')
+          .eq('tenant_id', user.tenantId),
+        supabase
+          .from('invoices')
+          .select('*', { count: 'exact', head: true })
+          .eq('tenant_id', user.tenantId)
+      ])
 
-      // Get inventory with details
-      const { data: inventory } = await supabase
-        .from('inventory')
-        .select('quantity, cost_price, selling_price')
-        .eq('tenant_id', user.tenantId)
-
-      const lowStockItems = inventory?.filter(
+      const inventory = inventoryResult.data || []
+      const lowStockItems = inventory.filter(
         (item: any) => item.quantity < 10
-      ).length || 0
+      ).length
 
-      const totalValue = inventory?.reduce(
+      const totalValue = inventory.reduce(
         (sum: number, item: any) => sum + item.quantity * item.selling_price,
         0
-      ) || 0
-
-      // Get total invoices
-      const { count: totalInvoices } = await supabase
-        .from('invoices')
-        .select('*', { count: 'exact', head: true })
-        .eq('tenant_id', user.tenantId)
+      )
 
       setStats({
-        totalProducts: totalProducts || 0,
+        totalProducts: inventoryCountResult.count || 0,
         lowStockItems,
         totalValue,
-        totalInvoices: totalInvoices || 0,
+        totalInvoices: invoicesCountResult.count || 0,
       })
     } catch (error) {
       console.error('Error loading dashboard stats:', error)
     } finally {
       setLoading(false)
     }
-  }
+  }, [user])
+
+  useEffect(() => {
+    loadDashboardStats()
+  }, [loadDashboardStats])
 
   if (loading) {
     return (
