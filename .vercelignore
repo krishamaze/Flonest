@@ -1,11 +1,7 @@
 # Dependencies
 node_modules
 
-# Source files (already built)
-src
-
-# Development files
-.env
+# Development files (not needed for build)
 .env.local
 .env.development.local
 .env.test.local
@@ -40,10 +36,13 @@ Thumbs.db
 .git
 .gitignore
 
-# Documentation (optional - remove if you want docs deployed)
+# Documentation (not needed for deployment)
 docs
 *.md
 !README.md
+RESTRUCTURE_SUMMARY.md
+GITHUB_SETUP.md
+PROJECT_STRUCTURE.md
 
 # Test files
 **/*.test.ts
@@ -54,7 +53,6 @@ docs
 # Config files not needed in production
 .eslintrc*
 .prettierrc*
-tsconfig.node.json
 
 # Supabase local files
 supabase/.branches
@@ -63,4 +61,7 @@ supabase/logs
 
 # Local bin
 bin
+
+# Python scripts (not needed for deployment)
+*.py
 
