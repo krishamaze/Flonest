@@ -48,7 +48,8 @@ export function InventoryPage() {
     }
   }, [invoices])
 
-  const getStatusColor = (status: string) => {
+  const getStatusColor = (status: string | null) => {
+    if (!status) return 'bg-gray-50 border-gray-200 text-gray-700'
     switch (status) {
       case 'finalized':
         return 'bg-green-50 border-green-200 text-green-700'
@@ -61,7 +62,8 @@ export function InventoryPage() {
     }
   }
 
-  const formatDate = (dateString: string) => {
+  const formatDate = (dateString: string | null) => {
+    if (!dateString) return 'N/A'
     const date = new Date(dateString)
     return new Intl.DateTimeFormat('en-US', {
       month: 'short',

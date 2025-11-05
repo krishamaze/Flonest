@@ -1,10 +1,15 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import App from './App.tsx'
+import { MobileOnlyGate } from './components/MobileOnlyGate.tsx'
+import { isMobileDevice } from './lib/deviceDetection.ts'
 import './styles/index.css'
 
-// Register service worker for PWA (deferred to not block initial render)
-if ('serviceWorker' in navigator) {
+// Check device type
+const isMobile = isMobileDevice()
+
+// Register service worker for PWA only on mobile devices (deferred to not block initial render)
+if (isMobile && 'serviceWorker' in navigator) {
   // Use requestIdleCallback if available, otherwise setTimeout
   const registerSW = () => {
     navigator.serviceWorker.register('/sw.js').catch(() => {
@@ -19,9 +24,22 @@ if ('serviceWorker' in navigator) {
   }
 }
 
-createRoot(document.getElementById('root')!).render(
-  <StrictMode>
-    <App />
-  </StrictMode>,
-)
+// Render app based on device type
+const root = createRoot(document.getElementById('root')!)
+
+if (isMobile) {
+  // Mobile device: render full app
+  root.render(
+    <StrictMode>
+      <App />
+    </StrictMode>,
+  )
+} else {
+  // Desktop device: show blocking message
+  root.render(
+    <StrictMode>
+      <MobileOnlyGate />
+    </StrictMode>,
+  )
+}
 

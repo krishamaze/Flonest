@@ -63,24 +63,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         console.log('User profile not found, syncing...')
         const syncedProfile = await syncUserProfile(authUser)
 
-        if (syncedProfile) {
+        if (syncedProfile && syncedProfile.user_id && syncedProfile.email && syncedProfile.tenant_id) {
           setUser({
             id: syncedProfile.user_id,
             email: syncedProfile.email,
             tenantId: syncedProfile.tenant_id,
-            role: syncedProfile.role as 'owner' | 'staff' | 'viewer',
+            role: (syncedProfile.role || 'viewer') as 'owner' | 'staff' | 'viewer',
           })
         } else {
           console.error('Failed to sync user profile')
         }
-      } else {
+      } else if (data && data.user_id && data.email && data.tenant_id) {
         // Profile exists, use it
-        const userData = data as any
         setUser({
-          id: userData.user_id,
-          email: userData.email,
-          tenantId: userData.tenant_id,
-          role: userData.role as 'owner' | 'staff' | 'viewer',
+          id: data.user_id,
+          email: data.email,
+          tenantId: data.tenant_id,
+          role: (data.role || 'viewer') as 'owner' | 'staff' | 'viewer',
         })
       }
     } catch (error) {
