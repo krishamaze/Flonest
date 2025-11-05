@@ -14,6 +14,9 @@ export interface Database {
           id: string
           name: string
           slug: string
+          gst_number: string | null
+          gst_enabled: boolean
+          state: string
           created_at: string
           updated_at: string
         }
@@ -21,6 +24,9 @@ export interface Database {
           id?: string
           name: string
           slug: string
+          gst_number?: string | null
+          gst_enabled?: boolean
+          state: string
           created_at?: string
           updated_at?: string
         }
@@ -28,109 +34,167 @@ export interface Database {
           id?: string
           name?: string
           slug?: string
+          gst_number?: string | null
+          gst_enabled?: boolean
+          state?: string
           created_at?: string
           updated_at?: string
         }
       }
-      users: {
+      team_members: {
         Row: {
           id: string
           tenant_id: string
+          user_id: string
           email: string
-          full_name: string | null
-          role: 'admin' | 'manager' | 'staff'
+          role: 'owner' | 'staff' | 'viewer'
           created_at: string
-          updated_at: string
         }
         Insert: {
           id?: string
           tenant_id: string
+          user_id: string
           email: string
-          full_name?: string | null
-          role?: 'admin' | 'manager' | 'staff'
+          role?: 'owner' | 'staff' | 'viewer'
           created_at?: string
-          updated_at?: string
         }
         Update: {
           id?: string
           tenant_id?: string
+          user_id?: string
           email?: string
-          full_name?: string | null
-          role?: 'admin' | 'manager' | 'staff'
+          role?: 'owner' | 'staff' | 'viewer'
+          created_at?: string
+        }
+      }
+      master_products: {
+        Row: {
+          id: string
+          sku: string
+          name: string
+          base_price: number
+          min_selling_price: number
+          status: 'active' | 'inactive' | 'pending'
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          sku: string
+          name: string
+          base_price: number
+          min_selling_price: number
+          status?: 'active' | 'inactive' | 'pending'
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          sku?: string
+          name?: string
+          base_price?: number
+          min_selling_price?: number
+          status?: 'active' | 'inactive' | 'pending'
           created_at?: string
           updated_at?: string
         }
       }
-      products: {
+      inventory: {
         Row: {
           id: string
           tenant_id: string
-          name: string
-          sku: string
-          description: string | null
-          category: string | null
-          unit_price: number
+          product_id: string
           quantity: number
-          min_stock_level: number
+          cost_price: number
+          selling_price: number
           created_at: string
           updated_at: string
         }
         Insert: {
           id?: string
           tenant_id: string
-          name: string
-          sku: string
-          description?: string | null
-          category?: string | null
-          unit_price: number
+          product_id: string
           quantity?: number
-          min_stock_level?: number
+          cost_price: number
+          selling_price: number
           created_at?: string
           updated_at?: string
-        }
-        Update: {
-          id?: string
-          tenant_id?: string
-          name?: string
-          sku?: string
-          description?: string | null
-          category?: string | null
-          unit_price?: number
-          quantity?: number
-          min_stock_level?: number
-          created_at?: string
-          updated_at?: string
-        }
-      }
-      inventory_transactions: {
-        Row: {
-          id: string
-          tenant_id: string
-          product_id: string
-          type: 'in' | 'out' | 'adjustment'
-          quantity: number
-          notes: string | null
-          created_by: string
-          created_at: string
-        }
-        Insert: {
-          id?: string
-          tenant_id: string
-          product_id: string
-          type: 'in' | 'out' | 'adjustment'
-          quantity: number
-          notes?: string | null
-          created_by: string
-          created_at?: string
         }
         Update: {
           id?: string
           tenant_id?: string
           product_id?: string
-          type?: 'in' | 'out' | 'adjustment'
           quantity?: number
-          notes?: string | null
-          created_by?: string
+          cost_price?: number
+          selling_price?: number
+          created_at?: string
+          updated_at?: string
+        }
+      }
+      invoices: {
+        Row: {
+          id: string
+          tenant_id: string
+          invoice_number: string
+          subtotal: number
+          cgst_amount: number
+          sgst_amount: number
+          total_amount: number
+          status: 'draft' | 'finalized' | 'cancelled'
+          created_by: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          tenant_id: string
+          invoice_number: string
+          subtotal: number
+          cgst_amount?: number
+          sgst_amount?: number
+          total_amount: number
+          status?: 'draft' | 'finalized' | 'cancelled'
+          created_by?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          tenant_id?: string
+          invoice_number?: string
+          subtotal?: number
+          cgst_amount?: number
+          sgst_amount?: number
+          total_amount?: number
+          status?: 'draft' | 'finalized' | 'cancelled'
+          created_by?: string | null
+          created_at?: string
+        }
+      }
+      invoice_items: {
+        Row: {
+          id: string
+          invoice_id: string
+          product_id: string | null
+          quantity: number
+          unit_price: number
+          line_total: number
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          invoice_id: string
+          product_id?: string | null
+          quantity: number
+          unit_price: number
+          line_total: number
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          invoice_id?: string
+          product_id?: string | null
+          quantity?: number
+          unit_price?: number
+          line_total?: number
           created_at?: string
         }
       }
@@ -139,7 +203,14 @@ export interface Database {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      current_user_tenant_id: {
+        Args: Record<string, never>
+        Returns: string
+      }
+      current_user_is_admin: {
+        Args: Record<string, never>
+        Returns: boolean
+      }
     }
     Enums: {
       [_ in never]: never

@@ -14,7 +14,7 @@ interface DashboardStats {
   totalProducts: number
   lowStockItems: number
   totalValue: number
-  recentTransactions: number
+  totalInvoices: number
 }
 
 export function DashboardPage() {
@@ -30,42 +30,38 @@ export function DashboardPage() {
     if (!user) return
 
     try {
-      // Get total products
+      // Get total inventory items
       const { count: totalProducts } = await supabase
-        .from('products')
+        .from('inventory')
         .select('*', { count: 'exact', head: true })
         .eq('tenant_id', user.tenantId)
 
-      // Get low stock items
-      const { data: products } = await supabase
-        .from('products')
-        .select('quantity, min_stock_level, unit_price')
+      // Get inventory with details
+      const { data: inventory } = await supabase
+        .from('inventory')
+        .select('quantity, cost_price, selling_price')
         .eq('tenant_id', user.tenantId)
 
-      const lowStockItems = products?.filter(
-        (p: any) => p.quantity <= p.min_stock_level
+      const lowStockItems = inventory?.filter(
+        (item: any) => item.quantity < 10
       ).length || 0
 
-      const totalValue = products?.reduce(
-        (sum: number, p: any) => sum + p.quantity * p.unit_price,
+      const totalValue = inventory?.reduce(
+        (sum: number, item: any) => sum + item.quantity * item.selling_price,
         0
       ) || 0
 
-      // Get recent transactions (last 7 days)
-      const sevenDaysAgo = new Date()
-      sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7)
-
-      const { count: recentTransactions } = await supabase
-        .from('inventory_transactions')
+      // Get total invoices
+      const { count: totalInvoices } = await supabase
+        .from('invoices')
         .select('*', { count: 'exact', head: true })
         .eq('tenant_id', user.tenantId)
-        .gte('created_at', sevenDaysAgo.toISOString())
 
       setStats({
         totalProducts: totalProducts || 0,
         lowStockItems,
         totalValue,
-        recentTransactions: recentTransactions || 0,
+        totalInvoices: totalInvoices || 0,
       })
     } catch (error) {
       console.error('Error loading dashboard stats:', error)
@@ -87,7 +83,7 @@ export function DashboardPage() {
       <div>
         <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
         <p className="mt-1 text-sm text-gray-600">
-          Welcome back, {user?.fullName || user?.email}
+          Welcome back, {user?.email}
         </p>
       </div>
 
@@ -140,9 +136,9 @@ export function DashboardPage() {
               <ArrowTrendingDownIcon className="h-6 w-6 text-blue-600" />
             </div>
             <div>
-              <p className="text-sm text-gray-600">Recent Activity</p>
+              <p className="text-sm text-gray-600">Total Invoices</p>
               <p className="text-2xl font-bold text-gray-900">
-                {stats?.recentTransactions || 0}
+                {stats?.totalInvoices || 0}
               </p>
             </div>
           </CardContent>

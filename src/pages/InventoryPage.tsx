@@ -1,82 +1,54 @@
 import { useEffect, useState } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { supabase } from '../lib/supabase'
-import type { InventoryTransaction } from '../types'
+import type { Invoice } from '../types'
 import { Card, CardContent } from '../components/ui/Card'
 import { LoadingSpinner } from '../components/ui/LoadingSpinner'
 import { Button } from '../components/ui/Button'
 import {
   PlusIcon,
-  ArrowUpIcon,
-  ArrowDownIcon,
-  AdjustmentsHorizontalIcon,
+  DocumentTextIcon,
 } from '@heroicons/react/24/outline'
-
-interface TransactionWithProduct extends InventoryTransaction {
-  product_name?: string
-}
 
 export function InventoryPage() {
   const { user } = useAuth()
-  const [transactions, setTransactions] = useState<TransactionWithProduct[]>([])
+  const [invoices, setInvoices] = useState<Invoice[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    loadTransactions()
+    loadInvoices()
   }, [user])
 
-  const loadTransactions = async () => {
+  const loadInvoices = async () => {
     if (!user) return
 
     try {
       const { data, error } = await supabase
-        .from('inventory_transactions')
-        .select(`
-          *,
-          products (name)
-        `)
+        .from('invoices')
+        .select('*')
         .eq('tenant_id', user.tenantId)
         .order('created_at', { ascending: false })
         .limit(50)
 
       if (error) throw error
-
-      const transactionsWithProducts = (data || []).map((t: any) => ({
-        ...t,
-        product_name: t.products?.name,
-      }))
-
-      setTransactions(transactionsWithProducts)
+      setInvoices(data || [])
     } catch (error) {
-      console.error('Error loading transactions:', error)
+      console.error('Error loading invoices:', error)
     } finally {
       setLoading(false)
     }
   }
 
-  const getTransactionIcon = (type: string) => {
-    switch (type) {
-      case 'in':
-        return <ArrowUpIcon className="h-5 w-5 text-green-600" />
-      case 'out':
-        return <ArrowDownIcon className="h-5 w-5 text-red-600" />
-      case 'adjustment':
-        return <AdjustmentsHorizontalIcon className="h-5 w-5 text-blue-600" />
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'finalized':
+        return 'bg-green-50 border-green-200 text-green-700'
+      case 'draft':
+        return 'bg-yellow-50 border-yellow-200 text-yellow-700'
+      case 'cancelled':
+        return 'bg-red-50 border-red-200 text-red-700'
       default:
-        return null
-    }
-  }
-
-  const getTransactionColor = (type: string) => {
-    switch (type) {
-      case 'in':
-        return 'bg-green-50 border-green-200'
-      case 'out':
-        return 'bg-red-50 border-red-200'
-      case 'adjustment':
-        return 'bg-blue-50 border-blue-200'
-      default:
-        return 'bg-gray-50 border-gray-200'
+        return 'bg-gray-50 border-gray-200 text-gray-700'
     }
   }
 
@@ -85,8 +57,7 @@ export function InventoryPage() {
     return new Intl.DateTimeFormat('en-US', {
       month: 'short',
       day: 'numeric',
-      hour: 'numeric',
-      minute: '2-digit',
+      year: 'numeric',
     }).format(date)
   }
 
@@ -101,90 +72,77 @@ export function InventoryPage() {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-gray-900">Inventory</h1>
+        <h1 className="text-2xl font-bold text-gray-900">Invoices</h1>
         <Button variant="primary" size="sm" className="flex items-center gap-2">
           <PlusIcon className="h-5 w-5" />
-          <span className="hidden sm:inline">New Transaction</span>
+          <span className="hidden sm:inline">New Invoice</span>
         </Button>
       </div>
 
       <div className="grid gap-3 sm:grid-cols-3">
         <Card className="bg-green-50 border-green-200">
           <CardContent className="p-4 text-center">
-            <ArrowUpIcon className="mx-auto h-8 w-8 text-green-600 mb-2" />
-            <p className="text-sm text-gray-600">Stock In</p>
+            <DocumentTextIcon className="mx-auto h-8 w-8 text-green-600 mb-2" />
+            <p className="text-sm text-gray-600">Finalized</p>
             <p className="text-2xl font-bold text-gray-900">
-              {transactions.filter((t) => t.type === 'in').length}
+              {invoices.filter((inv) => inv.status === 'finalized').length}
             </p>
           </CardContent>
         </Card>
 
-        <Card className="bg-red-50 border-red-200">
+        <Card className="bg-yellow-50 border-yellow-200">
           <CardContent className="p-4 text-center">
-            <ArrowDownIcon className="mx-auto h-8 w-8 text-red-600 mb-2" />
-            <p className="text-sm text-gray-600">Stock Out</p>
+            <DocumentTextIcon className="mx-auto h-8 w-8 text-yellow-600 mb-2" />
+            <p className="text-sm text-gray-600">Drafts</p>
             <p className="text-2xl font-bold text-gray-900">
-              {transactions.filter((t) => t.type === 'out').length}
+              {invoices.filter((inv) => inv.status === 'draft').length}
             </p>
           </CardContent>
         </Card>
 
         <Card className="bg-blue-50 border-blue-200">
           <CardContent className="p-4 text-center">
-            <AdjustmentsHorizontalIcon className="mx-auto h-8 w-8 text-blue-600 mb-2" />
-            <p className="text-sm text-gray-600">Adjustments</p>
+            <DocumentTextIcon className="mx-auto h-8 w-8 text-blue-600 mb-2" />
+            <p className="text-sm text-gray-600">Total</p>
             <p className="text-2xl font-bold text-gray-900">
-              {transactions.filter((t) => t.type === 'adjustment').length}
+              {invoices.length}
             </p>
           </CardContent>
         </Card>
       </div>
 
-      {transactions.length === 0 ? (
+      {invoices.length === 0 ? (
         <Card>
           <CardContent className="py-12 text-center">
             <p className="text-gray-600">
-              No transactions yet. Start tracking your inventory movements.
+              No invoices yet. Create your first invoice to get started.
             </p>
           </CardContent>
         </Card>
       ) : (
         <div className="space-y-3">
-          {transactions.map((transaction) => (
+          {invoices.map((invoice) => (
             <Card
-              key={transaction.id}
-              className={`border ${getTransactionColor(transaction.type)}`}
+              key={invoice.id}
+              className={`border ${getStatusColor(invoice.status)}`}
             >
               <CardContent className="p-4">
-                <div className="flex items-start gap-3">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-white">
-                    {getTransactionIcon(transaction.type)}
-                  </div>
+                <div className="flex items-start justify-between gap-4">
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="flex-1 min-w-0">
-                        <h3 className="font-semibold text-gray-900 truncate">
-                          {transaction.product_name || 'Unknown Product'}
-                        </h3>
-                        <p className="text-sm text-gray-600 capitalize">
-                          {transaction.type}
-                        </p>
-                      </div>
-                      <div className="text-right">
-                        <p className="text-lg font-bold text-gray-900">
-                          {transaction.type === 'out' ? '-' : '+'}
-                          {transaction.quantity}
-                        </p>
-                        <p className="text-xs text-gray-500">
-                          {formatDate(transaction.created_at)}
-                        </p>
-                      </div>
-                    </div>
-                    {transaction.notes && (
-                      <p className="mt-2 text-sm text-gray-600 line-clamp-2">
-                        {transaction.notes}
-                      </p>
-                    )}
+                    <h3 className="font-semibold text-gray-900">
+                      Invoice #{invoice.invoice_number}
+                    </h3>
+                    <p className="text-xs text-gray-500 mt-1">
+                      {formatDate(invoice.created_at)}
+                    </p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-lg font-bold text-gray-900">
+                      ₹{invoice.total_amount.toFixed(2)}
+                    </p>
+                    <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium capitalize ${getStatusColor(invoice.status)}`}>
+                      {invoice.status}
+                    </span>
                   </div>
                 </div>
               </CardContent>

@@ -8,7 +8,7 @@ interface AuthContextType {
   session: Session | null
   loading: boolean
   signIn: (email: string, password: string) => Promise<void>
-  signUp: (email: string, password: string, fullName: string) => Promise<void>
+  signUp: (email: string, password: string) => Promise<void>
   signOut: () => Promise<void>
 }
 
@@ -49,9 +49,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const loadUserProfile = async (authUser: User) => {
     try {
       const { data, error } = await supabase
-        .from('users')
+        .from('team_members')
         .select('*')
-        .eq('id', authUser.id)
+        .eq('user_id', authUser.id)
         .maybeSingle()
 
       if (error) throw error
@@ -59,11 +59,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (data && data !== null) {
         const userData = data as any
         setUser({
-          id: userData.id,
+          id: userData.user_id,
           email: userData.email,
           tenantId: userData.tenant_id,
-          role: userData.role as 'admin' | 'manager' | 'staff',
-          fullName: userData.full_name,
+          role: userData.role as 'owner' | 'staff' | 'viewer',
         })
       }
     } catch (error) {
@@ -81,17 +80,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (error) throw error
   }
 
-  const signUp = async (email: string, password: string, fullName: string) => {
+  const signUp = async (email: string, password: string) => {
     const { error } = await supabase.auth.signUp({
       email,
       password,
-      options: {
-        data: {
-          full_name: fullName,
-        },
-      },
     })
     if (error) throw error
+    // Note: User must be added to team_members table manually or via database trigger
   }
 
   const signOut = async () => {

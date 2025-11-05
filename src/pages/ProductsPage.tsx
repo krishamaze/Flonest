@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { supabase } from '../lib/supabase'
-import type { Product } from '../types'
+import type { InventoryWithProduct } from '../types'
 import { Card, CardContent } from '../components/ui/Card'
 import { LoadingSpinner } from '../components/ui/LoadingSpinner'
 import { Button } from '../components/ui/Button'
@@ -9,7 +9,7 @@ import { PlusIcon, MagnifyingGlassIcon } from '@heroicons/react/24/outline'
 
 export function ProductsPage() {
   const { user } = useAuth()
-  const [products, setProducts] = useState<Product[]>([])
+  const [products, setProducts] = useState<InventoryWithProduct[]>([])
   const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')
 
@@ -22,13 +22,22 @@ export function ProductsPage() {
 
     try {
       const { data, error } = await supabase
-        .from('products')
-        .select('*')
+        .from('inventory')
+        .select(`
+          *,
+          product:master_products(*)
+        `)
         .eq('tenant_id', user.tenantId)
-        .order('name')
+        .order('created_at', { ascending: false })
 
       if (error) throw error
-      setProducts(data || [])
+
+      const productsWithStatus = (data || []).map((item: any) => ({
+        ...item,
+        stockStatus: item.quantity === 0 ? 'out_of_stock' : item.quantity < 10 ? 'low_stock' : 'in_stock'
+      }))
+
+      setProducts(productsWithStatus)
     } catch (error) {
       console.error('Error loading products:', error)
     } finally {
@@ -37,13 +46,13 @@ export function ProductsPage() {
   }
 
   const filteredProducts = products.filter((product) =>
-    product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    product.sku.toLowerCase().includes(searchQuery.toLowerCase())
+    product.product?.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    product.product?.sku.toLowerCase().includes(searchQuery.toLowerCase())
   )
 
-  const getStockStatus = (product: Product) => {
+  const getStockStatus = (product: InventoryWithProduct) => {
     if (product.quantity === 0) return { label: 'Out of Stock', color: 'text-red-600 bg-red-50' }
-    if (product.quantity <= product.min_stock_level) return { label: 'Low Stock', color: 'text-yellow-600 bg-yellow-50' }
+    if (product.quantity < 10) return { label: 'Low Stock', color: 'text-yellow-600 bg-yellow-50' }
     return { label: 'In Stock', color: 'text-green-600 bg-green-50' }
   }
 
@@ -86,10 +95,13 @@ export function ProductsPage() {
         </Card>
       ) : (
         <div className="space-y-3">
-          {filteredProducts.map((product) => {
-            const stockStatus = getStockStatus(product)
+          {filteredProducts.map((item) => {
+            const stockStatus = getStockStatus(item)
+            const product = item.product
+            if (!product) return null
+
             return (
-              <Card key={product.id} className="hover:shadow-md transition-shadow">
+              <Card key={item.id} className="hover:shadow-md transition-shadow">
                 <CardContent className="p-4">
                   <div className="flex items-start justify-between gap-4">
                     <div className="flex-1 min-w-0">
@@ -97,28 +109,26 @@ export function ProductsPage() {
                         {product.name}
                       </h3>
                       <p className="text-sm text-gray-600 mt-1">SKU: {product.sku}</p>
-                      {product.description && (
-                        <p className="text-sm text-gray-600 mt-1 line-clamp-2">
-                          {product.description}
-                        </p>
-                      )}
                       <div className="mt-2 flex flex-wrap items-center gap-2">
                         <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${stockStatus.color}`}>
                           {stockStatus.label}
                         </span>
-                        {product.category && (
-                          <span className="inline-flex items-center rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-medium text-gray-600">
-                            {product.category}
-                          </span>
-                        )}
+                        <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
+                          product.status === 'active' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'
+                        }`}>
+                          {product.status}
+                        </span>
                       </div>
                     </div>
                     <div className="text-right">
                       <p className="text-lg font-bold text-gray-900">
-                        ${product.unit_price.toFixed(2)}
+                        ${item.selling_price.toFixed(2)}
+                      </p>
+                      <p className="text-sm text-gray-500">
+                        Cost: ${item.cost_price.toFixed(2)}
                       </p>
                       <p className="text-sm text-gray-600 mt-1">
-                        Qty: {product.quantity}
+                        Qty: {item.quantity}
                       </p>
                     </div>
                   </div>

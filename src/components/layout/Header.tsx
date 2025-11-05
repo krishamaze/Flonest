@@ -15,7 +15,7 @@ export function Header() {
           <div>
             <h1 className="text-lg font-bold text-gray-900">Inventory</h1>
             {user && (
-              <p className="text-xs text-gray-500">{user.fullName || user.email}</p>
+              <p className="text-xs text-gray-500">{user.email}</p>
             )}
           </div>
         </div>
