@@ -64,7 +64,7 @@ git push -u origin main
 
 3. **Configure Project:**
    - **Framework Preset:** Vite (auto-detected)
-   - **Root Directory:** `biz.finetune.store`
+   - **Root Directory:** `.` (root directory)
    - **Build Command:** `npm run build` (auto-detected)
    - **Output Directory:** `dist` (auto-detected)
    - **Install Command:** `npm install` (auto-detected)
@@ -91,7 +91,6 @@ npm install -g vercel
 vercel login
 
 # Deploy
-cd biz.finetune.store
 vercel --prod
 ```
 
@@ -157,10 +156,16 @@ Your repository includes:
 ```
 biz.finetune.store/
 ├── .github/workflows/ci.yml    # CI/CD pipeline
-├── biz.finetune.store/         # React PWA
+├── src/                        # React app source
+├── public/                     # Static assets
+├── docs/                       # Documentation
 ├── supabase/                   # Supabase config
+├── bin/                        # Supabase CLI
+├── package.json                # Dependencies
+├── vite.config.ts              # Vite configuration
+├── vercel.json                 # Vercel deployment
 ├── .gitignore                  # Git ignore rules
-└── GITHUB_SETUP.md            # This file
+└── README.md                   # Project overview
 ```
 
 ## 🎯 Next Steps
@@ -231,7 +236,7 @@ ssh-keygen -t ed25519 -C "your_email@example.com"
 - **GitHub Docs:** https://docs.github.com
 - **Vercel Docs:** https://vercel.com/docs
 - **Git Basics:** https://git-scm.com/book/en/v2
-- **Project Docs:** See `biz.finetune.store/docs/`
+- **Project Docs:** See `docs/` directory
 
 ## 🎉 Quick Commands Reference
 
@@ -253,6 +258,7 @@ vercel env ls                   # List env variables
 npm run dev                     # Start dev server
 npm run build                   # Build for production
 npm run deploy:check            # Pre-deployment check
+npm run preview                 # Preview production build
 ```
 
 ---
