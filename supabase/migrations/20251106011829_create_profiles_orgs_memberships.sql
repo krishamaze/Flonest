@@ -158,9 +158,12 @@ END $$;
 
 -- Step 11: Create RLS policies
 
--- Profiles: Users can SELECT/UPDATE their own profile only
+-- Profiles: Users can SELECT/UPDATE/INSERT their own profile only
 CREATE POLICY "Profiles: Users can view own profile" ON profiles
     FOR SELECT USING (id = auth.uid());
+
+CREATE POLICY "Profiles: Users can insert own profile" ON profiles
+    FOR INSERT WITH CHECK (id = auth.uid());
 
 CREATE POLICY "Profiles: Users can update own profile" ON profiles
     FOR UPDATE USING (id = auth.uid());
