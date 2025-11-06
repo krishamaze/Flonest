@@ -1,0 +1,51 @@
+---
+alwaysApply: true
+---
+
+Deployment
+
+Never use vercel deploy, vercel --prod, or vercel.
+
+Always deploy via git push — this triggers Vercel automatically.
+
+main branch = production deploy.
+
+Use descriptive commit messages.
+
+Only use Vercel CLI for: status, logs, env ls, inspect.
+
+No localhost dev — test directly in production.
+
+Desktop access allowed temporarily for Cursor automation.
+
+Always monitor deployment on the Vercel dashboard.
+
+Development
+
+
+Design mobile-first (390px width, touch-friendly).
+
+
+Use React functional components with hooks + TypeScript.
+
+
+Ensure Supabase queries follow RLS and type safety.
+
+
+Include loading + error states for all async tasks.
+
+
+Validate forms and maintain consistent UI.
+
+
+Use code splitting, lazy loading, and WebP images.
+
+
+Track bundle size and performance metrics.
+
+
+Keep formatting clean and consistent.
+
+
+Prioritize performance optimization.
+
