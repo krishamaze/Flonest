@@ -6,9 +6,9 @@ Deployment
 
 Never use vercel deploy, vercel --prod, or vercel.
 
-Always deploy via git push — this triggers Vercel automatically.
-
-main branch = production deploy.
+Always deploy using git push — it triggers Vercel automatically.
+main branch = production deployment.
+After push, check deployment status and fix any errors immediately.
 
 Use descriptive commit messages.
 
@@ -17,8 +17,6 @@ Only use Vercel CLI for: status, logs, env ls, inspect.
 No localhost dev — test directly in production.
 
 Desktop access allowed temporarily for Cursor automation.
-
-Always monitor deployment on the Vercel dashboard.
 
 Development
 

@@ -324,6 +324,8 @@ export function ProductsPage() {
         onClose={handleFormClose}
         onSubmit={editingProduct ? handleUpdateProduct : handleCreateProduct}
         product={editingProduct}
+        orgId={user?.orgId}
+        userId={user?.id}
       />
     </div>
   )

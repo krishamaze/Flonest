@@ -232,6 +232,48 @@ export async function getCustomersByOrg(orgId: string): Promise<CustomerWithMast
 }
 
 /**
+ * Check if a master customer exists by identifier (mobile or GSTIN)
+ * Returns the master customer if found, null otherwise
+ */
+export async function checkCustomerExists(identifier: string): Promise<MasterCustomer | null> {
+  const type = detectIdentifierType(identifier)
+  if (type === 'invalid') {
+    return null
+  }
+
+  const normalized = normalizeIdentifier(identifier, type)
+
+  if (type === 'mobile') {
+    const { data, error } = await supabase
+      .from('master_customers')
+      .select('*')
+      .eq('mobile', normalized)
+      .single()
+
+    if (error && error.code !== 'PGRST116') {
+      // PGRST116 = no rows returned, which is fine
+      throw new Error(`Failed to check master customer: ${error.message}`)
+    }
+
+    return data || null
+  } else if (type === 'gstin') {
+    const { data, error } = await supabase
+      .from('master_customers')
+      .select('*')
+      .eq('gstin', normalized)
+      .single()
+
+    if (error && error.code !== 'PGRST116') {
+      throw new Error(`Failed to check master customer: ${error.message}`)
+    }
+
+    return data || null
+  }
+
+  return null
+}
+
+/**
  * Search customers by identifier (mobile or GSTIN) for an org
  */
 export async function searchCustomersByIdentifier(

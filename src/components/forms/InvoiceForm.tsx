@@ -8,7 +8,7 @@ import { isMobileDevice } from '../../lib/deviceDetection'
 import { IdentifierInput } from '../customers/IdentifierInput'
 import { CustomerResultCard } from '../customers/CustomerResultCard'
 import type { InvoiceFormData, InvoiceItemFormData, Product, CustomerWithMaster } from '../../types'
-import { lookupOrCreateCustomer } from '../../lib/api/customers'
+import { lookupOrCreateCustomer, checkCustomerExists, searchCustomersByIdentifier } from '../../lib/api/customers'
 import { getAllProducts } from '../../lib/api/products'
 import { createInvoice } from '../../lib/api/invoices'
 import { calculateGST, extractStateCodeFromGSTIN, getGSTRate } from '../../lib/utils/gstCalculation'
@@ -44,7 +44,12 @@ export function InvoiceForm({
   const [, setIdentifierType] = useState<IdentifierType>('invalid')
   const [searching, setSearching] = useState(false)
   const [selectedCustomer, setSelectedCustomer] = useState<CustomerWithMaster | null>(null)
-  const [masterData, setMasterData] = useState<{ legal_name?: string; address?: string; email?: string }>({})
+  const [showMasterForm, setShowMasterForm] = useState(false)
+  const [masterFormData, setMasterFormData] = useState<{ legal_name: string; address: string; email: string }>({
+    legal_name: '',
+    address: '',
+    email: '',
+  })
   const [products, setProducts] = useState<Product[]>([])
   const [loadingProducts, setLoadingProducts] = useState(false)
   const [items, setItems] = useState<InvoiceItemFormData[]>([])
@@ -71,15 +76,15 @@ export function InvoiceForm({
       setIdentifier('')
       setIdentifierValid(false)
       setSelectedCustomer(null)
-      setMasterData({})
+      setShowMasterForm(false)
+      setMasterFormData({ legal_name: '', address: '', email: '' })
       setItems([])
       setErrors({})
     }
   }, [isOpen])
 
-  // Step 1: Customer Selection - handleIdentifierSearch removed (not used in current flow)
-
-  const handleUseCustomer = async () => {
+  // Step 1: Customer Selection
+  const handleLookupCustomer = async () => {
     if (!identifierValid || !identifier.trim()) {
       setErrors({ identifier: 'Please enter a valid mobile number or GSTIN' })
       return
@@ -87,17 +92,83 @@ export function InvoiceForm({
 
     setSearching(true)
     setErrors({})
+    setShowMasterForm(false)
 
     try {
-      const result = await lookupOrCreateCustomer(identifier, orgId, userId, masterData)
+      // First, check if org customer exists (master + org link)
+      const orgCustomer = await searchCustomersByIdentifier(identifier, orgId)
+      
+      if (orgCustomer) {
+        // Customer exists with org link - show details
+        setSelectedCustomer(orgCustomer)
+        return
+      }
+
+      // Check if master customer exists (but no org link)
+      const master = await checkCustomerExists(identifier)
+      
+      if (master) {
+        // Master exists but no org link - create org link and show
+        const result = await lookupOrCreateCustomer(identifier, orgId, userId)
+        setSelectedCustomer({
+          ...result.customer,
+          master_customer: result.master,
+        })
+      } else {
+        // Master doesn't exist - show form to collect details
+        setShowMasterForm(true)
+      }
+    } catch (error) {
+      console.error('Error looking up customer:', error)
+      setErrors({
+        identifier: error instanceof Error ? error.message : 'Failed to lookup customer',
+      })
+    } finally {
+      setSearching(false)
+    }
+  }
+
+  const handleCreateMasterCustomer = async () => {
+    // Validate form
+    const formErrors: Record<string, string> = {}
+    
+    if (!masterFormData.legal_name.trim() || masterFormData.legal_name.trim().length < 2) {
+      formErrors.legal_name = 'Legal name is required and must be at least 2 characters'
+    }
+    
+    if (masterFormData.email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(masterFormData.email.trim())) {
+      formErrors.email = 'Please enter a valid email address'
+    }
+    
+    if (Object.keys(formErrors).length > 0) {
+      setErrors(formErrors)
+      return
+    }
+
+    setSearching(true)
+    setErrors({})
+
+    try {
+      const result = await lookupOrCreateCustomer(
+        identifier,
+        orgId,
+        userId,
+        {
+          legal_name: masterFormData.legal_name.trim(),
+          address: masterFormData.address.trim() || undefined,
+          email: masterFormData.email.trim() || undefined,
+        }
+      )
       setSelectedCustomer({
         ...result.customer,
         master_customer: result.master,
       })
+      setShowMasterForm(false)
+      setMasterFormData({ legal_name: '', address: '', email: '' })
     } catch (error) {
-      console.error('Error looking up customer:', error)
+      console.error('Error creating customer:', error)
       setErrors({
-        identifier: error instanceof Error ? error.message : 'Failed to lookup or create customer',
+        submit: error instanceof Error ? error.message : 'Failed to create customer',
       })
     } finally {
       setSearching(false)
@@ -240,17 +311,17 @@ export function InvoiceForm({
               disabled={isSubmitting || searching}
             />
 
-            {identifierValid && !selectedCustomer && (
+            {identifierValid && !selectedCustomer && !showMasterForm && (
               <div className="mt-4">
                 <Button
                   type="button"
                   variant="primary"
-                  onClick={handleUseCustomer}
+                  onClick={handleLookupCustomer}
                   isLoading={searching}
                   disabled={!identifierValid || searching}
                   className="w-full"
                 >
-                  {searching ? 'Searching...' : 'Lookup or Create Customer'}
+                  {searching ? 'Searching...' : 'Lookup Customer'}
                 </Button>
               </div>
             )}
@@ -261,6 +332,86 @@ export function InvoiceForm({
                   customer={selectedCustomer}
                   onSelect={() => setCurrentStep(2)}
                 />
+              </div>
+            )}
+
+            {showMasterForm && !selectedCustomer && (
+              <div className="mt-4 space-y-4 p-4 border border-gray-200 rounded-lg bg-gray-50">
+                <h4 className="text-sm font-semibold text-gray-900">Customer Not Found</h4>
+                <p className="text-xs text-gray-600">
+                  Please provide customer details to create a new customer record.
+                </p>
+
+                <Input
+                  label="Legal Name *"
+                  type="text"
+                  value={masterFormData.legal_name}
+                  onChange={(e) =>
+                    setMasterFormData({ ...masterFormData, legal_name: e.target.value })
+                  }
+                  disabled={isSubmitting || searching}
+                  required
+                  placeholder="Enter legal business name"
+                />
+                {errors.legal_name && (
+                  <p className="text-xs text-red-600">{errors.legal_name}</p>
+                )}
+
+                <Input
+                  label="Email"
+                  type="email"
+                  value={masterFormData.email}
+                  onChange={(e) =>
+                    setMasterFormData({ ...masterFormData, email: e.target.value })
+                  }
+                  disabled={isSubmitting || searching}
+                  placeholder="Enter email address (optional)"
+                />
+                {errors.email && (
+                  <p className="text-xs text-red-600">{errors.email}</p>
+                )}
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Address
+                  </label>
+                  <textarea
+                    value={masterFormData.address}
+                    onChange={(e) =>
+                      setMasterFormData({ ...masterFormData, address: e.target.value })
+                    }
+                    disabled={isSubmitting || searching}
+                    placeholder="Enter address (optional)"
+                    rows={3}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
+                  />
+                </div>
+
+                <div className="flex gap-2">
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    onClick={() => {
+                      setShowMasterForm(false)
+                      setMasterFormData({ legal_name: '', address: '', email: '' })
+                      setErrors({})
+                    }}
+                    disabled={isSubmitting || searching}
+                    className="flex-1"
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="primary"
+                    onClick={handleCreateMasterCustomer}
+                    isLoading={searching}
+                    disabled={isSubmitting || searching}
+                    className="flex-1"
+                  >
+                    Create Customer
+                  </Button>
+                </div>
               </div>
             )}
 

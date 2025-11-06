@@ -5,8 +5,57 @@ import type { Database } from '../../types/database'
 type ProductInsert = Database['public']['Tables']['products']['Insert']
 type ProductUpdate = Database['public']['Tables']['products']['Update']
 
+export interface CreateProductFromMasterParams {
+  master_product_id: string
+  alias_name?: string
+  unit?: string
+  selling_price?: number
+  cost_price?: number
+  min_stock_level?: number
+  sku?: string
+  barcode_ean?: string
+  category?: string
+}
+
 /**
- * Create a new product for the organization
+ * Create an org product from a master product with optional overrides
+ */
+export async function createProductFromMaster(
+  orgId: string,
+  params: CreateProductFromMasterParams,
+  createdBy?: string
+): Promise<Product> {
+  const { data: productId, error } = await supabase.rpc('create_product_from_master', {
+    p_org_id: orgId,
+    p_master_product_id: params.master_product_id,
+    p_alias_name: params.alias_name || null,
+    p_unit: params.unit || null,
+    p_selling_price: params.selling_price || null,
+    p_cost_price: params.cost_price || null,
+    p_min_stock_level: params.min_stock_level || 0,
+    p_sku: params.sku || null,
+    p_barcode_ean: params.barcode_ean || null,
+    p_category: params.category || null,
+    p_created_by: createdBy || null,
+  })
+
+  if (error) {
+    if (error.code === '23505') {
+      throw new Error('Product already linked to this master product for this organization')
+    }
+    throw new Error(`Failed to create product from master: ${error.message}`)
+  }
+
+  if (!productId) {
+    throw new Error('Failed to create product: no ID returned')
+  }
+
+  // Fetch the created product
+  return await getProduct(productId)
+}
+
+/**
+ * Create a new product for the organization (org-only, not from master)
  */
 export async function createProduct(orgId: string, data: ProductFormData): Promise<Product> {
   const productData: ProductInsert = {
