@@ -1,21 +1,4 @@
 import { supabase } from '../supabase'
-import type { Database } from '../../types/database'
-
-type MasterProductRow = {
-  id: string
-  sku: string
-  barcode_ean: string | null
-  name: string
-  category: string | null
-  hsn_code: string | null
-  base_unit: string
-  base_price: number | null
-  gst_rate: number | null
-  gst_type: string | null
-  status: string
-  created_at: string | null
-  updated_at: string | null
-}
 
 export interface MasterProduct {
   id: string
@@ -48,7 +31,7 @@ export interface SearchMasterProductsParams {
 export async function searchMasterProducts(
   params: SearchMasterProductsParams = {}
 ): Promise<MasterProduct[]> {
-  const { data, error } = await supabase.rpc('search_master_products', {
+  const { data, error } = await supabase.rpc('search_master_products' as any, {
     search_query: params.q || null,
     search_sku: params.sku || null,
     search_ean: params.ean || null,
@@ -83,7 +66,22 @@ export async function getMasterProduct(id: string): Promise<MasterProduct> {
     throw new Error('Master product not found')
   }
 
-  return data as MasterProduct
+  // Map database row to MasterProduct interface
+  return {
+    id: data.id,
+    sku: data.sku,
+    barcode_ean: data.barcode_ean,
+    name: data.name,
+    category: data.category,
+    hsn_code: data.hsn_code,
+    base_unit: data.base_unit,
+    base_price: data.base_price,
+    gst_rate: data.gst_rate,
+    gst_type: data.gst_type as 'goods' | 'services' | null,
+    status: data.status as 'active' | 'inactive' | 'discontinued',
+    created_at: data.created_at,
+    updated_at: data.updated_at,
+  }
 }
 
 

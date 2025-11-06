@@ -25,7 +25,7 @@ export async function createProductFromMaster(
   params: CreateProductFromMasterParams,
   createdBy?: string
 ): Promise<Product> {
-  const { data: productId, error } = await supabase.rpc('create_product_from_master', {
+  const { data: productId, error } = await supabase.rpc('create_product_from_master' as any, {
     p_org_id: orgId,
     p_master_product_id: params.master_product_id,
     p_alias_name: params.alias_name || null,
@@ -46,7 +46,7 @@ export async function createProductFromMaster(
     throw new Error(`Failed to create product from master: ${error.message}`)
   }
 
-  if (!productId) {
+  if (!productId || typeof productId !== 'string') {
     throw new Error('Failed to create product: no ID returned')
   }
 
