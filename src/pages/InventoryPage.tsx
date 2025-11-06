@@ -1,11 +1,12 @@
 import { useEffect, useState, useMemo, useCallback } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { supabase } from '../lib/supabase'
-import type { Invoice, StockLedger, Product } from '../types'
+import type { Invoice, StockLedger, Product, Org } from '../types'
 import { Card, CardContent } from '../components/ui/Card'
 import { LoadingSpinner } from '../components/ui/LoadingSpinner'
 import { Button } from '../components/ui/Button'
 import { StockTransactionForm } from '../components/forms/StockTransactionForm'
+import { InvoiceForm } from '../components/forms/InvoiceForm'
 import {
   PlusIcon,
   DocumentTextIcon,
@@ -14,6 +15,7 @@ import {
   AdjustmentsHorizontalIcon,
 } from '@heroicons/react/24/outline'
 import { getStockLedgerWithProducts, createStockTransaction } from '../lib/api/stockLedger'
+import { getInvoicesByOrg } from '../lib/api/invoices'
 
 export function InventoryPage() {
   const { user } = useAuth()
@@ -22,21 +24,33 @@ export function InventoryPage() {
   const [loading, setLoading] = useState(true)
   const [loadingLedger, setLoadingLedger] = useState(true)
   const [isTransactionFormOpen, setIsTransactionFormOpen] = useState(false)
+  const [isInvoiceFormOpen, setIsInvoiceFormOpen] = useState(false)
+  const [org, setOrg] = useState<Org | null>(null)
   const [filterType, setFilterType] = useState<'all' | 'in' | 'out' | 'adjustment'>('all')
+
+  const loadOrg = useCallback(async () => {
+    if (!user) return
+
+    try {
+      const { data, error } = await supabase
+        .from('orgs')
+        .select('*')
+        .eq('id', user.orgId)
+        .single()
+
+      if (error) throw error
+      setOrg(data)
+    } catch (error) {
+      console.error('Error loading org:', error)
+    }
+  }, [user])
 
   const loadInvoices = useCallback(async () => {
     if (!user) return
 
     try {
-      const { data, error } = await supabase
-        .from('invoices')
-        .select('*')
-        .eq('org_id', user.orgId)
-        .order('created_at', { ascending: false })
-        .limit(50)
-
-      if (error) throw error
-      setInvoices(data || [])
+      const data = await getInvoicesByOrg(user.orgId)
+      setInvoices(data)
     } catch (error) {
       console.error('Error loading invoices:', error)
     } finally {
@@ -58,9 +72,10 @@ export function InventoryPage() {
   }, [user])
 
   useEffect(() => {
+    loadOrg()
     loadInvoices()
     loadStockLedger()
-  }, [loadInvoices, loadStockLedger])
+  }, [loadOrg, loadInvoices, loadStockLedger])
 
   const handleCreateTransaction = async (data: any) => {
     if (!user) return
@@ -267,7 +282,12 @@ export function InventoryPage() {
         {/* Page Header */}
         <div className="flex items-center justify-between mb-4">
           <h1 className="text-xl font-semibold text-gray-900">Invoices</h1>
-          <Button variant="primary" size="sm" className="flex items-center gap-1.5">
+          <Button
+            variant="primary"
+            size="sm"
+            className="flex items-center gap-1.5"
+            onClick={() => setIsInvoiceFormOpen(true)}
+          >
             <PlusIcon className="h-4 w-4" />
             <span className="hidden sm:inline text-sm">New Invoice</span>
           </Button>
@@ -356,6 +376,22 @@ export function InventoryPage() {
           onClose={() => setIsTransactionFormOpen(false)}
           onSubmit={handleCreateTransaction}
           orgId={user.orgId}
+        />
+      )}
+
+      {/* Invoice Form */}
+      {user && org && (
+        <InvoiceForm
+          isOpen={isInvoiceFormOpen}
+          onClose={() => setIsInvoiceFormOpen(false)}
+          onSubmit={async (invoiceId) => {
+            await loadInvoices()
+            // Optionally navigate to invoice view
+          }}
+          orgId={user.orgId}
+          userId={user.id}
+          orgState={org.state}
+          orgGstEnabled={org.gst_enabled || false}
         />
       )}
     </div>

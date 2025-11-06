@@ -9,6 +9,7 @@ const LoginPage = lazy(() => import('./pages/LoginPage').then(m => ({ default: m
 const DashboardPage = lazy(() => import('./pages/DashboardPage').then(m => ({ default: m.DashboardPage })))
 const ProductsPage = lazy(() => import('./pages/ProductsPage').then(m => ({ default: m.ProductsPage })))
 const InventoryPage = lazy(() => import('./pages/InventoryPage').then(m => ({ default: m.InventoryPage })))
+const CustomersPage = lazy(() => import('./pages/CustomersPage').then(m => ({ default: m.CustomersPage })))
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth()
@@ -63,6 +64,7 @@ function AppRoutes() {
           <Route index element={<DashboardPage />} />
           <Route path="products" element={<ProductsPage />} />
           <Route path="inventory" element={<InventoryPage />} />
+          <Route path="customers" element={<CustomersPage />} />
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

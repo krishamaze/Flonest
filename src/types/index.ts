@@ -9,6 +9,8 @@ export type Inventory = Database['public']['Tables']['inventory']['Row']
 export type Invoice = Database['public']['Tables']['invoices']['Row']
 export type InvoiceItem = Database['public']['Tables']['invoice_items']['Row']
 export type StockLedger = Database['public']['Tables']['stock_ledger']['Row']
+export type MasterCustomer = Database['public']['Tables']['master_customers']['Row']
+export type Customer = Database['public']['Tables']['customers']['Row']
 
 export type UserRole = 'owner' | 'staff' | 'viewer'
 export type ProductStatus = 'active' | 'inactive' | 'pending'
@@ -47,5 +49,30 @@ export interface StockLedgerFormData {
   transaction_type: 'in' | 'out' | 'adjustment'
   quantity: number
   notes?: string
+}
+
+export interface CustomerFormData {
+  alias_name?: string
+  billing_address?: string
+  shipping_address?: string
+  notes?: string
+}
+
+export interface InvoiceFormData {
+  customer_id: string
+  invoice_number?: string
+  items: InvoiceItemFormData[]
+  notes?: string
+}
+
+export interface InvoiceItemFormData {
+  product_id: string
+  quantity: number
+  unit_price: number
+  line_total: number
+}
+
+export interface CustomerWithMaster extends Customer {
+  master_customer: MasterCustomer
 }
 
