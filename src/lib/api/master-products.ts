@@ -67,20 +67,22 @@ export async function getMasterProduct(id: string): Promise<MasterProduct> {
   }
 
   // Map database row to MasterProduct interface
+  // Type assertion needed because database types may be incomplete
+  const row = data as any
   return {
-    id: data.id,
-    sku: data.sku,
-    barcode_ean: data.barcode_ean,
-    name: data.name,
-    category: data.category,
-    hsn_code: data.hsn_code,
-    base_unit: data.base_unit,
-    base_price: data.base_price,
-    gst_rate: data.gst_rate,
-    gst_type: data.gst_type as 'goods' | 'services' | null,
-    status: data.status as 'active' | 'inactive' | 'discontinued',
-    created_at: data.created_at,
-    updated_at: data.updated_at,
+    id: row.id,
+    sku: row.sku,
+    barcode_ean: row.barcode_ean ?? null,
+    name: row.name,
+    category: row.category ?? null,
+    hsn_code: row.hsn_code ?? null,
+    base_unit: row.base_unit ?? 'pcs',
+    base_price: row.base_price ?? null,
+    gst_rate: row.gst_rate ?? null,
+    gst_type: (row.gst_type as 'goods' | 'services' | null) ?? null,
+    status: (row.status as 'active' | 'inactive' | 'discontinued') ?? 'active',
+    created_at: row.created_at ?? null,
+    updated_at: row.updated_at ?? null,
   }
 }
 
