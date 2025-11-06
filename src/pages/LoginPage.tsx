@@ -132,7 +132,7 @@ export function LoginPage() {
             </Button>
 
             {/* View Switch Links */}
-            <div className="space-y-2 text-center text-sm">
+            <div className="space-y-3 text-center text-sm">
               {view === 'sign_in' && (
                 <>
                   <button
@@ -142,58 +142,64 @@ export function LoginPage() {
                       setError(null)
                       setMessage(null)
                     }}
-                    className="text-primary-600 hover:text-primary-700 hover:underline"
+                    className="text-primary-600 hover:text-primary-700 hover:underline text-sm"
                   >
                     Forgot your password?
                   </button>
-                  <div>
-                    <span className="text-gray-600">Don't have an account? </span>
-                    <button
+                  <div className="pt-2 border-t border-gray-200">
+                    <span className="text-gray-600 block mb-2">Don't have an account?</span>
+                    <Button
                       type="button"
+                      variant="secondary"
+                      size="md"
+                      className="w-full"
                       onClick={() => {
                         setView('sign_up')
                         setError(null)
                         setMessage(null)
                       }}
-                      className="text-primary-600 hover:text-primary-700 hover:underline font-medium"
                     >
                       Sign up
-                    </button>
+                    </Button>
                   </div>
                 </>
               )}
 
               {view === 'sign_up' && (
-                <div>
-                  <span className="text-gray-600">Already have an account? </span>
-                  <button
+                <div className="pt-2 border-t border-gray-200">
+                  <span className="text-gray-600 block mb-2">Already have an account?</span>
+                  <Button
                     type="button"
+                    variant="secondary"
+                    size="md"
+                    className="w-full"
                     onClick={() => {
                       setView('sign_in')
                       setError(null)
                       setMessage(null)
                     }}
-                    className="text-primary-600 hover:text-primary-700 hover:underline font-medium"
                   >
                     Sign in
-                  </button>
+                  </Button>
                 </div>
               )}
 
               {view === 'forgot_password' && (
-                <div>
-                  <span className="text-gray-600">Remember your password? </span>
-                  <button
+                <div className="pt-2 border-t border-gray-200">
+                  <span className="text-gray-600 block mb-2">Remember your password?</span>
+                  <Button
                     type="button"
+                    variant="secondary"
+                    size="md"
+                    className="w-full"
                     onClick={() => {
                       setView('sign_in')
                       setError(null)
                       setMessage(null)
                     }}
-                    className="text-primary-600 hover:text-primary-700 hover:underline font-medium"
                   >
                     Sign in
-                  </button>
+                  </Button>
                 </div>
               )}
             </div>
