@@ -384,7 +384,7 @@ export function InventoryPage() {
         <InvoiceForm
           isOpen={isInvoiceFormOpen}
           onClose={() => setIsInvoiceFormOpen(false)}
-          onSubmit={async (invoiceId) => {
+          onSubmit={async () => {
             await loadInvoices()
             // Optionally navigate to invoice view
           }}

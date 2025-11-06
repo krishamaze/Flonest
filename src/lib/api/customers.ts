@@ -3,12 +3,9 @@ import type { Database } from '../../types/database'
 import {
   detectIdentifierType,
   normalizeIdentifier,
-  validateMobile,
-  validateGSTIN,
 } from '../utils/identifierValidation'
 
 type MasterCustomer = Database['public']['Tables']['master_customers']['Row']
-type MasterCustomerInsert = Database['public']['Tables']['master_customers']['Insert']
 type Customer = Database['public']['Tables']['customers']['Row']
 type CustomerInsert = Database['public']['Tables']['customers']['Insert']
 type CustomerUpdate = Database['public']['Tables']['customers']['Update']
@@ -77,7 +74,7 @@ export async function lookupOrCreateCustomer(
   // 3. If not found, create via RPC
   let masterId: string
   if (!master) {
-    const { data: rpcData, error: rpcError } = await supabase.rpc('upsert_master_customer', {
+    const { data: rpcData, error: rpcError } = await supabase.rpc('upsert_master_customer' as any, {
       p_mobile: type === 'mobile' ? normalized : null,
       p_gstin: type === 'gstin' ? normalized : null,
       p_legal_name: masterData?.legal_name || 'Customer',
@@ -87,6 +84,10 @@ export async function lookupOrCreateCustomer(
 
     if (rpcError) {
       throw new Error(`Failed to create master customer: ${rpcError.message}`)
+    }
+
+    if (typeof rpcData !== 'string') {
+      throw new Error('RPC function returned invalid ID')
     }
 
     masterId = rpcData

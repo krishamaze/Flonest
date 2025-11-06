@@ -10,7 +10,6 @@ import { CustomerResultCard } from '../customers/CustomerResultCard'
 import type { InvoiceFormData, InvoiceItemFormData, Product, CustomerWithMaster } from '../../types'
 import { lookupOrCreateCustomer, searchCustomersByIdentifier } from '../../lib/api/customers'
 import { getAllProducts } from '../../lib/api/products'
-import { getCurrentStockForProducts } from '../../lib/api/stockCalculations'
 import { createInvoice } from '../../lib/api/invoices'
 import { calculateGST, extractStateCodeFromGSTIN, getGSTRate } from '../../lib/utils/gstCalculation'
 import { ChevronLeftIcon, ChevronRightIcon, PlusIcon, TrashIcon } from '@heroicons/react/24/outline'
@@ -42,7 +41,7 @@ export function InvoiceForm({
   const [currentStep, setCurrentStep] = useState<Step>(1)
   const [identifier, setIdentifier] = useState('')
   const [identifierValid, setIdentifierValid] = useState(false)
-  const [identifierType, setIdentifierType] = useState<IdentifierType>('invalid')
+  const [, setIdentifierType] = useState<IdentifierType>('invalid')
   const [searching, setSearching] = useState(false)
   const [selectedCustomer, setSelectedCustomer] = useState<CustomerWithMaster | null>(null)
   const [masterData, setMasterData] = useState<{ legal_name?: string; address?: string; email?: string }>({})
@@ -78,30 +77,7 @@ export function InvoiceForm({
     }
   }, [isOpen])
 
-  // Step 1: Customer Selection
-  const handleIdentifierSearch = async () => {
-    if (!identifierValid || !identifier.trim()) return
-
-    setSearching(true)
-    setErrors({})
-
-    try {
-      // First try to find existing customer
-      const existing = await searchCustomersByIdentifier(identifier, orgId)
-
-      if (existing) {
-        setSelectedCustomer(existing)
-      } else {
-        // Not found - will create via lookupOrCreateCustomer
-        setSelectedCustomer(null)
-      }
-    } catch (error) {
-      console.error('Error searching customer:', error)
-      setErrors({ identifier: error instanceof Error ? error.message : 'Failed to search customer' })
-    } finally {
-      setSearching(false)
-    }
-  }
+  // Step 1: Customer Selection - handleIdentifierSearch removed (not used in current flow)
 
   const handleUseCustomer = async () => {
     if (!identifierValid || !identifier.trim()) {
@@ -312,7 +288,6 @@ export function InvoiceForm({
             ) : (
               <div className="space-y-4">
                 {items.map((item, index) => {
-                  const product = products.find((p) => p.id === item.product_id)
                   return (
                     <div key={index} className="border border-gray-200 rounded-lg p-4 space-y-3">
                       <div className="flex items-center justify-between">

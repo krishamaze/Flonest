@@ -4,7 +4,6 @@ import type { Invoice, InvoiceItem, InvoiceFormData } from '../../types'
 import { calculateGST, extractStateCodeFromGSTIN, getGSTRate } from '../utils/gstCalculation'
 
 type InvoiceInsert = Database['public']['Tables']['invoices']['Insert']
-type InvoiceUpdate = Database['public']['Tables']['invoices']['Update']
 type InvoiceItemInsert = Database['public']['Tables']['invoice_items']['Insert']
 
 /**
