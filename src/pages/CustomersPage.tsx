@@ -7,7 +7,6 @@ import { Button } from '../components/ui/Button'
 import { CustomerForm } from '../components/forms/CustomerForm'
 import { PlusIcon, MagnifyingGlassIcon, PencilIcon } from '@heroicons/react/24/outline'
 import { getCustomersByOrg, updateOrgCustomer } from '../lib/api/customers'
-import { detectIdentifierType } from '../lib/utils/identifierValidation'
 
 export function CustomersPage() {
   const { user } = useAuth()
@@ -142,8 +141,6 @@ export function CustomersPage() {
         <div className="space-y-3">
           {filteredCustomers.map((customer) => {
             const master = customer.master_customer
-            const identifier = master.mobile || master.gstin || ''
-            // identifierType not used in display
             const displayName = customer.alias_name || master.legal_name
 
             return (
