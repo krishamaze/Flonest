@@ -164,8 +164,8 @@ export function DashboardPage() {
             <button className="flex items-center gap-3 rounded-lg border border-gray-200 p-4 text-left transition-all hover:bg-gray-50 hover:border-gray-300 active:scale-[0.98]">
               <ArrowTrendingUpIcon className="h-5 w-5 text-green-600 shrink-0" />
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-gray-900">Stock In</p>
-                <p className="text-xs text-gray-600">Add inventory</p>
+                <p className="text-sm font-medium text-gray-900">Add Stock</p>
+                <p className="text-xs text-gray-600">Increase stock quantity</p>
               </div>
             </button>
           </div>

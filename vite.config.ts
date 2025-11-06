@@ -53,7 +53,7 @@ export default defineConfig({
         manualChunks: {
           // Separate vendor chunks for better caching
           'react-vendor': ['react', 'react-dom', 'react-router-dom'],
-          'supabase-vendor': ['@supabase/supabase-js', '@supabase/auth-ui-react', '@supabase/auth-ui-shared'],
+          'supabase-vendor': ['@supabase/supabase-js'],
           'icons-vendor': ['@heroicons/react']
         },
         // Optimize chunk file names

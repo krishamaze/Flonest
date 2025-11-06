@@ -25,7 +25,7 @@ const navItems = [
   },
   {
     to: '/inventory',
-    label: 'Inventory',
+    label: 'Invoices',
     icon: ClipboardDocumentListIcon,
     activeIcon: ClipboardIconSolid,
   },
