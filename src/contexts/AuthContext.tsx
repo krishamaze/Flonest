@@ -50,13 +50,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const loadUserProfile = async (authUser: User) => {
     try {
       // First, try to get existing membership with profile and org
-      const { data: membership, error } = await supabase
+      // Get all memberships and use the first one (in case user has multiple orgs)
+      const { data: memberships, error } = await supabase
         .from('memberships')
         .select('*, profiles(*), orgs(*)')
         .eq('profile_id', authUser.id)
-        .maybeSingle()
+        .limit(1)
 
       if (error) throw error
+
+      const membership = memberships && memberships.length > 0 ? memberships[0] : null
 
       // If membership doesn't exist, sync it automatically
       if (!membership) {
