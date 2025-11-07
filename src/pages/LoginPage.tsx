@@ -68,28 +68,28 @@ export function LoginPage() {
         </div>
 
         {/* Auth Form Card */}
-        <div className="rounded-lg bg-bg-card p-2xl shadow-sm border border-neutral-200">
+        <div className="rounded-lg bg-bg-card p-2xl shadow-sm border border-neutral-200 overflow-hidden">
           <form onSubmit={handleSubmit} className="space-y-4">
             {/* Error Message */}
             {error && (
               <div 
-                className="rounded-lg bg-error-light border border-error p-md"
+                className="rounded-lg bg-error-light border border-error p-md break-words"
                 role="alert"
                 id="login-error"
                 aria-live="polite"
               >
-                <p className="text-sm text-error-dark">{error}</p>
+                <p className="text-sm text-error-dark break-words">{error}</p>
               </div>
             )}
 
             {/* Success Message */}
             {message && (
               <div 
-                className="rounded-md bg-success-light border border-success p-md"
+                className="rounded-md bg-success-light border border-success p-md break-words"
                 role="status"
                 aria-live="polite"
               >
-                <p className="text-sm text-success-dark">{message}</p>
+                <p className="text-sm text-success-dark break-words">{message}</p>
               </div>
             )}
 

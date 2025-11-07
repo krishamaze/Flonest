@@ -7,15 +7,29 @@
 .spacing-lg { padding: var(--spacing-lg); }
 .spacing-xl { padding: var(--spacing-xl); }
 
+/* All-sides padding */
+.p-xs { padding: var(--spacing-xs); }
+.p-sm { padding: var(--spacing-sm); }
+.p-md { padding: var(--spacing-md); }
+.p-lg { padding: var(--spacing-lg); }
+.p-xl { padding: var(--spacing-xl); }
+.p-2xl { padding: var(--spacing-2xl); }
+
+/* Horizontal padding */
 .px-xs { padding-left: var(--spacing-xs); padding-right: var(--spacing-xs); }
 .px-sm { padding-left: var(--spacing-sm); padding-right: var(--spacing-sm); }
 .px-md { padding-left: var(--spacing-md); padding-right: var(--spacing-md); }
 .px-lg { padding-left: var(--spacing-lg); padding-right: var(--spacing-lg); }
+.px-xl { padding-left: var(--spacing-xl); padding-right: var(--spacing-xl); }
+.px-2xl { padding-left: var(--spacing-2xl); padding-right: var(--spacing-2xl); }
 
+/* Vertical padding */
 .py-xs { padding-top: var(--spacing-xs); padding-bottom: var(--spacing-xs); }
 .py-sm { padding-top: var(--spacing-sm); padding-bottom: var(--spacing-sm); }
 .py-md { padding-top: var(--spacing-md); padding-bottom: var(--spacing-md); }
 .py-lg { padding-top: var(--spacing-lg); padding-bottom: var(--spacing-lg); }
+.py-xl { padding-top: var(--spacing-xl); padding-bottom: var(--spacing-xl); }
+.py-2xl { padding-top: var(--spacing-2xl); padding-bottom: var(--spacing-2xl); }
 
 .gap-xs { gap: var(--spacing-xs); }
 .gap-sm { gap: var(--spacing-sm); }
