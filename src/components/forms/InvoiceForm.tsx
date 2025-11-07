@@ -8,13 +8,16 @@ import { isMobileDevice } from '../../lib/deviceDetection'
 import { IdentifierInput } from '../customers/IdentifierInput'
 import { CustomerResultCard } from '../customers/CustomerResultCard'
 import { Card, CardContent } from '../ui/Card'
-import type { InvoiceFormData, InvoiceItemFormData, CustomerWithMaster, Org, ProductWithMaster } from '../../types'
+import { ScannerInput } from '../invoice/ScannerInput'
+import type { InvoiceFormData, InvoiceItemFormData, CustomerWithMaster, Org, ProductWithMaster, ScanResult } from '../../types'
 import { lookupOrCreateCustomer, checkCustomerExists, searchCustomersByIdentifier } from '../../lib/api/customers'
 import { getAllProducts } from '../../lib/api/products'
-import { createInvoice } from '../../lib/api/invoices'
+import { createInvoice, autoSaveInvoiceDraft } from '../../lib/api/invoices'
+import { validateScannerCodes } from '../../lib/api/scanner'
 import { calculateItemGST, extractStateCodeFromGSTIN, getCustomerStateCode } from '../../lib/utils/gstCalculation'
 import { isOrgGstEnabled } from '../../lib/utils/orgGst'
-import { ChevronLeftIcon, ChevronRightIcon, PlusIcon, TrashIcon } from '@heroicons/react/24/outline'
+import { useAutoSave } from '../../hooks/useAutoSave'
+import { ChevronLeftIcon, ChevronRightIcon, PlusIcon, TrashIcon, CheckCircleIcon, XCircleIcon } from '@heroicons/react/24/outline'
 import type { IdentifierType } from '../../lib/utils/identifierValidation'
 import { detectIdentifierType, validateMobile, validateGSTIN, normalizeIdentifier } from '../../lib/utils/identifierValidation'
 
@@ -59,6 +62,10 @@ export function InvoiceForm({
   const [items, setItems] = useState<InvoiceItemFormData[]>([])
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [scanning, setScanning] = useState(false)
+  const [scanError, setScanError] = useState<string | null>(null)
+  const [draftInvoiceId, setDraftInvoiceId] = useState<string | null>(null)
+  const [serialInputs, setSerialInputs] = useState<Record<number, string>>({})
 
   // Load products when form opens
   useEffect(() => {
@@ -89,6 +96,14 @@ export function InvoiceForm({
       setErrors({})
     }
   }, [isOpen])
+
+  // Reset selectedCustomer when identifier changes (ensures Next button stays disabled)
+  useEffect(() => {
+    if (identifier.trim() === '' || !identifierValid) {
+      setSelectedCustomer(null)
+      setLookupPerformed(false)
+    }
+  }, [identifier, identifierValid])
 
   // Step 1: Customer Selection
   const handleLookupCustomer = async () => {
@@ -124,8 +139,8 @@ export function InvoiceForm({
           master_customer: result.master,
         })
       } else {
-        // Master doesn't exist - show "Add New Customer" option
-        // Don't auto-show form, let user click the card
+        // Master doesn't exist - auto-open "Add New Customer" form
+        setShowAddNewForm(true)
       }
     } catch (error) {
       console.error('Error looking up customer:', error)
@@ -139,13 +154,19 @@ export function InvoiceForm({
   }
 
   const handleCreateMasterCustomer = async () => {
-    // Validate form
+    // Validate form - all fields optional except: at least one identifier OR legal_name
     const formErrors: Record<string, string> = {}
     
-    if (!masterFormData.customer_name.trim() || masterFormData.customer_name.trim().length < 2) {
-      formErrors.customer_name = 'Customer name is required and must be at least 2 characters'
+    // Check if we have at least one identifier or legal_name
+    const hasIdentifier = identifierValid && identifier.trim().length > 0
+    const hasLegalName = masterFormData.customer_name.trim().length >= 2
+    const hasAdditionalIdentifier = masterFormData.additionalIdentifier.trim().length > 0
+    
+    if (!hasIdentifier && !hasLegalName) {
+      formErrors.customer_name = 'Please provide at least a customer name or valid mobile/GSTIN'
     }
     
+    // Validate email format if provided
     if (masterFormData.email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(masterFormData.email.trim())) {
       formErrors.email = 'Please enter a valid email address'
     }
@@ -184,7 +205,7 @@ export function InvoiceForm({
         : undefined
 
       const masterData: any = {
-        legal_name: masterFormData.customer_name.trim(),
+        legal_name: masterFormData.customer_name.trim() || 'Customer',
         address: masterFormData.address.trim() || undefined,
         email: masterFormData.email.trim() || undefined,
       }
@@ -257,12 +278,192 @@ export function InvoiceForm({
       ...updated[index],
       product_id: productId,
       unit_price: selectedProduct?.selling_price || updated[index].unit_price || 0,
+      serial_tracked: selectedProduct?.serial_tracked || false,
+      serials: selectedProduct?.serial_tracked ? (updated[index].serials || []) : undefined,
+      quantity: selectedProduct?.serial_tracked ? (updated[index].serials?.length || 0) : updated[index].quantity || 1,
     }
     
     // Recalculate line_total
     updated[index].line_total = (updated[index].quantity || 0) * updated[index].unit_price
 
     setItems(updated)
+  }
+
+  // Handle scanner input
+  const handleScan = async (codes: string[]) => {
+    if (codes.length === 0 || !selectedCustomer) {
+      setScanError('Please select a customer first')
+      return
+    }
+
+    setScanning(true)
+    setScanError(null)
+
+    try {
+      // Validate codes with backend
+      const results = await validateScannerCodes(orgId, codes)
+
+      // Group results by product_id to ensure single-product per batch
+      const productGroups = new Map<string, ScanResult[]>()
+      const serialGroups = new Map<string, ScanResult[]>() // serial -> product_id mapping
+
+      for (const result of results) {
+        if (result.status === 'valid' && result.product_id) {
+          if (result.type === 'serialnumber') {
+            // Group serials by product
+            const key = `${result.product_id}`
+            if (!serialGroups.has(key)) {
+              serialGroups.set(key, [])
+            }
+            serialGroups.get(key)!.push(result)
+          } else if (result.type === 'productcode') {
+            // Group product codes by product_id
+            const key = `${result.product_id}`
+            if (!productGroups.has(key)) {
+              productGroups.set(key, [])
+            }
+            productGroups.get(key)!.push(result)
+          }
+        } else if (result.status === 'not_found' || result.status === 'invalid') {
+          setScanError(result.message || `Code ${result.code} not recognized`)
+        }
+      }
+
+      const updatedItems = [...items]
+
+      // Process serials: attach to items for the same product only
+      for (const [productId, serialResults] of serialGroups.entries()) {
+        const product = products.find((p) => p.id === productId)
+        if (!product) continue
+
+        // Find existing item for this product, or create new
+        let itemIndex = updatedItems.findIndex((item) => item.product_id === productId)
+        
+        if (itemIndex === -1) {
+          // Create new item for this product's serials
+          const newItem: InvoiceItemFormData = {
+            product_id: productId,
+            quantity: product.serial_tracked ? serialResults.length : serialResults.length,
+            unit_price: product.selling_price || 0,
+            line_total: 0,
+            serial_tracked: product.serial_tracked || false,
+            serials: product.serial_tracked ? serialResults.map(r => r.code) : undefined,
+          }
+          
+          newItem.line_total = newItem.quantity * newItem.unit_price
+          updatedItems.push(newItem)
+        } else {
+          // Add serials to existing item (only if same product)
+          const existingSerials = updatedItems[itemIndex].serials || []
+          const newSerials = serialResults
+            .map(r => r.code)
+            .filter(code => !existingSerials.includes(code))
+          
+          if (newSerials.length > 0) {
+            updatedItems[itemIndex].serials = [...existingSerials, ...newSerials]
+            if (updatedItems[itemIndex].serial_tracked) {
+              updatedItems[itemIndex].quantity = updatedItems[itemIndex].serials!.length
+              updatedItems[itemIndex].line_total = updatedItems[itemIndex].quantity * updatedItems[itemIndex].unit_price
+            }
+          }
+        }
+      }
+
+      // Process product codes: create separate line items (don't merge with serials)
+      for (const [productId, productResults] of productGroups.entries()) {
+        const product = products.find((p) => p.id === productId)
+        if (!product) continue
+
+        // Check if item already exists for this product (from serials above)
+        const existingIndex = updatedItems.findIndex((item) => item.product_id === productId)
+        
+        if (existingIndex === -1) {
+          // Create new item for product code
+          const newItem: InvoiceItemFormData = {
+            product_id: productId,
+            quantity: product.serial_tracked ? 0 : 1,
+            unit_price: product.selling_price || 0,
+            line_total: product.serial_tracked ? 0 : (product.selling_price || 0),
+            serial_tracked: product.serial_tracked || false,
+            serials: product.serial_tracked ? [] : undefined,
+          }
+          updatedItems.push(newItem)
+        }
+        // If item exists from serials, don't create duplicate - product code scan just confirms the product
+      }
+
+      setItems(updatedItems)
+    } catch (error) {
+      console.error('Error processing scan:', error)
+      setScanError(error instanceof Error ? error.message : 'Failed to process scan')
+    } finally {
+      setScanning(false)
+    }
+  }
+
+  // Auto-save draft
+  const draftData = useMemo(() => ({
+    invoice_id: draftInvoiceId || undefined,
+    customer_id: selectedCustomer?.id,
+    items: items.map((item) => ({
+      product_id: item.product_id,
+      quantity: item.quantity,
+      unit_price: item.unit_price,
+      line_total: item.line_total,
+      serials: item.serials,
+    })),
+  }), [selectedCustomer, items, draftInvoiceId])
+
+  const { manualSave, saveStatus } = useAutoSave(
+    draftData,
+    async (data) => {
+      if (!selectedCustomer) return
+      try {
+        const invoiceId = await autoSaveInvoiceDraft(orgId, userId, data)
+        setDraftInvoiceId(invoiceId)
+      } catch (error) {
+        console.error('Auto-save failed:', error)
+      }
+    },
+    { 
+      localDebounce: 1500,  // 1.5s debounce for localStorage
+      rpcInterval: 5000,     // 5s interval for RPC calls
+      enabled: selectedCustomer !== null 
+    }
+  )
+
+  // Add serial to item
+  const handleAddSerial = (itemIndex: number, serial: string) => {
+    const updated = [...items]
+    const item = updated[itemIndex]
+    
+    if (!item.serials) {
+      item.serials = []
+    }
+    
+    if (!item.serials.includes(serial)) {
+      item.serials.push(serial)
+      if (item.serial_tracked) {
+        item.quantity = item.serials.length
+        item.line_total = item.quantity * item.unit_price
+      }
+      setItems(updated)
+    }
+  }
+
+  // Remove serial from item
+  const handleRemoveSerial = (itemIndex: number, serialIndex: number) => {
+    const updated = [...items]
+    const item = updated[itemIndex]
+    
+    if (item.serials) {
+      item.serials.splice(serialIndex, 1)
+      if (item.serial_tracked) {
+        item.quantity = item.serials.length
+        item.line_total = item.quantity * item.unit_price
+      }
+      setItems(updated)
+    }
   }
 
   // Calculate totals with per-item GST calculation
@@ -359,11 +560,20 @@ export function InvoiceForm({
     }
 
     // Validate all items
-    const invalidItems = items.some(
-      (item) => !item.product_id || item.quantity <= 0 || item.unit_price <= 0
-    )
+    const invalidItems = items.some((item) => {
+      if (!item.product_id || item.unit_price <= 0) return true
+      
+      // For serial-tracked products, check serials instead of quantity
+      if (item.serial_tracked) {
+        return !item.serials || item.serials.length === 0
+      }
+      
+      // For non-serial products, check quantity
+      return item.quantity <= 0
+    })
+    
     if (invalidItems) {
-      setErrors({ items: 'Please fill all item fields correctly' })
+      setErrors({ items: 'Please fill all item fields correctly (serials for serial-tracked products, quantity for others)' })
       setCurrentStep(2)
       return
     }
@@ -514,15 +724,14 @@ export function InvoiceForm({
                 </p>
 
                 <Input
-                  label="Customer Name"
+                  label="Customer Name (Optional)"
                   type="text"
                   value={masterFormData.customer_name}
                   onChange={(e) =>
                     setMasterFormData({ ...masterFormData, customer_name: e.target.value })
                   }
                   disabled={isSubmitting || searching}
-                  required
-                  placeholder="Enter customer name"
+                  placeholder="Enter customer name (optional)"
                   error={errors.customer_name}
                 />
 
@@ -610,6 +819,26 @@ export function InvoiceForm({
           <div>
             <h3 className="text-lg font-semibold text-primary-text mb-md">Step 2: Add Products</h3>
 
+            {/* Scanner Input */}
+            {selectedCustomer && (
+              <div className="mb-md">
+                <ScannerInput
+                  onScan={handleScan}
+                  disabled={scanning || isSubmitting}
+                  className="mb-sm"
+                />
+                {scanError && (
+                  <p className="mt-xs text-sm text-error">{scanError}</p>
+                )}
+                {saveStatus === 'saving' && (
+                  <p className="mt-xs text-xs text-secondary-text">Saving draft...</p>
+                )}
+                {saveStatus === 'saved' && (
+                  <p className="mt-xs text-xs text-success">Draft saved</p>
+                )}
+              </div>
+            )}
+
             {items.length === 0 ? (
               <div className="text-center py-lg border-2 border-dashed border-neutral-300 rounded-md">
                 <p className="text-sm text-secondary-text mb-md">No items added yet</p>
@@ -652,35 +881,90 @@ export function InvoiceForm({
                         required
                       />
 
-                      <div className="grid grid-cols-2 gap-4">
-                        <Input
-                          label="Quantity"
-                          type="number"
-                          min="1"
-                          step="1"
-                          value={item.quantity.toString()}
-                          onChange={(e) =>
-                            handleItemChange(index, 'quantity', parseInt(e.target.value) || 1)
-                          }
-                          disabled={isSubmitting}
-                          required
-                          placeholder="1"
-                        />
+                      {/* Serial Tracking UI */}
+                      {item.serial_tracked ? (
+                        <div className="space-y-sm">
+                          <label className="block text-sm font-medium text-secondary-text">
+                            Serial Numbers ({item.serials?.length || 0})
+                          </label>
+                          {item.serials && item.serials.length > 0 ? (
+                            <div className="space-y-xs">
+                              {item.serials.map((serial, serialIndex) => (
+                                <div
+                                  key={serialIndex}
+                                  className="flex items-center justify-between p-sm bg-neutral-50 rounded-md"
+                                >
+                                  <span className="text-sm text-primary-text font-mono">
+                                    {serial}
+                                  </span>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleRemoveSerial(index, serialIndex)}
+                                    className="text-error hover:text-error-dark"
+                                    disabled={isSubmitting}
+                                  >
+                                    <XCircleIcon className="h-4 w-4" />
+                                  </button>
+                                </div>
+                              ))}
+                            </div>
+                          ) : (
+                            <p className="text-xs text-secondary-text">
+                              Scan serial numbers for this product
+                            </p>
+                          )}
+                          <Input
+                            label="Add Serial Number"
+                            type="text"
+                            value={serialInputs[index] || ''}
+                            onChange={(e) => {
+                              setSerialInputs({ ...serialInputs, [index]: e.target.value })
+                            }}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') {
+                                e.preventDefault()
+                                const value = serialInputs[index]?.trim()
+                                if (value) {
+                                  handleAddSerial(index, value)
+                                  setSerialInputs({ ...serialInputs, [index]: '' })
+                                }
+                              }
+                            }}
+                            placeholder="Scan or enter serial number"
+                            disabled={isSubmitting}
+                          />
+                        </div>
+                      ) : (
+                        <div className="grid grid-cols-2 gap-4">
+                          <Input
+                            label="Quantity"
+                            type="number"
+                            min="1"
+                            step="1"
+                            value={item.quantity.toString()}
+                            onChange={(e) =>
+                              handleItemChange(index, 'quantity', parseInt(e.target.value) || 1)
+                            }
+                            disabled={isSubmitting}
+                            required
+                            placeholder="1"
+                          />
 
-                        <Input
-                          label="Unit Price"
-                          type="number"
-                          min="0"
-                          step="0.01"
-                          value={item.unit_price.toString()}
-                          onChange={(e) =>
-                            handleItemChange(index, 'unit_price', parseFloat(e.target.value) || 0)
-                          }
-                          disabled={isSubmitting}
-                          required
-                          placeholder="0.00"
-                        />
-                      </div>
+                          <Input
+                            label="Unit Price"
+                            type="number"
+                            min="0"
+                            step="0.01"
+                            value={item.unit_price.toString()}
+                            onChange={(e) =>
+                              handleItemChange(index, 'unit_price', parseFloat(e.target.value) || 0)
+                            }
+                            disabled={isSubmitting}
+                            required
+                            placeholder="0.00"
+                          />
+                        </div>
+                      )}
 
                       <div className="text-right">
                         <p className="text-sm text-secondary-text">
@@ -733,12 +1017,20 @@ export function InvoiceForm({
               {items.map((item, index) => {
                 const product = products.find((p) => p.id === item.product_id)
                 return (
-                  <div key={index} className="flex justify-between text-sm border-b border-neutral-200 pb-sm">
-                    <div>
-                      <span className="font-medium text-primary-text">{product?.name || 'Unknown Product'}</span>
-                      <span className="text-secondary-text ml-sm">x {item.quantity}</span>
+                  <div key={index} className="border-b border-neutral-200 pb-sm mb-sm">
+                    <div className="flex justify-between text-sm">
+                      <div>
+                        <span className="font-medium text-primary-text">{product?.name || 'Unknown Product'}</span>
+                        <span className="text-secondary-text ml-sm">x {item.quantity}</span>
+                      </div>
+                      <span className="font-medium text-primary-text">${item.line_total.toFixed(2)}</span>
                     </div>
-                    <span className="font-medium text-primary-text">${item.line_total.toFixed(2)}</span>
+                    {item.serial_tracked && item.serials && item.serials.length > 0 && (
+                      <div className="mt-xs text-xs text-secondary-text">
+                        <span className="font-medium">Serials: </span>
+                        <span className="font-mono">{item.serials.join(', ')}</span>
+                      </div>
+                    )}
                   </div>
                 )
               })}

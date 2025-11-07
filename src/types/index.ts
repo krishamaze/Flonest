@@ -81,9 +81,25 @@ export interface InvoiceItemFormData {
   quantity: number
   unit_price: number
   line_total: number
+  serials?: string[]
+  serial_tracked?: boolean
 }
 
 export interface CustomerWithMaster extends Customer {
   master_customer: MasterCustomer
+}
+
+export interface ScanResult {
+  code: string
+  type: 'serialnumber' | 'productcode' | 'unknown'
+  product_id?: string
+  status: 'valid' | 'invalid' | 'not_found'
+  message?: string
+}
+
+export interface DraftInvoiceData {
+  invoice_id?: string
+  customer_id?: string
+  items: InvoiceItemFormData[]
 }
 

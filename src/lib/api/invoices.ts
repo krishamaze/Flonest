@@ -327,3 +327,44 @@ export async function getInvoicesByOrg(
   return (data || []) as any
 }
 
+/**
+ * Auto-save invoice draft
+ * Saves draft invoice data incrementally to backend
+ */
+export async function autoSaveInvoiceDraft(
+  orgId: string,
+  userId: string,
+  draftData: {
+    invoice_id?: string
+    customer_id?: string
+    items: Array<{
+      product_id: string
+      quantity: number
+      unit_price: number
+      line_total: number
+      serials?: string[]
+    }>
+  }
+): Promise<string> {
+  try {
+    const { data, error } = await supabase.rpc('auto_save_invoice_draft', {
+      p_org_id: orgId,
+      p_user_id: userId,
+      p_draft_data: draftData as any,
+    })
+
+    if (error) {
+      throw new Error(`Failed to auto-save draft: ${error.message}`)
+    }
+
+    if (!data || typeof data !== 'string') {
+      throw new Error('Invalid response from auto-save function')
+    }
+
+    return data
+  } catch (error) {
+    console.error('Error auto-saving invoice draft:', error)
+    throw error
+  }
+}
+
