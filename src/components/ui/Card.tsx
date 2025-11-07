@@ -1,17 +1,19 @@
-import { ReactNode } from 'react'
+import { ReactNode, CSSProperties } from 'react'
 
 interface CardProps {
   children: ReactNode
   className?: string
   onClick?: () => void
+  style?: CSSProperties
 }
 
-export function Card({ children, className = '', onClick }: CardProps) {
+export function Card({ children, className = '', onClick, style }: CardProps) {
   return (
     <div
       className={`bg-bg-card rounded-lg border border-neutral-200 overflow-hidden shadow-sm ${
         onClick ? 'cursor-pointer hover:shadow-md transition-all duration-200' : ''
       } ${className}`}
+      style={style}
       onClick={onClick}
       role={onClick ? 'button' : undefined}
       tabIndex={onClick ? 0 : undefined}
