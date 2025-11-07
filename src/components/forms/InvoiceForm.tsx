@@ -249,6 +249,22 @@ export function InvoiceForm({
     setItems(updated)
   }
 
+  const handleProductChange = (index: number, productId: string) => {
+    const updated = [...items]
+    const selectedProduct = products.find((p) => p.id === productId)
+    
+    updated[index] = {
+      ...updated[index],
+      product_id: productId,
+      unit_price: selectedProduct?.selling_price || updated[index].unit_price || 0,
+    }
+    
+    // Recalculate line_total
+    updated[index].line_total = (updated[index].quantity || 0) * updated[index].unit_price
+
+    setItems(updated)
+  }
+
   // Calculate totals with per-item GST calculation
   const totals = useMemo(() => {
     const subtotal = items.reduce((sum, item) => sum + (item.line_total || 0), 0)
@@ -621,13 +637,9 @@ export function InvoiceForm({
 
                       <Select
                         label="Product *"
-                        value={item.product_id}
+                        value={item.product_id || ''}
                         onChange={(e) => {
-                          const selectedProduct = products.find((p) => p.id === e.target.value)
-                          handleItemChange(index, 'product_id', e.target.value)
-                          if (selectedProduct && selectedProduct.selling_price) {
-                            handleItemChange(index, 'unit_price', selectedProduct.selling_price)
-                          }
+                          handleProductChange(index, e.target.value)
                         }}
                         options={[
                           { value: '', label: 'Select a product' },
@@ -637,6 +649,7 @@ export function InvoiceForm({
                           })),
                         ]}
                         disabled={isSubmitting || loadingProducts}
+                        required
                       />
 
                       <div className="grid grid-cols-2 gap-4">

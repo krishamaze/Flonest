@@ -218,8 +218,9 @@ export async function getProducts(
 
 /**
  * Get all products for an organization (backward compatibility - no pagination)
+ * Returns products with master_product data for GST calculations
  */
-export async function getAllProducts(orgId: string, filters?: { status?: 'active' | 'inactive' }): Promise<Product[]> {
+export async function getAllProducts(orgId: string, filters?: { status?: 'active' | 'inactive' }): Promise<any[]> {
   const result = await getProducts(orgId, filters, { page: 1, pageSize: 1000 })
   return result.data
 }

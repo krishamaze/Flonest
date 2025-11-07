@@ -9,6 +9,9 @@ interface SelectProps extends SelectHTMLAttributes<HTMLSelectElement> {
 
 export const Select = forwardRef<HTMLSelectElement, SelectProps>(
   ({ label, error, required, options, className = '', ...props }, ref) => {
+    // Check if options already include an empty option
+    const hasEmptyOption = options.some(opt => opt.value === '')
+    
     return (
       <div className="mb-md">
         {label && (
@@ -29,9 +32,9 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(
           required={required}
           {...props}
         >
-          {!required && <option value="">Select an option</option>}
-          {options.map((option) => (
-            <option key={option.value} value={option.value}>
+          {!required && !hasEmptyOption && <option value="">Select an option</option>}
+          {options.map((option, index) => (
+            <option key={option.value || `option-${index}`} value={option.value}>
               {option.label}
             </option>
           ))}
