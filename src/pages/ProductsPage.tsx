@@ -5,7 +5,7 @@ import { Card, CardContent } from '../components/ui/Card'
 import { LoadingSpinner } from '../components/ui/LoadingSpinner'
 import { Button } from '../components/ui/Button'
 import { ProductForm } from '../components/forms/ProductForm'
-import { PlusIcon, MagnifyingGlassIcon, PencilIcon, TrashIcon, ChevronLeftIcon, ChevronRightIcon } from '@heroicons/react/24/outline'
+import { PlusIcon, MagnifyingGlassIcon, PencilIcon, TrashIcon, ChevronLeftIcon, ChevronRightIcon, CubeIcon } from '@heroicons/react/24/outline'
 import { getProducts, createProduct, updateProduct, deleteProduct } from '../lib/api/products'
 import { getCurrentStockForProducts } from '../lib/api/stockCalculations'
 
