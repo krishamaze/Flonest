@@ -151,6 +151,30 @@ export async function createInvoice(
 
   // Create invoice items
   if (data.items.length > 0) {
+    // Validate all products exist and belong to the organization before inserting
+    const productIds = data.items.map(item => item.product_id)
+    const { data: existingProducts, error: validationError } = await supabase
+      .from('products')
+      .select('id')
+      .eq('org_id', orgId)
+      .in('id', productIds)
+
+    if (validationError) {
+      // Rollback: delete the invoice
+      await supabase.from('invoices').delete().eq('id', invoice.id)
+      throw new Error(`Failed to validate products: ${validationError.message}`)
+    }
+
+    // Check if all products were found
+    const foundProductIds = new Set(existingProducts?.map(p => p.id) || [])
+    const missingProducts = productIds.filter(id => !foundProductIds.has(id))
+    
+    if (missingProducts.length > 0) {
+      // Rollback: delete the invoice
+      await supabase.from('invoices').delete().eq('id', invoice.id)
+      throw new Error(`One or more products not found or do not belong to this organization: ${missingProducts.join(', ')}`)
+    }
+
     const itemsData: InvoiceItemInsert[] = data.items.map((item) => ({
       invoice_id: invoice.id,
       product_id: item.product_id,
