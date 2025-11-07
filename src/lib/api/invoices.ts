@@ -1,7 +1,10 @@
 import { supabase } from '../supabase'
 import type { Database } from '../../types/database'
-import type { Invoice, InvoiceItem, InvoiceFormData } from '../../types'
-import { calculateGST, extractStateCodeFromGSTIN, getGSTRate } from '../utils/gstCalculation'
+import type { Invoice, InvoiceItem, InvoiceFormData, Org, CustomerWithMaster } from '../../types'
+import { calculateItemGST, extractStateCodeFromGSTIN, getCustomerStateCode } from '../utils/gstCalculation'
+import { isOrgGstEnabled } from '../utils/orgGst'
+import { getProduct } from './products'
+import type { ProductWithMaster } from '../../types'
 
 type InvoiceInsert = Database['public']['Tables']['invoices']['Insert']
 type InvoiceItemInsert = Database['public']['Tables']['invoice_items']['Insert']
@@ -42,31 +45,78 @@ async function generateInvoiceNumber(orgId: string): Promise<string> {
 
 /**
  * Create a new invoice (draft or finalized)
+ * Uses per-item GST calculation based on product's gst_rate
  */
 export async function createInvoice(
   orgId: string,
   userId: string,
   data: InvoiceFormData,
-  orgState?: string,
-  orgGstEnabled: boolean = false,
-  customerStateCode?: string | null
+  org: Org,
+  customer: CustomerWithMaster
 ): Promise<Invoice> {
-  // Calculate totals
+  // Determine org GST mode
+  const gstEnabled = isOrgGstEnabled(org)
+  
+  // Get seller state code from org GSTIN or state field
+  const sellerStateCode = org.gst_number 
+    ? extractStateCodeFromGSTIN(org.gst_number) 
+    : (org.state ? org.state.slice(0, 2) : null)
+
+  // Get buyer state code with fallback logic
+  const buyerStateCode = sellerStateCode 
+    ? getCustomerStateCode(customer, sellerStateCode) 
+    : null
+
+  // Calculate subtotal
   const subtotal = data.items.reduce((sum, item) => sum + item.line_total, 0)
 
-  // Calculate GST if enabled
+  // Initialize tax accumulators
   let cgst_amount = 0
   let sgst_amount = 0
-  const gstRate = getGSTRate(orgGstEnabled)
-  
-  if (gstRate > 0 && orgState) {
-    const sellerStateCode = extractStateCodeFromGSTIN(orgState) || orgState.slice(0, 2)
-    const gstCalc = calculateGST(subtotal, gstRate, sellerStateCode, customerStateCode)
-    cgst_amount = gstCalc.cgst_amount
-    sgst_amount = gstCalc.sgst_amount
+  let igst_amount = 0
+
+  // Calculate GST per item if org has GST enabled
+  if (gstEnabled && sellerStateCode) {
+    // Fetch master product data for each item to get GST rates
+    for (const item of data.items) {
+      try {
+        const product = await getProduct(item.product_id) as ProductWithMaster
+        
+        // Get product's GST rate from master product
+        const productGstRate = product.master_product?.gst_rate
+
+        // Skip GST calculation if product has no GST rate
+        if (!productGstRate || productGstRate <= 0) {
+          continue
+        }
+
+        // Calculate item GST (GST-inclusive pricing)
+        const itemGst = calculateItemGST(
+          item.line_total,
+          productGstRate,
+          sellerStateCode,
+          buyerStateCode || undefined,
+          true // isGstInclusive = true
+        )
+
+        // Accumulate tax amounts (already rounded to 2 decimals per item)
+        cgst_amount += itemGst.cgst_amount
+        sgst_amount += itemGst.sgst_amount
+        igst_amount += itemGst.igst_amount
+      } catch (error) {
+        console.error(`Error fetching product ${item.product_id} for GST calculation:`, error)
+        // Continue with other items even if one fails
+      }
+    }
   }
 
-  const total_amount = subtotal + cgst_amount + sgst_amount
+  // Round aggregated amounts to 2 decimals
+  cgst_amount = Math.round(cgst_amount * 100) / 100
+  sgst_amount = Math.round(sgst_amount * 100) / 100
+  igst_amount = Math.round(igst_amount * 100) / 100
+
+  // Calculate total
+  const total_amount = subtotal + cgst_amount + sgst_amount + igst_amount
 
   // Generate invoice number if not provided
   const invoice_number = data.invoice_number || await generateInvoiceNumber(orgId)
@@ -78,6 +128,7 @@ export async function createInvoice(
     subtotal,
     cgst_amount,
     sgst_amount,
+    igst_amount,
     total_amount,
     status: 'draft',
     created_by: userId,

@@ -150,6 +150,7 @@ export async function deleteProduct(productId: string): Promise<void> {
 
 /**
  * Get all products for an organization with pagination and filtering
+ * Includes master product data (GST rate, HSN code, base price) when available
  */
 export async function getProducts(
   orgId: string,
@@ -168,9 +169,20 @@ export async function getProducts(
   const from = (page - 1) * pageSize
   const to = from + pageSize - 1
 
+  // Include master product data for GST calculations
   let query = supabase
     .from('products')
-    .select('*', { count: 'exact' })
+    .select(`
+      *,
+      master_product:master_products(
+        id,
+        gst_rate,
+        hsn_code,
+        base_price,
+        name,
+        sku
+      )
+    `, { count: 'exact' })
     .eq('org_id', orgId)
 
   // Apply filters
@@ -214,11 +226,22 @@ export async function getAllProducts(orgId: string, filters?: { status?: 'active
 
 /**
  * Get a single product by ID
+ * Includes master product data (GST rate, HSN code, base price) when available
  */
 export async function getProduct(productId: string): Promise<Product> {
   const { data, error } = await supabase
     .from('products')
-    .select('*')
+    .select(`
+      *,
+      master_product:master_products(
+        id,
+        gst_rate,
+        hsn_code,
+        base_price,
+        name,
+        sku
+      )
+    `)
     .eq('id', productId)
     .single()
 

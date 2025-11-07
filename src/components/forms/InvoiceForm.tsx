@@ -8,11 +8,12 @@ import { isMobileDevice } from '../../lib/deviceDetection'
 import { IdentifierInput } from '../customers/IdentifierInput'
 import { CustomerResultCard } from '../customers/CustomerResultCard'
 import { Card, CardContent } from '../ui/Card'
-import type { InvoiceFormData, InvoiceItemFormData, Product, CustomerWithMaster } from '../../types'
+import type { InvoiceFormData, InvoiceItemFormData, Product, CustomerWithMaster, Org, ProductWithMaster } from '../../types'
 import { lookupOrCreateCustomer, checkCustomerExists, searchCustomersByIdentifier } from '../../lib/api/customers'
 import { getAllProducts } from '../../lib/api/products'
 import { createInvoice } from '../../lib/api/invoices'
-import { calculateGST, extractStateCodeFromGSTIN, getGSTRate } from '../../lib/utils/gstCalculation'
+import { calculateItemGST, extractStateCodeFromGSTIN, getCustomerStateCode } from '../../lib/utils/gstCalculation'
+import { isOrgGstEnabled, getInvoiceTitle } from '../../lib/utils/orgGst'
 import { ChevronLeftIcon, ChevronRightIcon, PlusIcon, TrashIcon } from '@heroicons/react/24/outline'
 import type { IdentifierType } from '../../lib/utils/identifierValidation'
 import { detectIdentifierType, validateMobile, validateGSTIN, normalizeIdentifier } from '../../lib/utils/identifierValidation'
@@ -23,8 +24,7 @@ interface InvoiceFormProps {
   onSubmit: (invoiceId: string) => Promise<void>
   orgId: string
   userId: string
-  orgState?: string
-  orgGstEnabled?: boolean
+  org: Org
   title?: string
 }
 
@@ -36,8 +36,7 @@ export function InvoiceForm({
   onSubmit,
   orgId,
   userId,
-  orgState,
-  orgGstEnabled = false,
+  org,
   title,
 }: InvoiceFormProps) {
   const [currentStep, setCurrentStep] = useState<Step>(1)
@@ -55,7 +54,7 @@ export function InvoiceForm({
     email: '',
     additionalIdentifier: '',
   })
-  const [products, setProducts] = useState<Product[]>([])
+  const [products, setProducts] = useState<ProductWithMaster[]>([])
   const [loadingProducts, setLoadingProducts] = useState(false)
   const [items, setItems] = useState<InvoiceItemFormData[]>([])
   const [errors, setErrors] = useState<Record<string, string>>({})
@@ -250,31 +249,81 @@ export function InvoiceForm({
     setItems(updated)
   }
 
-  // Calculate totals
+  // Calculate totals with per-item GST calculation
   const totals = useMemo(() => {
     const subtotal = items.reduce((sum, item) => sum + (item.line_total || 0), 0)
-    const gstRate = getGSTRate(orgGstEnabled || false)
-    let cgst_amount = 0
-    let sgst_amount = 0
-
-    if (gstRate > 0 && orgState && selectedCustomer?.master_customer.state_code) {
-      const sellerStateCode = extractStateCodeFromGSTIN(orgState) || orgState.slice(0, 2)
-      const buyerStateCode = selectedCustomer.master_customer.state_code
-      const gstCalc = calculateGST(subtotal, gstRate, sellerStateCode, buyerStateCode)
-      cgst_amount = gstCalc.cgst_amount
-      sgst_amount = gstCalc.sgst_amount
+    
+    const gstEnabled = isOrgGstEnabled(org)
+    if (!gstEnabled || !selectedCustomer) {
+      return {
+        subtotal,
+        cgst_amount: 0,
+        sgst_amount: 0,
+        igst_amount: 0,
+        total_amount: subtotal,
+      }
     }
 
-    const total_amount = subtotal + cgst_amount + sgst_amount
+    // Get seller state code from org GSTIN or state field
+    const sellerStateCode = org.gst_number 
+      ? extractStateCodeFromGSTIN(org.gst_number) 
+      : (org.state ? org.state.slice(0, 2) : null)
+
+    if (!sellerStateCode) {
+      return {
+        subtotal,
+        cgst_amount: 0,
+        sgst_amount: 0,
+        igst_amount: 0,
+        total_amount: subtotal,
+      }
+    }
+
+    // Get buyer state code with fallback logic
+    const buyerStateCode = getCustomerStateCode(selectedCustomer, sellerStateCode)
+
+    // Calculate GST per item
+    let cgst_amount = 0
+    let sgst_amount = 0
+    let igst_amount = 0
+
+    for (const item of items) {
+      const product = products.find((p) => p.id === item.product_id) as ProductWithMaster | undefined
+      const productGstRate = product?.master_product?.gst_rate
+
+      if (!productGstRate || productGstRate <= 0) {
+        continue
+      }
+
+      // Calculate item GST (GST-inclusive pricing)
+      const itemGst = calculateItemGST(
+        item.line_total,
+        productGstRate,
+        sellerStateCode,
+        buyerStateCode || undefined,
+        true // isGstInclusive = true
+      )
+
+      cgst_amount += itemGst.cgst_amount
+      sgst_amount += itemGst.sgst_amount
+      igst_amount += itemGst.igst_amount
+    }
+
+    // Round aggregated amounts
+    cgst_amount = Math.round(cgst_amount * 100) / 100
+    sgst_amount = Math.round(sgst_amount * 100) / 100
+    igst_amount = Math.round(igst_amount * 100) / 100
+
+    const total_amount = subtotal + cgst_amount + sgst_amount + igst_amount
 
     return {
       subtotal,
       cgst_amount,
       sgst_amount,
+      igst_amount,
       total_amount,
-      gstRate,
     }
-  }, [items, orgGstEnabled, orgState, selectedCustomer])
+  }, [items, org, selectedCustomer, products])
 
   // Step 3: Review
   // Step 4: Submit
@@ -315,14 +364,12 @@ export function InvoiceForm({
         })),
       }
 
-      const customerStateCode = selectedCustomer.master_customer.state_code
       const invoice = await createInvoice(
         orgId,
         userId,
         invoiceData,
-        orgState,
-        orgGstEnabled || false,
-        customerStateCode
+        org,
+        selectedCustomer
       )
 
       await onSubmit(invoice.id)
@@ -690,18 +737,24 @@ export function InvoiceForm({
                 <span className="text-secondary-text">Subtotal</span>
                 <span className="font-medium text-primary-text">${totals.subtotal.toFixed(2)}</span>
               </div>
-              {orgGstEnabled && totals.gstRate > 0 && (
+              {isOrgGstEnabled(org) && (
                 <>
                   {totals.cgst_amount > 0 && (
                     <div className="flex justify-between text-sm">
-                      <span className="text-secondary-text">CGST ({totals.gstRate / 2}%)</span>
+                      <span className="text-secondary-text">CGST</span>
                       <span className="font-medium text-primary-text">${totals.cgst_amount.toFixed(2)}</span>
                     </div>
                   )}
                   {totals.sgst_amount > 0 && (
                     <div className="flex justify-between text-sm">
-                      <span className="text-secondary-text">SGST ({totals.gstRate / 2}%)</span>
+                      <span className="text-secondary-text">SGST</span>
                       <span className="font-medium text-primary-text">${totals.sgst_amount.toFixed(2)}</span>
+                    </div>
+                  )}
+                  {totals.igst_amount > 0 && (
+                    <div className="flex justify-between text-sm">
+                      <span className="text-secondary-text">IGST</span>
+                      <span className="font-medium text-primary-text">${totals.igst_amount.toFixed(2)}</span>
                     </div>
                   )}
                 </>

@@ -209,8 +209,7 @@ export function InventoryPage() {
           }}
           orgId={user.orgId}
           userId={user.id}
-          orgState={org.state}
-          orgGstEnabled={org.gst_enabled || false}
+          org={org}
         />
       )}
     </div>

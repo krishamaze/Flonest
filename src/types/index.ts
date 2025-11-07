@@ -44,6 +44,17 @@ export interface ProductWithStock extends Product {
   current_stock: number
 }
 
+export interface ProductWithMaster extends Product {
+  master_product: {
+    id: string
+    gst_rate: number | null
+    hsn_code: string | null
+    base_price: number | null
+    name: string
+    sku: string
+  } | null
+}
+
 export interface StockLedgerFormData {
   product_id: string
   transaction_type: 'in' | 'out' | 'adjustment'
