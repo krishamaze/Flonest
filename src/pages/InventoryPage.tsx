@@ -315,33 +315,33 @@ export function InventoryPage() {
           </Button>
         </div>
 
-      {/* Invoice Stats Cards - compact layout */}
-      <div className="grid gap-2 grid-cols-1 sm:grid-cols-3">
-        <Card className="bg-success-light border-success shadow-sm">
-          <CardContent className="p-3 text-center">
-            <DocumentTextIcon className="mx-auto h-4 w-4 text-success mb-xs" />
-            <p className="text-[10px] font-medium text-secondary-text leading-tight">Finalized</p>
-            <p className="text-lg font-semibold text-primary-text">
+      {/* Invoice Stats Cards - compact horizontal layout */}
+      <div className="flex gap-2 overflow-x-auto pb-1">
+        <Card className="bg-success-light border-success shadow-xs rounded-md flex-shrink-0" style={{ minWidth: '120px', maxWidth: '140px' }}>
+          <CardContent className="flex flex-col items-center gap-1 p-2">
+            <DocumentTextIcon className="h-3 w-3 text-success" />
+            <p className="text-[9px] font-medium text-secondary-text leading-tight text-center">Finalized</p>
+            <p className="text-sm font-semibold text-primary-text">
               {invoiceStats.finalized}
             </p>
           </CardContent>
         </Card>
 
-        <Card className="bg-warning-light border-warning shadow-sm">
-          <CardContent className="p-3 text-center">
-            <DocumentTextIcon className="mx-auto h-4 w-4 text-warning mb-xs" />
-            <p className="text-[10px] font-medium text-secondary-text leading-tight">Drafts</p>
-            <p className="text-lg font-semibold text-primary-text">
+        <Card className="bg-warning-light border-warning shadow-xs rounded-md flex-shrink-0" style={{ minWidth: '120px', maxWidth: '140px' }}>
+          <CardContent className="flex flex-col items-center gap-1 p-2">
+            <DocumentTextIcon className="h-3 w-3 text-warning" />
+            <p className="text-[9px] font-medium text-secondary-text leading-tight text-center">Drafts</p>
+            <p className="text-sm font-semibold text-primary-text">
               {invoiceStats.drafts}
             </p>
           </CardContent>
         </Card>
 
-        <Card className="bg-neutral-50 border-neutral-200 shadow-sm">
-          <CardContent className="p-3 text-center">
-            <DocumentTextIcon className="mx-auto h-4 w-4 text-secondary-text mb-xs" />
-            <p className="text-[10px] font-medium text-secondary-text leading-tight">Total</p>
-            <p className="text-lg font-semibold text-primary-text">
+        <Card className="bg-neutral-50 border-neutral-200 shadow-xs rounded-md flex-shrink-0" style={{ minWidth: '120px', maxWidth: '140px' }}>
+          <CardContent className="flex flex-col items-center gap-1 p-2">
+            <DocumentTextIcon className="h-3 w-3 text-secondary-text" />
+            <p className="text-[9px] font-medium text-secondary-text leading-tight text-center">Total</p>
+            <p className="text-sm font-semibold text-primary-text">
               {invoiceStats.total}
             </p>
           </CardContent>

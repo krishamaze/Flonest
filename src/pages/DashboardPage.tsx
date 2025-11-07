@@ -87,61 +87,53 @@ export function DashboardPage() {
         </p>
       </div>
 
-      {/* Stats Cards - compact layout */}
-      <div className="grid gap-2 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
-        <Card className="shadow-sm">
-          <CardContent className="flex items-center gap-2 p-3">
-            <div className="flex h-6 w-6 items-center justify-center rounded-md bg-primary-light flex-shrink-0">
-              <CubeIcon className="h-4 w-4 text-primary" />
+      {/* Stats Cards - compact horizontal layout */}
+      <div className="flex gap-2 overflow-x-auto pb-1">
+        <Card className="shadow-xs rounded-md flex-shrink-0" style={{ minWidth: '120px', maxWidth: '140px' }}>
+          <CardContent className="flex flex-col items-center gap-1 p-2">
+            <div className="flex h-5 w-5 items-center justify-center rounded bg-primary-light">
+              <CubeIcon className="h-3 w-3 text-primary" />
             </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-[10px] font-medium text-secondary-text leading-tight">Total Products</p>
-              <p className="text-lg font-semibold text-primary-text">
-                {stats?.totalProducts || 0}
-              </p>
-            </div>
+            <p className="text-[9px] font-medium text-secondary-text leading-tight text-center">Total Products</p>
+            <p className="text-sm font-semibold text-primary-text">
+              {stats?.totalProducts || 0}
+            </p>
           </CardContent>
         </Card>
 
-        <Card className="shadow-sm">
-          <CardContent className="flex items-center gap-2 p-3">
-            <div className="flex h-6 w-6 items-center justify-center rounded-md bg-warning-light flex-shrink-0">
-              <ExclamationTriangleIcon className="h-4 w-4 text-warning" />
+        <Card className="shadow-xs rounded-md flex-shrink-0" style={{ minWidth: '120px', maxWidth: '140px' }}>
+          <CardContent className="flex flex-col items-center gap-1 p-2">
+            <div className="flex h-5 w-5 items-center justify-center rounded bg-warning-light">
+              <ExclamationTriangleIcon className="h-3 w-3 text-warning" />
             </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-[10px] font-medium text-secondary-text leading-tight">Low Stock</p>
-              <p className="text-lg font-semibold text-primary-text">
-                {stats?.lowStockItems || 0}
-              </p>
-            </div>
+            <p className="text-[9px] font-medium text-secondary-text leading-tight text-center">Low Stock</p>
+            <p className="text-sm font-semibold text-primary-text">
+              {stats?.lowStockItems || 0}
+            </p>
           </CardContent>
         </Card>
 
-        <Card className="shadow-sm">
-          <CardContent className="flex items-center gap-2 p-3">
-            <div className="flex h-6 w-6 items-center justify-center rounded-md bg-success-light flex-shrink-0">
-              <ArrowTrendingUpIcon className="h-4 w-4 text-success" />
+        <Card className="shadow-xs rounded-md flex-shrink-0" style={{ minWidth: '120px', maxWidth: '140px' }}>
+          <CardContent className="flex flex-col items-center gap-1 p-2">
+            <div className="flex h-5 w-5 items-center justify-center rounded bg-success-light">
+              <ArrowTrendingUpIcon className="h-3 w-3 text-success" />
             </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-[10px] font-medium text-secondary-text leading-tight">Total Value</p>
-              <p className="text-lg font-semibold text-primary-text">
-                ${stats?.totalValue ? stats.totalValue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '0.00'}
-              </p>
-            </div>
+            <p className="text-[9px] font-medium text-secondary-text leading-tight text-center">Total Value</p>
+            <p className="text-sm font-semibold text-primary-text">
+              ${stats?.totalValue ? stats.totalValue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '0.00'}
+            </p>
           </CardContent>
         </Card>
 
-        <Card className="shadow-sm">
-          <CardContent className="flex items-center gap-2 p-3">
-            <div className="flex h-6 w-6 items-center justify-center rounded-md bg-neutral-100 flex-shrink-0">
-              <ArrowTrendingDownIcon className="h-4 w-4 text-secondary-text" />
+        <Card className="shadow-xs rounded-md flex-shrink-0" style={{ minWidth: '120px', maxWidth: '140px' }}>
+          <CardContent className="flex flex-col items-center gap-1 p-2">
+            <div className="flex h-5 w-5 items-center justify-center rounded bg-neutral-100">
+              <ArrowTrendingDownIcon className="h-3 w-3 text-secondary-text" />
             </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-[10px] font-medium text-secondary-text leading-tight">Total Invoices</p>
-              <p className="text-lg font-semibold text-primary-text">
-                {stats?.totalInvoices || 0}
-              </p>
-            </div>
+            <p className="text-[9px] font-medium text-secondary-text leading-tight text-center">Total Invoices</p>
+            <p className="text-sm font-semibold text-primary-text">
+              {stats?.totalInvoices || 0}
+            </p>
           </CardContent>
         </Card>
       </div>
