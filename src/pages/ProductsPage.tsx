@@ -141,7 +141,7 @@ export function ProductsPage() {
     <div className="space-y-6">
       {/* Page Header */}
       <div className="flex items-center justify-between">
-        <h1 className="text-xl font-semibold text-gray-900">Products</h1>
+        <h1 className="text-xl font-semibold text-primary-text">Products</h1>
         <Button
           variant="primary"
           size="sm"
@@ -159,13 +159,13 @@ export function ProductsPage() {
       {/* Search and Filter Bar */}
       <div className="space-y-3">
         <div className="relative">
-          <MagnifyingGlassIcon className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" aria-hidden="true" />
+          <MagnifyingGlassIcon className="absolute left-md top-1/2 h-4 w-4 -translate-y-1/2 text-muted-text" aria-hidden="true" />
           <input
             type="text"
             placeholder="Search by name, SKU, or EAN..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full rounded-lg border border-gray-300 bg-white py-2.5 pl-10 pr-4 text-sm min-h-[44px] focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/20 transition-all"
+            className="w-full rounded-md border border-neutral-300 bg-bg-card py-sm pl-[2.5rem] pr-md text-sm min-h-[44px] focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all"
             aria-label="Search products"
           />
         </div>
@@ -175,10 +175,10 @@ export function ProductsPage() {
           <div className="flex gap-2 overflow-x-auto pb-2">
             <button
               onClick={() => setCategoryFilter('')}
-              className={`whitespace-nowrap rounded-lg px-3 py-2.5 min-h-[44px] text-sm font-medium transition-colors duration-200 ${
+              className={`whitespace-nowrap rounded-md px-md py-sm min-h-[44px] text-sm font-medium transition-colors duration-200 ${
                 categoryFilter === ''
-                  ? 'bg-primary-600 text-black font-semibold'
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  ? 'bg-primary text-on-primary font-semibold'
+                  : 'bg-neutral-100 text-secondary-text hover:bg-neutral-200'
               }`}
               aria-label="Show all categories"
               aria-pressed={categoryFilter === ''}
@@ -192,10 +192,10 @@ export function ProductsPage() {
                   setCategoryFilter(category)
                   setCurrentPage(1)
                 }}
-                className={`whitespace-nowrap rounded-lg px-3 py-2.5 min-h-[44px] text-sm font-medium transition-colors duration-200 ${
+                className={`whitespace-nowrap rounded-md px-md py-sm min-h-[44px] text-sm font-medium transition-colors duration-200 ${
                   categoryFilter === category
-                    ? 'bg-primary-600 text-black font-semibold'
-                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    ? 'bg-primary text-on-primary font-semibold'
+                    : 'bg-neutral-100 text-secondary-text hover:bg-neutral-200'
                 }`}
                 aria-label={`Filter by ${category}`}
                 aria-pressed={categoryFilter === category}
@@ -211,11 +211,11 @@ export function ProductsPage() {
       {productsWithStock.length === 0 && !loading ? (
         <Card className="shadow-sm">
           <CardContent className="py-12 text-center">
-            <CubeIcon className="h-12 w-12 text-gray-400 mx-auto mb-4" aria-hidden="true" />
-            <p className="text-sm font-medium text-gray-900 mb-2">
+            <CubeIcon className="h-12 w-12 text-muted-text mx-auto mb-md" aria-hidden="true" />
+            <p className="text-sm font-medium text-primary-text mb-sm">
               {searchQuery || categoryFilter ? 'No products found' : 'No products yet'}
             </p>
-            <p className="text-sm text-gray-600 mb-4">
+            <p className="text-sm text-secondary-text mb-md">
               {searchQuery || categoryFilter 
                 ? 'Try adjusting your search or filter criteria' 
                 : 'Add your first product to get started with inventory management.'}
@@ -238,25 +238,25 @@ export function ProductsPage() {
           <div className="space-y-3">
             {productsWithStock.map((product) => {
               const stockStatus = product.current_stock === 0 
-                ? { label: 'Out of Stock', color: 'text-red-600 bg-red-50' }
+                ? { label: 'Out of Stock', color: 'text-error bg-error-light' }
                 : product.current_stock < (product.min_stock_level || 0)
-                ? { label: 'Low Stock', color: 'text-yellow-600 bg-yellow-50' }
-                : { label: 'In Stock', color: 'text-green-600 bg-green-50' }
+                ? { label: 'Low Stock', color: 'text-warning bg-warning-light' }
+                : { label: 'In Stock', color: 'text-success bg-success-light' }
             return (
               <Card key={product.id} className="shadow-sm hover:shadow-md transition-shadow">
                 <CardContent className="p-4">
                   <div className="flex items-start justify-between gap-4">
                     <div className="flex-1 min-w-0">
-                      <h3 className="text-base font-medium text-gray-900 truncate">
+                      <h3 className="text-base font-medium text-primary-text truncate">
                         {product.name}
                       </h3>
-                      <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-gray-600">
+                      <div className="mt-xs flex flex-wrap items-center gap-sm text-xs text-secondary-text">
                         <span>SKU: {product.sku}</span>
                         {product.ean && <span>• EAN: {product.ean}</span>}
                         {product.unit && <span>• Unit: {product.unit}</span>}
                       </div>
                       {product.description && (
-                        <p className="text-xs text-gray-500 mt-1 line-clamp-2">
+                        <p className="text-xs text-muted-text mt-xs line-clamp-2">
                           {product.description}
                         </p>
                       )}
@@ -265,7 +265,7 @@ export function ProductsPage() {
                           {stockStatus.label} ({product.current_stock} {product.unit || 'pcs'})
                         </span>
                         {product.category && (
-                          <span className="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium bg-blue-100 text-blue-700">
+                          <span className="inline-flex items-center rounded-full px-sm py-xs text-xs font-medium bg-neutral-100 text-secondary-text">
                             {product.category}
                           </span>
                         )}
@@ -273,26 +273,26 @@ export function ProductsPage() {
                     </div>
                     <div className="text-right shrink-0">
                       {product.selling_price && (
-                        <p className="text-base font-semibold text-gray-900">
+                        <p className="text-base font-semibold text-primary-text">
                           ${product.selling_price.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                         </p>
                       )}
                       {product.cost_price && (
-                        <p className="text-xs text-gray-500 mt-0.5">
+                        <p className="text-xs text-muted-text mt-xs">
                           Cost: ${product.cost_price.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                         </p>
                       )}
                       <div className="mt-2 flex items-center justify-end gap-2">
                         <button
                           onClick={() => handleEditClick(product)}
-                          className="rounded-lg p-2 min-w-[44px] min-h-[44px] flex items-center justify-center text-gray-600 hover:bg-gray-100 hover:text-gray-900 transition-colors duration-200"
+                          className="rounded-md p-sm min-w-[44px] min-h-[44px] flex items-center justify-center text-secondary-text hover:bg-neutral-100 hover:text-primary-text transition-colors duration-200"
                           aria-label={`Edit product ${product.name}`}
                         >
                           <PencilIcon className="h-4 w-4" aria-hidden="true" />
                         </button>
                         <button
                           onClick={() => handleDeleteProduct(product.id)}
-                          className="rounded-lg p-2 min-w-[44px] min-h-[44px] flex items-center justify-center text-red-600 hover:bg-red-50 hover:text-red-700 transition-colors duration-200"
+                          className="rounded-md p-sm min-w-[44px] min-h-[44px] flex items-center justify-center text-error hover:bg-error-light hover:text-error-dark transition-colors duration-200"
                           aria-label={`Delete product ${product.name}`}
                         >
                           <TrashIcon className="h-4 w-4" aria-hidden="true" />
@@ -309,7 +309,7 @@ export function ProductsPage() {
           {/* Pagination */}
           {totalPages > 1 && (
             <div className="flex items-center justify-between pt-4">
-              <div className="text-sm text-gray-600">
+              <div className="text-sm text-secondary-text">
                 Showing {(currentPage - 1) * pageSize + 1} to {Math.min(currentPage * pageSize, totalProducts)} of {totalProducts} products
               </div>
               <div className="flex items-center gap-2">
@@ -322,7 +322,7 @@ export function ProductsPage() {
                   <ChevronLeftIcon className="h-4 w-4" />
                   Previous
                 </Button>
-                <span className="text-sm text-gray-600">
+                <span className="text-sm text-secondary-text">
                   Page {currentPage} of {totalPages}
                 </span>
                 <Button

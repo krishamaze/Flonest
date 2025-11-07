@@ -9,19 +9,21 @@ interface TextareaProps extends TextareaHTMLAttributes<HTMLTextAreaElement> {
 export const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(
   ({ label, error, required, className = '', rows = 3, ...props }, ref) => {
     return (
-      <div className="form-group">
+      <div className="mb-md">
         {label && (
-          <label className="form-label block text-sm font-medium text-gray-700 mb-1">
+          <label className="block text-sm font-medium text-secondary-text mb-xs">
             {label}
-            {required && <span className="text-red-600 ml-1" aria-label="required">*</span>}
+            {required && (
+              <span className="text-error ml-xs" aria-label="required">*</span>
+            )}
           </label>
         )}
         <textarea
           ref={ref}
           rows={rows}
-          className={`input w-full rounded-lg border min-h-[100px] ${
-            error ? 'border-red-500' : 'border-gray-300'
-          } bg-white px-4 py-2.5 text-base focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/20 resize-vertical transition-all disabled:bg-gray-100 disabled:cursor-not-allowed ${className}`}
+          className={`w-full min-h-[100px] px-md py-sm border rounded-md bg-bg-card text-base text-primary-text placeholder:text-muted-text focus:border-primary focus:outline-2 focus:outline-primary focus:outline-offset-2 disabled:bg-neutral-100 disabled:text-muted-text disabled:cursor-not-allowed transition-all duration-150 resize-vertical ${
+            error ? 'border-error focus:outline-error' : 'border-neutral-300'
+          } ${className}`}
           aria-invalid={error ? 'true' : undefined}
           aria-describedby={error ? `${props.id || 'textarea'}-error` : undefined}
           required={required}
@@ -30,7 +32,7 @@ export const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(
         {error && (
           <p 
             id={`${props.id || 'textarea'}-error`}
-            className="mt-1 text-sm text-red-600" 
+            className="mt-xs text-sm text-error-dark" 
             role="alert"
           >
             {error}

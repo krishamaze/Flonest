@@ -9,7 +9,7 @@ interface CardProps {
 export function Card({ children, className = '', onClick }: CardProps) {
   return (
     <div
-      className={`card bg-white rounded-lg border border-gray-200 overflow-hidden shadow-sm ${
+      className={`bg-bg-card rounded-lg border border-neutral-200 overflow-hidden shadow-sm ${
         onClick ? 'cursor-pointer hover:shadow-md transition-all duration-200' : ''
       } ${className}`}
       onClick={onClick}
@@ -33,7 +33,7 @@ interface CardHeaderProps {
 }
 
 export function CardHeader({ children, className = '' }: CardHeaderProps) {
-  return <div className={`px-4 pt-4 pb-2 ${className}`}>{children}</div>
+  return <div className={`px-md pt-lg pb-sm ${className}`}>{children}</div>
 }
 
 interface CardTitleProps {
@@ -42,7 +42,7 @@ interface CardTitleProps {
 }
 
 export function CardTitle({ children, className = '' }: CardTitleProps) {
-  return <h3 className={`text-base font-semibold text-gray-900 ${className}`}>{children}</h3>
+  return <h3 className={`text-base font-semibold text-primary-text ${className}`}>{children}</h3>
 }
 
 interface CardContentProps {

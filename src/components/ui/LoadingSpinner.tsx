@@ -20,7 +20,7 @@ export const LoadingSpinner = memo(function LoadingSpinner({
   return (
     <div className={`flex items-center justify-center ${className}`} role="status" aria-label={label}>
       <div
-        className={`${sizeClasses[size]} animate-spin rounded-full border-4 border-gray-200 border-t-primary-600`}
+        className={`${sizeClasses[size]} animate-spin rounded-full border-4 border-neutral-200 border-t-primary`}
         aria-hidden="true"
       />
       <span className="sr-only">{label}</span>

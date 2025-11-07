@@ -82,7 +82,7 @@ export function Modal({ isOpen, onClose, title, children, className = '' }: Moda
 
   return (
     <div 
-      className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      className="fixed inset-0 z-50 flex items-center justify-center p-md"
       role="dialog"
       aria-modal="true"
       aria-labelledby={title ? 'modal-title' : undefined}
@@ -97,16 +97,16 @@ export function Modal({ isOpen, onClose, title, children, className = '' }: Moda
       {/* Modal */}
       <div
         ref={modalRef}
-        className={`relative z-10 w-full max-w-lg rounded-lg bg-white shadow-xl transition-all duration-300 ${className}`}
+        className={`relative z-10 w-full max-w-lg rounded-lg bg-bg-card shadow-xl transition-all duration-300 ${className}`}
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
         {title && (
-          <div className="flex items-center justify-between border-b border-gray-200 px-6 py-4">
-            <h2 id="modal-title" className="text-lg font-semibold text-gray-900">{title}</h2>
+          <div className="flex items-center justify-between border-b border-neutral-200 px-lg py-md">
+            <h2 id="modal-title" className="text-xl font-semibold text-primary-text">{title}</h2>
             <button
               onClick={onClose}
-              className="rounded-lg p-2 min-w-[44px] min-h-[44px] flex items-center justify-center text-gray-400 hover:bg-gray-100 hover:text-gray-600 transition-colors"
+              className="rounded-md p-sm min-w-[44px] min-h-[44px] flex items-center justify-center text-muted-text hover:bg-neutral-100 hover:text-secondary-text transition-colors"
               aria-label="Close modal"
             >
               <XMarkIcon className="h-5 w-5" />
@@ -115,7 +115,7 @@ export function Modal({ isOpen, onClose, title, children, className = '' }: Moda
         )}
 
         {/* Content */}
-        <div className="px-6 py-4">{children}</div>
+        <div className="px-lg py-md">{children}</div>
       </div>
     </div>
   )

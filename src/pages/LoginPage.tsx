@@ -56,19 +56,19 @@ export function LoginPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gray-50 px-4 py-12">
+    <div className="flex min-h-screen items-center justify-center bg-bg-page px-md py-3xl">
       <div className="w-full max-w-md">
         {/* Header */}
         <div className="mb-8 text-center">
-          <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-primary-600 shadow-lg">
-            <span className="text-3xl font-bold text-white">I</span>
+          <div className="mx-auto mb-md flex h-16 w-16 items-center justify-center rounded-2xl bg-primary shadow-lg">
+            <span className="text-3xl font-bold text-on-primary">I</span>
           </div>
-          <h1 className="text-3xl font-bold text-gray-900">Inventory System</h1>
-          <p className="mt-2 text-gray-600">Manage your inventory</p>
+          <h1 className="text-3xl font-bold text-primary-text">Inventory System</h1>
+          <p className="mt-sm text-secondary-text">Manage your inventory</p>
         </div>
 
         {/* Auth Form Card */}
-        <div className="rounded-lg bg-white p-8 shadow-sm border border-gray-200">
+        <div className="rounded-lg bg-bg-card p-2xl shadow-sm border border-neutral-200">
           <form onSubmit={handleSubmit} className="space-y-4">
             {/* Error Message */}
             {error && (
@@ -85,11 +85,11 @@ export function LoginPage() {
             {/* Success Message */}
             {message && (
               <div 
-                className="rounded-lg bg-green-50 border border-green-200 p-3"
+                className="rounded-md bg-success-light border border-success p-md"
                 role="status"
                 aria-live="polite"
               >
-                <p className="text-sm text-green-800">{message}</p>
+                <p className="text-sm text-success-dark">{message}</p>
               </div>
             )}
 
@@ -155,12 +155,12 @@ export function LoginPage() {
                       setError(null)
                       setMessage(null)
                     }}
-                    className="text-primary-600 hover:text-primary-700 hover:underline text-sm"
+                    className="text-primary hover:text-primary-hover hover:underline text-sm"
                   >
                     Forgot your password?
                   </button>
-                  <div className="pt-2 border-t border-gray-200">
-                    <span className="text-gray-600 block mb-2">Don't have an account?</span>
+                  <div className="pt-sm border-t border-neutral-200">
+                    <span className="text-secondary-text block mb-sm">Don't have an account?</span>
                     <Button
                       type="button"
                       variant="secondary"
@@ -179,8 +179,8 @@ export function LoginPage() {
               )}
 
               {view === 'sign_up' && (
-                <div className="pt-2 border-t border-gray-200">
-                  <span className="text-gray-600 block mb-2">Already have an account?</span>
+                <div className="pt-sm border-t border-neutral-200">
+                  <span className="text-secondary-text block mb-sm">Already have an account?</span>
                   <Button
                     type="button"
                     variant="secondary"
@@ -198,8 +198,8 @@ export function LoginPage() {
               )}
 
               {view === 'forgot_password' && (
-                <div className="pt-2 border-t border-gray-200">
-                  <span className="text-gray-600 block mb-2">Remember your password?</span>
+                <div className="pt-sm border-t border-neutral-200">
+                  <span className="text-secondary-text block mb-sm">Remember your password?</span>
                   <Button
                     type="button"
                     variant="secondary"
@@ -223,10 +223,10 @@ export function LoginPage() {
         {view === 'sign_in' && (
           <div className="mt-6 rounded-lg bg-blue-50 border border-blue-200 p-4">
             <p className="text-sm text-blue-800 font-medium mb-1">Demo Account</p>
-            <p className="text-xs text-blue-600">
+            <p className="text-xs text-secondary-text">
               Email: <span className="font-mono">demo@example.com</span>
             </p>
-            <p className="text-xs text-blue-600">
+            <p className="text-xs text-secondary-text">
               Password: <span className="font-mono">password</span>
             </p>
             <p className="text-xs text-blue-600 mt-1">
@@ -236,7 +236,7 @@ export function LoginPage() {
         )}
 
         {/* Footer */}
-        <p className="mt-6 text-center text-xs text-gray-500">
+        <p className="mt-lg text-center text-xs text-muted-text">
           Powered by Supabase Auth • Secure & Reliable
         </p>
       </div>

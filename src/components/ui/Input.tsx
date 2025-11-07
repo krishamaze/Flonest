@@ -22,20 +22,22 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
                      undefined
 
     return (
-      <div className="form-group">
+      <div className="mb-md">
         {label && (
-          <label className="form-label block text-sm font-medium text-gray-700 mb-1">
+          <label className="block text-sm font-medium text-secondary-text mb-xs">
             {label}
-            {required && <span className="text-red-600 ml-1" aria-label="required">*</span>}
+            {required && (
+              <span className="text-error ml-xs" aria-label="required">*</span>
+            )}
           </label>
         )}
         <input
           ref={ref}
           type={inputType}
           inputMode={inputMode}
-          className={`input w-full rounded-lg border min-h-[44px] ${
-            error ? 'border-red-500' : 'border-gray-300'
-          } bg-white px-4 py-2.5 text-base focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/20 transition-all disabled:bg-gray-100 disabled:cursor-not-allowed ${className}`}
+          className={`w-full min-h-[44px] px-md py-sm border rounded-md bg-bg-card text-base text-primary-text placeholder:text-muted-text focus:border-primary focus:outline-2 focus:outline-primary focus:outline-offset-2 disabled:bg-neutral-100 disabled:text-muted-text disabled:cursor-not-allowed transition-all duration-150 ${
+            error ? 'border-error focus:outline-error' : 'border-neutral-300'
+          } ${className}`}
           aria-invalid={error ? 'true' : undefined}
           aria-describedby={error ? `${props.id || 'input'}-error` : undefined}
           required={required}
@@ -44,7 +46,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
         {error && (
           <p 
             id={`${props.id || 'input'}-error`}
-            className="mt-1 text-sm text-red-600" 
+            className="mt-xs text-sm text-error-dark" 
             role="alert"
           >
             {error}

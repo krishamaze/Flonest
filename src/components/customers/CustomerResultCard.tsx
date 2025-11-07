@@ -16,75 +16,75 @@ export function CustomerResultCard({ customer, onSelect, onEdit }: CustomerResul
   const displayName = customer.alias_name || master.legal_name
 
   return (
-    <Card className="border-2 border-primary-200 shadow-sm">
-      <CardContent className="p-4">
-        <div className="space-y-3">
+    <Card className="border-2 border-primary-light shadow-sm">
+      <CardContent className="p-md">
+        <div className="space-y-md">
           {/* Customer Name */}
           <div>
-            <h3 className="text-base font-semibold text-gray-900">{displayName}</h3>
+            <h3 className="text-base font-semibold text-primary-text">{displayName}</h3>
             {customer.alias_name && master.legal_name && (
-              <p className="text-xs text-gray-500 mt-0.5">Legal: {master.legal_name}</p>
+              <p className="text-xs text-muted-text mt-xs">Legal: {master.legal_name}</p>
             )}
           </div>
 
           {/* Identifier */}
           {identifier && (
-            <div className="flex items-center gap-2 text-sm">
-              <span className="text-gray-600">
+            <div className="flex items-center gap-sm text-sm">
+              <span className="text-secondary-text">
                 {identifierType === 'mobile' ? 'Mobile:' : 'GSTIN:'}
               </span>
-              <span className="font-medium text-gray-900">{identifier}</span>
+              <span className="font-medium text-primary-text">{identifier}</span>
             </div>
           )}
 
           {/* Master Customer Info */}
-          <div className="space-y-1 text-xs text-gray-600">
+          <div className="space-y-xs text-xs text-secondary-text">
             {master.email && (
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-sm">
                 <span>Email:</span>
-                <span className="text-gray-900">{master.email}</span>
+                <span className="text-primary-text">{master.email}</span>
               </div>
             )}
             {master.address && (
               <div>
                 <span>Address: </span>
-                <span className="text-gray-900">{master.address}</span>
+                <span className="text-primary-text">{master.address}</span>
               </div>
             )}
             {master.state_code && (
               <div>
                 <span>State Code: </span>
-                <span className="text-gray-900">{master.state_code}</span>
+                <span className="text-primary-text">{master.state_code}</span>
               </div>
             )}
           </div>
 
           {/* Org-Specific Info */}
           {(customer.billing_address || customer.shipping_address || customer.notes) && (
-            <div className="pt-2 border-t border-gray-200 space-y-1 text-xs text-gray-600">
+            <div className="pt-sm border-t border-neutral-200 space-y-xs text-xs text-secondary-text">
               {customer.billing_address && (
                 <div>
                   <span className="font-medium">Billing: </span>
-                  <span className="text-gray-900">{customer.billing_address}</span>
+                  <span className="text-primary-text">{customer.billing_address}</span>
                 </div>
               )}
               {customer.shipping_address && (
                 <div>
                   <span className="font-medium">Shipping: </span>
-                  <span className="text-gray-900">{customer.shipping_address}</span>
+                  <span className="text-primary-text">{customer.shipping_address}</span>
                 </div>
               )}
               {customer.notes && (
                 <div>
                   <span className="font-medium">Notes: </span>
-                  <span className="text-gray-900">{customer.notes}</span>
+                  <span className="text-primary-text">{customer.notes}</span>
                 </div>
               )}
             </div>
           )}
 
           {/* Actions */}
-          <div className="flex gap-2 pt-2">
+          <div className="flex gap-sm pt-sm">
             <Button 
               variant="primary" 
               size="sm" 

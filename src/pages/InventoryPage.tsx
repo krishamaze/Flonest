@@ -91,11 +91,11 @@ export function InventoryPage() {
   const getTransactionIcon = (type: string) => {
     switch (type) {
       case 'in':
-        return <ArrowDownTrayIcon className="h-4 w-4 text-green-600" />
+        return <ArrowDownTrayIcon className="h-4 w-4 text-success" />
       case 'out':
-        return <ArrowUpTrayIcon className="h-4 w-4 text-red-600" />
+        return <ArrowUpTrayIcon className="h-4 w-4 text-error" />
       case 'adjustment':
-        return <AdjustmentsHorizontalIcon className="h-4 w-4 text-yellow-600" />
+        return <AdjustmentsHorizontalIcon className="h-4 w-4 text-warning" />
       default:
         return null
     }
@@ -104,13 +104,13 @@ export function InventoryPage() {
   const getTransactionColor = (type: string) => {
     switch (type) {
       case 'in':
-        return 'bg-green-50 border-green-200 text-green-700'
+        return 'bg-success-light border-success text-success-dark'
       case 'out':
-        return 'bg-red-50 border-red-200 text-red-700'
+        return 'bg-error-light border-error text-error-dark'
       case 'adjustment':
-        return 'bg-yellow-50 border-yellow-200 text-yellow-700'
+        return 'bg-warning-light border-warning text-warning-dark'
       default:
-        return 'bg-gray-50 border-gray-200 text-gray-700'
+        return 'bg-neutral-50 border-neutral-200 text-secondary-text'
     }
   }
 
@@ -124,16 +124,16 @@ export function InventoryPage() {
   }, [invoices])
 
   const getStatusColor = (status: string | null) => {
-    if (!status) return 'bg-gray-50 border-gray-200 text-gray-700'
+    if (!status) return 'bg-neutral-50 border-neutral-200 text-secondary-text'
     switch (status) {
       case 'finalized':
-        return 'bg-green-50 border-green-200 text-green-700'
+        return 'bg-success-light border-success text-success-dark'
       case 'draft':
-        return 'bg-yellow-50 border-yellow-200 text-yellow-700'
+        return 'bg-warning-light border-warning text-warning-dark'
       case 'cancelled':
-        return 'bg-red-50 border-red-200 text-red-700'
+        return 'bg-error-light border-error text-error-dark'
       default:
-        return 'bg-gray-50 border-gray-200 text-gray-700'
+        return 'bg-neutral-50 border-neutral-200 text-secondary-text'
     }
   }
 
@@ -161,7 +161,7 @@ export function InventoryPage() {
       <div>
         {/* Page Header */}
         <div className="flex items-center justify-between mb-4">
-          <h1 className="text-xl font-semibold text-gray-900">Stock Ledger</h1>
+          <h1 className="text-xl font-semibold text-primary-text">Stock Ledger</h1>
           <Button
             variant="primary"
             size="sm"
@@ -177,10 +177,10 @@ export function InventoryPage() {
         <div className="flex gap-2 mb-4">
           <button
             onClick={() => setFilterType('all')}
-            className={`px-3 py-2.5 min-h-[44px] rounded-lg text-sm font-medium transition-colors duration-200 ${
+            className={`px-md py-sm min-h-[44px] rounded-md text-sm font-medium transition-colors duration-200 ${
               filterType === 'all'
-                ? 'bg-primary-600 text-black font-semibold'
-                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                ? 'bg-primary text-on-primary font-semibold'
+                : 'bg-neutral-100 text-secondary-text hover:bg-neutral-200'
             }`}
             aria-label="Show all transactions"
             aria-pressed={filterType === 'all'}
@@ -189,10 +189,10 @@ export function InventoryPage() {
           </button>
           <button
             onClick={() => setFilterType('in')}
-            className={`px-3 py-2.5 min-h-[44px] rounded-lg text-sm font-medium transition-colors duration-200 ${
+            className={`px-md py-sm min-h-[44px] rounded-md text-sm font-medium transition-colors duration-200 ${
               filterType === 'in'
-                ? 'bg-green-600 text-white font-semibold'
-                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                ? 'bg-success text-on-dark font-semibold'
+                : 'bg-neutral-100 text-secondary-text hover:bg-neutral-200'
             }`}
             aria-label="Show stock in transactions"
             aria-pressed={filterType === 'in'}
@@ -201,10 +201,10 @@ export function InventoryPage() {
           </button>
           <button
             onClick={() => setFilterType('out')}
-            className={`px-3 py-2.5 min-h-[44px] rounded-lg text-sm font-medium transition-colors duration-200 ${
+            className={`px-md py-sm min-h-[44px] rounded-md text-sm font-medium transition-colors duration-200 ${
               filterType === 'out'
-                ? 'bg-red-600 text-white font-semibold'
-                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                ? 'bg-error text-on-dark font-semibold'
+                : 'bg-neutral-100 text-secondary-text hover:bg-neutral-200'
             }`}
             aria-label="Show stock out transactions"
             aria-pressed={filterType === 'out'}
@@ -213,10 +213,10 @@ export function InventoryPage() {
           </button>
           <button
             onClick={() => setFilterType('adjustment')}
-            className={`px-3 py-2.5 min-h-[44px] rounded-lg text-sm font-medium transition-colors duration-200 ${
+            className={`px-md py-sm min-h-[44px] rounded-md text-sm font-medium transition-colors duration-200 ${
               filterType === 'adjustment'
-                ? 'bg-yellow-600 text-white font-semibold'
-                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                ? 'bg-warning text-on-dark font-semibold'
+                : 'bg-neutral-100 text-secondary-text hover:bg-neutral-200'
             }`}
             aria-label="Show adjustment transactions"
             aria-pressed={filterType === 'adjustment'}
@@ -233,10 +233,10 @@ export function InventoryPage() {
         ) : filteredLedger.length === 0 ? (
           <Card className="shadow-sm">
             <CardContent className="py-12 text-center">
-              <p className="text-sm font-medium text-gray-900 mb-2">
+              <p className="text-sm font-medium text-primary-text mb-sm">
                 {filterType === 'all' ? 'No stock transactions yet' : `No ${filterType} transactions found`}
               </p>
-              <p className="text-sm text-gray-600 mb-4">
+              <p className="text-sm text-secondary-text mb-md">
                 {filterType === 'all'
                   ? 'Create your first transaction to get started with stock management.'
                   : 'Try selecting a different filter or create a new transaction.'}
@@ -266,24 +266,24 @@ export function InventoryPage() {
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
                         {getTransactionIcon(entry.transaction_type)}
-                        <h3 className="text-base font-medium text-gray-900">
+                        <h3 className="text-base font-medium text-primary-text">
                           {entry.product?.name || 'Unknown Product'}
                         </h3>
                       </div>
-                      <p className="text-xs text-gray-600 mt-1">
+                      <p className="text-xs text-secondary-text mt-xs">
                         SKU: {entry.product?.sku || 'N/A'}
                       </p>
-                      <p className="text-xs text-gray-500 mt-1">
+                      <p className="text-xs text-muted-text mt-xs">
                         {formatDate(entry.created_at)}
                       </p>
                       {entry.notes && (
-                        <p className="text-xs text-gray-600 mt-2 line-clamp-2">
+                        <p className="text-xs text-secondary-text mt-sm line-clamp-2">
                           {entry.notes}
                         </p>
                       )}
                     </div>
                     <div className="text-right shrink-0">
-                      <p className="text-lg font-semibold text-gray-900">
+                      <p className="text-lg font-semibold text-primary-text">
                         {entry.transaction_type === 'in' ? '+' : entry.transaction_type === 'out' ? '-' : '±'}
                         {entry.quantity}
                       </p>
@@ -303,7 +303,7 @@ export function InventoryPage() {
       <div>
         {/* Page Header */}
         <div className="flex items-center justify-between mb-4">
-          <h1 className="text-xl font-semibold text-gray-900">Invoices</h1>
+          <h1 className="text-xl font-semibold text-primary-text">Invoices</h1>
           <Button
             variant="primary"
             size="sm"
@@ -317,32 +317,32 @@ export function InventoryPage() {
 
       {/* Invoice Stats Cards - 12px gap, 16px padding */}
       <div className="grid gap-3 sm:grid-cols-3">
-        <Card className="bg-green-50 border-green-200 shadow-sm">
-          <CardContent className="p-4 text-center">
+        <Card className="bg-success-light border-success shadow-sm">
+          <CardContent className="p-md text-center">
             {/* Card icon: 20px max */}
-            <DocumentTextIcon className="mx-auto h-5 w-5 text-green-600 mb-2" />
-            <p className="text-xs font-medium text-gray-600">Finalized</p>
-            <p className="text-xl font-semibold text-gray-900">
+            <DocumentTextIcon className="mx-auto h-5 w-5 text-success mb-sm" />
+            <p className="text-xs font-medium text-secondary-text">Finalized</p>
+            <p className="text-xl font-semibold text-primary-text">
               {invoiceStats.finalized}
             </p>
           </CardContent>
         </Card>
 
-        <Card className="bg-yellow-50 border-yellow-200 shadow-sm">
-          <CardContent className="p-4 text-center">
-            <DocumentTextIcon className="mx-auto h-5 w-5 text-yellow-600 mb-2" />
-            <p className="text-xs font-medium text-gray-600">Drafts</p>
-            <p className="text-xl font-semibold text-gray-900">
+        <Card className="bg-warning-light border-warning shadow-sm">
+          <CardContent className="p-md text-center">
+            <DocumentTextIcon className="mx-auto h-5 w-5 text-warning mb-sm" />
+            <p className="text-xs font-medium text-secondary-text">Drafts</p>
+            <p className="text-xl font-semibold text-primary-text">
               {invoiceStats.drafts}
             </p>
           </CardContent>
         </Card>
 
-        <Card className="bg-blue-50 border-blue-200 shadow-sm">
-          <CardContent className="p-4 text-center">
-            <DocumentTextIcon className="mx-auto h-5 w-5 text-blue-600 mb-2" />
-            <p className="text-xs font-medium text-gray-600">Total</p>
-            <p className="text-xl font-semibold text-gray-900">
+        <Card className="bg-neutral-50 border-neutral-200 shadow-sm">
+          <CardContent className="p-md text-center">
+            <DocumentTextIcon className="mx-auto h-5 w-5 text-secondary-text mb-sm" />
+            <p className="text-xs font-medium text-secondary-text">Total</p>
+            <p className="text-xl font-semibold text-primary-text">
               {invoiceStats.total}
             </p>
           </CardContent>
@@ -353,8 +353,8 @@ export function InventoryPage() {
       {invoices.length === 0 ? (
         <Card className="shadow-sm">
           <CardContent className="py-12 text-center">
-            <p className="text-sm font-medium text-gray-900 mb-2">No invoices yet</p>
-            <p className="text-sm text-gray-600 mb-4">
+            <p className="text-sm font-medium text-primary-text mb-sm">No invoices yet</p>
+            <p className="text-sm text-secondary-text mb-md">
               Create your first invoice to get started with billing and invoicing.
             </p>
             <Button
@@ -378,15 +378,15 @@ export function InventoryPage() {
               <CardContent className="p-4">
                 <div className="flex items-start justify-between gap-4">
                   <div className="flex-1 min-w-0">
-                    <h3 className="text-base font-medium text-gray-900">
+                    <h3 className="text-base font-medium text-primary-text">
                       Invoice #{invoice.invoice_number}
                     </h3>
-                    <p className="text-xs text-gray-500 mt-1">
+                    <p className="text-xs text-muted-text mt-xs">
                       {formatDate(invoice.created_at)}
                     </p>
                   </div>
                   <div className="text-right shrink-0">
-                    <p className="text-base font-semibold text-gray-900">
+                    <p className="text-base font-semibold text-primary-text">
                       ₹{invoice.total_amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                     </p>
                     <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium capitalize mt-1 ${getStatusColor(invoice.status)}`}>

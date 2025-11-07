@@ -16,20 +16,20 @@ export function Button({
   disabled,
   ...props
 }: ButtonProps) {
-  // Base classes with design tokens - minimum 44px height for touch targets
-  const baseClasses = 'btn inline-flex items-center justify-center gap-2 rounded-lg font-medium transition-all touch-target focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50'
+  // Base classes using Tailwind with design tokens
+  const baseClasses = 'inline-flex items-center justify-center gap-sm rounded-md font-medium transition-all min-h-[44px] min-w-[44px] focus-visible:outline-2 focus-visible:outline-primary focus-visible:outline-offset-2 disabled:opacity-50 disabled:cursor-not-allowed disabled:pointer-events-none'
   
   const variantClasses = {
-    primary: 'bg-primary-600 text-black hover:bg-primary-700 focus-visible:ring-primary-600 font-semibold',
-    secondary: 'bg-gray-200 text-gray-900 hover:bg-gray-300 focus-visible:ring-gray-500 font-medium',
-    danger: 'bg-red-600 text-white hover:bg-red-700 focus-visible:ring-red-600 font-semibold',
-    ghost: 'bg-transparent text-gray-700 hover:bg-gray-100 focus-visible:ring-gray-500 font-medium',
+    primary: 'bg-primary text-on-primary font-semibold shadow-sm hover:bg-primary-hover hover:shadow-md hover:-translate-y-px active:translate-y-0 active:shadow-xs',
+    secondary: 'bg-neutral-200 text-primary-text font-medium hover:bg-neutral-300',
+    danger: 'bg-error text-on-dark font-semibold hover:bg-error-dark',
+    ghost: 'bg-transparent text-secondary-text font-medium hover:bg-bg-hover',
   }
 
   const sizeClasses = {
-    sm: 'px-3 py-2 text-sm min-h-[44px]',
-    md: 'px-4 py-2.5 text-base min-h-[44px]',
-    lg: 'px-6 py-3 text-lg min-h-[48px]',
+    sm: 'px-sm py-sm text-sm',
+    md: 'px-md py-sm text-base',
+    lg: 'px-lg py-md text-lg min-h-[48px]',
   }
 
   return (
@@ -41,7 +41,7 @@ export function Button({
     >
       {isLoading && (
         <div 
-          className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" 
+          className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin"
           aria-hidden="true"
         />
       )}

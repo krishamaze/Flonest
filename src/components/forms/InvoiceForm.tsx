@@ -300,7 +300,7 @@ export function InvoiceForm({
       {currentStep === 1 && (
         <div className="space-y-4">
           <div>
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Step 1: Select Customer</h3>
+            <h3 className="text-lg font-semibold text-primary-text mb-md">Step 1: Select Customer</h3>
             <IdentifierInput
               value={identifier}
               onChange={setIdentifier}
@@ -336,9 +336,9 @@ export function InvoiceForm({
             )}
 
             {showMasterForm && !selectedCustomer && (
-              <div className="mt-4 space-y-4 p-4 border border-gray-200 rounded-lg bg-gray-50">
-                <h4 className="text-sm font-semibold text-gray-900">Customer Not Found</h4>
-                <p className="text-xs text-gray-600">
+              <div className="mt-md space-y-md p-md border border-neutral-200 rounded-md bg-neutral-50">
+                <h4 className="text-sm font-semibold text-primary-text">Customer Not Found</h4>
+                <p className="text-xs text-secondary-text">
                   Please provide customer details to create a new customer record.
                 </p>
 
@@ -368,7 +368,7 @@ export function InvoiceForm({
                 />
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-sm font-medium text-secondary-text mb-xs">
                     Address
                   </label>
                   <textarea
@@ -379,7 +379,7 @@ export function InvoiceForm({
                     disabled={isSubmitting || searching}
                     placeholder="Enter address (optional)"
                     rows={3}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
+                    className="w-full px-md py-sm border border-neutral-300 rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary disabled:bg-neutral-100 disabled:cursor-not-allowed"
                   />
                 </div>
 
@@ -412,7 +412,7 @@ export function InvoiceForm({
             )}
 
             {errors.identifier && (
-              <p className="mt-2 text-sm text-red-600">{errors.identifier}</p>
+              <p className="mt-sm text-sm text-error">{errors.identifier}</p>
             )}
           </div>
         </div>
@@ -422,11 +422,11 @@ export function InvoiceForm({
       {currentStep === 2 && (
         <div className="space-y-4">
           <div>
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Step 2: Add Products</h3>
+            <h3 className="text-lg font-semibold text-primary-text mb-md">Step 2: Add Products</h3>
 
             {items.length === 0 ? (
-              <div className="text-center py-8 border-2 border-dashed border-gray-300 rounded-lg">
-                <p className="text-sm text-gray-600 mb-4">No items added yet</p>
+              <div className="text-center py-2xl border-2 border-dashed border-neutral-300 rounded-md">
+                <p className="text-sm text-secondary-text mb-md">No items added yet</p>
                 <Button type="button" variant="primary" onClick={handleAddItem}>
                   <PlusIcon className="h-4 w-4 mr-2" />
                   Add First Item
@@ -436,13 +436,13 @@ export function InvoiceForm({
               <div className="space-y-4">
                 {items.map((item, index) => {
                   return (
-                    <div key={index} className="border border-gray-200 rounded-lg p-4 space-y-3">
+                    <div key={index} className="border border-neutral-200 rounded-md p-md space-y-md">
                       <div className="flex items-center justify-between">
-                        <h4 className="text-sm font-medium text-gray-900">Item {index + 1}</h4>
+                        <h4 className="text-sm font-medium text-primary-text">Item {index + 1}</h4>
                         <button
                           type="button"
                           onClick={() => handleRemoveItem(index)}
-                          className="text-red-600 hover:text-red-700"
+                          className="text-error hover:text-error-dark"
                           disabled={isSubmitting}
                         >
                           <TrashIcon className="h-4 w-4" />
@@ -500,8 +500,8 @@ export function InvoiceForm({
                       </div>
 
                       <div className="text-right">
-                        <p className="text-sm text-gray-600">
-                          Line Total: <span className="font-semibold text-gray-900">${item.line_total.toFixed(2)}</span>
+                        <p className="text-sm text-secondary-text">
+                          Line Total: <span className="font-semibold text-primary-text">${item.line_total.toFixed(2)}</span>
                         </p>
                       </div>
                     </div>
@@ -516,7 +516,7 @@ export function InvoiceForm({
             )}
 
             {errors.items && (
-              <p className="mt-2 text-sm text-red-600">{errors.items}</p>
+              <p className="mt-sm text-sm text-error">{errors.items}</p>
             )}
           </div>
         </div>
@@ -526,66 +526,66 @@ export function InvoiceForm({
       {currentStep === 3 && (
         <div className="space-y-4">
           <div>
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Step 3: Review Invoice</h3>
+            <h3 className="text-lg font-semibold text-primary-text mb-md">Step 3: Review Invoice</h3>
 
             {/* Customer Info */}
             {selectedCustomer && (
-              <div className="mb-6 p-4 bg-gray-50 rounded-lg">
-                <h4 className="text-sm font-semibold text-gray-900 mb-2">Customer</h4>
-                <p className="text-sm text-gray-900">
+              <div className="mb-lg p-md bg-neutral-50 rounded-md">
+                <h4 className="text-sm font-semibold text-primary-text mb-sm">Customer</h4>
+                <p className="text-sm text-primary-text">
                   {selectedCustomer.alias_name || selectedCustomer.master_customer.legal_name}
                 </p>
                 {selectedCustomer.master_customer.mobile && (
-                  <p className="text-xs text-gray-600">Mobile: {selectedCustomer.master_customer.mobile}</p>
+                  <p className="text-xs text-secondary-text">Mobile: {selectedCustomer.master_customer.mobile}</p>
                 )}
                 {selectedCustomer.master_customer.gstin && (
-                  <p className="text-xs text-gray-600">GSTIN: {selectedCustomer.master_customer.gstin}</p>
+                  <p className="text-xs text-secondary-text">GSTIN: {selectedCustomer.master_customer.gstin}</p>
                 )}
               </div>
             )}
 
             {/* Items Summary */}
             <div className="space-y-2">
-              <h4 className="text-sm font-semibold text-gray-900">Items</h4>
+              <h4 className="text-sm font-semibold text-primary-text">Items</h4>
               {items.map((item, index) => {
                 const product = products.find((p) => p.id === item.product_id)
                 return (
-                  <div key={index} className="flex justify-between text-sm border-b border-gray-200 pb-2">
+                  <div key={index} className="flex justify-between text-sm border-b border-neutral-200 pb-sm">
                     <div>
-                      <span className="font-medium text-gray-900">{product?.name || 'Unknown Product'}</span>
-                      <span className="text-gray-600 ml-2">x {item.quantity}</span>
+                      <span className="font-medium text-primary-text">{product?.name || 'Unknown Product'}</span>
+                      <span className="text-secondary-text ml-sm">x {item.quantity}</span>
                     </div>
-                    <span className="font-medium text-gray-900">${item.line_total.toFixed(2)}</span>
+                    <span className="font-medium text-primary-text">${item.line_total.toFixed(2)}</span>
                   </div>
                 )
               })}
             </div>
 
             {/* Totals */}
-            <div className="mt-6 pt-4 border-t border-gray-200 space-y-2">
+            <div className="mt-lg pt-md border-t border-neutral-200 space-y-sm">
               <div className="flex justify-between text-sm">
-                <span className="text-gray-600">Subtotal</span>
-                <span className="font-medium text-gray-900">${totals.subtotal.toFixed(2)}</span>
+                <span className="text-secondary-text">Subtotal</span>
+                <span className="font-medium text-primary-text">${totals.subtotal.toFixed(2)}</span>
               </div>
               {orgGstEnabled && totals.gstRate > 0 && (
                 <>
                   {totals.cgst_amount > 0 && (
                     <div className="flex justify-between text-sm">
-                      <span className="text-gray-600">CGST ({totals.gstRate / 2}%)</span>
-                      <span className="font-medium text-gray-900">${totals.cgst_amount.toFixed(2)}</span>
+                      <span className="text-secondary-text">CGST ({totals.gstRate / 2}%)</span>
+                      <span className="font-medium text-primary-text">${totals.cgst_amount.toFixed(2)}</span>
                     </div>
                   )}
                   {totals.sgst_amount > 0 && (
                     <div className="flex justify-between text-sm">
-                      <span className="text-gray-600">SGST ({totals.gstRate / 2}%)</span>
-                      <span className="font-medium text-gray-900">${totals.sgst_amount.toFixed(2)}</span>
+                      <span className="text-secondary-text">SGST ({totals.gstRate / 2}%)</span>
+                      <span className="font-medium text-primary-text">${totals.sgst_amount.toFixed(2)}</span>
                     </div>
                   )}
                 </>
               )}
-              <div className="flex justify-between text-lg font-semibold pt-2 border-t border-gray-200">
-                <span className="text-gray-900">Total</span>
-                <span className="text-gray-900">${totals.total_amount.toFixed(2)}</span>
+              <div className="flex justify-between text-lg font-semibold pt-sm border-t border-neutral-200">
+                <span className="text-primary-text">Total</span>
+                <span className="text-primary-text">${totals.total_amount.toFixed(2)}</span>
               </div>
             </div>
           </div>
@@ -593,7 +593,7 @@ export function InvoiceForm({
       )}
 
       {/* Navigation Buttons */}
-      <div className="flex justify-between pt-4 border-t border-gray-200">
+      <div className="flex justify-between pt-md border-t border-neutral-200">
         <div>
           {currentStep > 1 && (
             <Button
@@ -645,7 +645,7 @@ export function InvoiceForm({
       </div>
 
       {errors.submit && (
-        <p className="text-sm text-red-600">{errors.submit}</p>
+        <p className="text-sm text-error">{errors.submit}</p>
       )}
     </form>
   )

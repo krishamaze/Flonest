@@ -34,7 +34,7 @@ const navItems = [
 export function BottomNav() {
   return (
     <nav 
-      className="fixed bottom-0 left-0 right-0 z-50 border-t border-gray-200 bg-white shadow-sm safe-bottom"
+      className="fixed bottom-0 left-0 right-0 z-50 border-t border-neutral-200 bg-bg-card shadow-sm safe-bottom"
       role="navigation"
       aria-label="Main navigation"
     >
@@ -45,8 +45,8 @@ export function BottomNav() {
             to={item.to}
             end={item.to === '/'}
             className={({ isActive }) =>
-              `flex flex-1 flex-col items-center justify-center gap-1 py-2 min-h-[48px] transition-colors ${
-                isActive ? 'text-primary-600 font-semibold' : 'text-gray-500'
+              `flex flex-1 flex-col items-center justify-center gap-xs py-sm min-h-[48px] transition-colors ${
+                isActive ? 'text-primary font-semibold' : 'text-muted-text'
               }`
             }
             aria-label={item.label}

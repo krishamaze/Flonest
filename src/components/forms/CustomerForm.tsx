@@ -77,39 +77,39 @@ export function CustomerForm({ isOpen, onClose, onSubmit, customer, title }: Cus
     <form onSubmit={handleSubmit} className="space-y-4">
       {/* Master Customer Info (Read-only) */}
       {master && (
-        <div className="rounded-lg border border-gray-200 bg-gray-50 p-4 space-y-2">
-          <h4 className="text-sm font-semibold text-gray-900">Master Customer Info</h4>
+        <div className="rounded-md border border-neutral-200 bg-neutral-50 p-md space-y-sm">
+          <h4 className="text-sm font-semibold text-primary-text">Master Customer Info</h4>
           <div className="space-y-1 text-sm">
             <div>
-              <span className="text-gray-600">Legal Name: </span>
-              <span className="font-medium text-gray-900">{master.legal_name}</span>
+              <span className="text-secondary-text">Legal Name: </span>
+              <span className="font-medium text-primary-text">{master.legal_name}</span>
             </div>
             {master.mobile && (
               <div>
-                <span className="text-gray-600">Mobile: </span>
-                <span className="font-medium text-gray-900">{master.mobile}</span>
+                <span className="text-secondary-text">Mobile: </span>
+                <span className="font-medium text-primary-text">{master.mobile}</span>
               </div>
             )}
             {master.gstin && (
               <div>
-                <span className="text-gray-600">GSTIN: </span>
-                <span className="font-medium text-gray-900">{master.gstin}</span>
+                <span className="text-secondary-text">GSTIN: </span>
+                <span className="font-medium text-primary-text">{master.gstin}</span>
               </div>
             )}
             {master.email && (
               <div>
-                <span className="text-gray-600">Email: </span>
-                <span className="font-medium text-gray-900">{master.email}</span>
+                <span className="text-secondary-text">Email: </span>
+                <span className="font-medium text-primary-text">{master.email}</span>
               </div>
             )}
             {master.address && (
               <div>
-                <span className="text-gray-600">Address: </span>
-                <span className="text-gray-900">{master.address}</span>
+                <span className="text-secondary-text">Address: </span>
+                <span className="text-primary-text">{master.address}</span>
               </div>
             )}
           </div>
-          <p className="text-xs text-gray-500 mt-2">
+          <p className="text-xs text-muted-text mt-sm">
             Master customer information is shared across organizations and cannot be edited here.
           </p>
         </div>
@@ -117,7 +117,7 @@ export function CustomerForm({ isOpen, onClose, onSubmit, customer, title }: Cus
 
       {/* Org-Specific Fields */}
       <div className="space-y-4">
-        <h3 className="text-sm font-semibold text-gray-900 border-b border-gray-200 pb-2">Organization-Specific Information</h3>
+        <h3 className="text-sm font-semibold text-primary-text border-b border-neutral-200 pb-sm">Organization-Specific Information</h3>
         
         <Input
           label="Alias Name"

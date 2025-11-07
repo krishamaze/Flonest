@@ -235,8 +235,8 @@ export function ProductForm({ isOpen, onClose, onSubmit, product, title, orgId, 
       {/* Source Selection (only for new products) */}
       {canUseMaster && (
         <div className="space-y-2">
-          <label className="block text-sm font-medium text-gray-700">Choose Source</label>
-          <div className="flex gap-2">
+          <label className="block text-sm font-medium text-secondary-text">Choose Source</label>
+          <div className="flex gap-sm">
             <button
               type="button"
               onClick={() => {
@@ -256,10 +256,10 @@ export function ProductForm({ isOpen, onClose, onSubmit, product, title, orgId, 
                   min_stock_level: 0,
                 })
               }}
-              className={`flex-1 rounded-lg px-4 py-2.5 min-h-[44px] text-sm font-medium transition-colors ${
+              className={`flex-1 rounded-md px-md py-sm min-h-[44px] text-sm font-medium transition-colors ${
                 sourceType === 'master'
-                  ? 'bg-primary-600 text-black font-semibold'
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  ? 'bg-primary text-on-primary font-semibold'
+                  : 'bg-neutral-100 text-secondary-text hover:bg-neutral-200'
               }`}
             >
               Search Master Catalog
@@ -283,10 +283,10 @@ export function ProductForm({ isOpen, onClose, onSubmit, product, title, orgId, 
                   min_stock_level: 0,
                 })
               }}
-              className={`flex-1 rounded-lg px-4 py-2.5 min-h-[44px] text-sm font-medium transition-colors ${
+              className={`flex-1 rounded-md px-md py-sm min-h-[44px] text-sm font-medium transition-colors ${
                 sourceType === 'new'
-                  ? 'bg-primary-600 text-black font-semibold'
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  ? 'bg-primary text-on-primary font-semibold'
+                  : 'bg-neutral-100 text-secondary-text hover:bg-neutral-200'
               }`}
             >
               Create New Product
@@ -298,15 +298,15 @@ export function ProductForm({ isOpen, onClose, onSubmit, product, title, orgId, 
       {/* Master Product Search */}
       {canUseMaster && sourceType === 'master' && (
         <div className="space-y-2">
-          <label className="block text-sm font-medium text-gray-700">Search Master Products</label>
+          <label className="block text-sm font-medium text-secondary-text">Search Master Products</label>
           <div className="relative">
-            <MagnifyingGlassIcon className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+            <MagnifyingGlassIcon className="absolute left-md top-1/2 h-4 w-4 -translate-y-1/2 text-muted-text" />
             <input
               type="text"
               placeholder="Search by SKU, EAN, or name..."
               value={masterSearchQuery}
               onChange={(e) => setMasterSearchQuery(e.target.value)}
-              className="w-full rounded-lg border border-gray-300 bg-white py-2.5 pl-10 pr-4 text-sm min-h-[44px] focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/20 transition-all"
+              className="w-full rounded-md border border-neutral-300 bg-bg-card py-sm pl-[2.5rem] pr-md text-sm min-h-[44px] focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all"
               disabled={isSubmitting}
               aria-label="Search master products"
             />
@@ -314,18 +314,18 @@ export function ProductForm({ isOpen, onClose, onSubmit, product, title, orgId, 
           
           {/* Master Product Results */}
           {masterSearchResults.length > 0 && (
-            <div className="max-h-48 overflow-y-auto rounded-lg border border-gray-200 bg-white">
+            <div className="max-h-48 overflow-y-auto rounded-md border border-neutral-200 bg-bg-card">
               {masterSearchResults.map((mp) => (
                 <button
                   key={mp.id}
                   type="button"
                   onClick={() => handleSelectMasterProduct(mp)}
-                  className={`w-full px-4 py-3 min-h-[44px] text-left hover:bg-gray-50 transition-colors ${
-                    selectedMasterProduct?.id === mp.id ? 'bg-primary-50 border-l-4 border-primary-500' : ''
+                  className={`w-full px-md py-md min-h-[44px] text-left hover:bg-neutral-50 transition-colors ${
+                    selectedMasterProduct?.id === mp.id ? 'bg-primary-light border-l-4 border-primary' : ''
                   }`}
                 >
-                  <div className="font-medium text-sm text-gray-900">{mp.name}</div>
-                  <div className="text-xs text-gray-600 mt-0.5">
+                  <div className="font-medium text-sm text-primary-text">{mp.name}</div>
+                  <div className="text-xs text-secondary-text mt-xs">
                     SKU: {mp.sku} {mp.barcode_ean && `• EAN: ${mp.barcode_ean}`}
                     {mp.base_price && ` • ₹${mp.base_price.toFixed(2)}`}
                   </div>
@@ -335,13 +335,13 @@ export function ProductForm({ isOpen, onClose, onSubmit, product, title, orgId, 
           )}
 
           {searchingMaster && (
-            <p className="text-sm text-gray-500">Searching...</p>
+            <p className="text-sm text-muted-text">Searching...</p>
           )}
 
           {selectedMasterProduct && (
-            <div className="rounded-lg border border-primary-200 bg-primary-50 p-3">
-              <div className="text-sm font-medium text-primary-900">Selected: {selectedMasterProduct.name}</div>
-              <div className="text-xs text-primary-700 mt-1">
+            <div className="rounded-md border border-primary-light bg-primary-light p-md">
+              <div className="text-sm font-medium text-primary-text">Selected: {selectedMasterProduct.name}</div>
+              <div className="text-xs text-primary-text mt-xs">
                 Master SKU: {selectedMasterProduct.sku} • Defaults will be prefilled below
               </div>
             </div>
@@ -351,7 +351,7 @@ export function ProductForm({ isOpen, onClose, onSubmit, product, title, orgId, 
 
       {/* Product Information Group */}
       <div className="space-y-4">
-        <h3 className="text-sm font-semibold text-gray-900 border-b border-gray-200 pb-2">Product Information</h3>
+        <h3 className="text-sm font-semibold text-primary-text border-b border-neutral-200 pb-sm">Product Information</h3>
         
         <Input
           label="Product Name"
@@ -363,7 +363,7 @@ export function ProductForm({ isOpen, onClose, onSubmit, product, title, orgId, 
           type="text"
         />
         {selectedMasterProduct && sourceType === 'master' && (
-          <p className="text-xs text-gray-500 -mt-2">Using master name as alias (you can override)</p>
+          <p className="text-xs text-muted-text -mt-sm">Using master name as alias (you can override)</p>
         )}
 
         <div className="grid grid-cols-2 gap-4">
@@ -387,7 +387,7 @@ export function ProductForm({ isOpen, onClose, onSubmit, product, title, orgId, 
           />
         </div>
         {selectedMasterProduct && sourceType === 'master' && (
-          <p className="text-xs text-gray-500 -mt-2">Using master SKU (you can override with org-specific SKU)</p>
+          <p className="text-xs text-muted-text -mt-sm">Using master SKU (you can override with org-specific SKU)</p>
         )}
 
         <Textarea
@@ -424,7 +424,7 @@ export function ProductForm({ isOpen, onClose, onSubmit, product, title, orgId, 
 
       {/* Pricing & Inventory Group */}
       <div className="space-y-4">
-        <h3 className="text-sm font-semibold text-gray-900 border-b border-gray-200 pb-2">Pricing & Inventory</h3>
+        <h3 className="text-sm font-semibold text-primary-text border-b border-neutral-200 pb-sm">Pricing & Inventory</h3>
         
         <div className="grid grid-cols-2 gap-4">
           <Input

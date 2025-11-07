@@ -159,15 +159,15 @@ export function StockTransactionForm({
 
       {/* Current Stock Display */}
       {formData.product_id && currentStock !== null && (
-        <div className="rounded-lg border border-gray-200 bg-gray-50 p-3">
+        <div className="rounded-md border border-neutral-200 bg-neutral-50 p-md">
           <div className="flex items-center justify-between">
-            <span className="text-sm font-medium text-gray-700">Current Stock:</span>
-            <span className="text-base font-semibold text-gray-900">
+            <span className="text-sm font-medium text-secondary-text">Current Stock:</span>
+            <span className="text-base font-semibold text-primary-text">
               {currentStock} {selectedProduct?.unit || 'pcs'}
             </span>
           </div>
           {selectedProduct?.min_stock_level && currentStock < selectedProduct.min_stock_level && (
-            <p className="mt-1 text-xs text-yellow-600">
+            <p className="mt-xs text-xs text-warning">
               ⚠ Low stock (minimum: {selectedProduct.min_stock_level} {selectedProduct.unit || 'pcs'})
             </p>
           )}
@@ -209,21 +209,21 @@ export function StockTransactionForm({
 
       {/* Stock After Transaction Preview */}
       {stockAfterTransaction !== null && formData.product_id && (
-        <div className="rounded-lg border border-primary-200 bg-primary-50 p-3">
+        <div className="rounded-md border border-primary-light bg-primary-light p-md">
           <div className="flex items-center justify-between">
-            <span className="text-sm font-medium text-primary-700">Stock After Transaction:</span>
+            <span className="text-sm font-medium text-primary-text">Stock After Transaction:</span>
             <span className={`text-base font-semibold ${
               stockAfterTransaction < 0 
-                ? 'text-red-600' 
+                ? 'text-error' 
                 : stockAfterTransaction < (selectedProduct?.min_stock_level || 0)
-                ? 'text-yellow-600'
-                : 'text-primary-900'
+                ? 'text-warning'
+                : 'text-primary-text'
             }`}>
               {stockAfterTransaction < 0 ? '0' : stockAfterTransaction} {selectedProduct?.unit || 'pcs'}
             </span>
           </div>
           {stockAfterTransaction < 0 && (
-            <p className="mt-1 text-xs text-red-600">
+            <p className="mt-xs text-xs text-error">
               ⚠ This transaction would result in negative stock
             </p>
           )}

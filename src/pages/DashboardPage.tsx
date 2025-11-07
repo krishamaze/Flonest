@@ -81,8 +81,8 @@ export function DashboardPage() {
     <div className="space-y-6">
       {/* Page Header */}
       <div>
-        <h1 className="text-xl font-semibold text-gray-900">Dashboard</h1>
-        <p className="mt-1 text-sm text-gray-600">
+        <h1 className="text-xl font-semibold text-primary-text">Dashboard</h1>
+        <p className="mt-xs text-sm text-secondary-text">
           Welcome back, {user?.email}
         </p>
       </div>
@@ -92,12 +92,12 @@ export function DashboardPage() {
         <Card className="shadow-sm">
           <CardContent className="flex items-center gap-3 p-4">
             {/* Card icon: 20px max */}
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary-100">
-              <CubeIcon className="h-5 w-5 text-primary-600" />
+            <div className="flex h-8 w-8 items-center justify-center rounded-md bg-primary-light">
+              <CubeIcon className="h-5 w-5 text-primary" />
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-xs font-medium text-gray-600">Total Products</p>
-              <p className="text-xl font-semibold text-gray-900">
+              <p className="text-xs font-medium text-secondary-text">Total Products</p>
+              <p className="text-xl font-semibold text-primary-text">
                 {stats?.totalProducts || 0}
               </p>
             </div>
@@ -106,12 +106,12 @@ export function DashboardPage() {
 
         <Card className="shadow-sm">
           <CardContent className="flex items-center gap-3 p-4">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-yellow-100">
-              <ExclamationTriangleIcon className="h-5 w-5 text-yellow-600" />
+            <div className="flex h-8 w-8 items-center justify-center rounded-md bg-warning-light">
+              <ExclamationTriangleIcon className="h-5 w-5 text-warning" />
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-xs font-medium text-gray-600">Low Stock</p>
-              <p className="text-xl font-semibold text-gray-900">
+              <p className="text-xs font-medium text-secondary-text">Low Stock</p>
+              <p className="text-xl font-semibold text-primary-text">
                 {stats?.lowStockItems || 0}
               </p>
             </div>
@@ -120,12 +120,12 @@ export function DashboardPage() {
 
         <Card className="shadow-sm">
           <CardContent className="flex items-center gap-3 p-4">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-green-100">
-              <ArrowTrendingUpIcon className="h-5 w-5 text-green-600" />
+            <div className="flex h-8 w-8 items-center justify-center rounded-md bg-success-light">
+              <ArrowTrendingUpIcon className="h-5 w-5 text-success" />
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-xs font-medium text-gray-600">Total Value</p>
-              <p className="text-xl font-semibold text-gray-900">
+              <p className="text-xs font-medium text-secondary-text">Total Value</p>
+              <p className="text-xl font-semibold text-primary-text">
                 ${stats?.totalValue ? stats.totalValue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '0.00'}
               </p>
             </div>
@@ -134,12 +134,12 @@ export function DashboardPage() {
 
         <Card className="shadow-sm">
           <CardContent className="flex items-center gap-3 p-4">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-100">
-              <ArrowTrendingDownIcon className="h-5 w-5 text-blue-600" />
+            <div className="flex h-8 w-8 items-center justify-center rounded-md bg-neutral-100">
+              <ArrowTrendingDownIcon className="h-5 w-5 text-secondary-text" />
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-xs font-medium text-gray-600">Total Invoices</p>
-              <p className="text-xl font-semibold text-gray-900">
+              <p className="text-xs font-medium text-secondary-text">Total Invoices</p>
+              <p className="text-xl font-semibold text-primary-text">
                 {stats?.totalInvoices || 0}
               </p>
             </div>
@@ -155,23 +155,23 @@ export function DashboardPage() {
         <CardContent className="p-4 pt-0">
           <div className="grid gap-3 sm:grid-cols-2">
             <button 
-              className="flex items-center gap-3 rounded-lg border border-gray-200 p-4 text-left min-h-[44px] transition-all duration-200 hover:bg-gray-50 hover:border-gray-300 active:scale-[0.98]"
+              className="flex items-center gap-md rounded-md border border-neutral-200 p-md text-left min-h-[44px] transition-all duration-200 hover:bg-neutral-50 hover:border-neutral-300 active:scale-[0.98]"
               aria-label="Add Product"
             >
-              <CubeIcon className="h-5 w-5 text-primary-600 shrink-0" aria-hidden="true" />
+              <CubeIcon className="h-5 w-5 text-primary shrink-0" aria-hidden="true" />
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-gray-900">Add Product</p>
-                <p className="text-xs text-gray-600">Create new inventory item</p>
+                <p className="text-sm font-medium text-primary-text">Add Product</p>
+                <p className="text-xs text-secondary-text">Create new inventory item</p>
               </div>
             </button>
             <button 
-              className="flex items-center gap-3 rounded-lg border border-gray-200 p-4 text-left min-h-[44px] transition-all duration-200 hover:bg-gray-50 hover:border-gray-300 active:scale-[0.98]"
+              className="flex items-center gap-md rounded-md border border-neutral-200 p-md text-left min-h-[44px] transition-all duration-200 hover:bg-neutral-50 hover:border-neutral-300 active:scale-[0.98]"
               aria-label="Add Stock"
             >
-              <ArrowTrendingUpIcon className="h-5 w-5 text-green-600 shrink-0" aria-hidden="true" />
+              <ArrowTrendingUpIcon className="h-5 w-5 text-success shrink-0" aria-hidden="true" />
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-gray-900">Add Stock</p>
-                <p className="text-xs text-gray-600">Increase stock quantity</p>
+                <p className="text-sm font-medium text-primary-text">Add Stock</p>
+                <p className="text-xs text-secondary-text">Increase stock quantity</p>
               </div>
             </button>
           </div>

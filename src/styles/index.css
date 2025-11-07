@@ -1,17 +1,94 @@
 @import "tailwindcss";
 @import "./design-tokens.css";
+@import "./design-token-classes.css";
 
 @theme {
-  --color-primary-50: #f0f9ff;
-  --color-primary-100: #e0f2fe;
-  --color-primary-200: #bae6fd;
-  --color-primary-300: #7dd3fc;
-  --color-primary-400: #38bdf8;
-  --color-primary-500: #0ea5e9;
-  --color-primary-600: #0284c7;
-  --color-primary-700: #0369a1;
-  --color-primary-800: #075985;
-  --color-primary-900: #0c4a6e;
+  /* Brand Colors - Primary */
+  --color-primary: var(--color-primary);
+  --color-primary-hover: var(--color-primary-hover);
+  --color-primary-light: var(--color-primary-light);
+  --color-primary-dark: var(--color-primary-dark);
+  
+  /* Secondary Colors */
+  --color-secondary: var(--color-secondary);
+  --color-secondary-hover: var(--color-secondary-hover);
+  --color-secondary-light: var(--color-secondary-light);
+  
+  /* Semantic Colors */
+  --color-success: var(--color-success);
+  --color-success-light: var(--color-success-light);
+  --color-success-dark: var(--color-success-dark);
+  --color-warning: var(--color-warning);
+  --color-warning-light: var(--color-warning-light);
+  --color-warning-dark: var(--color-warning-dark);
+  --color-error: var(--color-error);
+  --color-error-light: var(--color-error-light);
+  --color-error-dark: var(--color-error-dark);
+  
+  /* Neutral Scale */
+  --color-neutral-50: var(--color-neutral-50);
+  --color-neutral-100: var(--color-neutral-100);
+  --color-neutral-200: var(--color-neutral-200);
+  --color-neutral-300: var(--color-neutral-300);
+  --color-neutral-400: var(--color-neutral-400);
+  --color-neutral-500: var(--color-neutral-500);
+  --color-neutral-600: var(--color-neutral-600);
+  --color-neutral-700: var(--color-neutral-700);
+  --color-neutral-800: var(--color-neutral-800);
+  --color-neutral-900: var(--color-neutral-900);
+  
+  /* Semantic Text Colors */
+  --color-primary-text: var(--text-primary);
+  --color-secondary-text: var(--text-secondary);
+  --color-muted-text: var(--text-muted);
+  --color-on-primary: var(--text-on-primary);
+  --color-on-dark: var(--text-on-dark);
+  
+  /* Background Colors */
+  --color-bg-page: var(--bg-page);
+  --color-bg-card: var(--bg-card);
+  --color-bg-hover: var(--bg-hover);
+  --color-bg-selected: var(--bg-selected);
+  
+  /* Spacing Scale (8pt Grid) - Map to Tailwind spacing scale */
+  --spacing-xs: var(--spacing-xs);
+  --spacing-sm: var(--spacing-sm);
+  --spacing-md: var(--spacing-md);
+  --spacing-lg: var(--spacing-lg);
+  --spacing-xl: var(--spacing-xl);
+  --spacing-2xl: var(--spacing-2xl);
+  --spacing-3xl: var(--spacing-3xl);
+  
+  /* Font Sizes */
+  --font-size-xs: var(--font-size-xs);
+  --font-size-sm: var(--font-size-sm);
+  --font-size-base: var(--font-size-base);
+  --font-size-lg: var(--font-size-lg);
+  --font-size-xl: var(--font-size-xl);
+  --font-size-2xl: var(--font-size-2xl);
+  --font-size-3xl: var(--font-size-3xl);
+  --font-size-4xl: var(--font-size-4xl);
+  
+  /* Font Weights */
+  --font-weight-normal: var(--font-weight-normal);
+  --font-weight-medium: var(--font-weight-medium);
+  --font-weight-semibold: var(--font-weight-semibold);
+  --font-weight-bold: var(--font-weight-bold);
+  
+  /* Border Radius */
+  --radius-sm: var(--radius-sm);
+  --radius-md: var(--radius-md);
+  --radius-lg: var(--radius-lg);
+  --radius-xl: var(--radius-xl);
+  --radius-full: var(--radius-full);
+  
+  /* Shadows */
+  --shadow-xs: var(--shadow-xs);
+  --shadow-sm: var(--shadow-sm);
+  --shadow-md: var(--shadow-md);
+  --shadow-lg: var(--shadow-lg);
+  --shadow-xl: var(--shadow-xl);
+  --shadow-primary: var(--shadow-primary);
 }
 
 /* Base Typography */
@@ -51,11 +128,8 @@ body {
   padding: var(--spacing-md);
 }
 
-/* Custom UI fixes */
-.h-14 { height: 3.5rem !important; }
-.h-4 { height: 1rem !important; }
-.w-4 { width: 1rem !important; }
-.h-8 { height: 2rem !important; }
-.w-8 { width: 2rem !important; }
-.gap-3 { gap: 0.75rem !important; }
-.text-xl { font-size: 1.25rem !important; line-height: 1.75rem !important; }
+/* Animations */
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+

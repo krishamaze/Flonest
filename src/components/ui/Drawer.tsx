@@ -99,13 +99,13 @@ export function Drawer({ isOpen, onClose, title, children, className = '' }: Dra
       >
         <div 
           ref={drawerRef}
-          className="mx-auto max-h-[90vh] w-full max-w-lg rounded-t-2xl bg-white shadow-2xl"
+          className="mx-auto max-h-[90vh] w-full max-w-lg rounded-t-2xl bg-bg-card shadow-2xl"
           onClick={(e) => e.stopPropagation()}
         >
           {/* Handle bar */}
           <div className="flex justify-center pt-3 pb-2">
             <div 
-              className="h-1 w-12 rounded-full bg-gray-300 cursor-grab active:cursor-grabbing"
+              className="h-1 w-12 rounded-full bg-neutral-300 cursor-grab active:cursor-grabbing"
               onClick={onClose}
               aria-label="Close drawer"
               role="button"
@@ -121,11 +121,11 @@ export function Drawer({ isOpen, onClose, title, children, className = '' }: Dra
 
           {/* Header */}
           {title && (
-            <div className="flex items-center justify-between border-b border-gray-200 px-6 py-4">
-              <h2 id="drawer-title" className="text-lg font-semibold text-gray-900">{title}</h2>
+            <div className="flex items-center justify-between border-b border-neutral-200 px-lg py-md">
+              <h2 id="drawer-title" className="text-xl font-semibold text-primary-text">{title}</h2>
               <button
                 onClick={onClose}
-                className="rounded-lg p-2 min-w-[44px] min-h-[44px] flex items-center justify-center text-gray-400 hover:bg-gray-100 hover:text-gray-600 transition-colors"
+                className="rounded-md p-sm min-w-[44px] min-h-[44px] flex items-center justify-center text-muted-text hover:bg-neutral-100 hover:text-secondary-text transition-colors"
                 aria-label="Close drawer"
               >
                 <XMarkIcon className="h-5 w-5" />
@@ -134,7 +134,7 @@ export function Drawer({ isOpen, onClose, title, children, className = '' }: Dra
           )}
 
           {/* Content */}
-          <div className="max-h-[calc(90vh-120px)] overflow-y-auto px-6 py-4 safe-bottom">
+          <div className="max-h-[calc(90vh-120px)] overflow-y-auto px-lg py-md safe-bottom">
             {children}
           </div>
         </div>
