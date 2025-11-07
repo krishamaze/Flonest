@@ -1,6 +1,8 @@
 import { useState, useEffect, useRef, KeyboardEvent } from 'react'
 import { Input } from '../ui/Input'
+import { CameraIcon } from '@heroicons/react/24/outline'
 import { parseMultiCodes } from '../../lib/utils/scanDetection'
+import { CameraScanner } from './CameraScanner'
 
 interface ScannerInputProps {
   onScan: (codes: string[]) => void
@@ -22,6 +24,7 @@ export function ScannerInput({
 }: ScannerInputProps) {
   const [value, setValue] = useState('')
   const [isScanning, setIsScanning] = useState(false)
+  const [showCameraScanner, setShowCameraScanner] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
   const lastInputTimeRef = useRef<number>(0)
   const scanTimeoutRef = useRef<NodeJS.Timeout | null>(null)
@@ -88,30 +91,71 @@ export function ScannerInput({
     }
   }, [])
 
+  const handleCameraScan = (codes: string[]) => {
+    if (codes.length > 0) {
+      onScan(codes)
+      setShowCameraScanner(false)
+    }
+  }
+
+  const canUseCamera = () => {
+    return (
+      'mediaDevices' in navigator &&
+      'getUserMedia' in navigator.mediaDevices &&
+      !disabled
+    )
+  }
+
   return (
-    <div className={`relative ${className}`}>
-      <Input
-        ref={inputRef}
-        label="Scanner Input"
-        value={value}
-        onChange={handleInput}
-        onKeyDown={handleKeyDown}
-        disabled={disabled}
-        placeholder={placeholder}
-        type="text"
-        autoFocus={!disabled}
-        className={isScanning ? 'border-primary' : ''}
-      />
-      {isScanning && (
-        <div className="absolute right-md top-[2.5rem] flex items-center gap-xs">
-          <div className="h-2 w-2 animate-pulse rounded-full bg-primary" />
-          <span className="text-xs text-primary">Scanning...</span>
-        </div>
+    <>
+      <div className={`relative ${className}`}>
+        <Input
+          ref={inputRef}
+          label="Scanner Input"
+          value={value}
+          onChange={handleInput}
+          onKeyDown={handleKeyDown}
+          disabled={disabled}
+          placeholder={placeholder}
+          type="text"
+          autoFocus={!disabled}
+          className={`pr-[3.5rem] ${isScanning ? 'border-primary' : ''}`}
+        />
+        {/* Camera icon button - inside input field */}
+        {canUseCamera() && (
+          <button
+            type="button"
+            onClick={() => setShowCameraScanner(true)}
+            disabled={disabled}
+            className="absolute right-md top-[calc(1.5rem+0.25rem+11px)] transform -translate-y-1/2 p-xs rounded-md bg-primary text-text-on-primary hover:bg-primary-hover active:bg-primary-dark transition-colors disabled:opacity-50 disabled:cursor-not-allowed min-w-[32px] min-h-[32px] flex items-center justify-center touch-manipulation shadow-sm"
+            aria-label="Open camera scanner"
+            title="Scan with camera"
+          >
+            <CameraIcon className="h-4 w-4" />
+          </button>
+        )}
+        {isScanning && (
+          <div className="absolute right-[4.5rem] top-[calc(1.5rem+0.25rem+11px)] transform -translate-y-1/2 flex items-center gap-xs">
+            <div className="h-2 w-2 animate-pulse rounded-full bg-primary" />
+            <span className="text-xs text-primary">Scanning...</span>
+          </div>
+        )}
+        <p className="mt-xs text-xs text-secondary-text">
+          {canUseCamera()
+            ? 'Type/paste codes or tap camera icon to scan'
+            : 'Scan barcode or paste multiple codes (separated by newline/comma)'}
+        </p>
+      </div>
+
+      {/* Camera Scanner Modal */}
+      {showCameraScanner && (
+        <CameraScanner
+          isOpen={showCameraScanner}
+          onClose={() => setShowCameraScanner(false)}
+          onScan={handleCameraScan}
+        />
       )}
-      <p className="mt-xs text-xs text-secondary-text">
-        Scan barcode or paste multiple codes (separated by newline/comma)
-      </p>
-    </div>
+    </>
   )
 }
 
