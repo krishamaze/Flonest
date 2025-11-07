@@ -7,9 +7,10 @@ interface ModalProps {
   title?: string
   children: ReactNode
   className?: string
+  headerAction?: ReactNode
 }
 
-export function Modal({ isOpen, onClose, title, children, className = '' }: ModalProps) {
+export function Modal({ isOpen, onClose, title, children, className = '', headerAction }: ModalProps) {
   const modalRef = useRef<HTMLDivElement>(null)
   const previousFocusRef = useRef<HTMLElement | null>(null)
 
@@ -105,16 +106,19 @@ export function Modal({ isOpen, onClose, title, children, className = '' }: Moda
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        {title && (
+        {(title || headerAction) && (
           <div className="flex items-center justify-between border-b border-neutral-200 px-lg py-md flex-shrink-0">
-            <h2 id="modal-title" className="text-xl font-semibold text-primary-text">{title}</h2>
-            <button
-              onClick={onClose}
-              className="rounded-md p-sm min-w-[44px] min-h-[44px] flex items-center justify-center text-muted-text hover:bg-neutral-100 hover:text-secondary-text transition-colors"
-              aria-label="Close modal"
-            >
-              <XMarkIcon className="h-5 w-5" />
-            </button>
+            {title && <h2 id="modal-title" className="text-xl font-semibold text-primary-text">{title}</h2>}
+            <div className="flex items-center gap-sm ml-auto">
+              {headerAction}
+              <button
+                onClick={onClose}
+                className="rounded-md p-sm min-w-[44px] min-h-[44px] flex items-center justify-center text-muted-text hover:bg-neutral-100 hover:text-secondary-text transition-colors"
+                aria-label="Close modal"
+              >
+                <XMarkIcon className="h-5 w-5" />
+              </button>
+            </div>
           </div>
         )}
 

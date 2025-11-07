@@ -7,9 +7,10 @@ interface DrawerProps {
   title?: string
   children: ReactNode
   className?: string
+  headerAction?: ReactNode
 }
 
-export function Drawer({ isOpen, onClose, title, children, className = '' }: DrawerProps) {
+export function Drawer({ isOpen, onClose, title, children, className = '', headerAction }: DrawerProps) {
   const drawerRef = useRef<HTMLDivElement>(null)
   const previousFocusRef = useRef<HTMLElement | null>(null)
 
@@ -125,16 +126,19 @@ export function Drawer({ isOpen, onClose, title, children, className = '' }: Dra
           </div>
 
           {/* Header */}
-          {title && (
+          {(title || headerAction) && (
             <div className="flex items-center justify-between border-b border-neutral-200 px-lg py-md">
-              <h2 id="drawer-title" className="text-xl font-semibold text-primary-text">{title}</h2>
-              <button
-                onClick={onClose}
-                className="rounded-md p-sm min-w-[44px] min-h-[44px] flex items-center justify-center text-muted-text hover:bg-neutral-100 hover:text-secondary-text transition-colors"
-                aria-label="Close drawer"
-              >
-                <XMarkIcon className="h-5 w-5" />
-              </button>
+              {title && <h2 id="drawer-title" className="text-xl font-semibold text-primary-text">{title}</h2>}
+              <div className="flex items-center gap-sm ml-auto">
+                {headerAction}
+                <button
+                  onClick={onClose}
+                  className="rounded-md p-sm min-w-[44px] min-h-[44px] flex items-center justify-center text-muted-text hover:bg-neutral-100 hover:text-secondary-text transition-colors"
+                  aria-label="Close drawer"
+                >
+                  <XMarkIcon className="h-5 w-5" />
+                </button>
+              </div>
             </div>
           )}
 

@@ -17,9 +17,10 @@ import { validateScannerCodes } from '../../lib/api/scanner'
 import { calculateItemGST, extractStateCodeFromGSTIN, getCustomerStateCode } from '../../lib/utils/gstCalculation'
 import { isOrgGstEnabled } from '../../lib/utils/orgGst'
 import { useAutoSave } from '../../hooks/useAutoSave'
-import { ChevronLeftIcon, ChevronRightIcon, PlusIcon, TrashIcon, XCircleIcon } from '@heroicons/react/24/outline'
+import { ChevronLeftIcon, ChevronRightIcon, PlusIcon, TrashIcon, XCircleIcon, BookmarkIcon } from '@heroicons/react/24/outline'
 import type { IdentifierType } from '../../lib/utils/identifierValidation'
 import { detectIdentifierType, validateMobile, validateGSTIN, normalizeIdentifier } from '../../lib/utils/identifierValidation'
+import { Toast } from '../ui/Toast'
 
 interface InvoiceFormProps {
   isOpen: boolean
@@ -409,13 +410,22 @@ export function InvoiceForm({
     })),
   }), [selectedCustomer, items, draftInvoiceId])
 
-  const { saveStatus } = useAutoSave(
+  const [toast, setToast] = useState<{ message: string; type?: 'success' | 'info' | 'error' } | null>(null)
+  const [lastAutoSaveTime, setLastAutoSaveTime] = useState<number | null>(null)
+
+  const { saveStatus, manualSave } = useAutoSave(
     draftData,
     async (data) => {
       if (!selectedCustomer) return
       try {
         const invoiceId = await autoSaveInvoiceDraft(orgId, userId, data)
         setDraftInvoiceId(invoiceId)
+        const now = Date.now()
+        // Only show toast if it's been more than 3 seconds since last auto-save (avoid spam)
+        if (!lastAutoSaveTime || now - lastAutoSaveTime > 3000) {
+          setToast({ message: 'Draft saved automatically', type: 'success' })
+          setLastAutoSaveTime(now)
+        }
       } catch (error) {
         console.error('Auto-save failed:', error)
       }
@@ -426,6 +436,17 @@ export function InvoiceForm({
       enabled: selectedCustomer !== null 
     }
   )
+
+  const handleManualSaveDraft = async () => {
+    if (!selectedCustomer) return
+    try {
+      await manualSave()
+      setToast({ message: 'Draft saved', type: 'success' })
+    } catch (error) {
+      console.error('Manual save failed:', error)
+      setToast({ message: 'Failed to save draft', type: 'error' })
+    }
+  }
 
   // Add serial to item
   const handleAddSerial = (itemIndex: number, serial: string) => {
@@ -806,24 +827,16 @@ export function InvoiceForm({
             <h3 className="text-lg font-semibold text-primary-text mb-md">Step 2: Add Products</h3>
 
             {/* Scanner Input */}
-            {selectedCustomer && (
-              <div className="mb-md">
-                <ScannerInput
-                  onScan={handleScan}
-                  disabled={scanning || isSubmitting}
-                  className="mb-sm"
-                />
-                {scanError && (
-                  <p className="mt-xs text-sm text-error">{scanError}</p>
-                )}
-                {saveStatus === 'saving' && (
-                  <p className="mt-xs text-xs text-secondary-text">Saving draft...</p>
-                )}
-                {saveStatus === 'saved' && (
-                  <p className="mt-xs text-xs text-success">Draft saved</p>
-                )}
-              </div>
-            )}
+            <div className="mb-md">
+              <ScannerInput
+                onScan={handleScan}
+                disabled={scanning || isSubmitting || !selectedCustomer}
+                className="mb-sm"
+              />
+              {scanError && (
+                <p className="mt-xs text-sm text-error">{scanError}</p>
+              )}
+            </div>
 
             {items.length === 0 ? (
               <div className="text-center py-lg border-2 border-dashed border-neutral-300 rounded-md">
@@ -1060,14 +1073,15 @@ export function InvoiceForm({
       )}
 
       {/* Navigation Buttons */}
-      <div className="flex justify-between pt-md border-t border-neutral-200">
-        <div>
+      <div className="flex justify-between gap-sm pt-md border-t border-neutral-200">
+        <div className="flex-1">
           {currentStep > 1 && (
             <Button
               type="button"
               variant="secondary"
               onClick={() => setCurrentStep((s) => (s - 1) as Step)}
               disabled={isSubmitting}
+              className="w-full"
             >
               <ChevronLeftIcon className="h-4 w-4 mr-1" />
               Previous
@@ -1075,7 +1089,7 @@ export function InvoiceForm({
           )}
         </div>
 
-        <div className="flex gap-2">
+        <div className="flex gap-sm flex-1">
           {currentStep < 3 && (
             <Button
               type="button"
@@ -1092,6 +1106,7 @@ export function InvoiceForm({
                 (currentStep === 1 && !canProceedToStep2) ||
                 (currentStep === 2 && !canProceedToStep3)
               }
+              className="w-full"
             >
               Next
               <ChevronRightIcon className="h-4 w-4 ml-1" />
@@ -1100,11 +1115,22 @@ export function InvoiceForm({
 
           {currentStep === 3 && (
             <>
-              <Button type="button" variant="secondary" onClick={onClose} disabled={isSubmitting}>
+              <Button 
+                type="button" 
+                variant="secondary" 
+                onClick={onClose} 
+                disabled={isSubmitting}
+                className="flex-1"
+              >
                 Cancel
               </Button>
-              <Button type="submit" variant="primary" isLoading={isSubmitting}>
-                Create Invoice (Draft)
+              <Button 
+                type="submit" 
+                variant="primary" 
+                isLoading={isSubmitting}
+                className="flex-1"
+              >
+                Create Invoice
               </Button>
             </>
           )}
@@ -1119,18 +1145,43 @@ export function InvoiceForm({
 
   const formTitle = title || 'Create Invoice'
 
-  if (isMobileDevice()) {
-    return (
-      <Drawer isOpen={isOpen} onClose={onClose} title={formTitle}>
-        {FormContent}
-      </Drawer>
-    )
-  }
+  // Header action: Save Draft button
+  const headerAction = selectedCustomer ? (
+    <button
+      type="button"
+      onClick={handleManualSaveDraft}
+      disabled={isSubmitting || saveStatus === 'saving'}
+      className="rounded-md p-sm min-w-[44px] min-h-[44px] flex items-center justify-center text-muted-text hover:bg-neutral-100 hover:text-primary transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+      aria-label="Save draft"
+      title="Save draft"
+    >
+      {saveStatus === 'saving' ? (
+        <div className="h-5 w-5 border-2 border-current border-t-transparent rounded-full animate-spin" />
+      ) : (
+        <BookmarkIcon className="h-5 w-5" />
+      )}
+    </button>
+  ) : null
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title={formTitle}>
-      {FormContent}
-    </Modal>
+    <>
+      {toast && (
+        <Toast
+          message={toast.message}
+          type={toast.type}
+          onClose={() => setToast(null)}
+        />
+      )}
+      {isMobileDevice() ? (
+        <Drawer isOpen={isOpen} onClose={onClose} title={formTitle} headerAction={headerAction}>
+          {FormContent}
+        </Drawer>
+      ) : (
+        <Modal isOpen={isOpen} onClose={onClose} title={formTitle} headerAction={headerAction}>
+          {FormContent}
+        </Modal>
+      )}
+    </>
   )
 }
 
