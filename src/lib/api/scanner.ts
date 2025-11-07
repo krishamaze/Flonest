@@ -21,7 +21,7 @@ export async function validateScannerCodes(
   }
 
   try {
-    const { data, error } = await supabase.rpc('validate_scanner_codes', {
+    const { data, error } = await supabase.rpc('validate_scanner_codes' as any, {
       p_org_id: orgId,
       p_codes: codes,
     })

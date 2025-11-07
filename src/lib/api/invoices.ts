@@ -347,7 +347,7 @@ export async function autoSaveInvoiceDraft(
   }
 ): Promise<string> {
   try {
-    const { data, error } = await supabase.rpc('auto_save_invoice_draft', {
+    const { data, error } = await supabase.rpc('auto_save_invoice_draft' as any, {
       p_org_id: orgId,
       p_user_id: userId,
       p_draft_data: draftData as any,

@@ -45,6 +45,7 @@ export interface ProductWithStock extends Product {
 }
 
 export interface ProductWithMaster extends Product {
+  serial_tracked?: boolean
   master_product: {
     id: string
     gst_rate: number | null

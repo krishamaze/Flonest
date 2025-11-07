@@ -16,7 +16,7 @@ export async function checkSerialStatus(
   serialNumber: string
 ): Promise<SerialStatus> {
   try {
-    const { data, error } = await supabase.rpc('check_serial_status', {
+    const { data, error } = await supabase.rpc('check_serial_status' as any, {
       p_org_id: orgId,
       p_serial_number: serialNumber,
     })
@@ -26,18 +26,19 @@ export async function checkSerialStatus(
     }
 
     // Parse JSONB response
-    if (!data) {
+    if (!data || typeof data !== 'object') {
       return {
         found: false,
         message: 'Serial number not found',
       }
     }
 
+    const result = data as any
     return {
-      found: data.found || false,
-      product_id: data.product_id || undefined,
-      status: data.status || undefined,
-      message: data.message || undefined,
+      found: result.found || false,
+      product_id: result.product_id || undefined,
+      status: result.status || undefined,
+      message: result.message || undefined,
     }
   } catch (error) {
     console.error('Error checking serial status:', error)
@@ -55,7 +56,7 @@ export async function reserveSerialsForInvoice(
   orgId: string
 ): Promise<{ success: boolean; reserved_count: number; errors?: string[]; message: string }> {
   try {
-    const { data, error } = await supabase.rpc('reserve_serials_for_invoice', {
+    const { data, error } = await supabase.rpc('reserve_serials_for_invoice' as any, {
       p_invoice_item_id: invoiceItemId,
       p_serial_numbers: serialNumbers,
       p_org_id: orgId,
@@ -66,7 +67,7 @@ export async function reserveSerialsForInvoice(
     }
 
     // Parse JSONB response
-    if (!data) {
+    if (!data || typeof data !== 'object') {
       return {
         success: false,
         reserved_count: 0,
@@ -74,11 +75,12 @@ export async function reserveSerialsForInvoice(
       }
     }
 
+    const result = data as any
     return {
-      success: data.success || false,
-      reserved_count: data.reserved_count || 0,
-      errors: data.errors || undefined,
-      message: data.message || '',
+      success: result.success || false,
+      reserved_count: result.reserved_count || 0,
+      errors: result.errors || undefined,
+      message: result.message || '',
     }
   } catch (error) {
     console.error('Error reserving serials:', error)
@@ -94,7 +96,7 @@ export async function getSerialsForInvoiceItem(
 ): Promise<string[]> {
   try {
     const { data, error } = await supabase
-      .from('invoice_item_serials')
+      .from('invoice_item_serials' as any)
       .select('serial_number')
       .eq('invoice_item_id', invoiceItemId)
 
@@ -102,7 +104,7 @@ export async function getSerialsForInvoiceItem(
       throw new Error(`Failed to get serials for invoice item: ${error.message}`)
     }
 
-    return (data || []).map((item) => item.serial_number)
+    return (data || []).map((item: any) => item.serial_number)
   } catch (error) {
     console.error('Error getting serials for invoice item:', error)
     throw error

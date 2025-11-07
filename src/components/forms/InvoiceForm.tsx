@@ -17,7 +17,7 @@ import { validateScannerCodes } from '../../lib/api/scanner'
 import { calculateItemGST, extractStateCodeFromGSTIN, getCustomerStateCode } from '../../lib/utils/gstCalculation'
 import { isOrgGstEnabled } from '../../lib/utils/orgGst'
 import { useAutoSave } from '../../hooks/useAutoSave'
-import { ChevronLeftIcon, ChevronRightIcon, PlusIcon, TrashIcon, CheckCircleIcon, XCircleIcon } from '@heroicons/react/24/outline'
+import { ChevronLeftIcon, ChevronRightIcon, PlusIcon, TrashIcon, XCircleIcon } from '@heroicons/react/24/outline'
 import type { IdentifierType } from '../../lib/utils/identifierValidation'
 import { detectIdentifierType, validateMobile, validateGSTIN, normalizeIdentifier } from '../../lib/utils/identifierValidation'
 
@@ -160,7 +160,6 @@ export function InvoiceForm({
     // Check if we have at least one identifier or legal_name
     const hasIdentifier = identifierValid && identifier.trim().length > 0
     const hasLegalName = masterFormData.customer_name.trim().length >= 2
-    const hasAdditionalIdentifier = masterFormData.additionalIdentifier.trim().length > 0
     
     if (!hasIdentifier && !hasLegalName) {
       formErrors.customer_name = 'Please provide at least a customer name or valid mobile/GSTIN'
@@ -370,7 +369,7 @@ export function InvoiceForm({
       }
 
       // Process product codes: create separate line items (don't merge with serials)
-      for (const [productId, productResults] of productGroups.entries()) {
+      for (const [productId] of productGroups.entries()) {
         const product = products.find((p) => p.id === productId)
         if (!product) continue
 
@@ -414,7 +413,7 @@ export function InvoiceForm({
     })),
   }), [selectedCustomer, items, draftInvoiceId])
 
-  const { manualSave, saveStatus } = useAutoSave(
+  const { saveStatus } = useAutoSave(
     draftData,
     async (data) => {
       if (!selectedCustomer) return
