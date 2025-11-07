@@ -49,7 +49,6 @@ export function InvoiceForm({
   const [searching, setSearching] = useState(false)
   const [lookupPerformed, setLookupPerformed] = useState(false)
   const [selectedCustomer, setSelectedCustomer] = useState<CustomerWithMaster | null>(null)
-  const [showMasterForm, setShowMasterForm] = useState(false)
   const [showAddNewForm, setShowAddNewForm] = useState(false)
   const [masterFormData, setMasterFormData] = useState<{ customer_name: string; address: string; email: string; additionalIdentifier: string }>({
     customer_name: '',
@@ -89,7 +88,6 @@ export function InvoiceForm({
       setIdentifierType('invalid')
       setLookupPerformed(false)
       setSelectedCustomer(null)
-      setShowMasterForm(false)
       setShowAddNewForm(false)
       setMasterFormData({ customer_name: '', address: '', email: '', additionalIdentifier: '' })
       setItems([])
@@ -114,7 +112,6 @@ export function InvoiceForm({
 
     setSearching(true)
     setErrors({})
-    setShowMasterForm(false)
     setShowAddNewForm(false)
     setLookupPerformed(false)
 
@@ -225,7 +222,6 @@ export function InvoiceForm({
         ...result.customer,
         master_customer: result.master,
       })
-      setShowMasterForm(false)
       setShowAddNewForm(false)
       setMasterFormData({ customer_name: '', address: '', email: '', additionalIdentifier: '' })
       // Auto-advance to Step 2
@@ -626,24 +622,16 @@ export function InvoiceForm({
                 setIdentifierValid(isValid)
                 setIdentifierType(type)
               }}
+              onSearch={handleLookupCustomer}
+              onClear={() => {
+                setSelectedCustomer(null)
+                setLookupPerformed(false)
+                setShowAddNewForm(false)
+              }}
               autoFocus={isOpen && currentStep === 1}
-              disabled={isSubmitting || searching}
+              disabled={isSubmitting}
+              searching={searching}
             />
-
-            {identifierValid && !selectedCustomer && !showMasterForm && !showAddNewForm && (
-              <div className="mt-4">
-                <Button
-                  type="button"
-                  variant="primary"
-                  onClick={handleLookupCustomer}
-                  isLoading={searching}
-                  disabled={!identifierValid || searching}
-                  className="w-full"
-                >
-                  {searching ? 'Searching...' : 'Lookup Customer'}
-                </Button>
-              </div>
-            )}
 
             {/* Horizontal swipeable customer selection area - show after lookup completes */}
             {lookupPerformed && !searching && identifierValid && (
@@ -698,7 +686,6 @@ export function InvoiceForm({
                               size="sm" 
                               onClick={() => {
                                 setShowAddNewForm(true)
-                                setShowMasterForm(false)
                               }}
                               className="flex-1 min-h-[44px]"
                               aria-label="Add new customer"
