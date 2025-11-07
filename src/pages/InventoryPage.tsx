@@ -315,34 +315,33 @@ export function InventoryPage() {
           </Button>
         </div>
 
-      {/* Invoice Stats Cards - 12px gap, 16px padding */}
-      <div className="grid gap-3 sm:grid-cols-3">
+      {/* Invoice Stats Cards - compact layout */}
+      <div className="grid gap-2 grid-cols-1 sm:grid-cols-3">
         <Card className="bg-success-light border-success shadow-sm">
-          <CardContent className="p-md text-center">
-            {/* Card icon: 20px max */}
-            <DocumentTextIcon className="mx-auto h-5 w-5 text-success mb-sm" />
-            <p className="text-xs font-medium text-secondary-text">Finalized</p>
-            <p className="text-xl font-semibold text-primary-text">
+          <CardContent className="p-3 text-center">
+            <DocumentTextIcon className="mx-auto h-4 w-4 text-success mb-xs" />
+            <p className="text-[10px] font-medium text-secondary-text leading-tight">Finalized</p>
+            <p className="text-lg font-semibold text-primary-text">
               {invoiceStats.finalized}
             </p>
           </CardContent>
         </Card>
 
         <Card className="bg-warning-light border-warning shadow-sm">
-          <CardContent className="p-md text-center">
-            <DocumentTextIcon className="mx-auto h-5 w-5 text-warning mb-sm" />
-            <p className="text-xs font-medium text-secondary-text">Drafts</p>
-            <p className="text-xl font-semibold text-primary-text">
+          <CardContent className="p-3 text-center">
+            <DocumentTextIcon className="mx-auto h-4 w-4 text-warning mb-xs" />
+            <p className="text-[10px] font-medium text-secondary-text leading-tight">Drafts</p>
+            <p className="text-lg font-semibold text-primary-text">
               {invoiceStats.drafts}
             </p>
           </CardContent>
         </Card>
 
         <Card className="bg-neutral-50 border-neutral-200 shadow-sm">
-          <CardContent className="p-md text-center">
-            <DocumentTextIcon className="mx-auto h-5 w-5 text-secondary-text mb-sm" />
-            <p className="text-xs font-medium text-secondary-text">Total</p>
-            <p className="text-xl font-semibold text-primary-text">
+          <CardContent className="p-3 text-center">
+            <DocumentTextIcon className="mx-auto h-4 w-4 text-secondary-text mb-xs" />
+            <p className="text-[10px] font-medium text-secondary-text leading-tight">Total</p>
+            <p className="text-lg font-semibold text-primary-text">
               {invoiceStats.total}
             </p>
           </CardContent>

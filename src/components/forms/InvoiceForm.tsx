@@ -396,25 +396,45 @@ export function InvoiceForm({
                   {/* Add New Customer Card */}
                   <div className="flex-shrink-0" style={{ minWidth: '280px', scrollSnapAlign: 'start' }}>
                     <Card 
-                      className="border-2 shadow-sm h-full"
-                      style={{ borderColor: 'var(--color-success)' }}
-                      onClick={() => {
-                        setShowAddNewForm(true)
-                        setShowMasterForm(false)
-                      }}
+                      className="border-2 border-success-light shadow-sm"
                     >
-                      <CardContent className="p-md flex flex-col items-center justify-center min-h-[200px] text-center">
-                        <div className="mb-md">
-                          <div className="w-12 h-12 rounded-full bg-success-light flex items-center justify-center mx-auto mb-sm">
-                            <PlusIcon className="h-6 w-6 text-success" />
+                      <CardContent className="p-md">
+                        <div className="space-y-md">
+                          {/* Icon and Title */}
+                          <div>
+                            <div className="flex items-center gap-sm mb-xs">
+                              <div className="w-8 h-8 rounded-md bg-success-light flex items-center justify-center flex-shrink-0">
+                                <PlusIcon className="h-4 w-4 text-success" />
+                              </div>
+                              <h3 className="text-base font-semibold text-primary-text">Add New Customer</h3>
+                            </div>
+                            <p className="text-xs text-secondary-text">
+                              Create a new customer record
+                            </p>
+                          </div>
+
+                          {/* Placeholder content to match height */}
+                          <div className="space-y-xs text-xs text-secondary-text opacity-50">
+                            <div>Enter customer details</div>
+                            <div>Mobile or GSTIN required</div>
+                          </div>
+
+                          {/* Actions */}
+                          <div className="flex gap-sm pt-sm">
+                            <Button 
+                              variant="primary" 
+                              size="sm" 
+                              onClick={() => {
+                                setShowAddNewForm(true)
+                                setShowMasterForm(false)
+                              }}
+                              className="flex-1 min-h-[44px]"
+                              aria-label="Add new customer"
+                            >
+                              Add New Customer
+                            </Button>
                           </div>
                         </div>
-                        <h3 className="text-base font-semibold text-primary-text mb-xs">
-                          Add New Customer
-                        </h3>
-                        <p className="text-xs text-secondary-text">
-                          Create a new customer record
-                        </p>
                       </CardContent>
                     </Card>
                   </div>

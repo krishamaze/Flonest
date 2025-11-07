@@ -87,17 +87,16 @@ export function DashboardPage() {
         </p>
       </div>
 
-      {/* Stats Cards - 12px gap, 16px padding */}
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      {/* Stats Cards - compact layout */}
+      <div className="grid gap-2 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
         <Card className="shadow-sm">
-          <CardContent className="flex items-center gap-3 p-4">
-            {/* Card icon: 20px max */}
-            <div className="flex h-8 w-8 items-center justify-center rounded-md bg-primary-light">
-              <CubeIcon className="h-5 w-5 text-primary" />
+          <CardContent className="flex items-center gap-2 p-3">
+            <div className="flex h-6 w-6 items-center justify-center rounded-md bg-primary-light flex-shrink-0">
+              <CubeIcon className="h-4 w-4 text-primary" />
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-xs font-medium text-secondary-text">Total Products</p>
-              <p className="text-xl font-semibold text-primary-text">
+              <p className="text-[10px] font-medium text-secondary-text leading-tight">Total Products</p>
+              <p className="text-lg font-semibold text-primary-text">
                 {stats?.totalProducts || 0}
               </p>
             </div>
@@ -105,13 +104,13 @@ export function DashboardPage() {
         </Card>
 
         <Card className="shadow-sm">
-          <CardContent className="flex items-center gap-3 p-4">
-            <div className="flex h-8 w-8 items-center justify-center rounded-md bg-warning-light">
-              <ExclamationTriangleIcon className="h-5 w-5 text-warning" />
+          <CardContent className="flex items-center gap-2 p-3">
+            <div className="flex h-6 w-6 items-center justify-center rounded-md bg-warning-light flex-shrink-0">
+              <ExclamationTriangleIcon className="h-4 w-4 text-warning" />
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-xs font-medium text-secondary-text">Low Stock</p>
-              <p className="text-xl font-semibold text-primary-text">
+              <p className="text-[10px] font-medium text-secondary-text leading-tight">Low Stock</p>
+              <p className="text-lg font-semibold text-primary-text">
                 {stats?.lowStockItems || 0}
               </p>
             </div>
@@ -119,13 +118,13 @@ export function DashboardPage() {
         </Card>
 
         <Card className="shadow-sm">
-          <CardContent className="flex items-center gap-3 p-4">
-            <div className="flex h-8 w-8 items-center justify-center rounded-md bg-success-light">
-              <ArrowTrendingUpIcon className="h-5 w-5 text-success" />
+          <CardContent className="flex items-center gap-2 p-3">
+            <div className="flex h-6 w-6 items-center justify-center rounded-md bg-success-light flex-shrink-0">
+              <ArrowTrendingUpIcon className="h-4 w-4 text-success" />
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-xs font-medium text-secondary-text">Total Value</p>
-              <p className="text-xl font-semibold text-primary-text">
+              <p className="text-[10px] font-medium text-secondary-text leading-tight">Total Value</p>
+              <p className="text-lg font-semibold text-primary-text">
                 ${stats?.totalValue ? stats.totalValue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '0.00'}
               </p>
             </div>
@@ -133,13 +132,13 @@ export function DashboardPage() {
         </Card>
 
         <Card className="shadow-sm">
-          <CardContent className="flex items-center gap-3 p-4">
-            <div className="flex h-8 w-8 items-center justify-center rounded-md bg-neutral-100">
-              <ArrowTrendingDownIcon className="h-5 w-5 text-secondary-text" />
+          <CardContent className="flex items-center gap-2 p-3">
+            <div className="flex h-6 w-6 items-center justify-center rounded-md bg-neutral-100 flex-shrink-0">
+              <ArrowTrendingDownIcon className="h-4 w-4 text-secondary-text" />
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-xs font-medium text-secondary-text">Total Invoices</p>
-              <p className="text-xl font-semibold text-primary-text">
+              <p className="text-[10px] font-medium text-secondary-text leading-tight">Total Invoices</p>
+              <p className="text-lg font-semibold text-primary-text">
                 {stats?.totalInvoices || 0}
               </p>
             </div>
