@@ -56,8 +56,9 @@ export function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-bg-page px-md py-md safe-top safe-bottom">
-      <div className="w-full max-w-md">
+    <div className="min-h-screen bg-bg-page safe-top safe-bottom flex flex-col">
+      <div className="flex-1 flex items-center justify-center px-md py-md">
+        <div className="w-full max-w-md">
         {/* Header */}
         <div className="mb-8 text-center">
           <div className="mx-auto mb-md flex h-16 w-16 items-center justify-center rounded-2xl bg-primary shadow-lg">
@@ -68,8 +69,8 @@ export function LoginPage() {
         </div>
 
         {/* Auth Form Card */}
-        <div className="rounded-lg bg-bg-card p-2xl shadow-sm border border-neutral-200 overflow-hidden">
-          <form onSubmit={handleSubmit} className="space-y-4">
+        <div className="rounded-lg bg-bg-card p-2xl shadow-sm border border-neutral-200 overflow-hidden w-full box-border">
+          <form onSubmit={handleSubmit} className="space-y-4 w-full">
             {/* Error Message */}
             {error && (
               <div 
@@ -239,6 +240,7 @@ export function LoginPage() {
         <p className="mt-lg text-center text-xs text-muted-text">
           Powered by Supabase Auth • Secure & Reliable
         </p>
+        </div>
       </div>
     </div>
   )
