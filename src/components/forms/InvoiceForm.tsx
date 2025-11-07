@@ -641,13 +641,13 @@ export function InvoiceForm({
                         onChange={(e) => {
                           handleProductChange(index, e.target.value)
                         }}
-                        options={[
+                        options={products.length > 0 ? [
                           { value: '', label: 'Select a product' },
                           ...products.map((p) => ({
                             value: p.id,
                             label: `${p.name} (${p.sku}) - $${p.selling_price?.toFixed(2) || '0.00'}`,
                           })),
-                        ]}
+                        ] : [{ value: '', label: 'No products available' }]}
                         disabled={isSubmitting || loadingProducts}
                         required
                       />

@@ -11,6 +11,9 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(
   ({ label, error, required, options, className = '', ...props }, ref) => {
     // Check if options already include an empty option
     const hasEmptyOption = options.some(opt => opt.value === '')
+    // When required is true, never add default empty option (user must provide it in options if needed)
+    // When required is false and no empty option exists, add default
+    const shouldAddDefaultEmpty = !required && !hasEmptyOption
     
     return (
       <div className="mb-md">
@@ -32,7 +35,7 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(
           required={required}
           {...props}
         >
-          {!required && !hasEmptyOption && <option value="">Select an option</option>}
+          {shouldAddDefaultEmpty && <option value="">Select an option</option>}
           {options.map((option, index) => (
             <option key={option.value || `option-${index}`} value={option.value}>
               {option.label}
