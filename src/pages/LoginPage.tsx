@@ -72,14 +72,23 @@ export function LoginPage() {
           <form onSubmit={handleSubmit} className="space-y-4">
             {/* Error Message */}
             {error && (
-              <div className="rounded-lg bg-red-50 border border-red-200 p-3">
+              <div 
+                className="rounded-lg bg-red-50 border border-red-200 p-3"
+                role="alert"
+                id="login-error"
+                aria-live="polite"
+              >
                 <p className="text-sm text-red-800">{error}</p>
               </div>
             )}
 
             {/* Success Message */}
             {message && (
-              <div className="rounded-lg bg-green-50 border border-green-200 p-3">
+              <div 
+                className="rounded-lg bg-green-50 border border-green-200 p-3"
+                role="status"
+                aria-live="polite"
+              >
                 <p className="text-sm text-green-800">{message}</p>
               </div>
             )}
@@ -93,6 +102,8 @@ export function LoginPage() {
               onChange={(e) => setEmail(e.target.value)}
               required
               disabled={loading}
+              autoComplete="email"
+              aria-describedby={error && view !== 'forgot_password' ? 'login-error' : undefined}
             />
 
             {/* Password Input - only show for sign_in and sign_up */}
@@ -106,6 +117,8 @@ export function LoginPage() {
                 required
                 disabled={loading}
                 minLength={6}
+                autoComplete={view === 'sign_in' ? 'current-password' : 'new-password'}
+                aria-describedby={error ? 'login-error' : undefined}
               />
             )}
 

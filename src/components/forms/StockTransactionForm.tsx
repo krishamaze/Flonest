@@ -190,7 +190,7 @@ export function StockTransactionForm({
       />
 
       <Input
-        label="Quantity *"
+        label="Quantity"
         type="number"
         min="1"
         step="1"
@@ -204,6 +204,7 @@ export function StockTransactionForm({
         error={errors.quantity}
         required
         disabled={isSubmitting}
+        placeholder="Enter quantity"
       />
 
       {/* Stock After Transaction Preview */}

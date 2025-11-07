@@ -256,9 +256,9 @@ export function ProductForm({ isOpen, onClose, onSubmit, product, title, orgId, 
                   min_stock_level: 0,
                 })
               }}
-              className={`flex-1 rounded-lg px-4 py-2 text-sm font-medium transition-colors ${
+              className={`flex-1 rounded-lg px-4 py-2.5 min-h-[44px] text-sm font-medium transition-colors ${
                 sourceType === 'master'
-                  ? 'bg-primary-600 text-white'
+                  ? 'bg-primary-600 text-black font-semibold'
                   : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
               }`}
             >
@@ -283,9 +283,9 @@ export function ProductForm({ isOpen, onClose, onSubmit, product, title, orgId, 
                   min_stock_level: 0,
                 })
               }}
-              className={`flex-1 rounded-lg px-4 py-2 text-sm font-medium transition-colors ${
+              className={`flex-1 rounded-lg px-4 py-2.5 min-h-[44px] text-sm font-medium transition-colors ${
                 sourceType === 'new'
-                  ? 'bg-primary-600 text-white'
+                  ? 'bg-primary-600 text-black font-semibold'
                   : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
               }`}
             >
@@ -306,8 +306,9 @@ export function ProductForm({ isOpen, onClose, onSubmit, product, title, orgId, 
               placeholder="Search by SKU, EAN, or name..."
               value={masterSearchQuery}
               onChange={(e) => setMasterSearchQuery(e.target.value)}
-              className="w-full rounded-lg border border-gray-300 bg-white py-2 pl-10 pr-4 text-sm focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/20"
+              className="w-full rounded-lg border border-gray-300 bg-white py-2.5 pl-10 pr-4 text-sm min-h-[44px] focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/20 transition-all"
               disabled={isSubmitting}
+              aria-label="Search master products"
             />
           </div>
           
@@ -319,7 +320,7 @@ export function ProductForm({ isOpen, onClose, onSubmit, product, title, orgId, 
                   key={mp.id}
                   type="button"
                   onClick={() => handleSelectMasterProduct(mp)}
-                  className={`w-full px-4 py-3 text-left hover:bg-gray-50 transition-colors ${
+                  className={`w-full px-4 py-3 min-h-[44px] text-left hover:bg-gray-50 transition-colors ${
                     selectedMasterProduct?.id === mp.id ? 'bg-primary-50 border-l-4 border-primary-500' : ''
                   }`}
                 >
@@ -348,116 +349,135 @@ export function ProductForm({ isOpen, onClose, onSubmit, product, title, orgId, 
         </div>
       )}
 
-      <Input
-        label="Product Name *"
-        value={formData.name}
-        onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-        error={errors.name}
-        required
-        disabled={isSubmitting}
-      />
-      {selectedMasterProduct && sourceType === 'master' && (
-        <p className="text-xs text-gray-500 mt-1">Using master name as alias (you can override)</p>
-      )}
-
-      <Input
-        label="SKU *"
-        value={formData.sku}
-        onChange={(e) => setFormData({ ...formData, sku: e.target.value.toUpperCase() })}
-        error={errors.sku}
-        required
-        disabled={isSubmitting}
-      />
-      {selectedMasterProduct && sourceType === 'master' && (
-        <p className="text-xs text-gray-500 mt-1">Using master SKU (you can override with org-specific SKU)</p>
-      )}
-
-      <Input
-        label="EAN (Barcode)"
-        value={formData.ean || ''}
-        onChange={(e) => setFormData({ ...formData, ean: e.target.value })}
-        error={errors.ean}
-        disabled={isSubmitting}
-        placeholder="Optional barcode/EAN number"
-      />
-
-      <Textarea
-        label="Description"
-        value={formData.description || ''}
-        onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-        error={errors.description}
-        disabled={isSubmitting}
-        rows={3}
-      />
-
-      <div className="grid grid-cols-2 gap-4">
+      {/* Product Information Group */}
+      <div className="space-y-4">
+        <h3 className="text-sm font-semibold text-gray-900 border-b border-gray-200 pb-2">Product Information</h3>
+        
         <Input
-          label="Category"
-          value={formData.category || ''}
-          onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-          error={errors.category}
-          disabled={isSubmitting}
-        />
-
-        <Input
-          label="Unit *"
-          value={formData.unit || 'pcs'}
-          onChange={(e) => setFormData({ ...formData, unit: e.target.value })}
-          error={errors.unit}
+          label="Product Name"
+          value={formData.name}
+          onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+          error={errors.name}
           required
           disabled={isSubmitting}
-          placeholder="pcs, kg, liters, boxes"
+          type="text"
         />
+        {selectedMasterProduct && sourceType === 'master' && (
+          <p className="text-xs text-gray-500 -mt-2">Using master name as alias (you can override)</p>
+        )}
+
+        <div className="grid grid-cols-2 gap-4">
+          <Input
+            label="SKU"
+            value={formData.sku}
+            onChange={(e) => setFormData({ ...formData, sku: e.target.value.toUpperCase() })}
+            error={errors.sku}
+            required
+            disabled={isSubmitting}
+            type="text"
+          />
+          <Input
+            label="EAN (Barcode)"
+            value={formData.ean || ''}
+            onChange={(e) => setFormData({ ...formData, ean: e.target.value })}
+            error={errors.ean}
+            disabled={isSubmitting}
+            placeholder="Optional"
+            type="text"
+          />
+        </div>
+        {selectedMasterProduct && sourceType === 'master' && (
+          <p className="text-xs text-gray-500 -mt-2">Using master SKU (you can override with org-specific SKU)</p>
+        )}
+
+        <Textarea
+          label="Description"
+          value={formData.description || ''}
+          onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+          error={errors.description}
+          disabled={isSubmitting}
+          rows={3}
+        />
+
+        <div className="grid grid-cols-2 gap-4">
+          <Input
+            label="Category"
+            value={formData.category || ''}
+            onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+            error={errors.category}
+            disabled={isSubmitting}
+            type="text"
+          />
+
+          <Input
+            label="Unit"
+            value={formData.unit || 'pcs'}
+            onChange={(e) => setFormData({ ...formData, unit: e.target.value })}
+            error={errors.unit}
+            required
+            disabled={isSubmitting}
+            placeholder="pcs, kg, liters"
+            type="text"
+          />
+        </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-4">
+      {/* Pricing & Inventory Group */}
+      <div className="space-y-4">
+        <h3 className="text-sm font-semibold text-gray-900 border-b border-gray-200 pb-2">Pricing & Inventory</h3>
+        
+        <div className="grid grid-cols-2 gap-4">
+          <Input
+            label="Cost Price"
+            type="number"
+            step="0.01"
+            min="0"
+            value={formData.cost_price?.toString() || ''}
+            onChange={(e) =>
+              setFormData({
+                ...formData,
+                cost_price: e.target.value ? parseFloat(e.target.value) : undefined,
+              })
+            }
+            error={errors.cost_price}
+            disabled={isSubmitting}
+            placeholder="0.00"
+          />
+
+          <Input
+            label="Selling Price"
+            type="number"
+            step="0.01"
+            min="0"
+            value={formData.selling_price?.toString() || ''}
+            onChange={(e) =>
+              setFormData({
+                ...formData,
+                selling_price: e.target.value ? parseFloat(e.target.value) : undefined,
+              })
+            }
+            error={errors.selling_price}
+            disabled={isSubmitting}
+            placeholder="0.00"
+          />
+        </div>
+
         <Input
-          label="Cost Price"
+          label="Minimum Stock Level"
           type="number"
-          step="0.01"
           min="0"
-          value={formData.cost_price?.toString() || ''}
+          step="1"
+          value={formData.min_stock_level?.toString() || '0'}
           onChange={(e) =>
             setFormData({
               ...formData,
-              cost_price: e.target.value ? parseFloat(e.target.value) : undefined,
+              min_stock_level: parseInt(e.target.value) || 0,
             })
           }
-          error={errors.cost_price}
-          disabled={isSubmitting}
-        />
-
-        <Input
-          label="Selling Price"
-          type="number"
-          step="0.01"
-          min="0"
-          value={formData.selling_price?.toString() || ''}
-          onChange={(e) =>
-            setFormData({
-              ...formData,
-              selling_price: e.target.value ? parseFloat(e.target.value) : undefined,
-            })
-          }
-          error={errors.selling_price}
+          error={errors.min_stock_level}
           disabled={isSubmitting}
         />
       </div>
-
-      <Input
-        label="Minimum Stock Level"
-        type="number"
-        min="0"
-        value={formData.min_stock_level?.toString() || '0'}
-        onChange={(e) =>
-          setFormData({
-            ...formData,
-            min_stock_level: parseInt(e.target.value) || 0,
-          })
-        }
-        error={errors.min_stock_level}
-        disabled={isSubmitting}
-      />
 
       <div className="flex justify-end gap-3 pt-4">
         <Button

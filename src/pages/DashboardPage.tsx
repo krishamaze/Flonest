@@ -126,7 +126,7 @@ export function DashboardPage() {
             <div className="flex-1 min-w-0">
               <p className="text-xs font-medium text-gray-600">Total Value</p>
               <p className="text-xl font-semibold text-gray-900">
-                ${stats?.totalValue.toFixed(2) || '0.00'}
+                ${stats?.totalValue ? stats.totalValue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '0.00'}
               </p>
             </div>
           </CardContent>
@@ -154,15 +154,21 @@ export function DashboardPage() {
         </CardHeader>
         <CardContent className="p-4 pt-0">
           <div className="grid gap-3 sm:grid-cols-2">
-            <button className="flex items-center gap-3 rounded-lg border border-gray-200 p-4 text-left transition-all hover:bg-gray-50 hover:border-gray-300 active:scale-[0.98]">
-              <CubeIcon className="h-5 w-5 text-primary-600 shrink-0" />
+            <button 
+              className="flex items-center gap-3 rounded-lg border border-gray-200 p-4 text-left min-h-[44px] transition-all duration-200 hover:bg-gray-50 hover:border-gray-300 active:scale-[0.98]"
+              aria-label="Add Product"
+            >
+              <CubeIcon className="h-5 w-5 text-primary-600 shrink-0" aria-hidden="true" />
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium text-gray-900">Add Product</p>
                 <p className="text-xs text-gray-600">Create new inventory item</p>
               </div>
             </button>
-            <button className="flex items-center gap-3 rounded-lg border border-gray-200 p-4 text-left transition-all hover:bg-gray-50 hover:border-gray-300 active:scale-[0.98]">
-              <ArrowTrendingUpIcon className="h-5 w-5 text-green-600 shrink-0" />
+            <button 
+              className="flex items-center gap-3 rounded-lg border border-gray-200 p-4 text-left min-h-[44px] transition-all duration-200 hover:bg-gray-50 hover:border-gray-300 active:scale-[0.98]"
+              aria-label="Add Stock"
+            >
+              <ArrowTrendingUpIcon className="h-5 w-5 text-green-600 shrink-0" aria-hidden="true" />
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium text-gray-900">Add Stock</p>
                 <p className="text-xs text-gray-600">Increase stock quantity</p>

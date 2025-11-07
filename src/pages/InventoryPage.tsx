@@ -177,41 +177,49 @@ export function InventoryPage() {
         <div className="flex gap-2 mb-4">
           <button
             onClick={() => setFilterType('all')}
-            className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+            className={`px-3 py-2.5 min-h-[44px] rounded-lg text-sm font-medium transition-colors duration-200 ${
               filterType === 'all'
-                ? 'bg-primary-600 text-white'
+                ? 'bg-primary-600 text-black font-semibold'
                 : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
             }`}
+            aria-label="Show all transactions"
+            aria-pressed={filterType === 'all'}
           >
             All
           </button>
           <button
             onClick={() => setFilterType('in')}
-            className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+            className={`px-3 py-2.5 min-h-[44px] rounded-lg text-sm font-medium transition-colors duration-200 ${
               filterType === 'in'
-                ? 'bg-green-600 text-white'
+                ? 'bg-green-600 text-white font-semibold'
                 : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
             }`}
+            aria-label="Show stock in transactions"
+            aria-pressed={filterType === 'in'}
           >
             Stock In
           </button>
           <button
             onClick={() => setFilterType('out')}
-            className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+            className={`px-3 py-2.5 min-h-[44px] rounded-lg text-sm font-medium transition-colors duration-200 ${
               filterType === 'out'
-                ? 'bg-red-600 text-white'
+                ? 'bg-red-600 text-white font-semibold'
                 : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
             }`}
+            aria-label="Show stock out transactions"
+            aria-pressed={filterType === 'out'}
           >
             Stock Out
           </button>
           <button
             onClick={() => setFilterType('adjustment')}
-            className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+            className={`px-3 py-2.5 min-h-[44px] rounded-lg text-sm font-medium transition-colors duration-200 ${
               filterType === 'adjustment'
-                ? 'bg-yellow-600 text-white'
+                ? 'bg-yellow-600 text-white font-semibold'
                 : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
             }`}
+            aria-label="Show adjustment transactions"
+            aria-pressed={filterType === 'adjustment'}
           >
             Adjustment
           </button>
@@ -225,11 +233,25 @@ export function InventoryPage() {
         ) : filteredLedger.length === 0 ? (
           <Card className="shadow-sm">
             <CardContent className="py-12 text-center">
-              <p className="text-sm text-gray-600">
-                {filterType === 'all'
-                  ? 'No stock transactions yet. Create your first transaction to get started.'
-                  : `No ${filterType} transactions found.`}
+              <p className="text-sm font-medium text-gray-900 mb-2">
+                {filterType === 'all' ? 'No stock transactions yet' : `No ${filterType} transactions found`}
               </p>
+              <p className="text-sm text-gray-600 mb-4">
+                {filterType === 'all'
+                  ? 'Create your first transaction to get started with stock management.'
+                  : 'Try selecting a different filter or create a new transaction.'}
+              </p>
+              {filterType === 'all' && (
+                <Button
+                  variant="primary"
+                  size="sm"
+                  onClick={() => setIsTransactionFormOpen(true)}
+                  className="min-h-[44px]"
+                >
+                  <PlusIcon className="h-4 w-4 mr-2" />
+                  Create First Transaction
+                </Button>
+              )}
             </CardContent>
           </Card>
         ) : (
@@ -331,9 +353,19 @@ export function InventoryPage() {
       {invoices.length === 0 ? (
         <Card className="shadow-sm">
           <CardContent className="py-12 text-center">
-            <p className="text-sm text-gray-600">
-              No invoices yet. Create your first invoice to get started.
+            <p className="text-sm font-medium text-gray-900 mb-2">No invoices yet</p>
+            <p className="text-sm text-gray-600 mb-4">
+              Create your first invoice to get started with billing and invoicing.
             </p>
+            <Button
+              variant="primary"
+              size="sm"
+              onClick={() => setIsInvoiceFormOpen(true)}
+              className="min-h-[44px]"
+            >
+              <PlusIcon className="h-4 w-4 mr-2" />
+              Create First Invoice
+            </Button>
           </CardContent>
         </Card>
       ) : (
@@ -355,7 +387,7 @@ export function InventoryPage() {
                   </div>
                   <div className="text-right shrink-0">
                     <p className="text-base font-semibold text-gray-900">
-                      ₹{invoice.total_amount.toFixed(2)}
+                      ₹{invoice.total_amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                     </p>
                     <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium capitalize mt-1 ${getStatusColor(invoice.status)}`}>
                       {invoice.status}

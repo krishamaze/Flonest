@@ -9,10 +9,18 @@ interface CardProps {
 export function Card({ children, className = '', onClick }: CardProps) {
   return (
     <div
-      className={`card bg-white rounded-lg border border-gray-200 overflow-hidden ${
-        onClick ? 'cursor-pointer hover:shadow-md transition-shadow' : ''
+      className={`card bg-white rounded-lg border border-gray-200 overflow-hidden shadow-sm ${
+        onClick ? 'cursor-pointer hover:shadow-md transition-all duration-200' : ''
       } ${className}`}
       onClick={onClick}
+      role={onClick ? 'button' : undefined}
+      tabIndex={onClick ? 0 : undefined}
+      onKeyDown={onClick ? (e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault()
+          onClick()
+        }
+      } : undefined}
     >
       {children}
     </div>
@@ -34,7 +42,7 @@ interface CardTitleProps {
 }
 
 export function CardTitle({ children, className = '' }: CardTitleProps) {
-  return <h3 className={`text-base font-medium text-gray-900 ${className}`}>{children}</h3>
+  return <h3 className={`text-base font-semibold text-gray-900 ${className}`}>{children}</h3>
 }
 
 interface CardContentProps {

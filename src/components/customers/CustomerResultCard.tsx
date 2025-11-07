@@ -85,11 +85,23 @@ export function CustomerResultCard({ customer, onSelect, onEdit }: CustomerResul
 
           {/* Actions */}
           <div className="flex gap-2 pt-2">
-            <Button variant="primary" size="sm" onClick={onSelect} className="flex-1">
+            <Button 
+              variant="primary" 
+              size="sm" 
+              onClick={onSelect} 
+              className="flex-1 min-h-[44px]"
+              aria-label={`Select customer ${displayName}`}
+            >
               Use This Customer
             </Button>
             {onEdit && (
-              <Button variant="secondary" size="sm" onClick={onEdit}>
+              <Button 
+                variant="secondary" 
+                size="sm" 
+                onClick={onEdit}
+                className="min-h-[44px]"
+                aria-label={`Edit customer ${displayName}`}
+              >
                 Edit
               </Button>
             )}

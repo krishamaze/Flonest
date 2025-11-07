@@ -116,44 +116,49 @@ export function CustomerForm({ isOpen, onClose, onSubmit, customer, title }: Cus
       )}
 
       {/* Org-Specific Fields */}
-      <Input
-        label="Alias Name"
-        value={formData.alias_name || ''}
-        onChange={(e) => setFormData({ ...formData, alias_name: e.target.value })}
-        error={errors.alias_name}
-        disabled={isSubmitting}
-        placeholder="Org-specific nickname (optional)"
-      />
+      <div className="space-y-4">
+        <h3 className="text-sm font-semibold text-gray-900 border-b border-gray-200 pb-2">Organization-Specific Information</h3>
+        
+        <Input
+          label="Alias Name"
+          value={formData.alias_name || ''}
+          onChange={(e) => setFormData({ ...formData, alias_name: e.target.value })}
+          error={errors.alias_name}
+          disabled={isSubmitting}
+          placeholder="Org-specific nickname (optional)"
+          type="text"
+        />
 
-      <Textarea
-        label="Billing Address"
-        value={formData.billing_address || ''}
-        onChange={(e) => setFormData({ ...formData, billing_address: e.target.value })}
-        error={errors.billing_address}
-        disabled={isSubmitting}
-        rows={3}
-        placeholder="Billing address for this organization"
-      />
+        <Textarea
+          label="Billing Address"
+          value={formData.billing_address || ''}
+          onChange={(e) => setFormData({ ...formData, billing_address: e.target.value })}
+          error={errors.billing_address}
+          disabled={isSubmitting}
+          rows={3}
+          placeholder="Billing address for this organization"
+        />
 
-      <Textarea
-        label="Shipping Address"
-        value={formData.shipping_address || ''}
-        onChange={(e) => setFormData({ ...formData, shipping_address: e.target.value })}
-        error={errors.shipping_address}
-        disabled={isSubmitting}
-        rows={3}
-        placeholder="Shipping address for this organization"
-      />
+        <Textarea
+          label="Shipping Address"
+          value={formData.shipping_address || ''}
+          onChange={(e) => setFormData({ ...formData, shipping_address: e.target.value })}
+          error={errors.shipping_address}
+          disabled={isSubmitting}
+          rows={3}
+          placeholder="Shipping address for this organization"
+        />
 
-      <Textarea
-        label="Notes"
-        value={formData.notes || ''}
-        onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-        error={errors.notes}
-        disabled={isSubmitting}
-        rows={3}
-        placeholder="Organization-specific notes about this customer"
-      />
+        <Textarea
+          label="Notes"
+          value={formData.notes || ''}
+          onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+          error={errors.notes}
+          disabled={isSubmitting}
+          rows={3}
+          placeholder="Organization-specific notes about this customer"
+        />
+      </div>
 
       <div className="flex justify-end gap-3 pt-4">
         <Button type="button" variant="secondary" onClick={onClose} disabled={isSubmitting}>

@@ -1,4 +1,4 @@
-import { ReactNode, useEffect } from 'react'
+import { ReactNode, useEffect, useRef } from 'react'
 import { XMarkIcon } from '@heroicons/react/24/outline'
 
 interface DrawerProps {
@@ -10,11 +10,25 @@ interface DrawerProps {
 }
 
 export function Drawer({ isOpen, onClose, title, children, className = '' }: DrawerProps) {
+  const drawerRef = useRef<HTMLDivElement>(null)
+  const previousFocusRef = useRef<HTMLElement | null>(null)
+
   useEffect(() => {
     if (isOpen) {
       document.body.style.overflow = 'hidden'
+      // Store previous focus
+      previousFocusRef.current = document.activeElement as HTMLElement
+      // Focus trap - focus first focusable element
+      setTimeout(() => {
+        const firstFocusable = drawerRef.current?.querySelector(
+          'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+        ) as HTMLElement
+        firstFocusable?.focus()
+      }, 100)
     } else {
       document.body.style.overflow = ''
+      // Restore previous focus
+      previousFocusRef.current?.focus()
     }
 
     return () => {
@@ -29,8 +43,38 @@ export function Drawer({ isOpen, onClose, title, children, className = '' }: Dra
       }
     }
 
+    // Focus trap - handle Tab key
+    const handleTab = (e: KeyboardEvent) => {
+      if (!isOpen || e.key !== 'Tab') return
+
+      const drawer = drawerRef.current
+      if (!drawer) return
+
+      const focusableElements = drawer.querySelectorAll(
+        'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+      )
+      const firstElement = focusableElements[0] as HTMLElement
+      const lastElement = focusableElements[focusableElements.length - 1] as HTMLElement
+
+      if (e.shiftKey) {
+        if (document.activeElement === firstElement) {
+          e.preventDefault()
+          lastElement?.focus()
+        }
+      } else {
+        if (document.activeElement === lastElement) {
+          e.preventDefault()
+          firstElement?.focus()
+        }
+      }
+    }
+
     document.addEventListener('keydown', handleEscape)
-    return () => document.removeEventListener('keydown', handleEscape)
+    document.addEventListener('keydown', handleTab)
+    return () => {
+      document.removeEventListener('keydown', handleEscape)
+      document.removeEventListener('keydown', handleTab)
+    }
   }, [isOpen, onClose])
 
   return (
@@ -38,7 +82,7 @@ export function Drawer({ isOpen, onClose, title, children, className = '' }: Dra
       {/* Backdrop */}
       {isOpen && (
         <div
-          className="fixed inset-0 z-40 bg-black/50 transition-opacity"
+          className="fixed inset-0 z-40 bg-black/50 transition-opacity duration-300"
           onClick={onClose}
           aria-hidden="true"
         />
@@ -46,23 +90,42 @@ export function Drawer({ isOpen, onClose, title, children, className = '' }: Dra
 
       {/* Drawer */}
       <div
-        className={`fixed bottom-0 left-0 right-0 z-50 transform transition-transform duration-300 ease-out ${
+        className={`fixed bottom-0 left-0 right-0 z-50 transform transition-transform duration-300 ease-out safe-bottom ${
           isOpen ? 'translate-y-0' : 'translate-y-full'
         } ${className}`}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={title ? 'drawer-title' : undefined}
       >
-        <div className="mx-auto max-h-[90vh] w-full max-w-lg rounded-t-2xl bg-white shadow-2xl">
+        <div 
+          ref={drawerRef}
+          className="mx-auto max-h-[90vh] w-full max-w-lg rounded-t-2xl bg-white shadow-2xl"
+          onClick={(e) => e.stopPropagation()}
+        >
           {/* Handle bar */}
-          <div className="flex justify-center pt-3">
-            <div className="h-1 w-12 rounded-full bg-gray-300" />
+          <div className="flex justify-center pt-3 pb-2">
+            <div 
+              className="h-1 w-12 rounded-full bg-gray-300 cursor-grab active:cursor-grabbing"
+              onClick={onClose}
+              aria-label="Close drawer"
+              role="button"
+              tabIndex={0}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault()
+                  onClose()
+                }
+              }}
+            />
           </div>
 
           {/* Header */}
           {title && (
             <div className="flex items-center justify-between border-b border-gray-200 px-6 py-4">
-              <h2 className="text-lg font-semibold text-gray-900">{title}</h2>
+              <h2 id="drawer-title" className="text-lg font-semibold text-gray-900">{title}</h2>
               <button
                 onClick={onClose}
-                className="rounded-lg p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600 transition-colors"
+                className="rounded-lg p-2 min-w-[44px] min-h-[44px] flex items-center justify-center text-gray-400 hover:bg-gray-100 hover:text-gray-600 transition-colors"
                 aria-label="Close drawer"
               >
                 <XMarkIcon className="h-5 w-5" />
@@ -71,7 +134,7 @@ export function Drawer({ isOpen, onClose, title, children, className = '' }: Dra
           )}
 
           {/* Content */}
-          <div className="max-h-[calc(90vh-80px)] overflow-y-auto px-6 py-4">
+          <div className="max-h-[calc(90vh-120px)] overflow-y-auto px-6 py-4 safe-bottom">
             {children}
           </div>
         </div>

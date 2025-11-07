@@ -88,16 +88,18 @@ export function IdentifierInput({
   return (
     <div>
       <Input
-        label="Customer Identifier *"
+        label="Customer Identifier"
         value={value}
         onChange={(e) => onChange(e.target.value)}
         error={error || undefined}
         disabled={disabled}
         placeholder={placeholder}
         type="text"
+        required
+        inputMode="numeric"
       />
       {!error && type !== 'invalid' && value && (
-        <p className="mt-1 text-xs text-green-600">{getHelperText()}</p>
+        <p className="mt-1 text-xs text-green-600" role="status">{getHelperText()}</p>
       )}
     </div>
   )

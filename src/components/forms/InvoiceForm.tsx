@@ -343,7 +343,7 @@ export function InvoiceForm({
                 </p>
 
                 <Input
-                  label="Legal Name *"
+                  label="Legal Name"
                   type="text"
                   value={masterFormData.legal_name}
                   onChange={(e) =>
@@ -352,10 +352,8 @@ export function InvoiceForm({
                   disabled={isSubmitting || searching}
                   required
                   placeholder="Enter legal business name"
+                  error={errors.legal_name}
                 />
-                {errors.legal_name && (
-                  <p className="text-xs text-red-600">{errors.legal_name}</p>
-                )}
 
                 <Input
                   label="Email"
@@ -366,10 +364,8 @@ export function InvoiceForm({
                   }
                   disabled={isSubmitting || searching}
                   placeholder="Enter email address (optional)"
+                  error={errors.email}
                 />
-                {errors.email && (
-                  <p className="text-xs text-red-600">{errors.email}</p>
-                )}
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -475,7 +471,7 @@ export function InvoiceForm({
 
                       <div className="grid grid-cols-2 gap-4">
                         <Input
-                          label="Quantity *"
+                          label="Quantity"
                           type="number"
                           min="1"
                           step="1"
@@ -484,10 +480,12 @@ export function InvoiceForm({
                             handleItemChange(index, 'quantity', parseInt(e.target.value) || 1)
                           }
                           disabled={isSubmitting}
+                          required
+                          placeholder="1"
                         />
 
                         <Input
-                          label="Unit Price *"
+                          label="Unit Price"
                           type="number"
                           min="0"
                           step="0.01"
@@ -496,6 +494,8 @@ export function InvoiceForm({
                             handleItemChange(index, 'unit_price', parseFloat(e.target.value) || 0)
                           }
                           disabled={isSubmitting}
+                          required
+                          placeholder="0.00"
                         />
                       </div>
 

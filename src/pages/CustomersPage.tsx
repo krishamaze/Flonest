@@ -116,13 +116,14 @@ export function CustomersPage() {
 
       {/* Search Bar */}
       <div className="relative">
-        <MagnifyingGlassIcon className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+        <MagnifyingGlassIcon className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" aria-hidden="true" />
         <input
           type="text"
           placeholder="Search by name, mobile, GSTIN, or email..."
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
-          className="w-full rounded-lg border border-gray-300 bg-white py-2.5 pl-10 pr-4 text-sm focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/20"
+          className="w-full rounded-lg border border-gray-300 bg-white py-2.5 pl-10 pr-4 text-sm min-h-[44px] focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/20 transition-all"
+          aria-label="Search customers"
         />
       </div>
 
@@ -130,10 +131,13 @@ export function CustomersPage() {
       {filteredCustomers.length === 0 ? (
         <Card className="shadow-sm">
           <CardContent className="py-12 text-center">
+            <p className="text-sm font-medium text-gray-900 mb-2">
+              {searchQuery ? 'No customers found' : 'No customers yet'}
+            </p>
             <p className="text-sm text-gray-600">
               {searchQuery
-                ? 'No customers found'
-                : 'No customers yet. Customers are created automatically when you add them to an invoice.'}
+                ? 'Try adjusting your search criteria'
+                : 'Customers are created automatically when you add them to an invoice.'}
             </p>
           </CardContent>
         </Card>
@@ -187,10 +191,10 @@ export function CustomersPage() {
                       <div className="mt-2 flex items-center justify-end gap-2">
                         <button
                           onClick={() => handleEditClick(customer)}
-                          className="rounded-lg p-1.5 text-gray-600 hover:bg-gray-100 hover:text-gray-900 transition-colors"
-                          aria-label="Edit customer"
+                          className="rounded-lg p-2 min-w-[44px] min-h-[44px] flex items-center justify-center text-gray-600 hover:bg-gray-100 hover:text-gray-900 transition-colors duration-200"
+                          aria-label={`Edit customer ${displayName}`}
                         >
-                          <PencilIcon className="h-4 w-4" />
+                          <PencilIcon className="h-4 w-4" aria-hidden="true" />
                         </button>
                       </div>
                     </div>

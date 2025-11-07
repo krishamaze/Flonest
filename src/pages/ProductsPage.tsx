@@ -159,13 +159,14 @@ export function ProductsPage() {
       {/* Search and Filter Bar */}
       <div className="space-y-3">
         <div className="relative">
-          <MagnifyingGlassIcon className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+          <MagnifyingGlassIcon className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" aria-hidden="true" />
           <input
             type="text"
             placeholder="Search by name, SKU, or EAN..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full rounded-lg border border-gray-300 bg-white py-2.5 pl-10 pr-4 text-sm focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/20"
+            className="w-full rounded-lg border border-gray-300 bg-white py-2.5 pl-10 pr-4 text-sm min-h-[44px] focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/20 transition-all"
+            aria-label="Search products"
           />
         </div>
 
@@ -174,11 +175,13 @@ export function ProductsPage() {
           <div className="flex gap-2 overflow-x-auto pb-2">
             <button
               onClick={() => setCategoryFilter('')}
-              className={`whitespace-nowrap rounded-lg px-3 py-1.5 text-sm font-medium transition-colors ${
+              className={`whitespace-nowrap rounded-lg px-3 py-2.5 min-h-[44px] text-sm font-medium transition-colors duration-200 ${
                 categoryFilter === ''
-                  ? 'bg-primary-600 text-white'
+                  ? 'bg-primary-600 text-black font-semibold'
                   : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
               }`}
+              aria-label="Show all categories"
+              aria-pressed={categoryFilter === ''}
             >
               All Categories
             </button>
@@ -189,11 +192,13 @@ export function ProductsPage() {
                   setCategoryFilter(category)
                   setCurrentPage(1)
                 }}
-                className={`whitespace-nowrap rounded-lg px-3 py-1.5 text-sm font-medium transition-colors ${
+                className={`whitespace-nowrap rounded-lg px-3 py-2.5 min-h-[44px] text-sm font-medium transition-colors duration-200 ${
                   categoryFilter === category
-                    ? 'bg-primary-600 text-white'
+                    ? 'bg-primary-600 text-black font-semibold'
                     : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                 }`}
+                aria-label={`Filter by ${category}`}
+                aria-pressed={categoryFilter === category}
               >
                 {category}
               </button>
@@ -206,9 +211,26 @@ export function ProductsPage() {
       {productsWithStock.length === 0 && !loading ? (
         <Card className="shadow-sm">
           <CardContent className="py-12 text-center">
-            <p className="text-sm text-gray-600">
-              {searchQuery || categoryFilter ? 'No products found' : 'No products yet. Add your first product to get started.'}
+            <CubeIcon className="h-12 w-12 text-gray-400 mx-auto mb-4" aria-hidden="true" />
+            <p className="text-sm font-medium text-gray-900 mb-2">
+              {searchQuery || categoryFilter ? 'No products found' : 'No products yet'}
             </p>
+            <p className="text-sm text-gray-600 mb-4">
+              {searchQuery || categoryFilter 
+                ? 'Try adjusting your search or filter criteria' 
+                : 'Add your first product to get started with inventory management.'}
+            </p>
+            {!searchQuery && !categoryFilter && (
+              <Button
+                variant="primary"
+                size="sm"
+                onClick={() => setIsFormOpen(true)}
+                className="min-h-[44px]"
+              >
+                <PlusIcon className="h-4 w-4 mr-2" />
+                Add First Product
+              </Button>
+            )}
           </CardContent>
         </Card>
       ) : (
@@ -252,28 +274,28 @@ export function ProductsPage() {
                     <div className="text-right shrink-0">
                       {product.selling_price && (
                         <p className="text-base font-semibold text-gray-900">
-                          ${product.selling_price.toFixed(2)}
+                          ${product.selling_price.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                         </p>
                       )}
                       {product.cost_price && (
                         <p className="text-xs text-gray-500 mt-0.5">
-                          Cost: ${product.cost_price.toFixed(2)}
+                          Cost: ${product.cost_price.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                         </p>
                       )}
                       <div className="mt-2 flex items-center justify-end gap-2">
                         <button
                           onClick={() => handleEditClick(product)}
-                          className="rounded-lg p-1.5 text-gray-600 hover:bg-gray-100 hover:text-gray-900 transition-colors"
-                          aria-label="Edit product"
+                          className="rounded-lg p-2 min-w-[44px] min-h-[44px] flex items-center justify-center text-gray-600 hover:bg-gray-100 hover:text-gray-900 transition-colors duration-200"
+                          aria-label={`Edit product ${product.name}`}
                         >
-                          <PencilIcon className="h-4 w-4" />
+                          <PencilIcon className="h-4 w-4" aria-hidden="true" />
                         </button>
                         <button
                           onClick={() => handleDeleteProduct(product.id)}
-                          className="rounded-lg p-1.5 text-red-600 hover:bg-red-50 hover:text-red-700 transition-colors"
-                          aria-label="Delete product"
+                          className="rounded-lg p-2 min-w-[44px] min-h-[44px] flex items-center justify-center text-red-600 hover:bg-red-50 hover:text-red-700 transition-colors duration-200"
+                          aria-label={`Delete product ${product.name}`}
                         >
-                          <TrashIcon className="h-4 w-4" />
+                          <TrashIcon className="h-4 w-4" aria-hidden="true" />
                         </button>
                       </div>
                     </div>

@@ -27,9 +27,10 @@ export function Header() {
             size="sm"
             onClick={() => signOut()}
             className="flex items-center gap-1.5 -mr-2"
+            aria-label="Sign out"
           >
             {/* Header icon: 16px */}
-            <ArrowRightOnRectangleIcon className="h-4 w-4" />
+            <ArrowRightOnRectangleIcon className="h-4 w-4" aria-hidden="true" />
             <span className="hidden sm:inline text-sm">Sign Out</span>
           </Button>
         </div>

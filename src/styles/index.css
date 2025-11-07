@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@import "./design-tokens.css";
 
 @theme {
   --color-primary-50: #f0f9ff;
@@ -11,6 +12,43 @@
   --color-primary-700: #0369a1;
   --color-primary-800: #075985;
   --color-primary-900: #0c4a6e;
+}
+
+/* Base Typography */
+body {
+  font-family: var(--font-primary);
+  font-size: var(--font-size-base);
+  line-height: var(--line-height-normal);
+  color: var(--text-primary);
+  background: var(--bg-page);
+}
+
+/* Safe Area Insets for Mobile */
+.safe-top {
+  padding-top: env(safe-area-inset-top);
+}
+
+.safe-bottom {
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+/* Touch Target Minimums */
+.touch-target {
+  min-height: var(--touch-target-min);
+  min-width: var(--touch-target-min);
+}
+
+/* Utility Classes */
+.space-section {
+  margin-bottom: var(--spacing-lg);
+}
+
+.space-cards {
+  gap: var(--spacing-sm);
+}
+
+.card-padding {
+  padding: var(--spacing-md);
 }
 
 /* Custom UI fixes */
