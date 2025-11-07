@@ -104,8 +104,7 @@ export function Drawer({ isOpen, onClose, title, children, className = '' }: Dra
       >
         <div 
           ref={drawerRef}
-          className="mx-auto max-h-[90vh] w-full rounded-t-2xl bg-bg-card shadow-2xl"
-          style={{ maxWidth: '512px' }}
+          className="mx-auto max-h-[90vh] w-full max-w-lg rounded-t-2xl bg-bg-card shadow-2xl"
           onClick={(e) => e.stopPropagation()}
         >
           {/* Handle bar */}

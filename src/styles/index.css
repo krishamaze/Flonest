@@ -89,6 +89,18 @@
   --shadow-lg: var(--shadow-lg);
   --shadow-xl: var(--shadow-xl);
   --shadow-primary: var(--shadow-primary);
+  
+  /* Max Width Scale - Explicitly define to prevent conflict with spacing scale */
+  /* Tailwind v4: max-width utilities use their own scale, separate from spacing */
+  /* This ensures max-w-lg = 32rem (512px) not 24px (--spacing-lg) */
+  --max-width-sm: 24rem;   /* 384px */
+  --max-width-md: 28rem;   /* 448px */
+  --max-width-lg: 32rem;   /* 512px - Tailwind default */
+  --max-width-xl: 36rem;   /* 576px */
+  --max-width-2xl: 42rem;  /* 672px */
+  --max-width-3xl: 48rem;  /* 768px */
+  --max-width-4xl: 56rem;  /* 896px */
+  --max-width-5xl: 64rem;  /* 1024px */
 }
 
 /* Base Typography */

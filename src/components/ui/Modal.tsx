@@ -101,8 +101,7 @@ export function Modal({ isOpen, onClose, title, children, className = '' }: Moda
       {/* Modal */}
       <div
         ref={modalRef}
-        className={`relative z-[101] w-full max-h-[90vh] rounded-lg bg-bg-card shadow-xl transition-all duration-300 flex flex-col ${className}`}
-        style={{ maxWidth: '512px' }}
+        className={`relative z-[101] w-full max-w-lg max-h-[90vh] rounded-lg bg-bg-card shadow-xl transition-all duration-300 flex flex-col ${className}`}
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}

@@ -1,0 +1,522 @@
+---
+alwaysApply: true
+---
+# Styling & Design System Rules
+
+## CRITICAL: Design Token Usage
+
+### Mandatory Rules
+- **NEVER** use hardcoded colors - ALWAYS use CSS variables from `styles/design-tokens.css`
+- **NEVER** use hardcoded spacing values - ALWAYS use spacing variables
+- **NEVER** use inline styles unless absolutely necessary (e.g., dynamic JS-driven values)
+- **NEVER** use `px` values directly - use design token variables
+
+### Design Tokens Reference
+
+#### Brand Colors
+```css
+/* Primary: Gold/Yellow - Your signature brand color */
+--color-primary: #E2C33D;       /* CTAs, links, active states, primary buttons */
+--color-primary-hover: #D4B635; /* Hover state (10% darker) */
+--color-primary-light: #F5E9A8; /* Backgrounds, subtle highlights */
+--color-primary-dark: #C4A52E;  /* Dark mode, emphasis */
+
+/* Secondary: Dark Slate - Professional, grounding color */
+--color-secondary: #1F2937;     /* Secondary buttons, borders, subtle UI */
+--color-secondary-hover: #374151; /* Hover state */
+--color-secondary-light: #4B5563; /* Lighter variant */
+
+/* Semantic Colors */
+--color-success: #10B981;       /* Success states, confirmations, positive */
+--color-success-light: #D1FAE5; /* Success backgrounds */
+--color-success-dark: #059669;  /* Dark success variant */
+
+--color-warning: #F59E0B;       /* Warnings, caution, attention needed */
+--color-warning-light: #FEF3C7; /* Warning backgrounds */
+--color-warning-dark: #D97706;  /* Dark warning variant */
+
+--color-error: #EF4444;         /* Errors, destructive actions, danger */
+--color-error-light: #FEE2E2;   /* Error backgrounds */
+--color-error-dark: #DC2626;    /* Dark error variant */
+
+/* Neutral Scale */
+--color-neutral-50: #F5F7FA;    /* Page backgrounds, cards */
+--color-neutral-100: #E5E7EB;   /* Dividers, borders */
+--color-neutral-200: #D1D5DB;   /* Disabled states */
+--color-neutral-300: #9CA3AF;   /* Placeholders, subtle text */
+--color-neutral-400: #6B7280;   /* Secondary text */
+--color-neutral-500: #4B5563;   /* Body text */
+--color-neutral-600: #374151;   /* Headings */
+--color-neutral-700: #1F2937;   /* Dark headings */
+--color-neutral-800: #111827;   /* Near black */
+--color-neutral-900: #000000;   /* Pure black - primary text */
+
+/* Text Colors - Semantic Mapping */
+--text-primary: var(--color-neutral-900);    /* Main content */
+--text-secondary: var(--color-neutral-600);  /* Supporting text */
+--text-muted: var(--color-neutral-400);      /* Subtle information */
+--text-on-primary: #000000;                  /* Text on yellow background */
+--text-on-dark: #FFFFFF;                     /* Text on dark backgrounds */
+
+/* Background Colors */
+--bg-page: var(--color-neutral-50);          /* Main page background */
+--bg-card: #FFFFFF;                          /* Card/panel backgrounds */
+--bg-hover: #F9FAFB;                         /* Hover states */
+--bg-selected: #FEF3C7;                      /* Selected items (light yellow) */
+```
+
+#### Spacing Scale (8pt Grid)
+```css
+--spacing-xs: 4px;      /* Tight spacing, icons */
+--spacing-sm: 8px;      /* Small gaps, compact layouts */
+--spacing-md: 16px;     /* Default spacing */
+--spacing-lg: 24px;     /* Section spacing */
+--spacing-xl: 32px;     /* Large sections */
+--spacing-2xl: 48px;    /* Hero sections, major divisions */
+--spacing-3xl: 64px;    /* Extra large spacing */
+```
+
+#### Typography
+```css
+/* Font Families */
+--font-primary: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+--font-mono: 'Courier New', monospace;
+
+/* Font Sizes */
+--font-size-xs: 12px;   /* Captions, small labels */
+--font-size-sm: 14px;   /* Secondary text */
+--font-size-base: 16px; /* Body text (default) */
+--font-size-lg: 18px;   /* Emphasized text */
+--font-size-xl: 20px;   /* Small headings */
+--font-size-2xl: 24px;  /* Section headings */
+--font-size-3xl: 30px;  /* Page titles */
+--font-size-4xl: 36px;  /* Hero headings */
+
+/* Font Weights */
+--font-weight-normal: 400;
+--font-weight-medium: 500;
+--font-weight-semibold: 600;
+--font-weight-bold: 700;
+
+/* Line Heights */
+--line-height-tight: 1.25;  /* Headings */
+--line-height-normal: 1.5;  /* Body text */
+--line-height-relaxed: 1.75; /* Long-form content */
+```
+
+#### Border Radius
+```css
+--radius-sm: 4px;       /* Small elements, badges */
+--radius-md: 8px;       /* Buttons, inputs, cards */
+--radius-lg: 12px;      /* Large cards, modals */
+--radius-xl: 16px;      /* Hero sections */
+--radius-full: 9999px;  /* Pills, avatars */
+```
+
+#### Shadows
+```css
+--shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.05);
+--shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.1);
+--shadow-md: 0 4px 6px rgba(0, 0, 0, 0.1);
+--shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.1);
+--shadow-xl: 0 20px 25px rgba(0, 0, 0, 0.15);
+--shadow-primary: 0 4px 14px rgba(226, 195, 61, 0.3); /* Yellow glow */
+```
+
+#### Borders
+```css
+--border-width: 1px;
+--border-width-thick: 2px;
+--border-color: var(--color-neutral-200);
+--border-color-dark: var(--color-neutral-300);
+```
+
+#### Transitions
+```css
+--transition-fast: 150ms ease;
+--transition-base: 200ms ease;
+--transition-slow: 300ms ease;
+```
+
+## Color Usage Guidelines
+
+### Primary Yellow (#E2C33D)
+**Use For:**
+- Primary action buttons
+- Active navigation items
+- Links and CTAs
+- Important badges/labels
+- Progress indicators
+- Selected states
+
+**⚠️ Accessibility Warning:**
+Yellow on white has poor contrast. ALWAYS use dark text on yellow:
+```css
+.btn-primary {
+  background: var(--color-primary);
+  color: var(--text-on-primary); /* Black text */
+  font-weight: var(--font-weight-semibold); /* Improve readability */
+}
+```
+
+### Secondary Dark Slate (#1F2937)
+**Use For:**
+- Secondary buttons
+- Headers/footers
+- Text on light backgrounds
+- Borders for emphasis
+- Alternative UI elements
+
+### Color Combinations That Work
+
+#### ✅ High Contrast (Accessible)
+```css
+/* Yellow + Black */
+background: var(--color-primary);
+color: var(--color-neutral-900);
+
+/* Dark Slate + White */
+background: var(--color-secondary);
+color: white;
+
+/* White + Black text */
+background: white;
+color: var(--color-neutral-900);
+```
+
+#### ⚠️ Avoid These Combinations
+```css
+/* Low contrast - fails WCAG */
+❌ Yellow on white: color: #E2C33D; background: white;
+❌ Yellow on light gray: color: #E2C33D; background: #F5F7FA;
+❌ Light yellow on white: color: #F5E9A8; background: white;
+```
+
+## Component Examples
+
+### ✅ CORRECT - Primary Button
+```css
+.btn-primary {
+  background: var(--color-primary);
+  color: var(--text-on-primary);
+  padding: var(--spacing-sm) var(--spacing-md);
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-semibold);
+  border: none;
+  box-shadow: var(--shadow-sm);
+  transition: all var(--transition-base);
+}
+
+.btn-primary:hover {
+  background: var(--color-primary-hover);
+  box-shadow: var(--shadow-md);
+  transform: translateY(-1px);
+}
+
+.btn-primary:active {
+  transform: translateY(0);
+  box-shadow: var(--shadow-xs);
+}
+
+.btn-primary:focus {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+```
+
+### ✅ CORRECT - Secondary Button
+```css
+.btn-secondary {
+  background: var(--color-secondary);
+  color: var(--text-on-dark);
+  padding: var(--spacing-sm) var(--spacing-md);
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-medium);
+  border: none;
+  transition: all var(--transition-base);
+}
+
+.btn-secondary:hover {
+  background: var(--color-secondary-hover);
+}
+```
+
+### ✅ CORRECT - Outline Button
+```css
+.btn-outline {
+  background: transparent;
+  color: var(--color-primary);
+  padding: var(--spacing-sm) var(--spacing-md);
+  border: var(--border-width-thick) solid var(--color-primary);
+  border-radius: var(--radius-md);
+  font-weight: var(--font-weight-medium);
+  transition: all var(--transition-base);
+}
+
+.btn-outline:hover {
+  background: var(--color-primary);
+  color: var(--text-on-primary);
+}
+```
+
+### ✅ CORRECT - Card Component
+```css
+.card {
+  background: var(--bg-card);
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-lg);
+  box-shadow: var(--shadow-md);
+  border: 1px solid var(--border-color);
+}
+
+.card-header {
+  font-size: var(--font-size-xl);
+  font-weight: var(--font-weight-semibold);
+  color: var(--text-primary);
+  margin-bottom: var(--spacing-md);
+  padding-bottom: var(--spacing-sm);
+  border-bottom: 1px solid var(--border-color);
+}
+
+.card-body {
+  color: var(--text-secondary);
+  line-height: var(--line-height-normal);
+}
+
+.card:hover {
+  box-shadow: var(--shadow-lg);
+  border-color: var(--color-primary);
+}
+```
+
+### ✅ CORRECT - Alert/Badge Components
+```css
+.badge-primary {
+  background: var(--color-primary);
+  color: var(--text-on-primary);
+  padding: var(--spacing-xs) var(--spacing-sm);
+  border-radius: var(--radius-full);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  display: inline-block;
+}
+
+.alert-success {
+  background: var(--color-success-light);
+  color: var(--color-success-dark);
+  padding: var(--spacing-md);
+  border-radius: var(--radius-md);
+  border-left: 4px solid var(--color-success);
+}
+
+.alert-warning {
+  background: var(--color-warning-light);
+  color: var(--color-warning-dark);
+  padding: var(--spacing-md);
+  border-radius: var(--radius-md);
+  border-left: 4px solid var(--color-warning);
+}
+
+.alert-error {
+  background: var(--color-error-light);
+  color: var(--color-error-dark);
+  padding: var(--spacing-md);
+  border-radius: var(--radius-md);
+  border-left: 4px solid var(--color-error);
+}
+```
+
+### ✅ CORRECT - Form Input
+```css
+.input-field {
+  padding: var(--spacing-sm) var(--spacing-md);
+  border: var(--border-width) solid var(--border-color);
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-base);
+  color: var(--text-primary);
+  background: var(--bg-card);
+  transition: all var(--transition-fast);
+}
+
+.input-field:focus {
+  border-color: var(--color-primary);
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+  box-shadow: var(--shadow-primary);
+}
+
+.input-field::placeholder {
+  color: var(--text-muted);
+}
+
+.input-field:disabled {
+  background: var(--color-neutral-100);
+  color: var(--text-muted);
+  cursor: not-allowed;
+}
+
+.input-error {
+  border-color: var(--color-error);
+}
+
+.input-error:focus {
+  outline-color: var(--color-error);
+}
+```
+
+### ✅ CORRECT - Navigation
+```css
+.nav-link {
+  padding: var(--spacing-sm) var(--spacing-md);
+  color: var(--text-secondary);
+  text-decoration: none;
+  border-radius: var(--radius-md);
+  transition: all var(--transition-fast);
+  font-weight: var(--font-weight-medium);
+}
+
+.nav-link:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+.nav-link.active {
+  background: var(--color-primary);
+  color: var(--text-on-primary);
+  font-weight: var(--font-weight-semibold);
+}
+```
+
+### ✅ CORRECT - Status Indicators
+```css
+.status-badge {
+  padding: var(--spacing-xs) var(--spacing-sm);
+  border-radius: var(--radius-full);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.status-active {
+  background: var(--color-success-light);
+  color: var(--color-success-dark);
+}
+
+.status-pending {
+  background: var(--color-warning-light);
+  color: var(--color-warning-dark);
+}
+
+.status-inactive {
+  background: var(--color-neutral-100);
+  color: var(--color-neutral-600);
+}
+```
+
+## ❌ WRONG Examples - DO NOT DO THIS
+```css
+/* WRONG - Hardcoded colors */
+.btn {
+  background: #E2C33D;  /* NO! Use var(--color-primary) */
+  color: #000000;       /* NO! Use var(--text-on-primary) */
+}
+
+/* WRONG - Hardcoded spacing */
+.card {
+  padding: 24px;        /* NO! Use var(--spacing-lg) */
+  margin: 16px;         /* NO! Use var(--spacing-md) */
+}
+
+/* WRONG - Poor contrast (accessibility fail) */
+.text {
+  color: #E2C33D;       /* Yellow text on white = hard to read */
+  background: white;
+}
+
+/* WRONG - Magic numbers */
+.element {
+  border-radius: 10px;  /* NO! Use var(--radius-md) */
+  font-size: 15px;      /* NO! Use var(--font-size-base) */
+}
+
+/* WRONG - Inline styles */
+<div style="color: #E2C33D; padding: 16px;">  /* NEVER! */
+```
+
+## Dark Mode Support (Optional Future Enhancement)
+```css
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg-page: #111827;
+    --bg-card: #1F2937;
+    --text-primary: #FFFFFF;
+    --text-secondary: #D1D5DB;
+    --border-color: #374151;
+    
+    /* Keep primary yellow visible */
+    --color-primary: #E2C33D;
+    --text-on-primary: #000000;
+  }
+}
+```
+
+## Accessibility Checklist
+
+When using these colors:
+- ✅ Text on yellow background MUST be black/dark
+- ✅ Yellow should NOT be used for body text
+- ✅ All interactive elements need focus states
+- ✅ Contrast ratio minimum 4.5:1 for normal text
+- ✅ Contrast ratio minimum 3:1 for large text (18px+)
+- ✅ Don't rely on color alone - use icons/text too
+
+## Common Patterns
+
+### Hero Section with Yellow Accent
+```css
+.hero {
+  background: var(--color-secondary);
+  color: var(--text-on-dark);
+  padding: var(--spacing-3xl) var(--spacing-lg);
+}
+
+.hero-title {
+  font-size: var(--font-size-4xl);
+  font-weight: var(--font-weight-bold);
+  margin-bottom: var(--spacing-md);
+}
+
+.hero-highlight {
+  color: var(--color-primary);
+  /* Yellow pops beautifully against dark background */
+}
+```
+
+### Loading States
+```css
+.loading {
+  opacity: 0.6;
+  pointer-events: none;
+}
+
+.spinner {
+  border: 3px solid var(--color-neutral-200);
+  border-top-color: var(--color-primary);
+  border-radius: var(--radius-full);
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+```
+
+## Remember
+
+1. **Yellow is powerful but demanding** - Use it for emphasis, not everywhere
+2. **Always check contrast** - Yellow + white/light = accessibility fail
+3. **Dark slate grounds the design** - Use it to balance the bright yellow
+4. **Consistency is key** - Use design tokens, not hardcoded values
