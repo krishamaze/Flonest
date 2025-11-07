@@ -7,6 +7,7 @@ import { Select } from '../ui/Select'
 import { isMobileDevice } from '../../lib/deviceDetection'
 import { IdentifierInput } from '../customers/IdentifierInput'
 import { CustomerResultCard } from '../customers/CustomerResultCard'
+import { Card, CardContent } from '../ui/Card'
 import type { InvoiceFormData, InvoiceItemFormData, Product, CustomerWithMaster } from '../../types'
 import { lookupOrCreateCustomer, checkCustomerExists, searchCustomersByIdentifier } from '../../lib/api/customers'
 import { getAllProducts } from '../../lib/api/products'
@@ -14,6 +15,7 @@ import { createInvoice } from '../../lib/api/invoices'
 import { calculateGST, extractStateCodeFromGSTIN, getGSTRate } from '../../lib/utils/gstCalculation'
 import { ChevronLeftIcon, ChevronRightIcon, PlusIcon, TrashIcon } from '@heroicons/react/24/outline'
 import type { IdentifierType } from '../../lib/utils/identifierValidation'
+import { detectIdentifierType, validateMobile, validateGSTIN, normalizeIdentifier } from '../../lib/utils/identifierValidation'
 
 interface InvoiceFormProps {
   isOpen: boolean
@@ -41,14 +43,17 @@ export function InvoiceForm({
   const [currentStep, setCurrentStep] = useState<Step>(1)
   const [identifier, setIdentifier] = useState('')
   const [identifierValid, setIdentifierValid] = useState(false)
-  const [, setIdentifierType] = useState<IdentifierType>('invalid')
+  const [identifierType, setIdentifierType] = useState<IdentifierType>('invalid')
   const [searching, setSearching] = useState(false)
+  const [lookupPerformed, setLookupPerformed] = useState(false)
   const [selectedCustomer, setSelectedCustomer] = useState<CustomerWithMaster | null>(null)
   const [showMasterForm, setShowMasterForm] = useState(false)
-  const [masterFormData, setMasterFormData] = useState<{ legal_name: string; address: string; email: string }>({
-    legal_name: '',
+  const [showAddNewForm, setShowAddNewForm] = useState(false)
+  const [masterFormData, setMasterFormData] = useState<{ customer_name: string; address: string; email: string; additionalIdentifier: string }>({
+    customer_name: '',
     address: '',
     email: '',
+    additionalIdentifier: '',
   })
   const [products, setProducts] = useState<Product[]>([])
   const [loadingProducts, setLoadingProducts] = useState(false)
@@ -75,9 +80,12 @@ export function InvoiceForm({
       setCurrentStep(1)
       setIdentifier('')
       setIdentifierValid(false)
+      setIdentifierType('invalid')
+      setLookupPerformed(false)
       setSelectedCustomer(null)
       setShowMasterForm(false)
-      setMasterFormData({ legal_name: '', address: '', email: '' })
+      setShowAddNewForm(false)
+      setMasterFormData({ customer_name: '', address: '', email: '', additionalIdentifier: '' })
       setItems([])
       setErrors({})
     }
@@ -93,6 +101,8 @@ export function InvoiceForm({
     setSearching(true)
     setErrors({})
     setShowMasterForm(false)
+    setShowAddNewForm(false)
+    setLookupPerformed(false)
 
     try {
       // First, check if org customer exists (master + org link)
@@ -115,8 +125,8 @@ export function InvoiceForm({
           master_customer: result.master,
         })
       } else {
-        // Master doesn't exist - show form to collect details
-        setShowMasterForm(true)
+        // Master doesn't exist - show "Add New Customer" option
+        // Don't auto-show form, let user click the card
       }
     } catch (error) {
       console.error('Error looking up customer:', error)
@@ -125,6 +135,7 @@ export function InvoiceForm({
       })
     } finally {
       setSearching(false)
+      setLookupPerformed(true)
     }
   }
 
@@ -132,12 +143,32 @@ export function InvoiceForm({
     // Validate form
     const formErrors: Record<string, string> = {}
     
-    if (!masterFormData.legal_name.trim() || masterFormData.legal_name.trim().length < 2) {
-      formErrors.legal_name = 'Legal name is required and must be at least 2 characters'
+    if (!masterFormData.customer_name.trim() || masterFormData.customer_name.trim().length < 2) {
+      formErrors.customer_name = 'Customer name is required and must be at least 2 characters'
     }
     
     if (masterFormData.email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(masterFormData.email.trim())) {
       formErrors.email = 'Please enter a valid email address'
+    }
+
+    // Validate additional identifier if provided
+    if (masterFormData.additionalIdentifier.trim()) {
+      const additionalType = identifierType === 'mobile' ? 'gstin' : 'mobile'
+      const detected = detectIdentifierType(masterFormData.additionalIdentifier.trim())
+      if (detected !== additionalType) {
+        formErrors.additionalIdentifier = additionalType === 'mobile' 
+          ? 'Please enter a valid 10-digit mobile number'
+          : 'Please enter a valid 15-character GSTIN'
+      } else {
+        const isValid = additionalType === 'mobile' 
+          ? validateMobile(masterFormData.additionalIdentifier.trim())
+          : validateGSTIN(masterFormData.additionalIdentifier.trim())
+        if (!isValid) {
+          formErrors.additionalIdentifier = additionalType === 'mobile'
+            ? 'Mobile must be exactly 10 digits starting with 6, 7, 8, or 9'
+            : 'Invalid GSTIN format'
+        }
+      }
     }
     
     if (Object.keys(formErrors).length > 0) {
@@ -149,22 +180,37 @@ export function InvoiceForm({
     setErrors({})
 
     try {
+      const additionalNormalized = masterFormData.additionalIdentifier.trim()
+        ? normalizeIdentifier(masterFormData.additionalIdentifier.trim(), identifierType === 'mobile' ? 'gstin' : 'mobile')
+        : undefined
+
+      const masterData: any = {
+        legal_name: masterFormData.customer_name.trim(),
+        address: masterFormData.address.trim() || undefined,
+        email: masterFormData.email.trim() || undefined,
+      }
+
+      if (identifierType === 'mobile' && additionalNormalized) {
+        masterData.gstin = additionalNormalized
+      } else if (identifierType === 'gstin' && additionalNormalized) {
+        masterData.mobile = additionalNormalized
+      }
+
       const result = await lookupOrCreateCustomer(
         identifier,
         orgId,
         userId,
-        {
-          legal_name: masterFormData.legal_name.trim(),
-          address: masterFormData.address.trim() || undefined,
-          email: masterFormData.email.trim() || undefined,
-        }
+        masterData
       )
       setSelectedCustomer({
         ...result.customer,
         master_customer: result.master,
       })
       setShowMasterForm(false)
-      setMasterFormData({ legal_name: '', address: '', email: '' })
+      setShowAddNewForm(false)
+      setMasterFormData({ customer_name: '', address: '', email: '', additionalIdentifier: '' })
+      // Auto-advance to Step 2
+      setCurrentStep(2)
     } catch (error) {
       console.error('Error creating customer:', error)
       setErrors({
@@ -308,10 +354,11 @@ export function InvoiceForm({
                 setIdentifierValid(isValid)
                 setIdentifierType(type)
               }}
+              autoFocus={isOpen && currentStep === 1}
               disabled={isSubmitting || searching}
             />
 
-            {identifierValid && !selectedCustomer && !showMasterForm && (
+            {identifierValid && !selectedCustomer && !showMasterForm && !showAddNewForm && (
               <div className="mt-4">
                 <Button
                   type="button"
@@ -326,34 +373,90 @@ export function InvoiceForm({
               </div>
             )}
 
-            {selectedCustomer && (
+            {/* Horizontal swipeable customer selection area - show after lookup completes */}
+            {lookupPerformed && !searching && identifierValid && (
               <div className="mt-4">
-                <CustomerResultCard
-                  customer={selectedCustomer}
-                  onSelect={() => setCurrentStep(2)}
-                />
+                <div 
+                  className="flex gap-md overflow-x-auto pb-sm -mx-md px-md"
+                  style={{
+                    scrollSnapType: 'x mandatory',
+                    WebkitOverflowScrolling: 'touch',
+                    scrollbarWidth: 'thin',
+                  }}
+                >
+                  {selectedCustomer && (
+                    <div className="flex-shrink-0" style={{ minWidth: '280px', scrollSnapAlign: 'start' }}>
+                      <CustomerResultCard
+                        customer={selectedCustomer}
+                        onSelect={() => setCurrentStep(2)}
+                      />
+                    </div>
+                  )}
+                  
+                  {/* Add New Customer Card */}
+                  <div className="flex-shrink-0" style={{ minWidth: '280px', scrollSnapAlign: 'start' }}>
+                    <Card 
+                      className="border-2 shadow-sm h-full"
+                      style={{ borderColor: 'var(--color-success)' }}
+                      onClick={() => {
+                        setShowAddNewForm(true)
+                        setShowMasterForm(false)
+                      }}
+                    >
+                      <CardContent className="p-md flex flex-col items-center justify-center min-h-[200px] text-center">
+                        <div className="mb-md">
+                          <div className="w-12 h-12 rounded-full bg-success-light flex items-center justify-center mx-auto mb-sm">
+                            <PlusIcon className="h-6 w-6 text-success" />
+                          </div>
+                        </div>
+                        <h3 className="text-base font-semibold text-primary-text mb-xs">
+                          Add New Customer
+                        </h3>
+                        <p className="text-xs text-secondary-text">
+                          Create a new customer record
+                        </p>
+                      </CardContent>
+                    </Card>
+                  </div>
+                </div>
               </div>
             )}
 
-            {showMasterForm && !selectedCustomer && (
+            {/* Add New Customer Form */}
+            {showAddNewForm && (
               <div className="mt-md space-y-md p-md border border-neutral-200 rounded-md bg-neutral-50">
-                <h4 className="text-sm font-semibold text-primary-text">Customer Not Found</h4>
+                <h4 className="text-sm font-semibold text-primary-text">Add New Customer</h4>
                 <p className="text-xs text-secondary-text">
                   Please provide customer details to create a new customer record.
                 </p>
 
                 <Input
-                  label="Legal Name"
+                  label="Customer Name"
                   type="text"
-                  value={masterFormData.legal_name}
+                  value={masterFormData.customer_name}
                   onChange={(e) =>
-                    setMasterFormData({ ...masterFormData, legal_name: e.target.value })
+                    setMasterFormData({ ...masterFormData, customer_name: e.target.value })
                   }
                   disabled={isSubmitting || searching}
                   required
-                  placeholder="Enter legal business name"
-                  error={errors.legal_name}
+                  placeholder="Enter customer name"
+                  error={errors.customer_name}
                 />
+
+                {/* Dynamic Identifier Field */}
+                {identifierType !== 'invalid' && (
+                  <Input
+                    label={identifierType === 'mobile' ? 'GSTIN (Optional)' : 'Mobile Number (Optional)'}
+                    type="text"
+                    value={masterFormData.additionalIdentifier}
+                    onChange={(e) =>
+                      setMasterFormData({ ...masterFormData, additionalIdentifier: e.target.value })
+                    }
+                    disabled={isSubmitting || searching}
+                    placeholder={identifierType === 'mobile' ? 'Enter 15-character GSTIN' : 'Enter 10-digit mobile number'}
+                    error={errors.additionalIdentifier}
+                  />
+                )}
 
                 <Input
                   label="Email"
@@ -388,8 +491,8 @@ export function InvoiceForm({
                     type="button"
                     variant="secondary"
                     onClick={() => {
-                      setShowMasterForm(false)
-                      setMasterFormData({ legal_name: '', address: '', email: '' })
+                      setShowAddNewForm(false)
+                      setMasterFormData({ customer_name: '', address: '', email: '', additionalIdentifier: '' })
                       setErrors({})
                     }}
                     disabled={isSubmitting || searching}

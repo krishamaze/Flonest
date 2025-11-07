@@ -31,6 +31,8 @@ export async function lookupOrCreateCustomer(
     legal_name?: string
     address?: string
     email?: string
+    mobile?: string
+    gstin?: string
   }
 ): Promise<LookupResult> {
   // 1. Detect type and normalize
@@ -74,9 +76,13 @@ export async function lookupOrCreateCustomer(
   // 3. If not found, create via RPC
   let masterId: string
   if (!master) {
+    // Determine which identifiers to pass
+    const p_mobile = type === 'mobile' ? normalized : (masterData?.mobile || null)
+    const p_gstin = type === 'gstin' ? normalized : (masterData?.gstin || null)
+    
     const { data: rpcData, error: rpcError } = await supabase.rpc('upsert_master_customer' as any, {
-      p_mobile: type === 'mobile' ? normalized : null,
-      p_gstin: type === 'gstin' ? normalized : null,
+      p_mobile,
+      p_gstin,
       p_legal_name: masterData?.legal_name || 'Customer',
       p_address: masterData?.address || null,
       p_email: masterData?.email || null,
@@ -106,6 +112,32 @@ export async function lookupOrCreateCustomer(
     master = newMaster
   } else {
     masterId = master.id
+    // If master exists and we have additional identifiers, update via RPC
+    if (masterData?.mobile || masterData?.gstin) {
+      const p_mobile = type === 'mobile' ? normalized : (masterData?.mobile || master.mobile || null)
+      const p_gstin = type === 'gstin' ? normalized : (masterData?.gstin || master.gstin || null)
+      
+      // Only update if we're adding new identifiers
+      if ((type === 'mobile' && !master.gstin && masterData?.gstin) || 
+          (type === 'gstin' && !master.mobile && masterData?.mobile)) {
+        await supabase.rpc('upsert_master_customer' as any, {
+          p_mobile,
+          p_gstin,
+          p_legal_name: masterData?.legal_name || master.legal_name || 'Customer',
+          p_address: masterData?.address || master.address || null,
+          p_email: masterData?.email || master.email || null,
+        })
+        // Refetch to get updated data
+        const { data: updatedMaster } = await supabase
+          .from('master_customers')
+          .select('*')
+          .eq('id', masterId)
+          .single()
+        if (updatedMaster) {
+          master = updatedMaster
+        }
+      }
+    }
   }
 
   // 4. Ensure org link exists

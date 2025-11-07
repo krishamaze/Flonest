@@ -14,6 +14,7 @@ interface IdentifierInputProps {
   onValidationChange?: (isValid: boolean, type: IdentifierType) => void
   disabled?: boolean
   placeholder?: string
+  autoFocus?: boolean
 }
 
 export function IdentifierInput({
@@ -21,7 +22,8 @@ export function IdentifierInput({
   onChange,
   onValidationChange,
   disabled = false,
-  placeholder = 'Enter Mobile (10-digit) or GSTIN',
+  placeholder = 'Enter Mobile No (10 digits) or GSTIN (15 chars)',
+  autoFocus = false,
 }: IdentifierInputProps) {
   const [error, setError] = useState<string | null>(null)
   const [type, setType] = useState<IdentifierType>('invalid')
@@ -96,8 +98,13 @@ export function IdentifierInput({
         placeholder={placeholder}
         type="text"
         required
-        inputMode="numeric"
+        autoFocus={autoFocus}
       />
+      {!value && (
+        <p className="mt-1 text-xs text-secondary-text" role="status">
+          Enter Mobile No (10 digits) or GSTIN (15 chars)
+        </p>
+      )}
       {!error && type !== 'invalid' && value && (
         <p className="mt-1 text-xs text-green-600" role="status">{getHelperText()}</p>
       )}
