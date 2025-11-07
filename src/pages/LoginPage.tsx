@@ -56,7 +56,7 @@ export function LoginPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-bg-page px-md py-3xl">
+    <div className="min-h-screen flex items-center justify-center bg-bg-page px-md py-md safe-top safe-bottom">
       <div className="w-full max-w-md">
         {/* Header */}
         <div className="mb-8 text-center">
@@ -73,12 +73,12 @@ export function LoginPage() {
             {/* Error Message */}
             {error && (
               <div 
-                className="rounded-lg bg-red-50 border border-red-200 p-3"
+                className="rounded-lg bg-error-light border border-error p-md"
                 role="alert"
                 id="login-error"
                 aria-live="polite"
               >
-                <p className="text-sm text-red-800">{error}</p>
+                <p className="text-sm text-error-dark">{error}</p>
               </div>
             )}
 

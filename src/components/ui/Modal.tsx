@@ -16,7 +16,9 @@ export function Modal({ isOpen, onClose, title, children, className = '' }: Moda
   useEffect(() => {
     if (isOpen) {
       // Prevent body scroll when modal is open
+      const scrollbarWidth = window.innerWidth - document.documentElement.clientWidth
       document.body.style.overflow = 'hidden'
+      document.body.style.paddingRight = `${scrollbarWidth}px`
       // Store previous focus
       previousFocusRef.current = document.activeElement as HTMLElement
       // Focus trap - focus first focusable element
@@ -28,12 +30,14 @@ export function Modal({ isOpen, onClose, title, children, className = '' }: Moda
       }, 100)
     } else {
       document.body.style.overflow = ''
+      document.body.style.paddingRight = ''
       // Restore previous focus
       previousFocusRef.current?.focus()
     }
 
     return () => {
       document.body.style.overflow = ''
+      document.body.style.paddingRight = ''
     }
   }, [isOpen])
 
@@ -82,14 +86,14 @@ export function Modal({ isOpen, onClose, title, children, className = '' }: Moda
 
   return (
     <div 
-      className="fixed inset-0 z-50 flex items-center justify-center p-md"
+      className="fixed inset-0 z-[100] flex items-center justify-center p-md safe-top safe-bottom"
       role="dialog"
       aria-modal="true"
       aria-labelledby={title ? 'modal-title' : undefined}
     >
       {/* Backdrop */}
       <div
-        className="absolute inset-0 bg-black/50 transition-opacity duration-300"
+        className="fixed inset-0 bg-black/50 transition-opacity duration-300 z-[100]"
         onClick={onClose}
         aria-hidden="true"
       />
@@ -97,12 +101,12 @@ export function Modal({ isOpen, onClose, title, children, className = '' }: Moda
       {/* Modal */}
       <div
         ref={modalRef}
-        className={`relative z-10 w-full max-w-lg rounded-lg bg-bg-card shadow-xl transition-all duration-300 ${className}`}
+        className={`relative z-[101] w-full max-w-lg max-h-[90vh] rounded-lg bg-bg-card shadow-xl transition-all duration-300 flex flex-col ${className}`}
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
         {title && (
-          <div className="flex items-center justify-between border-b border-neutral-200 px-lg py-md">
+          <div className="flex items-center justify-between border-b border-neutral-200 px-lg py-md flex-shrink-0">
             <h2 id="modal-title" className="text-xl font-semibold text-primary-text">{title}</h2>
             <button
               onClick={onClose}
@@ -115,7 +119,7 @@ export function Modal({ isOpen, onClose, title, children, className = '' }: Moda
         )}
 
         {/* Content */}
-        <div className="px-lg py-md">{children}</div>
+        <div className="px-lg py-md overflow-y-auto flex-1 min-h-0">{children}</div>
       </div>
     </div>
   )

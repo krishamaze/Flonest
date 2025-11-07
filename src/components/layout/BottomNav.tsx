@@ -34,7 +34,7 @@ const navItems = [
 export function BottomNav() {
   return (
     <nav 
-      className="fixed bottom-0 left-0 right-0 z-50 border-t border-neutral-200 bg-bg-card shadow-sm safe-bottom"
+      className="fixed bottom-0 left-0 right-0 z-40 border-t border-neutral-200 bg-bg-card shadow-sm safe-bottom"
       role="navigation"
       aria-label="Main navigation"
     >

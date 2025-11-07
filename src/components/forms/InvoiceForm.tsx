@@ -425,7 +425,7 @@ export function InvoiceForm({
             <h3 className="text-lg font-semibold text-primary-text mb-md">Step 2: Add Products</h3>
 
             {items.length === 0 ? (
-              <div className="text-center py-2xl border-2 border-dashed border-neutral-300 rounded-md">
+              <div className="text-center py-lg border-2 border-dashed border-neutral-300 rounded-md">
                 <p className="text-sm text-secondary-text mb-md">No items added yet</p>
                 <Button type="button" variant="primary" onClick={handleAddItem}>
                   <PlusIcon className="h-4 w-4 mr-2" />

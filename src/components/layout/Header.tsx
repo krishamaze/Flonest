@@ -6,7 +6,7 @@ export function Header() {
   const { user, signOut } = useAuth()
 
   return (
-    <header className="sticky top-0 z-50 border-b border-neutral-200 bg-bg-card safe-top">
+    <header className="sticky top-0 z-40 border-b border-neutral-200 bg-bg-card safe-top">
       <div className="mx-auto flex h-14 items-center justify-between px-md">
         <div className="flex items-center gap-md">
           {/* Logo: 32px × 32px */}
@@ -25,7 +25,13 @@ export function Header() {
           <Button
             variant="ghost"
             size="sm"
-            onClick={() => signOut()}
+            onClick={async () => {
+              try {
+                await signOut()
+              } catch (error) {
+                console.error('Error signing out:', error)
+              }
+            }}
             className="flex items-center gap-sm -mr-sm"
             aria-label="Sign out"
           >

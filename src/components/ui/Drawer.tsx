@@ -15,7 +15,10 @@ export function Drawer({ isOpen, onClose, title, children, className = '' }: Dra
 
   useEffect(() => {
     if (isOpen) {
+      // Prevent body scroll when drawer is open
+      const scrollbarWidth = window.innerWidth - document.documentElement.clientWidth
       document.body.style.overflow = 'hidden'
+      document.body.style.paddingRight = `${scrollbarWidth}px`
       // Store previous focus
       previousFocusRef.current = document.activeElement as HTMLElement
       // Focus trap - focus first focusable element
@@ -27,12 +30,14 @@ export function Drawer({ isOpen, onClose, title, children, className = '' }: Dra
       }, 100)
     } else {
       document.body.style.overflow = ''
+      document.body.style.paddingRight = ''
       // Restore previous focus
       previousFocusRef.current?.focus()
     }
 
     return () => {
       document.body.style.overflow = ''
+      document.body.style.paddingRight = ''
     }
   }, [isOpen])
 
@@ -82,7 +87,7 @@ export function Drawer({ isOpen, onClose, title, children, className = '' }: Dra
       {/* Backdrop */}
       {isOpen && (
         <div
-          className="fixed inset-0 z-40 bg-black/50 transition-opacity duration-300"
+          className="fixed inset-0 z-[100] bg-black/50 transition-opacity duration-300"
           onClick={onClose}
           aria-hidden="true"
         />
@@ -90,7 +95,7 @@ export function Drawer({ isOpen, onClose, title, children, className = '' }: Dra
 
       {/* Drawer */}
       <div
-        className={`fixed bottom-0 left-0 right-0 z-50 transform transition-transform duration-300 ease-out safe-bottom ${
+        className={`fixed bottom-0 left-0 right-0 z-[101] transform transition-transform duration-300 ease-out safe-bottom ${
           isOpen ? 'translate-y-0' : 'translate-y-full'
         } ${className}`}
         role="dialog"
