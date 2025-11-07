@@ -121,6 +121,10 @@ body {
   padding-bottom: env(safe-area-inset-bottom);
 }
 
+.pb-safe {
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
 /* Touch Target Minimums */
 .touch-target {
   min-height: var(--touch-target-min);
