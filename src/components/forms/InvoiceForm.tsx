@@ -8,12 +8,12 @@ import { isMobileDevice } from '../../lib/deviceDetection'
 import { IdentifierInput } from '../customers/IdentifierInput'
 import { CustomerResultCard } from '../customers/CustomerResultCard'
 import { Card, CardContent } from '../ui/Card'
-import type { InvoiceFormData, InvoiceItemFormData, Product, CustomerWithMaster, Org, ProductWithMaster } from '../../types'
+import type { InvoiceFormData, InvoiceItemFormData, CustomerWithMaster, Org, ProductWithMaster } from '../../types'
 import { lookupOrCreateCustomer, checkCustomerExists, searchCustomersByIdentifier } from '../../lib/api/customers'
 import { getAllProducts } from '../../lib/api/products'
 import { createInvoice } from '../../lib/api/invoices'
 import { calculateItemGST, extractStateCodeFromGSTIN, getCustomerStateCode } from '../../lib/utils/gstCalculation'
-import { isOrgGstEnabled, getInvoiceTitle } from '../../lib/utils/orgGst'
+import { isOrgGstEnabled } from '../../lib/utils/orgGst'
 import { ChevronLeftIcon, ChevronRightIcon, PlusIcon, TrashIcon } from '@heroicons/react/24/outline'
 import type { IdentifierType } from '../../lib/utils/identifierValidation'
 import { detectIdentifierType, validateMobile, validateGSTIN, normalizeIdentifier } from '../../lib/utils/identifierValidation'
@@ -65,7 +65,7 @@ export function InvoiceForm({
     if (isOpen && orgId) {
       setLoadingProducts(true)
       getAllProducts(orgId, { status: 'active' })
-        .then(setProducts)
+        .then((products) => setProducts(products as ProductWithMaster[]))
         .catch((error) => {
           console.error('Error loading products:', error)
         })
