@@ -84,6 +84,9 @@ export interface InvoiceItemFormData {
   line_total: number
   serials?: string[]
   serial_tracked?: boolean
+  invalid_serials?: string[]
+  validation_errors?: string[]
+  stock_available?: number
 }
 
 export interface CustomerWithMaster extends Customer {

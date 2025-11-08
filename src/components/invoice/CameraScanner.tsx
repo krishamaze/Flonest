@@ -34,11 +34,62 @@ export function CameraScanner({
   const containerRef = useRef<HTMLDivElement>(null)
   const [isScanning, setIsScanning] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [errorType, setErrorType] = useState<'permission-denied' | 'system-blocked' | 'camera-in-use' | 'no-camera' | 'not-supported' | 'unknown' | null>(null)
   const [success, setSuccess] = useState(false)
   const [availableCameras, setAvailableCameras] = useState<CameraDevice[]>([])
   const [currentCameraIndex, setCurrentCameraIndex] = useState(0)
   const detectedCodesRef = useRef<Set<string>>(new Set())
   const processTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+
+  // Android detection utility
+  const isAndroid = () => /Android/i.test(navigator.userAgent)
+
+  // Parse camera errors to categorize them
+  const parseCameraError = (error: unknown): { type: 'permission-denied' | 'system-blocked' | 'camera-in-use' | 'no-camera' | 'not-supported' | 'unknown', message: string } => {
+    if (error instanceof DOMException) {
+      switch (error.name) {
+        case 'NotAllowedError':
+          return { 
+            type: 'permission-denied',
+            message: 'Camera permission denied. Tap "Try Again" to grant permission.'
+          }
+        case 'NotReadableError':
+          const android = isAndroid()
+          return {
+            type: android ? 'system-blocked' : 'camera-in-use',
+            message: android 
+              ? 'Camera blocked by Android. Tap "Try Again" to grant system permission, or check Settings > Apps > [App] > Permissions > Camera'
+              : 'Camera is in use by another app. Close other apps and try again.'
+          }
+        case 'NotFoundError':
+          return { type: 'no-camera', message: 'No camera found on this device.' }
+        case 'NotSupportedError':
+          return { type: 'not-supported', message: 'Camera not supported in this browser.' }
+        default:
+          return { type: 'unknown', message: 'Failed to access camera. Please try again.' }
+      }
+    }
+    // Check for error messages that might indicate permission issues
+    if (error instanceof Error) {
+      const errorMessage = error.message.toLowerCase()
+      if (errorMessage.includes('permission') || errorMessage.includes('not allowed')) {
+        return {
+          type: 'permission-denied',
+          message: 'Camera permission denied. Tap "Try Again" to grant permission.'
+        }
+      }
+      if (errorMessage.includes('not readable') || errorMessage.includes('could not start')) {
+        const android = isAndroid()
+        return {
+          type: android ? 'system-blocked' : 'camera-in-use',
+          message: android 
+            ? 'Camera blocked by Android. Tap "Try Again" to grant system permission, or check Settings > Apps > [App] > Permissions > Camera'
+            : 'Camera is in use by another app. Close other apps and try again.'
+        }
+      }
+    }
+    return { type: 'unknown', message: 'Failed to access camera. Please try again.' }
+  }
 
   // Initialize scanner when opened
   useEffect(() => {
@@ -71,13 +122,28 @@ export function CameraScanner({
   const initializeScanner = async () => {
     try {
       setError(null)
+      setErrorType(null)
       setSuccess(false)
       detectedCodesRef.current.clear()
 
       // Get available cameras
-      const cameras = await Html5Qrcode.getCameras()
+      let cameras: CameraDevice[] = []
+      try {
+        cameras = await Html5Qrcode.getCameras()
+      } catch (error) {
+        // If getCameras fails, it's likely a permission issue
+        const parsedError = parseCameraError(error)
+        setError(parsedError.message)
+        setErrorType(parsedError.type)
+        setIsScanning(false)
+        return
+      }
+
       if (cameras.length === 0) {
-        setError('No cameras found. Please grant camera permission.')
+        const parsedError = parseCameraError(new DOMException('No cameras found', 'NotFoundError'))
+        setError(parsedError.message)
+        setErrorType(parsedError.type)
+        setIsScanning(false)
         return
       }
 
@@ -118,13 +184,14 @@ export function CameraScanner({
       )
 
       setIsScanning(true)
+      setError(null)
+      setErrorType(null)
     } catch (error) {
       console.error('Error initializing scanner:', error)
-      setError(
-        error instanceof Error
-          ? error.message
-          : 'Failed to initialize camera. Please check permissions.'
-      )
+      const parsedError = parseCameraError(error)
+      setError(parsedError.message)
+      setErrorType(parsedError.type)
+      setIsScanning(false)
     }
   }
 
@@ -196,11 +263,21 @@ export function CameraScanner({
     }
   }
 
-  const handleScanAgain = () => {
+  const handleScanAgain = async () => {
     setSuccess(false)
     setError(null)
+    setErrorType(null)
     detectedCodesRef.current.clear()
-    // Scanner will continue automatically
+    
+    // Stop scanner completely to allow re-initialization
+    await stopScanner()
+    
+    // Small delay to ensure cleanup is complete
+    setTimeout(() => {
+      // Re-initialize scanner - this will re-trigger permission prompts
+      // Both browser-level and Android system-level prompts will appear
+      initializeScanner()
+    }, 100)
   }
 
   const onScanSuccess = (decodedText: string) => {
@@ -334,29 +411,52 @@ export function CameraScanner({
           <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-error-light border-2 border-error rounded-lg p-lg flex flex-col items-center gap-sm z-20 max-w-[80%]">
             <ExclamationTriangleIcon className="h-12 w-12 text-error" />
             <span className="text-error-dark font-semibold text-center">{error}</span>
-            <button
-              onClick={handleScanAgain}
-              className="mt-sm px-md py-sm bg-error text-white rounded-md font-medium flex items-center gap-xs"
-            >
-              <ArrowPathIcon className="h-4 w-4" />
-              Try again 🔁
-            </button>
+            {(errorType === 'permission-denied' || errorType === 'system-blocked' || errorType === 'camera-in-use') && (
+              <button
+                onClick={handleScanAgain}
+                className="mt-sm px-md py-sm bg-primary text-text-on-primary rounded-md font-medium flex items-center gap-xs hover:bg-primary-hover transition-colors"
+              >
+                <ArrowPathIcon className="h-4 w-4" />
+                Try Again
+              </button>
+            )}
+            {errorType !== 'permission-denied' && errorType !== 'system-blocked' && errorType !== 'camera-in-use' && (
+              <button
+                onClick={handleScanAgain}
+                className="mt-sm px-md py-sm bg-error text-white rounded-md font-medium flex items-center gap-xs hover:opacity-90 transition-opacity"
+              >
+                <ArrowPathIcon className="h-4 w-4" />
+                Try Again
+              </button>
+            )}
           </div>
         )}
       </div>
 
       {/* Footer Instructions */}
       <div className="p-md bg-black/80 backdrop-blur-sm text-center">
-        <p className="text-sm text-white/80">
-          Point camera at barcode. Multiple codes will be detected automatically.
-        </p>
-        {!isScanning && error && (
-          <button
-            onClick={handleScanAgain}
-            className="mt-sm px-lg py-sm bg-primary text-text-on-primary rounded-md font-medium"
-          >
-            Scan Again
-          </button>
+        {!error ? (
+          <p className="text-sm text-white/80">
+            Point camera at barcode. Multiple codes will be detected automatically.
+          </p>
+        ) : (
+          <>
+            <p className="text-sm text-white/80 mb-sm">
+              {errorType === 'permission-denied' || errorType === 'system-blocked' 
+                ? 'Tap "Scan Again" to grant camera permission.'
+                : errorType === 'camera-in-use'
+                ? 'Close other apps using the camera, then tap "Scan Again".'
+                : 'Please resolve the issue and try again.'}
+            </p>
+            {!isScanning && (
+              <button
+                onClick={handleScanAgain}
+                className="px-lg py-sm bg-primary text-text-on-primary rounded-md font-medium hover:bg-primary-hover transition-colors"
+              >
+                Scan Again
+              </button>
+            )}
+          </>
         )}
       </div>
     </div>

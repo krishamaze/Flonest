@@ -10,7 +10,7 @@ import {
   PlusIcon,
   DocumentTextIcon,
 } from '@heroicons/react/24/outline'
-import { getInvoicesByOrg } from '../lib/api/invoices'
+import { getInvoicesByOrg, revalidateDraftInvoice } from '../lib/api/invoices'
 
 export function InventoryPage() {
   const { user } = useAuth()
@@ -18,6 +18,8 @@ export function InventoryPage() {
   const [loading, setLoading] = useState(true)
   const [isInvoiceFormOpen, setIsInvoiceFormOpen] = useState(false)
   const [org, setOrg] = useState<Org | null>(null)
+  const [selectedDraftId, setSelectedDraftId] = useState<string | null>(null)
+  const [filter, setFilter] = useState<'all' | 'draft' | 'finalized'>('all')
 
   const loadOrg = useCallback(async () => {
     if (!user) return
@@ -56,12 +58,50 @@ export function InventoryPage() {
 
   // Memoize status calculations to avoid recalculating on every render
   const invoiceStats = useMemo(() => {
+    const finalizedDrafts = invoices.filter(
+      (inv: any) => inv.status === 'finalized' && (inv as any).draft_data !== null
+    ).length
+    
     return {
       finalized: invoices.filter((inv) => inv.status === 'finalized').length,
       drafts: invoices.filter((inv) => inv.status === 'draft').length,
+      finalizedDrafts,
       total: invoices.length
     }
   }, [invoices])
+
+  // Filter invoices based on selected filter
+  const filteredInvoices = useMemo(() => {
+    if (filter === 'all') return invoices
+    if (filter === 'draft') return invoices.filter(inv => inv.status === 'draft')
+    if (filter === 'finalized') return invoices.filter(inv => inv.status === 'finalized')
+    return invoices
+  }, [invoices, filter])
+
+  const handleDraftClick = async (invoiceId: string) => {
+    if (!user) return
+    
+    try {
+      // Re-validate draft before opening
+      const revalidation = await revalidateDraftInvoice(invoiceId, user.orgId)
+      if (revalidation.updated) {
+        // Show toast if items are now valid
+        // Toast will be shown in InvoiceForm when it loads
+      }
+      
+      // Open form with draft
+      setSelectedDraftId(invoiceId)
+      setIsInvoiceFormOpen(true)
+      
+      // Reload invoices to reflect any status changes
+      await loadInvoices()
+    } catch (error) {
+      console.error('Error opening draft:', error)
+      // Still open the form even if revalidation fails
+      setSelectedDraftId(invoiceId)
+      setIsInvoiceFormOpen(true)
+    }
+  }
 
   const getStatusColor = (status: string | null) => {
     if (!status) return 'bg-neutral-50 border-neutral-200 text-secondary-text'
@@ -166,34 +206,84 @@ export function InventoryPage() {
           </CardContent>
         </Card>
       ) : (
-        <div className="space-y-3">
-          {invoices.map((invoice) => (
-            <Card
-              key={invoice.id}
-              className={`border shadow-sm ${getStatusColor(invoice.status)}`}
+        <div className="space-y-4">
+          {/* Filter Toggle */}
+          <div className="flex gap-sm border-b border-neutral-200 pb-sm">
+            <button
+              onClick={() => setFilter('all')}
+              className={`px-md py-sm text-sm font-medium rounded-md transition-colors ${
+                filter === 'all'
+                  ? 'bg-primary text-text-on-primary'
+                  : 'text-secondary-text hover:bg-neutral-100'
+              }`}
             >
-              <CardContent className="p-4">
-                <div className="flex items-start justify-between gap-4">
-                  <div className="flex-1 min-w-0">
-                    <h3 className="text-base font-medium text-primary-text">
-                      Invoice #{invoice.invoice_number}
-                    </h3>
-                    <p className="text-xs text-muted-text mt-xs">
-                      {formatDate(invoice.created_at)}
-                    </p>
-                  </div>
-                  <div className="text-right shrink-0">
-                    <p className="text-base font-semibold text-primary-text">
-                      ₹{invoice.total_amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                    </p>
-                    <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium capitalize mt-1 ${getStatusColor(invoice.status)}`}>
-                      {invoice.status}
-                    </span>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
+              All ({invoiceStats.total})
+            </button>
+            <button
+              onClick={() => setFilter('draft')}
+              className={`px-md py-sm text-sm font-medium rounded-md transition-colors ${
+                filter === 'draft'
+                  ? 'bg-primary text-text-on-primary'
+                  : 'text-secondary-text hover:bg-neutral-100'
+              }`}
+            >
+              Drafts ({invoiceStats.drafts})
+            </button>
+            <button
+              onClick={() => setFilter('finalized')}
+              className={`px-md py-sm text-sm font-medium rounded-md transition-colors ${
+                filter === 'finalized'
+                  ? 'bg-primary text-text-on-primary'
+                  : 'text-secondary-text hover:bg-neutral-100'
+              }`}
+            >
+              Finalized ({invoiceStats.finalized})
+            </button>
+          </div>
+
+          {/* Invoice List */}
+          <div className="space-y-3">
+            {filteredInvoices.map((invoice) => {
+              const isDraft = invoice.status === 'draft'
+              return (
+                <Card
+                  key={invoice.id}
+                  className={`border shadow-sm ${getStatusColor(invoice.status)} ${
+                    isDraft ? 'cursor-pointer hover:shadow-md transition-shadow' : ''
+                  }`}
+                  onClick={isDraft ? () => handleDraftClick(invoice.id) : undefined}
+                >
+                  <CardContent className="p-4">
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-xs">
+                          <h3 className="text-base font-medium text-primary-text">
+                            Invoice #{invoice.invoice_number}
+                          </h3>
+                          {isDraft && (
+                            <span className="text-xs text-primary font-medium">
+                              Continue Draft →
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-xs text-muted-text mt-xs">
+                          {formatDate(invoice.created_at)}
+                        </p>
+                      </div>
+                      <div className="text-right shrink-0">
+                        <p className="text-base font-semibold text-primary-text">
+                          ₹{invoice.total_amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        </p>
+                        <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium capitalize mt-1 ${getStatusColor(invoice.status)}`}>
+                          {invoice.status}
+                        </span>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              )
+            })}
+          </div>
         </div>
       )}
       </div>
@@ -202,14 +292,19 @@ export function InventoryPage() {
       {user && org && (
         <InvoiceForm
           isOpen={isInvoiceFormOpen}
-          onClose={() => setIsInvoiceFormOpen(false)}
+          onClose={() => {
+            setIsInvoiceFormOpen(false)
+            setSelectedDraftId(null)
+          }}
           onSubmit={async () => {
             await loadInvoices()
+            setSelectedDraftId(null)
             // Optionally navigate to invoice view
           }}
           orgId={user.orgId}
           userId={user.id}
           org={org}
+          draftInvoiceId={selectedDraftId || undefined}
         />
       )}
     </div>

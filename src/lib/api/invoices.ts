@@ -328,6 +328,168 @@ export async function getInvoicesByOrg(
 }
 
 /**
+ * Get draft invoice for a specific customer
+ */
+export async function getDraftInvoiceByCustomer(
+  orgId: string,
+  customerId: string
+): Promise<(Invoice & { draft_data?: any }) | null> {
+  const { data, error } = await supabase
+    .from('invoices')
+    .select('*, draft_data')
+    .eq('org_id', orgId)
+    .eq('customer_id', customerId)
+    .eq('status', 'draft')
+    .order('updated_at', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+
+  if (error) {
+    if (error.code === 'PGRST116') {
+      // No draft found
+      return null
+    }
+    throw new Error(`Failed to fetch draft invoice: ${error.message}`)
+  }
+
+  return data as any
+}
+
+/**
+ * Load draft invoice data for form restoration
+ */
+export async function loadDraftInvoiceData(invoiceId: string): Promise<{
+  customer_id: string
+  items: Array<{
+    product_id: string
+    quantity: number
+    unit_price: number
+    line_total: number
+    serials?: string[]
+    serial_tracked?: boolean
+  }>
+} | null> {
+  const { data, error } = await supabase
+    .from('invoices')
+    .select('customer_id, draft_data')
+    .eq('id', invoiceId)
+    .single()
+
+  if (error || !data) {
+    throw new Error(`Failed to load draft invoice: ${error?.message || 'Invoice not found'}`)
+  }
+
+  const invoiceData = data as any
+
+  if (!invoiceData.draft_data) {
+    return null
+  }
+
+  // Parse versioned draft_data JSONB
+  const draftData = invoiceData.draft_data as any
+  const draftContent = draftData.data || draftData
+
+  return {
+    customer_id: draftContent.customer_id,
+    items: draftContent.items || [],
+  }
+}
+
+/**
+ * Validate invoice items before finalization
+ */
+export async function validateInvoiceItems(
+  orgId: string,
+  items: Array<{
+    product_id: string
+    quantity: number
+    serials?: string[]
+    serial_tracked?: boolean
+  }>
+): Promise<{
+  valid: boolean
+  errors: Array<{
+    item_index: number
+    type: string
+    message: string
+    product_id?: string
+    serial?: string
+    available_stock?: number
+    requested_quantity?: number
+  }>
+}> {
+  try {
+    const { data, error } = await supabase.rpc('validate_invoice_items' as any, {
+      p_org_id: orgId,
+      p_items: items,
+    })
+
+    if (error) {
+      throw new Error(`Failed to validate invoice items: ${error.message}`)
+    }
+
+    if (!data || typeof data !== 'object') {
+      return { valid: true, errors: [] }
+    }
+
+    return {
+      valid: data.valid || false,
+      errors: data.errors || [],
+    }
+  } catch (error) {
+    console.error('Error validating invoice items:', error)
+    throw error
+  }
+}
+
+/**
+ * Re-validate draft invoice to check if items are now valid
+ */
+export async function revalidateDraftInvoice(
+  invoiceId: string,
+  orgId: string
+): Promise<{
+  valid: boolean
+  errors: any[]
+  updated: boolean
+}> {
+  try {
+    // Load draft invoice with items
+    const invoice = await getInvoiceById(invoiceId)
+    
+    if (!invoice || invoice.status !== 'draft') {
+      throw new Error('Invoice not found or not a draft')
+    }
+
+    // Extract items for validation
+    const items = (invoice.items || []).map((item: any) => ({
+      product_id: item.product_id,
+      quantity: item.quantity || 0,
+      serials: item.serials || [],
+      serial_tracked: item.product?.serial_tracked || false,
+    }))
+
+    // Validate items
+    const validation = await validateInvoiceItems(orgId, items)
+
+    // Check if status changed (was invalid, now valid)
+    const invoiceData = invoice as any
+    const wasInvalid = invoiceData.draft_data?.data?.has_validation_errors || false
+    const isNowValid = validation.valid
+    const updated = wasInvalid && isNowValid
+
+    return {
+      valid: validation.valid,
+      errors: validation.errors,
+      updated,
+    }
+  } catch (error) {
+    console.error('Error re-validating draft invoice:', error)
+    throw error
+  }
+}
+
+/**
  * Auto-save invoice draft
  * Saves draft invoice data incrementally to backend
  */

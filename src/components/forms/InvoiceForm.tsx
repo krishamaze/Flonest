@@ -12,7 +12,8 @@ import { ScannerInput } from '../invoice/ScannerInput'
 import type { InvoiceFormData, InvoiceItemFormData, CustomerWithMaster, Org, ProductWithMaster, ScanResult } from '../../types'
 import { lookupOrCreateCustomer, checkCustomerExists, searchCustomersByIdentifier } from '../../lib/api/customers'
 import { getAllProducts } from '../../lib/api/products'
-import { createInvoice, autoSaveInvoiceDraft } from '../../lib/api/invoices'
+import { createInvoice, autoSaveInvoiceDraft, validateInvoiceItems, getDraftInvoiceByCustomer, loadDraftInvoiceData, revalidateDraftInvoice, getInvoiceById } from '../../lib/api/invoices'
+import { checkSerialStatus } from '../../lib/api/serials'
 import { validateScannerCodes } from '../../lib/api/scanner'
 import { calculateItemGST, extractStateCodeFromGSTIN, getCustomerStateCode } from '../../lib/utils/gstCalculation'
 import { isOrgGstEnabled } from '../../lib/utils/orgGst'
@@ -30,6 +31,7 @@ interface InvoiceFormProps {
   userId: string
   org: Org
   title?: string
+  draftInvoiceId?: string
 }
 
 type Step = 1 | 2 | 3 | 4
@@ -42,6 +44,7 @@ export function InvoiceForm({
   userId,
   org,
   title,
+  draftInvoiceId,
 }: InvoiceFormProps) {
   const [currentStep, setCurrentStep] = useState<Step>(1)
   const [identifier, setIdentifier] = useState('')
@@ -64,8 +67,11 @@ export function InvoiceForm({
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [scanning, setScanning] = useState(false)
   const [scanError, setScanError] = useState<string | null>(null)
-  const [draftInvoiceId, setDraftInvoiceId] = useState<string | null>(null)
+  const [internalDraftInvoiceId, setInternalDraftInvoiceId] = useState<string | null>(null)
   const [serialInputs, setSerialInputs] = useState<Record<number, string>>({})
+  
+  // Use prop if provided, otherwise use internal state
+  const currentDraftInvoiceId = draftInvoiceId || internalDraftInvoiceId
 
   // Load products when form opens
   useEffect(() => {
@@ -80,6 +86,72 @@ export function InvoiceForm({
     }
   }, [isOpen, orgId])
 
+  // Load draft on mount if draftInvoiceId prop is provided
+  useEffect(() => {
+    if (isOpen && draftInvoiceId) {
+      const loadDraft = async () => {
+        try {
+          const draftData = await loadDraftInvoiceData(draftInvoiceId)
+          if (draftData) {
+            // Load customer
+            const draftInvoice = await getInvoiceById(draftInvoiceId)
+            if (draftInvoice.customer) {
+              setSelectedCustomer(draftInvoice.customer as any)
+            }
+            
+            // Load products and restore items
+            const allProducts = await getAllProducts(orgId, { status: 'active' })
+            const restoredItems: InvoiceItemFormData[] = draftData.items.map((draftItem: any) => {
+              const product = allProducts.find((p: any) => p.id === draftItem.product_id)
+              return {
+                product_id: draftItem.product_id,
+                quantity: draftItem.quantity || 0,
+                unit_price: draftItem.unit_price || (product?.selling_price || 0),
+                line_total: draftItem.line_total || (draftItem.quantity * (draftItem.unit_price || product?.selling_price || 0)),
+                serials: draftItem.serials || [],
+                serial_tracked: product?.serial_tracked || false,
+                invalid_serials: draftItem.invalid_serials || [],
+                validation_errors: draftItem.validation_errors || [],
+                stock_available: draftItem.stock_available,
+              }
+            })
+            setItems(restoredItems)
+            setInternalDraftInvoiceId(draftInvoiceId)
+            setCurrentStep(2)
+            
+            // Re-validate draft
+            try {
+              const revalidation = await revalidateDraftInvoice(draftInvoiceId, orgId)
+              if (revalidation.updated) {
+                setToast({ 
+                  message: 'Draft revalidated — missing items are now available.', 
+                  type: 'success' 
+                })
+                if (revalidation.valid) {
+                  const cleanedItems = restoredItems.map(item => ({
+                    ...item,
+                    invalid_serials: [],
+                    validation_errors: [],
+                  }))
+                  setItems(cleanedItems)
+                }
+              }
+            } catch (revalError) {
+              console.error('Error re-validating draft:', revalError)
+            }
+          }
+        } catch (error) {
+          console.error('Error loading draft:', error)
+          setToast({ 
+            message: 'Failed to load draft invoice', 
+            type: 'error' 
+          })
+        }
+      }
+      loadDraft()
+    }
+  }, [isOpen, draftInvoiceId, orgId])
+
   // Reset form when closed
   useEffect(() => {
     if (!isOpen) {
@@ -93,6 +165,7 @@ export function InvoiceForm({
       setMasterFormData({ customer_name: '', address: '', email: '', additionalIdentifier: '' })
       setItems([])
       setErrors({})
+      setInternalDraftInvoiceId(null)
     }
   }, [isOpen])
 
@@ -123,6 +196,74 @@ export function InvoiceForm({
       if (orgCustomer) {
         // Customer exists with org link - show details
         setSelectedCustomer(orgCustomer)
+        
+        // Check for existing draft for this customer
+        try {
+          const existingDraft = await getDraftInvoiceByCustomer(orgId, orgCustomer.id)
+          if (existingDraft) {
+            // Show confirmation dialog
+            const continueDraft = window.confirm(
+              'A draft invoice already exists for this customer. Continue?'
+            )
+            
+            if (continueDraft) {
+              // Load draft data
+              const draftData = await loadDraftInvoiceData(existingDraft.id)
+              if (draftData) {
+                // Restore items from draft
+                setInternalDraftInvoiceId(existingDraft.id)
+                
+                // Load products to restore full item data
+                const allProducts = await getAllProducts(orgId, { status: 'active' })
+                const restoredItems: InvoiceItemFormData[] = draftData.items.map((draftItem: any) => {
+                  const product = allProducts.find((p: any) => p.id === draftItem.product_id)
+                  return {
+                    product_id: draftItem.product_id,
+                    quantity: draftItem.quantity || 0,
+                    unit_price: draftItem.unit_price || (product?.selling_price || 0),
+                    line_total: draftItem.line_total || (draftItem.quantity * (draftItem.unit_price || product?.selling_price || 0)),
+                    serials: draftItem.serials || [],
+                    serial_tracked: product?.serial_tracked || false,
+                    invalid_serials: draftItem.invalid_serials || [],
+                    validation_errors: draftItem.validation_errors || [],
+                    stock_available: draftItem.stock_available,
+                  }
+                })
+                setItems(restoredItems)
+                
+                // Re-validate draft
+                try {
+                  const revalidation = await revalidateDraftInvoice(existingDraft.id, orgId)
+                  if (revalidation.updated) {
+                    setToast({ 
+                      message: 'Draft revalidated — missing items are now available.', 
+                      type: 'success' 
+                    })
+                    // Clear invalid serials/errors if now valid
+                    if (revalidation.valid) {
+                      const cleanedItems = restoredItems.map(item => ({
+                        ...item,
+                        invalid_serials: [],
+                        validation_errors: [],
+                      }))
+                      setItems(cleanedItems)
+                    }
+                  }
+                } catch (revalError) {
+                  console.error('Error re-validating draft:', revalError)
+                }
+                
+                setToast({ message: 'Draft loaded', type: 'success' })
+                setCurrentStep(2)
+                return
+              }
+            }
+          }
+        } catch (draftError) {
+          console.error('Error checking for draft:', draftError)
+          // Continue with normal flow if draft check fails
+        }
+        
         return
       }
 
@@ -320,8 +461,18 @@ export function InvoiceForm({
             }
             productGroups.get(key)!.push(result)
           }
-        } else if (result.status === 'not_found' || result.status === 'invalid') {
-          setScanError(result.message || `Code ${result.code} not recognized`)
+        } else if (result.status === 'invalid') {
+          // Product found in catalog but not in org inventory
+          setToast({ 
+            message: 'This product isn\'t in stock yet. Ask your manager to add or stock it.', 
+            type: 'error' 
+          })
+        } else if (result.status === 'not_found') {
+          // Product not found at all
+          setToast({ 
+            message: 'Product not found. Ask your manager to add this product.', 
+            type: 'error' 
+          })
         }
       }
 
@@ -399,7 +550,7 @@ export function InvoiceForm({
 
   // Auto-save draft
   const draftData = useMemo(() => ({
-    invoice_id: draftInvoiceId || undefined,
+    invoice_id: currentDraftInvoiceId || undefined,
     customer_id: selectedCustomer?.id,
     items: items.map((item) => ({
       product_id: item.product_id,
@@ -419,7 +570,7 @@ export function InvoiceForm({
       if (!selectedCustomer) return
       try {
         const invoiceId = await autoSaveInvoiceDraft(orgId, userId, data)
-        setDraftInvoiceId(invoiceId)
+        setInternalDraftInvoiceId(invoiceId)
         const now = Date.now()
         // Only show toast if it's been more than 3 seconds since last auto-save (avoid spam)
         if (!lastAutoSaveTime || now - lastAutoSaveTime > 3000) {
@@ -441,7 +592,15 @@ export function InvoiceForm({
     if (!selectedCustomer) return
     try {
       await manualSave()
-      setToast({ message: 'Draft saved', type: 'success' })
+      const hasInvalidItems = items.some(item => 
+        (item.invalid_serials && item.invalid_serials.length > 0) ||
+        (item.validation_errors && item.validation_errors.length > 0)
+      )
+      if (hasInvalidItems) {
+        setToast({ message: 'Draft saved (contains items needing review)', type: 'info' })
+      } else {
+        setToast({ message: 'Draft saved', type: 'success' })
+      }
     } catch (error) {
       console.error('Manual save failed:', error)
       setToast({ message: 'Failed to save draft', type: 'error' })
@@ -449,21 +608,76 @@ export function InvoiceForm({
   }
 
   // Add serial to item
-  const handleAddSerial = (itemIndex: number, serial: string) => {
+  const handleAddSerial = async (itemIndex: number, serial: string) => {
     const updated = [...items]
     const item = updated[itemIndex]
     
     if (!item.serials) {
       item.serials = []
     }
-    
-    if (!item.serials.includes(serial)) {
-      item.serials.push(serial)
+
+    // Skip if serial already exists
+    if (item.serials.includes(serial)) {
+      return
+    }
+
+    // Validate serial before adding
+    try {
+      const serialStatus = await checkSerialStatus(orgId, serial.trim())
+      
+      if (!serialStatus.found) {
+        // Serial not found - allow adding but mark as invalid
+        if (!item.invalid_serials) {
+          item.invalid_serials = []
+        }
+        item.invalid_serials.push(serial.trim())
+        setToast({ 
+          message: 'Serial not found in stock. Saved as draft for manager review.', 
+          type: 'error' 
+        })
+      } else if (serialStatus.product_id !== item.product_id) {
+        // Serial belongs to different product
+        setToast({ 
+          message: `Serial belongs to a different product.`, 
+          type: 'error' 
+        })
+        return
+      } else if (serialStatus.status !== 'available') {
+        // Serial not available
+        if (!item.invalid_serials) {
+          item.invalid_serials = []
+        }
+        item.invalid_serials.push(serial.trim())
+        setToast({ 
+          message: 'Serial not available in stock. Saved as draft for manager review.', 
+          type: 'error' 
+        })
+      }
+
+      // Add serial (even if invalid, for draft purposes)
+      item.serials.push(serial.trim())
       if (item.serial_tracked) {
         item.quantity = item.serials.length
         item.line_total = item.quantity * item.unit_price
       }
       setItems(updated)
+    } catch (error) {
+      console.error('Error validating serial:', error)
+      // Still allow adding for draft, but mark as invalid
+      if (!item.invalid_serials) {
+        item.invalid_serials = []
+      }
+      item.invalid_serials.push(serial.trim())
+      item.serials.push(serial.trim())
+      if (item.serial_tracked) {
+        item.quantity = item.serials.length
+        item.line_total = item.quantity * item.unit_price
+      }
+      setItems(updated)
+      setToast({ 
+        message: 'Error validating serial. Saved as draft for manager review.', 
+        type: 'error' 
+      })
     }
   }
 
@@ -473,7 +687,14 @@ export function InvoiceForm({
     const item = updated[itemIndex]
     
     if (item.serials) {
+      const removedSerial = item.serials[serialIndex]
       item.serials.splice(serialIndex, 1)
+      
+      // Also remove from invalid_serials if present
+      if (item.invalid_serials && item.invalid_serials.includes(removedSerial)) {
+        item.invalid_serials = item.invalid_serials.filter(s => s !== removedSerial)
+      }
+      
       if (item.serial_tracked) {
         item.quantity = item.serials.length
         item.line_total = item.quantity * item.unit_price
@@ -598,6 +819,58 @@ export function InvoiceForm({
     setErrors({})
 
     try {
+      // Backend validation before finalization
+      const validationItems = items.map((item) => ({
+        product_id: item.product_id,
+        quantity: item.quantity,
+        serials: item.serials || [],
+        serial_tracked: item.serial_tracked || false,
+      }))
+
+      const validation = await validateInvoiceItems(orgId, validationItems)
+
+      if (!validation.valid) {
+        // Group errors by type
+        const productErrors = validation.errors.filter(e => e.type === 'product_not_found')
+        const serialErrors = validation.errors.filter(e => e.type === 'serial_not_found')
+        const stockErrors = validation.errors.filter(e => e.type === 'insufficient_stock')
+
+        // Update items with validation errors and available stock
+        const updatedItems = items.map((item, index) => {
+          const itemErrors = validation.errors.filter(e => e.item_index === index + 1)
+          const stockError = itemErrors.find(e => e.type === 'insufficient_stock')
+          
+          return {
+            ...item,
+            validation_errors: itemErrors.map(e => e.message),
+            stock_available: stockError?.available_stock,
+          }
+        })
+        setItems(updatedItems)
+
+        // Show toast with error summary
+        let errorMessage = 'Invoice validation failed: '
+        if (productErrors.length > 0) {
+          errorMessage += `${productErrors.length} product(s) not found. `
+        }
+        if (serialErrors.length > 0) {
+          errorMessage += `${serialErrors.length} serial(s) not found. `
+        }
+        if (stockErrors.length > 0) {
+          errorMessage += `${stockErrors.length} item(s) have insufficient stock. `
+        }
+        setToast({ message: errorMessage.trim(), type: 'error' })
+
+        // Set form errors
+        setErrors({ 
+          items: 'Some items have validation errors. Please fix them before finalizing.',
+          submit: 'Cannot create invoice with invalid items'
+        })
+        setCurrentStep(2)
+        setIsSubmitting(false)
+        return
+      }
+
       const invoiceData: InvoiceFormData = {
         customer_id: selectedCustomer.id,
         items: items.map((item) => ({
@@ -620,6 +893,10 @@ export function InvoiceForm({
       console.error('Error creating invoice:', error)
       setErrors({
         submit: error instanceof Error ? error.message : 'Failed to create invoice',
+      })
+      setToast({ 
+        message: error instanceof Error ? error.message : 'Failed to create invoice', 
+        type: 'error' 
       })
     } finally {
       setIsSubmitting(false)
@@ -849,10 +1126,29 @@ export function InvoiceForm({
             ) : (
               <div className="space-y-4">
                 {items.map((item, index) => {
+                  const hasInvalidSerials = item.invalid_serials && item.invalid_serials.length > 0
+                  const hasValidationErrors = item.validation_errors && item.validation_errors.length > 0
+                  const hasStockError = item.validation_errors?.some((e: string) => e.includes('Insufficient stock'))
+                  const isInvalid = hasInvalidSerials || hasValidationErrors
+
                   return (
-                    <div key={index} className="border border-neutral-200 rounded-md p-md space-y-md">
+                    <div 
+                      key={index} 
+                      className={`border rounded-md p-md space-y-md ${
+                        isInvalid 
+                          ? 'border-error bg-error-light/10' 
+                          : 'border-neutral-200'
+                      }`}
+                    >
                       <div className="flex items-center justify-between">
-                        <h4 className="text-sm font-medium text-primary-text">Item {index + 1}</h4>
+                        <div className="flex items-center gap-sm">
+                          <h4 className="text-sm font-medium text-primary-text">Item {index + 1}</h4>
+                          {isInvalid && (
+                            <span className="text-xs text-error font-medium" title={item.validation_errors?.join(', ') || 'Item has validation errors'}>
+                              ⚠️ Needs review
+                            </span>
+                          )}
+                        </div>
                         <button
                           type="button"
                           onClick={() => handleRemoveItem(index)}
@@ -888,28 +1184,47 @@ export function InvoiceForm({
                           </label>
                           {item.serials && item.serials.length > 0 ? (
                             <div className="space-y-xs">
-                              {item.serials.map((serial, serialIndex) => (
-                                <div
-                                  key={serialIndex}
-                                  className="flex items-center justify-between p-sm bg-neutral-50 rounded-md"
-                                >
-                                  <span className="text-sm text-primary-text font-mono">
-                                    {serial}
-                                  </span>
-                                  <button
-                                    type="button"
-                                    onClick={() => handleRemoveSerial(index, serialIndex)}
-                                    className="text-error hover:text-error-dark"
-                                    disabled={isSubmitting}
+                              {item.serials.map((serial, serialIndex) => {
+                                const isInvalidSerial = item.invalid_serials?.includes(serial)
+                                return (
+                                  <div
+                                    key={serialIndex}
+                                    className={`flex items-center justify-between p-sm rounded-md ${
+                                      isInvalidSerial 
+                                        ? 'bg-error-light border border-error' 
+                                        : 'bg-neutral-50'
+                                    }`}
                                   >
-                                    <XCircleIcon className="h-4 w-4" />
-                                  </button>
-                                </div>
-                              ))}
+                                    <div className="flex items-center gap-xs">
+                                      <span className="text-sm text-primary-text font-mono">
+                                        {serial}
+                                      </span>
+                                      {isInvalidSerial && (
+                                        <span className="text-xs text-error" title="Serial not found in stock">
+                                          ⚠️
+                                        </span>
+                                      )}
+                                    </div>
+                                    <button
+                                      type="button"
+                                      onClick={() => handleRemoveSerial(index, serialIndex)}
+                                      className="text-error hover:text-error-dark"
+                                      disabled={isSubmitting}
+                                    >
+                                      <XCircleIcon className="h-4 w-4" />
+                                    </button>
+                                  </div>
+                                )
+                              })}
                             </div>
                           ) : (
                             <p className="text-xs text-secondary-text">
                               Scan serial numbers for this product
+                            </p>
+                          )}
+                          {hasInvalidSerials && (
+                            <p className="text-xs text-error">
+                              Some serials not found in stock. Saved as draft for manager review.
                             </p>
                           )}
                           <Input
@@ -934,34 +1249,50 @@ export function InvoiceForm({
                           />
                         </div>
                       ) : (
-                        <div className="grid grid-cols-2 gap-4">
-                          <Input
-                            label="Quantity"
-                            type="number"
-                            min="1"
-                            step="1"
-                            value={item.quantity.toString()}
-                            onChange={(e) =>
-                              handleItemChange(index, 'quantity', parseInt(e.target.value) || 1)
-                            }
-                            disabled={isSubmitting}
-                            required
-                            placeholder="1"
-                          />
+                        <div className="space-y-md">
+                          {hasStockError && item.stock_available !== undefined && (
+                            <div className="p-sm bg-warning-light border border-warning rounded-md">
+                              <p className="text-xs text-warning-dark font-medium">
+                                Insufficient stock. Available: {item.stock_available}
+                              </p>
+                            </div>
+                          )}
+                          <div className="grid grid-cols-2 gap-4">
+                            <Input
+                              label="Quantity"
+                              type="number"
+                              min="1"
+                              step="1"
+                              value={item.quantity.toString()}
+                              onChange={(e) =>
+                                handleItemChange(index, 'quantity', parseInt(e.target.value) || 1)
+                              }
+                              disabled={isSubmitting}
+                              required
+                              placeholder="1"
+                            />
 
-                          <Input
-                            label="Unit Price"
-                            type="number"
-                            min="0"
-                            step="0.01"
-                            value={item.unit_price.toString()}
-                            onChange={(e) =>
-                              handleItemChange(index, 'unit_price', parseFloat(e.target.value) || 0)
-                            }
-                            disabled={isSubmitting}
-                            required
-                            placeholder="0.00"
-                          />
+                            <Input
+                              label="Unit Price"
+                              type="number"
+                              min="0"
+                              step="0.01"
+                              value={item.unit_price.toString()}
+                              onChange={(e) =>
+                                handleItemChange(index, 'unit_price', parseFloat(e.target.value) || 0)
+                              }
+                              disabled={isSubmitting}
+                              required
+                              placeholder="0.00"
+                            />
+                          </div>
+                          {hasValidationErrors && !hasStockError && (
+                            <div className="p-sm bg-error-light border border-error rounded-md">
+                              <p className="text-xs text-error-dark font-medium">
+                                {item.validation_errors?.join(', ')}
+                              </p>
+                            </div>
+                          )}
                         </div>
                       )}
 
@@ -1014,20 +1345,39 @@ export function InvoiceForm({
             <div className="space-y-2">
               <h4 className="text-sm font-semibold text-primary-text">Items</h4>
               {items.map((item, index) => {
-                const product = products.find((p) => p.id === item.product_id)
+                const product = products.find((p) => p.id === item.product_id) as ProductWithMaster | undefined
+                const hasInvalidSerials = item.invalid_serials && item.invalid_serials.length > 0
+                const hasValidationErrors = item.validation_errors && item.validation_errors.length > 0
+                const isInvalid = hasInvalidSerials || hasValidationErrors
+                
                 return (
-                  <div key={index} className="border-b border-neutral-200 pb-sm mb-sm">
+                  <div 
+                    key={index} 
+                    className={`border-b last:border-0 pb-sm mb-sm ${
+                      isInvalid ? 'border-error bg-error-light/10' : 'border-neutral-200'
+                    }`}
+                  >
                     <div className="flex justify-between text-sm">
-                      <div>
-                        <span className="font-medium text-primary-text">{product?.name || 'Unknown Product'}</span>
-                        <span className="text-secondary-text ml-sm">x {item.quantity}</span>
+                      <div className="flex-1">
+                        <div className="flex items-center gap-xs">
+                          <span className="font-medium text-primary-text">{product?.name || 'Unknown Product'}</span>
+                          {isInvalid && (
+                            <span className="text-xs text-error">⚠️</span>
+                          )}
+                        </div>
+                        <span className="text-secondary-text">x {item.quantity}</span>
                       </div>
                       <span className="font-medium text-primary-text">${item.line_total.toFixed(2)}</span>
                     </div>
                     {item.serial_tracked && item.serials && item.serials.length > 0 && (
-                      <div className="mt-xs text-xs text-secondary-text">
+                      <div className="mt-xs text-xs text-muted-text">
                         <span className="font-medium">Serials: </span>
                         <span className="font-mono">{item.serials.join(', ')}</span>
+                      </div>
+                    )}
+                    {hasValidationErrors && (
+                      <div className="mt-xs text-xs text-error">
+                        {item.validation_errors?.join(', ')}
                       </div>
                     )}
                   </div>
@@ -1067,6 +1417,19 @@ export function InvoiceForm({
                 <span className="text-primary-text">Total</span>
                 <span className="text-primary-text">${totals.total_amount.toFixed(2)}</span>
               </div>
+              {items.some(item => 
+                (item.invalid_serials && item.invalid_serials.length > 0) ||
+                (item.validation_errors && item.validation_errors.length > 0)
+              ) && (
+                <div className="mt-md p-md bg-warning-light border border-warning rounded-md">
+                  <p className="text-sm font-medium text-warning-dark">
+                    ⚠️ This invoice contains items that need manager review
+                  </p>
+                  <p className="text-xs text-warning-dark mt-xs">
+                    Please fix validation errors before finalizing the invoice.
+                  </p>
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -1129,6 +1492,12 @@ export function InvoiceForm({
                 variant="primary" 
                 isLoading={isSubmitting}
                 className="flex-1"
+                disabled={
+                  items.some(item => 
+                    (item.invalid_serials && item.invalid_serials.length > 0) ||
+                    (item.validation_errors && item.validation_errors.length > 0)
+                  )
+                }
               >
                 Create Invoice
               </Button>

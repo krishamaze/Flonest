@@ -15,6 +15,7 @@ interface DashboardStats {
   lowStockItems: number
   totalValue: number
   totalInvoices: number
+  finalizedDrafts: number
 }
 
 export function DashboardPage() {
@@ -27,7 +28,7 @@ export function DashboardPage() {
 
     try {
       // Execute all queries in parallel for better performance
-      const [inventoryCountResult, inventoryResult, invoicesCountResult] = await Promise.all([
+      const [inventoryCountResult, inventoryResult, invoicesCountResult, finalizedDraftsResult] = await Promise.all([
         supabase
           .from('inventory')
           .select('*', { count: 'exact', head: true })
@@ -39,7 +40,13 @@ export function DashboardPage() {
         supabase
           .from('invoices')
           .select('*', { count: 'exact', head: true })
+          .eq('org_id', user.orgId),
+        supabase
+          .from('invoices')
+          .select('id', { count: 'exact', head: true })
           .eq('org_id', user.orgId)
+          .eq('status', 'finalized')
+          .not('draft_data', 'is', null)
       ])
 
       const inventory = inventoryResult.data || []
@@ -57,6 +64,7 @@ export function DashboardPage() {
         lowStockItems,
         totalValue,
         totalInvoices: invoicesCountResult.count || 0,
+        finalizedDrafts: finalizedDraftsResult.count || 0,
       })
     } catch (error) {
       console.error('Error loading dashboard stats:', error)
@@ -133,6 +141,18 @@ export function DashboardPage() {
             <p className="text-[9px] font-medium text-secondary-text leading-tight text-center">Total Invoices</p>
             <p className="text-sm font-semibold text-primary-text">
               {stats?.totalInvoices || 0}
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card className="shadow-xs rounded-md flex-shrink-0" style={{ minWidth: '120px', maxWidth: '140px' }}>
+          <CardContent className="flex flex-col items-center gap-1 p-2">
+            <div className="flex h-5 w-5 items-center justify-center rounded bg-success-light">
+              <ArrowTrendingUpIcon className="h-3 w-3 text-success" />
+            </div>
+            <p className="text-[9px] font-medium text-secondary-text leading-tight text-center">Finalized Drafts</p>
+            <p className="text-sm font-semibold text-primary-text">
+              {stats?.finalizedDrafts || 0}
             </p>
           </CardContent>
         </Card>
