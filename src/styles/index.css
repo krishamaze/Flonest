@@ -171,13 +171,15 @@ html {
 
 /* Consistent viewport height class */
 .viewport-height {
-  height: 100vh;
-  height: 100dvh; /* Dynamic viewport height */
+  height: 100vh; /* Fallback for older browsers */
+  height: calc(var(--vh, 1vh) * 100); /* JavaScript fallback */
+  height: 100dvh; /* Dynamic viewport height - modern browsers */
 }
 
 .viewport-height-safe {
-  height: calc(100vh - env(safe-area-inset-top) - env(safe-area-inset-bottom));
-  height: calc(100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+  height: calc(100vh - env(safe-area-inset-top) - env(safe-area-inset-bottom)); /* Fallback */
+  height: calc(calc(var(--vh, 1vh) * 100) - env(safe-area-inset-top) - env(safe-area-inset-bottom)); /* JavaScript fallback */
+  height: calc(100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom)); /* Dynamic viewport height - modern browsers */
 }
 
 /* Touch Target Minimums */
@@ -308,5 +310,61 @@ html {
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
   }
+}
+
+/* Mobile-friendly Toast Styling */
+.Toastify__toast-container {
+  width: 100%;
+  max-width: 90vw;
+  padding: 0 var(--spacing-md);
+}
+
+.Toastify__toast {
+  min-height: 48px;
+  padding: var(--spacing-sm) var(--spacing-md);
+  border-radius: var(--radius-md);
+  margin-bottom: var(--spacing-md);
+  font-size: var(--font-size-sm);
+  box-shadow: var(--shadow-lg);
+}
+
+.Toastify__toast--error {
+  background: var(--color-error);
+  color: white;
+}
+
+.Toastify__toast--success {
+  background: var(--color-success);
+  color: white;
+}
+
+.Toastify__toast--warning {
+  background: var(--color-warning);
+  color: white;
+}
+
+.Toastify__toast--info {
+  background: var(--color-secondary);
+  color: white;
+}
+
+.Toastify__progress-bar {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+.Toastify__close-button {
+  color: white;
+  opacity: 0.8;
+}
+
+.Toastify__close-button:hover {
+  opacity: 1;
+}
+
+/* Bottom-center positioning with safe area insets */
+.Toastify__toast-container--bottom-center {
+  bottom: calc(var(--spacing-md) + env(safe-area-inset-bottom));
+  left: 50%;
+  transform: translateX(-50%);
 }
 

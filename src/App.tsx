@@ -1,5 +1,6 @@
 import { lazy, Suspense, useEffect } from 'react'
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
+import { ToastContainer } from 'react-toastify'
 import { AuthProvider, useAuth } from './contexts/AuthContext'
 import { MainLayout } from './components/layout/MainLayout'
 import { LoadingSpinner } from './components/ui/LoadingSpinner'
@@ -103,6 +104,17 @@ function App() {
         <AppRoutes />
         <InstallPrompt />
         <UpdateNotification />
+        <ToastContainer
+          position="bottom-center"
+          autoClose={3000}
+          hideProgressBar={false}
+          closeOnClick
+          pauseOnHover={false}
+          draggable
+          rtl={false}
+          theme="light"
+          limit={3}
+        />
       </BrowserRouter>
     </AuthProvider>
   )

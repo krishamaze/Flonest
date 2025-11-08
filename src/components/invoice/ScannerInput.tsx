@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, KeyboardEvent } from 'react'
+import { toast } from 'react-toastify'
 import { Input } from '../ui/Input'
 import { CameraIcon } from '@heroicons/react/24/outline'
 import { parseMultiCodes } from '../../lib/utils/scanDetection'
@@ -106,67 +107,26 @@ export function ScannerInput({
     )
   }
 
-  // Parse camera errors for user-friendly messages
-  const parseCameraError = (error: unknown): string => {
-    if (error instanceof DOMException) {
-      switch (error.name) {
-        case 'NotAllowedError':
-          return 'Camera permission denied. Please allow camera access in your browser settings.'
-        case 'NotFoundError':
-          return 'No camera found on this device.'
-        case 'NotReadableError':
-          return 'Camera is in use by another app. Close other apps and try again.'
-        case 'NotSupportedError':
-          return 'Camera not supported in this browser.'
-        default:
-          return `Camera error: ${error.message || 'Unknown error'}`
-      }
-    }
-    if (error instanceof Error) {
-      const errorMessage = error.message.toLowerCase()
-      if (errorMessage.includes('permission') || errorMessage.includes('not allowed')) {
-        return 'Camera permission denied. Please allow camera access in your browser settings.'
-      }
-      if (errorMessage.includes('not readable') || errorMessage.includes('could not start')) {
-        return 'Camera is in use by another app. Close other apps and try again.'
-      }
-    }
-    return 'Failed to access camera. Please try again.'
-  }
 
-  // Handle camera button click - request permission immediately (synchronously with user gesture)
-  const handleCameraClick = async () => {
+  // Handle camera button click - let CameraScanner handle permission request
+  // This avoids double stream creation which can cause camera lock issues
+  const handleCameraClick = () => {
     // Check if camera is available
     if (!canUseCamera()) {
-      alert('Camera not available on this device')
+      toast.error('Camera not available on this device', {
+        position: 'bottom-center',
+        autoClose: 3000,
+        style: {
+          maxWidth: '90vw',
+          fontSize: '14px',
+        },
+      })
       return
     }
 
-    try {
-      // CRITICAL: Request permission IMMEDIATELY (synchronous with user tap)
-      // This ensures the browser permission prompt appears on mobile
-      console.log('Requesting camera permission...')
-      const stream = await navigator.mediaDevices.getUserMedia({ 
-        video: { facingMode: 'environment' } // Request back camera
-      })
-      
-      console.log('Permission granted! Stream:', stream)
-      
-      // Stop the stream immediately (CameraScanner will create its own)
-      stream.getTracks().forEach(track => track.stop())
-      
-      // NOW open the modal (permission already granted)
-      setShowCameraScanner(true)
-      
-    } catch (error) {
-      console.error('Camera permission error:', error)
-      
-      // Show user-friendly error message
-      const errorMessage = parseCameraError(error)
-      alert(errorMessage)
-      
-      // Do not open modal on error
-    }
+    // Just open the modal - CameraScanner will handle permission request
+    // This ensures only one stream is created and properly managed
+    setShowCameraScanner(true)
   }
 
   return (

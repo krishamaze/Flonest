@@ -30,9 +30,12 @@ export function CameraScanner({
     Html5QrcodeSupportedFormats.ITF,
   ],
 }: CameraScannerProps) {
+  // External state tracking to avoid Html5Qrcode's broken internal state
+  type ScannerState = 'idle' | 'starting' | 'running' | 'stopping'
+  const scannerStateRef = useRef<ScannerState>('idle')
+  
   const scannerRef = useRef<Html5Qrcode | null>(null)
   const containerRef = useRef<HTMLDivElement>(null)
-  const [isScanning, setIsScanning] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [errorType, setErrorType] = useState<'permission-denied' | 'system-blocked' | 'camera-in-use' | 'no-camera' | 'not-supported' | 'unknown' | null>(null)
   const [success, setSuccess] = useState(false)
@@ -91,6 +94,54 @@ export function CameraScanner({
     return { type: 'unknown', message: 'Failed to access camera. Please try again.' }
   }
 
+  // Block UI interactions during scanner state transitions
+  // Only block clicks within scanner container, not close button or header
+  useEffect(() => {
+    const disableMouseClick = (event: MouseEvent) => {
+      const target = event.target as HTMLElement
+      // Allow close button and header buttons to work
+      if (target.closest('[aria-label="Close scanner"]') || 
+          target.closest('[aria-label="Switch camera"]')) {
+        return
+      }
+      
+      // Block other interactions during transitions
+      if (scannerStateRef.current !== 'running' && 
+          scannerStateRef.current !== 'idle' &&
+          target.closest('#camera-scanner-container')) {
+        event.stopPropagation()
+        event.preventDefault()
+      }
+    }
+
+    if (isOpen) {
+      document.addEventListener('click', disableMouseClick, true)
+    }
+
+    return () => {
+      document.removeEventListener('click', disableMouseClick, true)
+    }
+  }, [isOpen])
+
+  // Handle browser navigation during init
+  useEffect(() => {
+    const disableBrowserBackButton = () => {
+      if (scannerStateRef.current !== 'running' && scannerStateRef.current !== 'idle') {
+        window.history.pushState(null, document.title, window.location.href)
+      }
+    }
+
+    if (isOpen) {
+      window.addEventListener('popstate', disableBrowserBackButton)
+      // Push initial state to prevent back navigation
+      window.history.pushState(null, document.title, window.location.href)
+    }
+
+    return () => {
+      window.removeEventListener('popstate', disableBrowserBackButton)
+    }
+  }, [isOpen])
+
   // Initialize scanner when opened
   useEffect(() => {
     if (!isOpen) {
@@ -120,14 +171,21 @@ export function CameraScanner({
   }, [isOpen])
 
   const initializeScanner = async () => {
-    try {
-      setError(null)
-      setErrorType(null)
-      setSuccess(false)
-      detectedCodesRef.current.clear()
+    // Set state to starting
+    scannerStateRef.current = 'starting'
+    setError(null)
+    setErrorType(null)
+    setSuccess(false)
+    detectedCodesRef.current.clear()
 
-      // Permission is already granted by parent component (ScannerInput)
-      // Get available cameras (permission should already be granted)
+    try {
+      // Clear container DOM first - Html5Qrcode reuses DOM elements
+      const container = document.getElementById('camera-scanner-container')
+      if (container) {
+        container.innerHTML = ''
+      }
+
+      // Get available cameras
       let cameras: CameraDevice[] = []
       try {
         cameras = await Html5Qrcode.getCameras()
@@ -136,7 +194,7 @@ export function CameraScanner({
         const parsedError = parseCameraError(error)
         setError(parsedError.message)
         setErrorType(parsedError.type)
-        setIsScanning(false)
+        scannerStateRef.current = 'idle'
         return
       }
 
@@ -144,7 +202,7 @@ export function CameraScanner({
         const parsedError = parseCameraError(new DOMException('No cameras found', 'NotFoundError'))
         setError(parsedError.message)
         setErrorType(parsedError.type)
-        setIsScanning(false)
+        scannerStateRef.current = 'idle'
         return
       }
 
@@ -184,49 +242,93 @@ export function CameraScanner({
         onScanFailure
       )
 
-      setIsScanning(true)
+      // Only set to running after successful start
+      scannerStateRef.current = 'running'
       setError(null)
       setErrorType(null)
     } catch (error) {
       console.error('Error initializing scanner:', error)
+      scannerStateRef.current = 'idle'
       const parsedError = parseCameraError(error)
       setError(parsedError.message)
       setErrorType(parsedError.type)
-      setIsScanning(false)
+      // Cleanup on error
+      await stopScanner()
     }
   }
 
   const stopScanner = async () => {
+    // Don't stop if already idle
+    if (scannerStateRef.current === 'idle') return
+
+    // Set state to stopping
+    scannerStateRef.current = 'stopping'
+
     // Clear any pending timeout
     if (processTimeoutRef.current) {
       clearTimeout(processTimeoutRef.current)
       processTimeoutRef.current = null
     }
 
-    if (scannerRef.current && isScanning) {
-      try {
+    // CRITICAL: Force stop all video tracks directly from DOM elements
+    // This bypasses Html5Qrcode's broken state management and prevents
+    // "getVideoTracks() of null" errors
+    const container = document.getElementById('camera-scanner-container')
+    if (container) {
+      const videoElements = container.querySelectorAll('video')
+      videoElements.forEach(video => {
+        const stream = video.srcObject as MediaStream | null
+        if (stream) {
+          stream.getTracks().forEach(track => {
+            track.stop()
+            track.enabled = false
+          })
+          video.srcObject = null
+        }
+      })
+      // Clear container DOM completely - Html5Qrcode reuses DOM elements
+      container.innerHTML = ''
+    }
+
+    // Then try scanner cleanup (errors can be ignored since tracks are already stopped)
+    try {
+      if (scannerRef.current) {
         await scannerRef.current.stop()
         await scannerRef.current.clear()
-      } catch (error) {
-        console.error('Error stopping scanner:', error)
       }
-      scannerRef.current = null
-      setIsScanning(false)
+    } catch (err) {
+      // Ignore errors - tracks already stopped directly
+      console.warn('Scanner cleanup error (ignored):', err)
     }
+
+    scannerRef.current = null
+    scannerStateRef.current = 'idle'
   }
 
   const switchCamera = async (newCameraId: string) => {
-    if (!isScanning || !scannerRef.current) {
+    if (scannerStateRef.current !== 'running' || !scannerRef.current) {
       // If scanner is not running, just update index - initializeScanner will handle it
       return
     }
 
     try {
       await stopScanner()
+      
+      // Wait for cleanup to complete
+      await new Promise(resolve => setTimeout(resolve, 500))
+      
       setError(null)
       setErrorType(null)
       setSuccess(false)
       detectedCodesRef.current.clear()
+
+      // Clear container before creating new scanner
+      const container = document.getElementById('camera-scanner-container')
+      if (container) {
+        container.innerHTML = ''
+      }
+
+      scannerStateRef.current = 'starting'
 
       const scanner = new Html5Qrcode('camera-scanner-container', {
         verbose: false,
@@ -247,17 +349,21 @@ export function CameraScanner({
         onScanFailure
       )
 
-      setIsScanning(true)
+      scannerStateRef.current = 'running'
     } catch (error) {
       console.error('Error switching camera:', error)
+      scannerStateRef.current = 'idle'
       const parsedError = parseCameraError(error)
       setError(parsedError.message)
       setErrorType(parsedError.type)
-      setIsScanning(false)
+      await stopScanner()
     }
   }
 
   const handleNextCamera = async () => {
+    // Block interaction if scanner is not in running state
+    if (scannerStateRef.current !== 'running') return
+    
     if (availableCameras.length <= 1) return
     const nextIndex = (currentCameraIndex + 1) % availableCameras.length
     const nextCamera = availableCameras[nextIndex]
@@ -268,9 +374,13 @@ export function CameraScanner({
   }
 
   const handleScanAgain = async () => {
+    // Block interaction if scanner is transitioning
+    if (scannerStateRef.current !== 'idle' && scannerStateRef.current !== 'running') return
+    
     // If permission was denied, close modal so user can tap camera icon again
     // This ensures permission request happens synchronously with user gesture
     if (errorType === 'permission-denied' || errorType === 'system-blocked') {
+      await stopScanner()
       onClose()
       return
     }
@@ -283,11 +393,11 @@ export function CameraScanner({
     // Stop scanner completely to allow re-initialization
     await stopScanner()
     
-    // Small delay to ensure cleanup is complete
-    setTimeout(() => {
-      // Re-initialize scanner (for non-permission errors like camera-in-use, etc.)
-      initializeScanner()
-    }, 100)
+    // Wait for cleanup to complete (500ms delay)
+    await new Promise(resolve => setTimeout(resolve, 500))
+    
+    // Re-initialize scanner (for non-permission errors like camera-in-use, etc.)
+    await initializeScanner()
   }
 
   const onScanSuccess = (decodedText: string) => {
@@ -321,15 +431,15 @@ export function CameraScanner({
 
     // Process codes after a brief delay to allow multiple codes to be detected
     // Use a debounce to batch multiple rapid detections
-    processTimeoutRef.current = setTimeout(() => {
+    processTimeoutRef.current = setTimeout(async () => {
       const allCodes = Array.from(detectedCodesRef.current)
       if (allCodes.length > 0) {
         onScan(allCodes)
-        // Auto-close after successful scan
-        setTimeout(() => {
-          stopScanner()
-          onClose()
-        }, 500)
+        // Auto-close after successful scan with proper cleanup
+        await stopScanner()
+        // Small delay to ensure cleanup completes
+        await new Promise(resolve => setTimeout(resolve, 200))
+        onClose()
       }
       processTimeoutRef.current = null
     }, 500)
@@ -374,7 +484,7 @@ export function CameraScanner({
   if (!isOpen) return null
 
   return (
-    <div className="fixed inset-0 z-[200] bg-black flex flex-col">
+    <div className="fixed top-0 left-0 w-full h-screen h-[100dvh] z-[9999] bg-black flex flex-col">
       {/* Header */}
       <div className="flex items-center justify-between p-md bg-black/80 backdrop-blur-sm z-10">
         <h2 className="text-lg font-semibold text-white">Scan Barcode</h2>
@@ -382,18 +492,20 @@ export function CameraScanner({
           {availableCameras.length > 1 && (
             <button
               onClick={handleNextCamera}
-              className="p-sm rounded-md bg-white/20 hover:bg-white/30 transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center"
+              disabled={scannerStateRef.current !== 'running'}
+              className="p-sm rounded-md bg-white/20 hover:bg-white/30 transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed"
               aria-label="Switch camera"
             >
               <CameraIcon className="h-5 w-5 text-white" />
             </button>
           )}
           <button
-            onClick={() => {
-              stopScanner()
+            onClick={async () => {
+              await stopScanner()
               onClose()
             }}
-            className="p-sm rounded-md bg-white/20 hover:bg-white/30 transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center"
+            disabled={scannerStateRef.current === 'stopping'}
+            className="p-sm rounded-md bg-white/20 hover:bg-white/30 transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed"
             aria-label="Close scanner"
           >
             <XMarkIcon className="h-5 w-5 text-white" />
@@ -408,6 +520,18 @@ export function CameraScanner({
           ref={containerRef}
           className="w-full h-full"
         />
+
+        {/* Loading overlay during transitions */}
+        {(scannerStateRef.current === 'starting' || scannerStateRef.current === 'stopping') && (
+          <div className="absolute inset-0 bg-black/50 flex items-center justify-center z-30">
+            <div className="bg-black/80 rounded-lg p-lg flex flex-col items-center gap-sm">
+              <div className="h-8 w-8 animate-spin rounded-full border-4 border-white border-t-transparent" />
+              <span className="text-white text-sm">
+                {scannerStateRef.current === 'starting' ? 'Starting camera...' : 'Stopping camera...'}
+              </span>
+            </div>
+          </div>
+        )}
 
         {/* Overlay Messages */}
         {success && (
@@ -424,7 +548,8 @@ export function CameraScanner({
             {(errorType === 'permission-denied' || errorType === 'system-blocked' || errorType === 'camera-in-use') && (
               <button
                 onClick={handleScanAgain}
-                className="mt-sm px-md py-sm bg-primary text-text-on-primary rounded-md font-medium flex items-center gap-xs hover:bg-primary-hover transition-colors"
+                disabled={scannerStateRef.current !== 'idle' && scannerStateRef.current !== 'running'}
+                className="mt-sm px-md py-sm bg-primary text-text-on-primary rounded-md font-medium flex items-center gap-xs hover:bg-primary-hover transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <ArrowPathIcon className="h-4 w-4" />
                 Try Again
@@ -433,7 +558,8 @@ export function CameraScanner({
             {errorType !== 'permission-denied' && errorType !== 'system-blocked' && errorType !== 'camera-in-use' && (
               <button
                 onClick={handleScanAgain}
-                className="mt-sm px-md py-sm bg-error text-white rounded-md font-medium flex items-center gap-xs hover:opacity-90 transition-opacity"
+                disabled={scannerStateRef.current !== 'idle' && scannerStateRef.current !== 'running'}
+                className="mt-sm px-md py-sm bg-error text-white rounded-md font-medium flex items-center gap-xs hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <ArrowPathIcon className="h-4 w-4" />
                 Try Again
@@ -458,7 +584,7 @@ export function CameraScanner({
                 ? 'Close other apps using the camera, then tap "Scan Again".'
                 : 'Please resolve the issue and try again.'}
             </p>
-            {!isScanning && (
+            {scannerStateRef.current === 'idle' && (
               <button
                 onClick={handleScanAgain}
                 className="px-lg py-sm bg-primary text-text-on-primary rounded-md font-medium hover:bg-primary-hover transition-colors"
