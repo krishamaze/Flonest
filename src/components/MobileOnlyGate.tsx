@@ -5,8 +5,8 @@
 
 export function MobileOnlyGate() {
   return (
-    <div className="min-h-screen flex items-center justify-center bg-bg-page px-md py-md safe-top safe-bottom">
-      <div className="w-full max-w-md text-center">
+    <div className="viewport-height-safe flex items-center justify-center bg-bg-page px-md py-md safe-top safe-bottom overflow-hidden">
+      <div className="w-full max-w-md text-center page-enter">
         {/* App Icon/Logo - matching Header component style */}
         <div className="mx-auto mb-lg flex h-16 w-16 items-center justify-center rounded-2xl bg-primary shadow-lg">
           <span className="text-3xl font-bold text-on-primary">I</span>

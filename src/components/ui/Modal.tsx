@@ -94,7 +94,10 @@ export function Modal({ isOpen, onClose, title, children, className = '', header
     >
       {/* Backdrop */}
       <div
-        className="fixed inset-0 bg-black/50 transition-opacity duration-300 z-[100]"
+        className="fixed inset-0 bg-black/50 backdrop-enter z-[100]"
+        style={{
+          animation: 'fade-in 200ms cubic-bezier(0.0, 0.0, 0.2, 1)',
+        }}
         onClick={onClose}
         aria-hidden="true"
       />
@@ -102,7 +105,10 @@ export function Modal({ isOpen, onClose, title, children, className = '', header
       {/* Modal */}
       <div
         ref={modalRef}
-        className={`relative z-[101] w-full max-w-lg max-h-[90vh] rounded-lg bg-bg-card shadow-xl transition-all duration-300 flex flex-col ${className}`}
+        className={`relative z-[101] w-full max-w-lg max-h-[90vh] rounded-lg bg-bg-card shadow-xl modal-enter flex flex-col ${className}`}
+        style={{
+          animation: 'scale-in 200ms cubic-bezier(0.0, 0.0, 0.2, 1)',
+        }}
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}

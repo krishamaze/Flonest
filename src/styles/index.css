@@ -141,9 +141,22 @@ body {
   line-height: var(--line-height-normal);
   color: var(--text-primary);
   background: var(--bg-page);
+  /* Prevent scrolling on body - let individual pages handle it */
+  overflow-x: hidden;
 }
 
-/* Safe Area Insets for Mobile */
+/* Use dynamic viewport height for consistent sizing across devices */
+html {
+  height: 100%;
+  height: 100dvh; /* Dynamic viewport height - accounts for mobile browser bars */
+}
+
+#root {
+  min-height: 100%;
+  min-height: 100dvh;
+}
+
+/* Safe Area Insets for Mobile (notch support) */
 .safe-top {
   padding-top: env(safe-area-inset-top);
 }
@@ -154,6 +167,17 @@ body {
 
 .pb-safe {
   padding-bottom: env(safe-area-inset-bottom);
+}
+
+/* Consistent viewport height class */
+.viewport-height {
+  height: 100vh;
+  height: 100dvh; /* Dynamic viewport height */
+}
+
+.viewport-height-safe {
+  height: calc(100vh - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+  height: calc(100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom));
 }
 
 /* Touch Target Minimums */
@@ -178,5 +202,111 @@ body {
 /* Animations */
 @keyframes spin {
   to { transform: rotate(360deg); }
+}
+
+/* Android-style smooth transitions */
+/* Material Design easing curves */
+:root {
+  --ease-standard: cubic-bezier(0.4, 0.0, 0.2, 1);
+  --ease-decelerate: cubic-bezier(0.0, 0.0, 0.2, 1);
+  --ease-accelerate: cubic-bezier(0.4, 0.0, 1, 1);
+  --ease-sharp: cubic-bezier(0.4, 0.0, 0.6, 1);
+}
+
+/* Page transition animations (Android-style) */
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes slide-in-right {
+  from {
+    transform: translateX(20px);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+@keyframes slide-in-left {
+  from {
+    transform: translateX(-20px);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+@keyframes slide-up-smooth {
+  from {
+    transform: translateY(24px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+@keyframes scale-in {
+  from {
+    transform: scale(0.95);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+/* Smooth page transition */
+.page-enter {
+  animation: fade-in 200ms var(--ease-decelerate);
+}
+
+.page-enter-active {
+  animation: fade-in 200ms var(--ease-decelerate);
+}
+
+.page-exit {
+  animation: fade-in 150ms var(--ease-accelerate) reverse;
+}
+
+/* Smooth modal/drawer transitions */
+.modal-enter {
+  animation: scale-in 200ms var(--ease-decelerate);
+}
+
+.drawer-enter {
+  animation: slide-up-smooth 300ms var(--ease-decelerate);
+}
+
+/* Backdrop fade */
+.backdrop-enter {
+  animation: fade-in 200ms var(--ease-decelerate);
+}
+
+/* Smooth transitions for all interactive elements */
+* {
+  transition-timing-function: var(--ease-standard);
+}
+
+/* Disable transitions on reduced motion preference */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }
 

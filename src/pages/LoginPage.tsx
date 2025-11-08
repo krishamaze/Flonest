@@ -56,9 +56,9 @@ export function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen bg-bg-page safe-top safe-bottom flex flex-col">
-      <div className="flex-1 flex items-center justify-center px-md py-md">
-        <div className="w-full" style={{ maxWidth: '448px' }}>
+    <div className="viewport-height-safe bg-bg-page safe-top safe-bottom flex flex-col overflow-hidden">
+      <div className="flex-1 flex items-center justify-center px-md py-md min-h-0">
+        <div className="w-full max-w-md page-enter">
         {/* Header */}
         <div className="mb-8 text-center">
           <div className="mx-auto mb-md flex h-16 w-16 items-center justify-center rounded-2xl bg-primary shadow-lg">

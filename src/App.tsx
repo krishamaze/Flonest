@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { AuthProvider, useAuth } from './contexts/AuthContext'
 import { MainLayout } from './components/layout/MainLayout'
 import { LoadingSpinner } from './components/ui/LoadingSpinner'
+import { PageTransition } from './components/ui/PageTransition'
 import { InstallPrompt } from './components/pwa/InstallPrompt'
 import { UpdateNotification } from './components/pwa/UpdateNotification'
 import { FRONTEND_VERSION } from './lib/api/version'
@@ -20,7 +21,7 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 
   if (loading) {
     return (
-      <div className="flex h-screen items-center justify-center">
+      <div className="viewport-height flex items-center justify-center">
         <LoadingSpinner size="lg" />
       </div>
     )
@@ -38,7 +39,7 @@ function AppRoutes() {
 
   if (loading) {
     return (
-      <div className="flex h-screen items-center justify-center">
+      <div className="viewport-height flex items-center justify-center">
         <LoadingSpinner size="lg" />
       </div>
     )
@@ -47,32 +48,34 @@ function AppRoutes() {
   return (
     <Suspense
       fallback={
-        <div className="flex h-screen items-center justify-center">
+        <div className="viewport-height flex items-center justify-center">
           <LoadingSpinner size="lg" />
         </div>
       }
     >
-      <Routes>
-        <Route
-          path="/login"
-          element={user ? <Navigate to="/" replace /> : <LoginPage />}
-        />
-        <Route
-          path="/"
-          element={
-            <ProtectedRoute>
-              <MainLayout />
-            </ProtectedRoute>
-          }
-        >
-          <Route index element={<DashboardPage />} />
-          <Route path="products" element={<ProductsPage />} />
-          <Route path="inventory" element={<InventoryPage />} />
-          <Route path="stock-ledger" element={<StockLedgerPage />} />
-          <Route path="customers" element={<CustomersPage />} />
-        </Route>
-        <Route path="*" element={<Navigate to="/" replace />} />
-      </Routes>
+      <PageTransition>
+        <Routes>
+          <Route
+            path="/login"
+            element={user ? <Navigate to="/" replace /> : <LoginPage />}
+          />
+          <Route
+            path="/"
+            element={
+              <ProtectedRoute>
+                <MainLayout />
+              </ProtectedRoute>
+            }
+          >
+            <Route index element={<DashboardPage />} />
+            <Route path="products" element={<ProductsPage />} />
+            <Route path="inventory" element={<InventoryPage />} />
+            <Route path="stock-ledger" element={<StockLedgerPage />} />
+            <Route path="customers" element={<CustomersPage />} />
+          </Route>
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      </PageTransition>
     </Suspense>
   )
 }

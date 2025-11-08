@@ -88,7 +88,10 @@ export function Drawer({ isOpen, onClose, title, children, className = '', heade
       {/* Backdrop */}
       {isOpen && (
         <div
-          className="fixed inset-0 z-[100] bg-black/50 transition-opacity duration-300"
+          className="fixed inset-0 z-[100] bg-black/50 backdrop-enter"
+          style={{
+            animation: 'fade-in 200ms cubic-bezier(0.0, 0.0, 0.2, 1)',
+          }}
           onClick={onClose}
           aria-hidden="true"
         />
@@ -96,9 +99,15 @@ export function Drawer({ isOpen, onClose, title, children, className = '', heade
 
       {/* Drawer */}
       <div
-        className={`fixed bottom-0 left-0 right-0 z-[101] transform transition-transform duration-300 ease-out safe-bottom ${
-          isOpen ? 'translate-y-0' : 'translate-y-full'
+        className={`fixed bottom-0 left-0 right-0 z-[101] safe-bottom ${
+          isOpen ? 'drawer-enter' : ''
         } ${className}`}
+        style={{
+          transform: isOpen ? 'translateY(0)' : 'translateY(100%)',
+          transition: isOpen
+            ? 'transform 300ms cubic-bezier(0.0, 0.0, 0.2, 1)'
+            : 'transform 250ms cubic-bezier(0.4, 0.0, 1, 1)',
+        }}
         role="dialog"
         aria-modal="true"
         aria-labelledby={title ? 'drawer-title' : undefined}

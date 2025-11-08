@@ -35,7 +35,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
           ref={ref}
           type={inputType}
           inputMode={inputMode}
-          className={`w-full min-h-[44px] px-md py-sm border rounded-md bg-bg-card text-base text-primary-text placeholder:text-muted-text focus:border-primary focus:outline-2 focus:outline-primary focus:outline-offset-2 disabled:bg-neutral-100 disabled:text-muted-text disabled:cursor-not-allowed transition-all duration-150 ${
+          className={`w-full min-h-[44px] px-md py-sm border rounded-md bg-bg-card text-base text-primary-text placeholder:text-muted-text focus:border-primary focus:outline-2 focus:outline-primary focus:outline-offset-2 disabled:bg-neutral-100 disabled:text-muted-text disabled:cursor-not-allowed transition-all duration-200 ${
             error ? 'border-error focus:outline-error' : 'border-neutral-300'
           } ${className}`}
           aria-invalid={error ? 'true' : undefined}
