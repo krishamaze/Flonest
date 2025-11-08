@@ -44,6 +44,6 @@
     "vite": "^6.0.1",
     "vite-plugin-pwa": "^1.1.0",
     "workbox-window": "^7.3.0",
-    "supabase": "^1.227.7"
+    "supabase": "^2.54.11"
   }
 }
