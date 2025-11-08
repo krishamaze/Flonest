@@ -1,4 +1,4 @@
-import { useState, FormEvent, useEffect, useMemo } from 'react'
+import { useState, FormEvent, useEffect, useMemo, useRef } from 'react'
 import { Input } from '../ui/Input'
 import { Button } from '../ui/Button'
 import { Modal } from '../ui/Modal'
@@ -12,7 +12,7 @@ import { ScannerInput } from '../invoice/ScannerInput'
 import type { InvoiceFormData, InvoiceItemFormData, CustomerWithMaster, Org, ProductWithMaster, ScanResult } from '../../types'
 import { lookupOrCreateCustomer, checkCustomerExists, searchCustomersByIdentifier } from '../../lib/api/customers'
 import { getAllProducts } from '../../lib/api/products'
-import { createInvoice, autoSaveInvoiceDraft, validateInvoiceItems, getDraftInvoiceByCustomer, loadDraftInvoiceData, revalidateDraftInvoice, getInvoiceById } from '../../lib/api/invoices'
+import { createInvoice, autoSaveInvoiceDraft, validateInvoiceItems, getDraftInvoiceByCustomer, loadDraftInvoiceData, revalidateDraftInvoice, getInvoiceById, clearDraftSessionId } from '../../lib/api/invoices'
 import { checkSerialStatus } from '../../lib/api/serials'
 import { validateScannerCodes } from '../../lib/api/scanner'
 import { calculateItemGST, extractStateCodeFromGSTIN, getCustomerStateCode } from '../../lib/utils/gstCalculation'
@@ -22,6 +22,7 @@ import { ChevronLeftIcon, ChevronRightIcon, PlusIcon, TrashIcon, XCircleIcon, Bo
 import type { IdentifierType } from '../../lib/utils/identifierValidation'
 import { detectIdentifierType, validateMobile, validateGSTIN, normalizeIdentifier } from '../../lib/utils/identifierValidation'
 import { Toast } from '../ui/Toast'
+import { getDraftSessionId, setDraftSessionId } from '../../lib/utils/draftSession'
 
 interface InvoiceFormProps {
   isOpen: boolean
@@ -70,6 +71,9 @@ export function InvoiceForm({
   const [internalDraftInvoiceId, setInternalDraftInvoiceId] = useState<string | null>(null)
   const [serialInputs, setSerialInputs] = useState<Record<number, string>>({})
   
+  // Draft session ID ref - persists across re-renders
+  const draftSessionId = useRef<string | null>(null)
+  
   // Use prop if provided, otherwise use internal state
   const currentDraftInvoiceId = draftInvoiceId || internalDraftInvoiceId
 
@@ -86,6 +90,19 @@ export function InvoiceForm({
     }
   }, [isOpen, orgId])
 
+  // Initialize draft session ID when form opens
+  useEffect(() => {
+    if (isOpen) {
+      if (draftInvoiceId) {
+        // For existing drafts, get session ID from sessionStorage or create new one
+        draftSessionId.current = getDraftSessionId(draftInvoiceId)
+      } else {
+        // For new drafts, create new session ID
+        draftSessionId.current = getDraftSessionId()
+      }
+    }
+  }, [isOpen, draftInvoiceId])
+
   // Load draft on mount if draftInvoiceId prop is provided
   useEffect(() => {
     if (isOpen && draftInvoiceId) {
@@ -93,6 +110,12 @@ export function InvoiceForm({
         try {
           const draftData = await loadDraftInvoiceData(draftInvoiceId)
           if (draftData) {
+            // Restore draft session ID from database
+            if (draftData.draft_session_id) {
+              draftSessionId.current = draftData.draft_session_id
+              setDraftSessionId(draftInvoiceId, draftData.draft_session_id)
+            }
+            
             // Load customer
             const draftInvoice = await getInvoiceById(draftInvoiceId)
             if (draftInvoice.customer) {
@@ -155,6 +178,8 @@ export function InvoiceForm({
   // Reset form when closed
   useEffect(() => {
     if (!isOpen) {
+      // Don't clear session ID here - it should persist if form is reopened
+      // Only clear on finalize or explicit delete
       setCurrentStep(1)
       setIdentifier('')
       setIdentifierValid(false)
@@ -550,7 +575,6 @@ export function InvoiceForm({
 
   // Auto-save draft
   const draftData = useMemo(() => ({
-    invoice_id: currentDraftInvoiceId || undefined,
     customer_id: selectedCustomer?.id,
     items: items.map((item) => ({
       product_id: item.product_id,
@@ -559,7 +583,7 @@ export function InvoiceForm({
       line_total: item.line_total,
       serials: item.serials,
     })),
-  }), [selectedCustomer, items, draftInvoiceId])
+  }), [selectedCustomer, items])
 
   const [toast, setToast] = useState<{ message: string; type?: 'success' | 'info' | 'error' } | null>(null)
   const [lastAutoSaveTime, setLastAutoSaveTime] = useState<number | null>(null)
@@ -567,10 +591,17 @@ export function InvoiceForm({
   const { saveStatus, manualSave } = useAutoSave(
     draftData,
     async (data) => {
-      if (!selectedCustomer) return
+      if (!selectedCustomer || !draftSessionId.current) return
       try {
-        const invoiceId = await autoSaveInvoiceDraft(orgId, userId, data)
-        setInternalDraftInvoiceId(invoiceId)
+        const result = await autoSaveInvoiceDraft(orgId, userId, draftSessionId.current, data)
+        setInternalDraftInvoiceId(result.invoiceId)
+        // Update session ID if it changed
+        if (result.sessionId && result.sessionId !== draftSessionId.current) {
+          draftSessionId.current = result.sessionId
+          if (result.invoiceId) {
+            setDraftSessionId(result.invoiceId, result.sessionId)
+          }
+        }
         const now = Date.now()
         // Only show toast if it's been more than 3 seconds since last auto-save (avoid spam)
         if (!lastAutoSaveTime || now - lastAutoSaveTime > 3000) {
@@ -584,7 +615,7 @@ export function InvoiceForm({
     { 
       localDebounce: 1500,  // 1.5s debounce for localStorage
       rpcInterval: 5000,     // 5s interval for RPC calls
-      enabled: selectedCustomer !== null 
+      enabled: selectedCustomer !== null && draftSessionId.current !== null
     }
   )
 
@@ -886,6 +917,14 @@ export function InvoiceForm({
         org,
         selectedCustomer
       )
+
+      // Clear draft session ID on finalize
+      if (currentDraftInvoiceId) {
+        clearDraftSessionId(currentDraftInvoiceId)
+      } else {
+        clearDraftSessionId()
+      }
+      draftSessionId.current = null
 
       await onSubmit(invoice.id)
       onClose()

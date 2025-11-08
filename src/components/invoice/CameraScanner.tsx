@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { toast } from 'react-toastify'
 import { Html5Qrcode, Html5QrcodeSupportedFormats, CameraDevice } from 'html5-qrcode'
 import { XMarkIcon, CameraIcon, ArrowPathIcon, CheckCircleIcon, ExclamationTriangleIcon } from '@heroicons/react/24/outline'
 
@@ -43,6 +44,15 @@ export function CameraScanner({
   const [currentCameraIndex, setCurrentCameraIndex] = useState(0)
   const detectedCodesRef = useRef<Set<string>>(new Set())
   const processTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+  
+  // Timing tracking for error handling
+  const scannerStartTimeRef = useRef<number | null>(null)
+  const lastSuccessTimeRef = useRef<number | null>(null)
+  const errorDebounceRef = useRef<NodeJS.Timeout | null>(null)
+  const clarityErrorToastIdRef = useRef<string | number | null>(null)
+  const GRACE_PERIOD_MS = 2000 // 2 seconds grace period for camera to focus
+  const ERROR_DEBOUNCE_MS = 500 // Wait 500ms of continuous errors before showing
+  const SUCCESS_COOLDOWN_MS = 1000 // Don't show errors for 1s after successful scan
 
   // Android detection utility
   const isAndroid = () => /Android/i.test(navigator.userAgent)
@@ -177,6 +187,22 @@ export function CameraScanner({
     setErrorType(null)
     setSuccess(false)
     detectedCodesRef.current.clear()
+    
+    // Reset timing refs
+    scannerStartTimeRef.current = null
+    lastSuccessTimeRef.current = null
+    
+    // Clear any pending error debounce
+    if (errorDebounceRef.current) {
+      clearTimeout(errorDebounceRef.current)
+      errorDebounceRef.current = null
+    }
+    
+    // Dismiss any existing clarity error toasts
+    if (clarityErrorToastIdRef.current) {
+      toast.dismiss(clarityErrorToastIdRef.current)
+      clarityErrorToastIdRef.current = null
+    }
 
     try {
       // Clear container DOM first - Html5Qrcode reuses DOM elements
@@ -244,8 +270,16 @@ export function CameraScanner({
 
       // Only set to running after successful start
       scannerStateRef.current = 'running'
+      scannerStartTimeRef.current = Date.now()
+      lastSuccessTimeRef.current = null
       setError(null)
       setErrorType(null)
+      
+      // Clear any existing clarity error toasts
+      if (clarityErrorToastIdRef.current) {
+        toast.dismiss(clarityErrorToastIdRef.current)
+        clarityErrorToastIdRef.current = null
+      }
     } catch (error) {
       console.error('Error initializing scanner:', error)
       scannerStateRef.current = 'idle'
@@ -269,6 +303,22 @@ export function CameraScanner({
       clearTimeout(processTimeoutRef.current)
       processTimeoutRef.current = null
     }
+
+    // Clear error debounce
+    if (errorDebounceRef.current) {
+      clearTimeout(errorDebounceRef.current)
+      errorDebounceRef.current = null
+    }
+
+    // Dismiss any clarity error toasts
+    if (clarityErrorToastIdRef.current) {
+      toast.dismiss(clarityErrorToastIdRef.current)
+      clarityErrorToastIdRef.current = null
+    }
+
+    // Reset timing refs
+    scannerStartTimeRef.current = null
+    lastSuccessTimeRef.current = null
 
     // CRITICAL: Force stop all video tracks directly from DOM elements
     // This bypasses Html5Qrcode's broken state management and prevents
@@ -350,6 +400,14 @@ export function CameraScanner({
       )
 
       scannerStateRef.current = 'running'
+      scannerStartTimeRef.current = Date.now()
+      lastSuccessTimeRef.current = null
+      
+      // Clear any existing clarity error toasts
+      if (clarityErrorToastIdRef.current) {
+        toast.dismiss(clarityErrorToastIdRef.current)
+        clarityErrorToastIdRef.current = null
+      }
     } catch (error) {
       console.error('Error switching camera:', error)
       scannerStateRef.current = 'idle'
@@ -413,6 +471,25 @@ export function CameraScanner({
       clearTimeout(processTimeoutRef.current)
     }
 
+    // Clear any pending error debounce
+    if (errorDebounceRef.current) {
+      clearTimeout(errorDebounceRef.current)
+      errorDebounceRef.current = null
+    }
+
+    // Dismiss any clarity error toasts immediately
+    if (clarityErrorToastIdRef.current) {
+      toast.dismiss(clarityErrorToastIdRef.current)
+      clarityErrorToastIdRef.current = null
+    }
+
+    // Update last success time to prevent errors right after successful scan
+    lastSuccessTimeRef.current = Date.now()
+
+    // Clear any error state
+    setError(null)
+    setErrorType(null)
+
     // Haptic feedback (vibration)
     try {
       if ('vibrate' in navigator && navigator.vibrate) {
@@ -427,7 +504,6 @@ export function CameraScanner({
 
     // Show success
     setSuccess(true)
-    setError(null)
 
     // Process codes after a brief delay to allow multiple codes to be detected
     // Use a debounce to batch multiple rapid detections
@@ -451,11 +527,64 @@ export function CameraScanner({
       return
     }
 
-    // Show error for actual problems
-    if (!error.includes('No QR code') && !error.includes('No MultiFormat')) {
-      setError('Image unclear. Please try again.')
-      setSuccess(false)
+    // Ignore "No QR code" errors - these are normal during scanning
+    if (error.includes('No QR code') || error.includes('No MultiFormat')) {
+      return
     }
+
+    // Only process clarity errors after grace period
+    const now = Date.now()
+    const scannerStarted = scannerStartTimeRef.current
+    const lastSuccess = lastSuccessTimeRef.current
+
+    // Check if grace period has passed
+    if (!scannerStarted || now - scannerStarted < GRACE_PERIOD_MS) {
+      return
+    }
+
+    // Check if we recently had a successful scan - don't show errors right after success
+    if (lastSuccess && now - lastSuccess < SUCCESS_COOLDOWN_MS) {
+      return
+    }
+
+    // Clear any existing debounce timer
+    if (errorDebounceRef.current) {
+      clearTimeout(errorDebounceRef.current)
+    }
+
+    // Debounce error display - only show if error persists for ERROR_DEBOUNCE_MS
+    errorDebounceRef.current = setTimeout(() => {
+      // Double-check conditions before showing (in case state changed during debounce)
+      const checkNow = Date.now()
+      const checkScannerStarted = scannerStartTimeRef.current
+      const checkLastSuccess = lastSuccessTimeRef.current
+
+      if (!checkScannerStarted || checkNow - checkScannerStarted < GRACE_PERIOD_MS) {
+        return
+      }
+
+      if (checkLastSuccess && checkNow - checkLastSuccess < SUCCESS_COOLDOWN_MS) {
+        return
+      }
+
+      // Only show one clarity error toast at a time
+      if (clarityErrorToastIdRef.current) {
+        toast.dismiss(clarityErrorToastIdRef.current)
+      }
+
+      // Show subtle guide message as toast (not blocking error)
+      clarityErrorToastIdRef.current = toast.warning('Image unclear - adjust focus', {
+        position: 'bottom-center',
+        autoClose: 2500,
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: false,
+        style: {
+          maxWidth: '90vw',
+          fontSize: '14px',
+        },
+      })
+    }, ERROR_DEBOUNCE_MS)
   }
 
   const playBeep = () => {
@@ -541,7 +670,8 @@ export function CameraScanner({
           </div>
         )}
 
-        {error && !success && (
+        {/* Only show error overlay for critical errors (permission, camera issues), not clarity issues */}
+        {error && errorType && !success && (
           <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-error-light border-2 border-error rounded-lg p-lg flex flex-col items-center gap-sm z-20 max-w-[80%]">
             <ExclamationTriangleIcon className="h-12 w-12 text-error" />
             <span className="text-error-dark font-semibold text-center">{error}</span>

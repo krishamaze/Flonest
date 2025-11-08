@@ -5,6 +5,7 @@ import { calculateItemGST, extractStateCodeFromGSTIN, getCustomerStateCode } fro
 import { isOrgGstEnabled } from '../utils/orgGst'
 import { getProduct } from './products'
 import type { ProductWithMaster } from '../../types'
+import { clearDraftSessionId } from '../utils/draftSession'
 
 type InvoiceInsert = Database['public']['Tables']['invoices']['Insert']
 type InvoiceItemInsert = Database['public']['Tables']['invoice_items']['Insert']
@@ -360,6 +361,7 @@ export async function getDraftInvoiceByCustomer(
  */
 export async function loadDraftInvoiceData(invoiceId: string): Promise<{
   customer_id: string
+  draft_session_id?: string
   items: Array<{
     product_id: string
     quantity: number
@@ -371,7 +373,7 @@ export async function loadDraftInvoiceData(invoiceId: string): Promise<{
 } | null> {
   const { data, error } = await supabase
     .from('invoices')
-    .select('customer_id, draft_data')
+    .select('customer_id, draft_data, draft_session_id')
     .eq('id', invoiceId)
     .single()
 
@@ -391,6 +393,7 @@ export async function loadDraftInvoiceData(invoiceId: string): Promise<{
 
   return {
     customer_id: draftContent.customer_id,
+    draft_session_id: invoiceData.draft_session_id,
     items: draftContent.items || [],
   }
 }
@@ -490,14 +493,26 @@ export async function revalidateDraftInvoice(
 }
 
 /**
- * Auto-save invoice draft
- * Saves draft invoice data incrementally to backend
+ * Wrap draft data with versioning
+ * Preserves compatibility with existing draft_data structure
+ */
+function wrapDraftData(data: any): any {
+  return {
+    v: 1,
+    data: data,
+  }
+}
+
+/**
+ * Auto-save invoice draft using draft_session_id
+ * Updates existing draft if session ID matches, otherwise creates new draft
+ * Uses manual check/update/insert since partial unique indexes aren't directly supported by Supabase upsert
  */
 export async function autoSaveInvoiceDraft(
   orgId: string,
   userId: string,
+  draftSessionId: string,
   draftData: {
-    invoice_id?: string
     customer_id?: string
     items: Array<{
       product_id: string
@@ -507,26 +522,116 @@ export async function autoSaveInvoiceDraft(
       serials?: string[]
     }>
   }
-): Promise<string> {
+): Promise<{ invoiceId: string; sessionId: string }> {
   try {
-    const { data, error } = await supabase.rpc('auto_save_invoice_draft' as any, {
-      p_org_id: orgId,
-      p_user_id: userId,
-      p_draft_data: draftData as any,
-    })
+    // Wrap draft data with versioning (for compatibility with existing format)
+    const wrappedDraftData = wrapDraftData(draftData)
 
-    if (error) {
-      throw new Error(`Failed to auto-save draft: ${error.message}`)
+    // Calculate totals from items
+    const subtotal = draftData.items.reduce((sum, item) => sum + (item.line_total || 0), 0)
+
+    // Check if draft with this session ID already exists
+    const { data: existingDraft, error: selectError } = await supabase
+      .from('invoices')
+      .select('id, draft_session_id')
+      .eq('draft_session_id', draftSessionId)
+      .eq('org_id', orgId)
+      .eq('status', 'draft')
+      .maybeSingle() as any
+
+    if (selectError && selectError.code !== 'PGRST116') {
+      throw new Error(`Failed to check existing draft: ${selectError.message}`)
     }
 
-    if (!data || typeof data !== 'string') {
-      throw new Error('Invalid response from auto-save function')
-    }
+    if (existingDraft) {
+      // Update existing draft
+      const { data: updated, error: updateError } = await supabase
+        .from('invoices')
+        .update({
+          customer_id: draftData.customer_id || null,
+          subtotal: subtotal,
+          total_amount: subtotal,
+          draft_data: wrappedDraftData,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', (existingDraft as any).id)
+        .select('id, draft_session_id')
+        .single()
 
-    return data
+      if (updateError) {
+        throw new Error(`Failed to update draft: ${updateError.message}`)
+      }
+
+      const updatedData = updated as any
+      return {
+        invoiceId: updatedData.id,
+        sessionId: updatedData.draft_session_id || draftSessionId,
+      }
+    } else {
+      // Create new draft
+      const { data: created, error: insertError } = await supabase
+        .from('invoices')
+        .insert({
+          draft_session_id: draftSessionId,
+          org_id: orgId,
+          customer_id: draftData.customer_id || null,
+          invoice_number: 'DRAFT-' + Date.now().toString(), // Temporary, will be replaced on finalize
+          subtotal: subtotal,
+          cgst_amount: 0, // Will be calculated on finalize
+          sgst_amount: 0,
+          igst_amount: 0,
+          total_amount: subtotal,
+          status: 'draft',
+          created_by: userId,
+          draft_data: wrappedDraftData,
+        } as any)
+        .select('id, draft_session_id')
+        .single()
+
+      if (insertError) {
+        throw new Error(`Failed to create draft: ${insertError.message}`)
+      }
+
+      const createdData = created as any
+      return {
+        invoiceId: createdData.id,
+        sessionId: createdData.draft_session_id || draftSessionId,
+      }
+    }
   } catch (error) {
     console.error('Error auto-saving invoice draft:', error)
     throw error
   }
 }
+
+/**
+ * Delete a draft invoice
+ * Only allows deletion of drafts (status = 'draft')
+ */
+export async function deleteDraft(invoiceId: string, orgId: string): Promise<void> {
+  try {
+    const { error } = await supabase
+      .from('invoices')
+      .delete()
+      .eq('id', invoiceId)
+      .eq('org_id', orgId)
+      .eq('status', 'draft')
+
+    if (error) {
+      throw new Error(`Failed to delete draft: ${error.message}`)
+    }
+
+    // Clear session storage for this draft
+    clearDraftSessionId(invoiceId)
+  } catch (error) {
+    console.error('Error deleting draft:', error)
+    throw error
+  }
+}
+
+/**
+ * Clear draft session from sessionStorage
+ * Helper function exported for use in components
+ */
+export { clearDraftSessionId } from '../utils/draftSession'
 

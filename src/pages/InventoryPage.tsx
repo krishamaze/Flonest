@@ -6,11 +6,13 @@ import { Card, CardContent } from '../components/ui/Card'
 import { LoadingSpinner } from '../components/ui/LoadingSpinner'
 import { Button } from '../components/ui/Button'
 import { InvoiceForm } from '../components/forms/InvoiceForm'
+import { SwipeableDraftItem } from '../components/ui/SwipeableDraftItem'
 import {
   PlusIcon,
   DocumentTextIcon,
 } from '@heroicons/react/24/outline'
-import { getInvoicesByOrg, revalidateDraftInvoice } from '../lib/api/invoices'
+import { getInvoicesByOrg, revalidateDraftInvoice, deleteDraft } from '../lib/api/invoices'
+import { toast } from 'react-toastify'
 
 export function InventoryPage() {
   const { user } = useAuth()
@@ -103,6 +105,20 @@ export function InventoryPage() {
     }
   }
 
+  const handleDeleteDraft = async (invoiceId: string) => {
+    if (!user) return
+
+    try {
+      await deleteDraft(invoiceId, user.orgId)
+      toast.success('Draft deleted successfully')
+      // Reload invoices to reflect deletion
+      await loadInvoices()
+    } catch (error) {
+      console.error('Error deleting draft:', error)
+      toast.error(error instanceof Error ? error.message : 'Failed to delete draft')
+    }
+  }
+
   const getStatusColor = (status: string | null) => {
     if (!status) return 'bg-neutral-50 border-neutral-200 text-secondary-text'
     switch (status) {
@@ -117,7 +133,7 @@ export function InventoryPage() {
     }
   }
 
-  const formatDate = (dateString: string | null) => {
+  const formatDate = (dateString: string | Date | null) => {
     if (!dateString) return 'N/A'
     const date = new Date(dateString)
     return new Intl.DateTimeFormat('en-US', {
@@ -240,13 +256,26 @@ export function InventoryPage() {
           {/* Invoice List */}
           {filteredInvoices.map((invoice) => {
             const isDraft = invoice.status === 'draft'
+            
+            // Use SwipeableDraftItem for drafts (swipe to delete)
+            if (isDraft) {
+              return (
+                <SwipeableDraftItem
+                  key={invoice.id}
+                  invoice={invoice}
+                  onDelete={handleDeleteDraft}
+                  onClick={() => handleDraftClick(invoice.id)}
+                  getStatusColor={getStatusColor}
+                  formatDate={formatDate}
+                />
+              )
+            }
+            
+            // Use regular Card for finalized invoices
             return (
               <Card
                 key={invoice.id}
-                className={`border shadow-sm ${getStatusColor(invoice.status)} ${
-                  isDraft ? 'cursor-pointer hover:shadow-md transition-shadow' : ''
-                }`}
-                onClick={isDraft ? () => handleDraftClick(invoice.id) : undefined}
+                className={`border shadow-sm ${getStatusColor(invoice.status)}`}
               >
                 <CardContent className="p-4">
                   <div className="flex items-start justify-between gap-4">
@@ -255,11 +284,6 @@ export function InventoryPage() {
                         <h3 className="text-base font-medium text-primary-text">
                           Invoice #{invoice.invoice_number}
                         </h3>
-                        {isDraft && (
-                          <span className="text-xs text-primary font-medium">
-                            Continue Draft →
-                          </span>
-                        )}
                       </div>
                       <p className="text-xs text-muted-text mt-xs">
                         {formatDate(invoice.created_at)}
