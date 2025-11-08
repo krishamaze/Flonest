@@ -257,9 +257,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           .limit(1)
       }
 
-      const { data: memberships, error } = membershipsResult as Awaited<
-        ReturnType<typeof supabase.from<'memberships'>.select>
-      >
+      const { data: memberships, error } = membershipsResult as {
+        data: any[] | null
+        error: any
+      }
 
       if (error) throw error
 

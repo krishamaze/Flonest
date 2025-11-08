@@ -18,7 +18,7 @@ const StockLedgerPage = lazy(() => import('./pages/StockLedgerPage').then(m => (
 const CustomersPage = lazy(() => import('./pages/CustomersPage').then(m => ({ default: m.CustomersPage })))
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
-  const { user, loading, connectionError, retrying, retryConnection } = useAuth()
+  const { user, loading } = useAuth()
 
   // Show loading spinner while loading (max 5 seconds due to timeout)
   if (loading) {
