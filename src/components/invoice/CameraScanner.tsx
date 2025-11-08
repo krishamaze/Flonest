@@ -126,12 +126,30 @@ export function CameraScanner({
       setSuccess(false)
       detectedCodesRef.current.clear()
 
-      // Get available cameras
+      // IMPORTANT: Explicitly request camera permission first
+      // This ensures the browser permission prompt ALWAYS appears on first use
+      // Html5Qrcode.getCameras() doesn't always trigger the prompt reliably
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ 
+          video: { facingMode: 'environment' } // Request back camera
+        })
+        // Permission granted! Stop the stream immediately (Html5Qrcode will handle it)
+        stream.getTracks().forEach(track => track.stop())
+      } catch (permissionError) {
+        // Permission denied or other error
+        const parsedError = parseCameraError(permissionError)
+        setError(parsedError.message)
+        setErrorType(parsedError.type)
+        setIsScanning(false)
+        return
+      }
+
+      // Now get available cameras (permission already granted)
       let cameras: CameraDevice[] = []
       try {
         cameras = await Html5Qrcode.getCameras()
       } catch (error) {
-        // If getCameras fails, it's likely a permission issue
+        // If getCameras fails after permission granted, it's likely a camera issue
         const parsedError = parseCameraError(error)
         setError(parsedError.message)
         setErrorType(parsedError.type)
@@ -223,6 +241,7 @@ export function CameraScanner({
     try {
       await stopScanner()
       setError(null)
+      setErrorType(null)
       setSuccess(false)
       detectedCodesRef.current.clear()
 
@@ -248,7 +267,9 @@ export function CameraScanner({
       setIsScanning(true)
     } catch (error) {
       console.error('Error switching camera:', error)
-      setError('Failed to switch camera')
+      const parsedError = parseCameraError(error)
+      setError(parsedError.message)
+      setErrorType(parsedError.type)
       setIsScanning(false)
     }
   }
