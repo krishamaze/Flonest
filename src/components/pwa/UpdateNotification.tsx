@@ -51,18 +51,19 @@ export function UpdateNotification() {
   if (!showUpdate) return null
 
   return (
-    <button
-      onClick={handleUpdate}
-      disabled={isUpdating}
-      className="fixed bottom-20 right-4 z-[90] bg-primary text-text-on-primary rounded-full p-3 shadow-lg hover:shadow-xl transition-all hover:scale-110 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-      aria-label="Update available"
-      title="Update available - tap to update"
-    >
-      <ArrowPathIcon className={`h-5 w-5 ${isUpdating ? 'animate-spin' : ''}`} />
-      {isUpdating && (
-        <span className="text-xs font-medium pr-1">Updating...</span>
-      )}
-    </button>
+    <div className="fixed bottom-20 right-4 left-4 z-[90] flex justify-center animate-slide-up">
+      <button
+        onClick={handleUpdate}
+        disabled={isUpdating}
+        className="bg-primary text-text-on-primary rounded-lg px-4 py-3 shadow-lg hover:shadow-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 max-w-md"
+        aria-label="Update available"
+      >
+        <ArrowPathIcon className={`h-5 w-5 flex-shrink-0 ${isUpdating ? 'animate-spin' : ''}`} />
+        <span className="text-sm font-medium">
+          {isUpdating ? 'Updating...' : 'New version available, tap to refresh 🔄'}
+        </span>
+      </button>
+    </div>
   )
 }
 
