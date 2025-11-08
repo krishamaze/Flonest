@@ -6,8 +6,11 @@ import { XMarkIcon, CameraIcon, ArrowPathIcon, CheckCircleIcon, ExclamationTrian
 interface CameraScannerProps {
   isOpen: boolean
   onClose: () => void
-  onScan: (codes: string[]) => void
+  onScan?: (codes: string[]) => void // Legacy support
+  onScanSuccess?: (code: string) => void // New: doesn't auto-close (for continuous mode)
   enabledFormats?: Html5QrcodeSupportedFormats[]
+  continuousMode?: boolean // New: scanner stays open after scan
+  orgId?: string // For scan cooldown tracking
 }
 
 /**
@@ -19,6 +22,7 @@ export function CameraScanner({
   isOpen,
   onClose,
   onScan,
+  onScanSuccess,
   enabledFormats = [
     Html5QrcodeSupportedFormats.QR_CODE,
     Html5QrcodeSupportedFormats.EAN_13,
@@ -30,6 +34,8 @@ export function CameraScanner({
     Html5QrcodeSupportedFormats.CODE_93,
     Html5QrcodeSupportedFormats.ITF,
   ],
+  continuousMode = false,
+  orgId,
 }: CameraScannerProps) {
   // External state tracking to avoid Html5Qrcode's broken internal state
   type ScannerState = 'idle' | 'starting' | 'running' | 'stopping'
@@ -53,6 +59,11 @@ export function CameraScanner({
   const GRACE_PERIOD_MS = 2000 // 2 seconds grace period for camera to focus
   const ERROR_DEBOUNCE_MS = 500 // Wait 500ms of continuous errors before showing
   const SUCCESS_COOLDOWN_MS = 1000 // Don't show errors for 1s after successful scan
+  
+  // Scan cooldown for continuous mode (prevents duplicate scans)
+  const lastScannedCodeRef = useRef<string | null>(null)
+  const scanCooldownRef = useRef<NodeJS.Timeout | null>(null)
+  const SCAN_COOLDOWN_MS = 2000 // 2 seconds cooldown between scans
 
   // Android detection utility
   const isAndroid = () => /Android/i.test(navigator.userAgent)
@@ -319,6 +330,13 @@ export function CameraScanner({
     // Reset timing refs
     scannerStartTimeRef.current = null
     lastSuccessTimeRef.current = null
+    
+    // Clear scan cooldown
+    if (scanCooldownRef.current) {
+      clearTimeout(scanCooldownRef.current)
+      scanCooldownRef.current = null
+    }
+    lastScannedCodeRef.current = null
 
     // CRITICAL: Force stop all video tracks directly from DOM elements
     // This bypasses Html5Qrcode's broken state management and prevents
@@ -459,7 +477,24 @@ export function CameraScanner({
   }
 
   const onScanSuccess = (decodedText: string) => {
-    // Avoid duplicate scans
+    // Scan cooldown: Prevent duplicate scans within 2 seconds (continuous mode)
+    if (continuousMode) {
+      if (lastScannedCodeRef.current === decodedText) {
+        return // Ignore duplicate scan
+      }
+      
+      lastScannedCodeRef.current = decodedText
+      
+      // Reset cooldown after 2 seconds
+      if (scanCooldownRef.current) {
+        clearTimeout(scanCooldownRef.current)
+      }
+      scanCooldownRef.current = setTimeout(() => {
+        lastScannedCodeRef.current = null
+      }, SCAN_COOLDOWN_MS)
+    }
+
+    // Avoid duplicate scans (legacy behavior)
     if (detectedCodesRef.current.has(decodedText)) {
       return
     }
@@ -505,20 +540,36 @@ export function CameraScanner({
     // Show success
     setSuccess(true)
 
-    // Process codes after a brief delay to allow multiple codes to be detected
+    // Continuous mode: call onScanSuccess callback (doesn't auto-close)
+    if (continuousMode && onScanSuccess) {
+      // Clear detected codes to allow next scan
+      detectedCodesRef.current.clear()
+      // Call callback with single code
+      onScanSuccess(decodedText)
+      // Clear success state after a brief delay to allow next scan
+      setTimeout(() => {
+        setSuccess(false)
+      }, 1000)
+      // Don't close scanner - it stays open for next scan
+      return
+    }
+
+    // Legacy mode: Process codes after a brief delay to allow multiple codes to be detected
     // Use a debounce to batch multiple rapid detections
-    processTimeoutRef.current = setTimeout(async () => {
-      const allCodes = Array.from(detectedCodesRef.current)
-      if (allCodes.length > 0) {
-        onScan(allCodes)
-        // Auto-close after successful scan with proper cleanup
-        await stopScanner()
-        // Small delay to ensure cleanup completes
-        await new Promise(resolve => setTimeout(resolve, 200))
-        onClose()
-      }
-      processTimeoutRef.current = null
-    }, 500)
+    if (onScan) {
+      processTimeoutRef.current = setTimeout(async () => {
+        const allCodes = Array.from(detectedCodesRef.current)
+        if (allCodes.length > 0) {
+          onScan(allCodes)
+          // Auto-close after successful scan with proper cleanup
+          await stopScanner()
+          // Small delay to ensure cleanup completes
+          await new Promise(resolve => setTimeout(resolve, 200))
+          onClose()
+        }
+        processTimeoutRef.current = null
+      }, 500)
+    }
   }
 
   const onScanFailure = (error: string) => {
@@ -610,10 +661,23 @@ export function CameraScanner({
     }
   }
 
+  // Clear cooldown on unmount
+  useEffect(() => {
+    return () => {
+      if (scanCooldownRef.current) {
+        clearTimeout(scanCooldownRef.current)
+      }
+    }
+  }, [])
+
   if (!isOpen) return null
 
+  // Z-index: 9998 for scanner (below sheet 10000, above content)
   return (
-    <div className="fixed top-0 left-0 w-full h-screen h-[100dvh] z-[9999] bg-black flex flex-col">
+    <div 
+      className="fixed top-0 left-0 w-full h-screen h-[100dvh] bg-black flex flex-col"
+      style={{ zIndex: 9998 }}
+    >
       {/* Header */}
       <div className="flex items-center justify-between p-md bg-black/80 backdrop-blur-sm z-10">
         <h2 className="text-lg font-semibold text-white">Scan Barcode</h2>

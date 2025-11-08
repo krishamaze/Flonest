@@ -1,4 +1,4 @@
-import { useState, FormEvent, useEffect, useMemo, useRef } from 'react'
+import { useState, FormEvent, useEffect, useMemo, useRef, useCallback } from 'react'
 import { Input } from '../ui/Input'
 import { Button } from '../ui/Button'
 import { Modal } from '../ui/Modal'
@@ -8,7 +8,9 @@ import { isMobileDevice } from '../../lib/deviceDetection'
 import { IdentifierInput } from '../customers/IdentifierInput'
 import { CustomerResultCard } from '../customers/CustomerResultCard'
 import { Card, CardContent } from '../ui/Card'
-import { ScannerInput } from '../invoice/ScannerInput'
+import { ProductSearchCombobox } from '../invoice/ProductSearchCombobox'
+import { ProductConfirmSheet } from '../invoice/ProductConfirmSheet'
+import { CameraScanner } from '../invoice/CameraScanner'
 import type { InvoiceFormData, InvoiceItemFormData, CustomerWithMaster, Org, ProductWithMaster, ScanResult } from '../../types'
 import { lookupOrCreateCustomer, checkCustomerExists, searchCustomersByIdentifier } from '../../lib/api/customers'
 import { getAllProducts } from '../../lib/api/products'
@@ -22,7 +24,9 @@ import { ChevronLeftIcon, ChevronRightIcon, PlusIcon, TrashIcon, XCircleIcon, Bo
 import type { IdentifierType } from '../../lib/utils/identifierValidation'
 import { detectIdentifierType, validateMobile, validateGSTIN, normalizeIdentifier } from '../../lib/utils/identifierValidation'
 import { Toast } from '../ui/Toast'
+import { toast } from 'react-toastify'
 import { getDraftSessionId, setDraftSessionId } from '../../lib/utils/draftSession'
+import { LoadingSpinner } from '../ui/LoadingSpinner'
 
 interface InvoiceFormProps {
   isOpen: boolean
@@ -71,6 +75,21 @@ export function InvoiceForm({
   const [internalDraftInvoiceId, setInternalDraftInvoiceId] = useState<string | null>(null)
   const [serialInputs, setSerialInputs] = useState<Record<number, string>>({})
   
+  // Scanner and confirmation state
+  type ScannerMode = 'closed' | 'scanning' | 'confirming'
+  const [scannerMode, setScannerMode] = useState<ScannerMode>('closed')
+  const [showConfirmSheet, setShowConfirmSheet] = useState(false)
+  const [pendingProduct, setPendingProduct] = useState<ProductWithMaster | null>(null)
+  const [pendingQuantity, setPendingQuantity] = useState(1)
+  const [pendingSerial, setPendingSerial] = useState<string>('')
+  
+  // Draft loading state
+  const [loadingDraft, setLoadingDraft] = useState(false)
+  const [draftLoadError, setDraftLoadError] = useState<string | null>(null)
+  const [isRetrying, setIsRetrying] = useState(false)
+  const draftLoadRetries = useRef(0)
+  const MAX_RETRIES = 1
+  
   // Draft session ID ref - persists across re-renders
   const draftSessionId = useRef<string | null>(null)
   
@@ -103,81 +122,167 @@ export function InvoiceForm({
     }
   }, [isOpen, draftInvoiceId])
 
+  // Helper function to classify errors as retry-able or permanent
+  const isRetryableError = (error: any): boolean => {
+    if (!error) return false
+    
+    const errorMessage = error.message?.toLowerCase() || ''
+    const errorCode = error.code?.toLowerCase() || ''
+    
+    // Retry-able errors: network issues, RLS policy errors, timeouts
+    const retryablePatterns = [
+      'network',
+      'timeout',
+      'fetch',
+      'rls',
+      'row level security',
+      'policy',
+      'connection',
+      'failed to fetch',
+      'networkerror',
+      'pgrst',
+    ]
+    
+    // Permanent errors: not found, deleted, invalid
+    const permanentPatterns = [
+      'not found',
+      'does not exist',
+      'deleted',
+      'invalid',
+      'malformed',
+      'unauthorized',
+      'forbidden',
+      'permission denied',
+    ]
+    
+    // Check for permanent errors first
+    if (permanentPatterns.some(pattern => errorMessage.includes(pattern) || errorCode.includes(pattern))) {
+      return false
+    }
+    
+    // Check for retry-able errors
+    if (retryablePatterns.some(pattern => errorMessage.includes(pattern) || errorCode.includes(pattern))) {
+      return true
+    }
+    
+    // Default: retry on unknown errors (might be transient)
+    return true
+  }
+
+  // Load draft with retry logic
+  const loadDraftWithRetry = useCallback(async (invoiceId: string, retryCount = 0): Promise<void> => {
+    try {
+      setLoadingDraft(true)
+      setDraftLoadError(null)
+      setIsRetrying(retryCount > 0)
+      
+      const draftData = await loadDraftInvoiceData(invoiceId)
+      
+      if (draftData) {
+        // Restore draft session ID from database
+        if (draftData.draft_session_id) {
+          draftSessionId.current = draftData.draft_session_id
+          setDraftSessionId(invoiceId, draftData.draft_session_id)
+        }
+        
+        // Load customer
+        const draftInvoice = await getInvoiceById(invoiceId)
+        if (draftInvoice.customer) {
+          setSelectedCustomer(draftInvoice.customer as any)
+        }
+        
+        // Load products and restore items
+        const allProducts = await getAllProducts(orgId, { status: 'active' })
+        const restoredItems: InvoiceItemFormData[] = draftData.items.map((draftItem: any) => {
+          const product = allProducts.find((p: any) => p.id === draftItem.product_id)
+          return {
+            product_id: draftItem.product_id,
+            quantity: draftItem.quantity || 0,
+            unit_price: draftItem.unit_price || (product?.selling_price || 0),
+            line_total: draftItem.line_total || (draftItem.quantity * (draftItem.unit_price || product?.selling_price || 0)),
+            serials: draftItem.serials || [],
+            serial_tracked: product?.serial_tracked || false,
+            invalid_serials: draftItem.invalid_serials || [],
+            validation_errors: draftItem.validation_errors || [],
+            stock_available: draftItem.stock_available,
+          }
+        })
+        setItems(restoredItems)
+        setInternalDraftInvoiceId(invoiceId)
+        setCurrentStep(2)
+        
+        // Reset retry counter on success
+        draftLoadRetries.current = 0
+        setIsRetrying(false)
+        
+        // Re-validate draft
+        try {
+          const revalidation = await revalidateDraftInvoice(invoiceId, orgId)
+          if (revalidation.updated) {
+            setToast({ 
+              message: 'Draft revalidated — missing items are now available.', 
+              type: 'success' 
+            })
+            if (revalidation.valid) {
+              const cleanedItems = restoredItems.map(item => ({
+                ...item,
+                invalid_serials: [],
+                validation_errors: [],
+              }))
+              setItems(cleanedItems)
+            }
+          }
+        } catch (revalError) {
+          console.error('Error re-validating draft:', revalError)
+        }
+      } else {
+        // Draft data is null - permanent error
+        throw new Error('Draft data not found')
+      }
+    } catch (error) {
+      console.error('Error loading draft:', error)
+      
+      // Check if error is retry-able and we haven't exceeded max retries
+      if (isRetryableError(error) && retryCount < MAX_RETRIES) {
+        draftLoadRetries.current = retryCount + 1
+        setIsRetrying(true)
+        
+        // Wait 500ms before retrying
+        await new Promise(resolve => setTimeout(resolve, 500))
+        
+        // Retry
+        return loadDraftWithRetry(invoiceId, retryCount + 1)
+      } else {
+        // Permanent error or max retries exceeded
+        const errorMessage = error instanceof Error ? error.message : 'Failed to load draft invoice'
+        setDraftLoadError(errorMessage)
+        setIsRetrying(false)
+        setToast({ 
+          message: errorMessage, 
+          type: 'error' 
+        })
+      }
+    } finally {
+      setLoadingDraft(false)
+    }
+  }, [orgId])
+
   // Load draft on mount if draftInvoiceId prop is provided
   useEffect(() => {
     if (isOpen && draftInvoiceId) {
-      const loadDraft = async () => {
-        try {
-          const draftData = await loadDraftInvoiceData(draftInvoiceId)
-          if (draftData) {
-            // Restore draft session ID from database
-            if (draftData.draft_session_id) {
-              draftSessionId.current = draftData.draft_session_id
-              setDraftSessionId(draftInvoiceId, draftData.draft_session_id)
-            }
-            
-            // Load customer
-            const draftInvoice = await getInvoiceById(draftInvoiceId)
-            if (draftInvoice.customer) {
-              setSelectedCustomer(draftInvoice.customer as any)
-            }
-            
-            // Load products and restore items
-            const allProducts = await getAllProducts(orgId, { status: 'active' })
-            const restoredItems: InvoiceItemFormData[] = draftData.items.map((draftItem: any) => {
-              const product = allProducts.find((p: any) => p.id === draftItem.product_id)
-              return {
-                product_id: draftItem.product_id,
-                quantity: draftItem.quantity || 0,
-                unit_price: draftItem.unit_price || (product?.selling_price || 0),
-                line_total: draftItem.line_total || (draftItem.quantity * (draftItem.unit_price || product?.selling_price || 0)),
-                serials: draftItem.serials || [],
-                serial_tracked: product?.serial_tracked || false,
-                invalid_serials: draftItem.invalid_serials || [],
-                validation_errors: draftItem.validation_errors || [],
-                stock_available: draftItem.stock_available,
-              }
-            })
-            setItems(restoredItems)
-            setInternalDraftInvoiceId(draftInvoiceId)
-            setCurrentStep(2)
-            
-            // Re-validate draft
-            try {
-              const revalidation = await revalidateDraftInvoice(draftInvoiceId, orgId)
-              if (revalidation.updated) {
-                setToast({ 
-                  message: 'Draft revalidated — missing items are now available.', 
-                  type: 'success' 
-                })
-                if (revalidation.valid) {
-                  const cleanedItems = restoredItems.map(item => ({
-                    ...item,
-                    invalid_serials: [],
-                    validation_errors: [],
-                  }))
-                  setItems(cleanedItems)
-                }
-              }
-            } catch (revalError) {
-              console.error('Error re-validating draft:', revalError)
-            }
-          }
-        } catch (error) {
-          console.error('Error loading draft:', error)
-          setToast({ 
-            message: 'Failed to load draft invoice', 
-            type: 'error' 
-          })
-        }
-      }
-      loadDraft()
+      // Reset retry counter when opening draft
+      draftLoadRetries.current = 0
+      setDraftLoadError(null)
+      setIsRetrying(false)
+      
+      // Load draft with retry
+      loadDraftWithRetry(draftInvoiceId)
     }
-  }, [isOpen, draftInvoiceId, orgId])
+  }, [isOpen, draftInvoiceId, loadDraftWithRetry])
 
-  // Reset form when closed
+  // Reset form when closed (but not if we're loading a draft)
   useEffect(() => {
-    if (!isOpen) {
+    if (!isOpen && !loadingDraft) {
       // Don't clear session ID here - it should persist if form is reopened
       // Only clear on finalize or explicit delete
       setCurrentStep(1)
@@ -191,8 +296,10 @@ export function InvoiceForm({
       setItems([])
       setErrors({})
       setInternalDraftInvoiceId(null)
+      setDraftLoadError(null)
+      setIsRetrying(false)
     }
-  }, [isOpen])
+  }, [isOpen, loadingDraft])
 
   // Reset selectedCustomer when identifier changes (ensures Next button stays disabled)
   useEffect(() => {
@@ -451,10 +558,31 @@ export function InvoiceForm({
     setItems(updated)
   }
 
-  // Handle scanner input
-  const handleScan = async (codes: string[]) => {
-    if (codes.length === 0 || !selectedCustomer) {
-      setScanError('Please select a customer first')
+  // Handle product selection from combobox
+  const handleProductSelect = (product: ProductWithMaster) => {
+    if (!selectedCustomer) {
+      toast.error('Please select a customer first', {
+        position: 'bottom-center',
+        autoClose: 3000,
+        style: { maxWidth: '90vw', fontSize: '14px' },
+      })
+      return
+    }
+    setPendingProduct(product)
+    setPendingQuantity(1)
+    setPendingSerial('')
+    setShowConfirmSheet(true)
+  }
+
+  // Handle scan from camera (continuous mode)
+  const handleScanFromCamera = async (code: string) => {
+    if (!selectedCustomer) {
+      toast.error('Please select a customer first', {
+        position: 'bottom-center',
+        autoClose: 3000,
+        style: { maxWidth: '90vw', fontSize: '14px' },
+      })
+      setScannerMode('closed')
       return
     }
 
@@ -462,115 +590,132 @@ export function InvoiceForm({
     setScanError(null)
 
     try {
-      // Validate codes with backend
-      const results = await validateScannerCodes(orgId, codes)
-
-      // Group results by product_id to ensure single-product per batch
-      const productGroups = new Map<string, ScanResult[]>()
-      const serialGroups = new Map<string, ScanResult[]>() // serial -> product_id mapping
-
-      for (const result of results) {
-        if (result.status === 'valid' && result.product_id) {
-          if (result.type === 'serialnumber') {
-            // Group serials by product
-            const key = `${result.product_id}`
-            if (!serialGroups.has(key)) {
-              serialGroups.set(key, [])
-            }
-            serialGroups.get(key)!.push(result)
-          } else if (result.type === 'productcode') {
-            // Group product codes by product_id
-            const key = `${result.product_id}`
-            if (!productGroups.has(key)) {
-              productGroups.set(key, [])
-            }
-            productGroups.get(key)!.push(result)
-          }
-        } else if (result.status === 'invalid') {
-          // Product found in catalog but not in org inventory
-          setToast({ 
-            message: 'This product isn\'t in stock yet. Ask your manager to add or stock it.', 
-            type: 'error' 
-          })
-        } else if (result.status === 'not_found') {
-          // Product not found at all
-          setToast({ 
-            message: 'Product not found. Ask your manager to add this product.', 
-            type: 'error' 
-          })
-        }
+      // Validate single code
+      const results = await validateScannerCodes(orgId, [code])
+      
+      if (results.length === 0) {
+        toast.error('Product not found. Ask your manager to add this product.', {
+          position: 'bottom-center',
+          autoClose: 3000,
+          style: { maxWidth: '90vw', fontSize: '14px' },
+        })
+        setScanning(false)
+        return
       }
 
-      const updatedItems = [...items]
-
-      // Process serials: attach to items for the same product only
-      for (const [productId, serialResults] of serialGroups.entries()) {
-        const product = products.find((p) => p.id === productId)
-        if (!product) continue
-
-        // Find existing item for this product, or create new
-        let itemIndex = updatedItems.findIndex((item) => item.product_id === productId)
-        
-        if (itemIndex === -1) {
-          // Create new item for this product's serials
-          const newItem: InvoiceItemFormData = {
-            product_id: productId,
-            quantity: product.serial_tracked ? serialResults.length : serialResults.length,
-            unit_price: product.selling_price || 0,
-            line_total: 0,
-            serial_tracked: product.serial_tracked || false,
-            serials: product.serial_tracked ? serialResults.map(r => r.code) : undefined,
-          }
-          
-          newItem.line_total = newItem.quantity * newItem.unit_price
-          updatedItems.push(newItem)
+      const result = results[0]
+      
+      if (result.status === 'valid' && result.product_id) {
+        const product = products.find((p) => p.id === result.product_id)
+        if (product) {
+          // Show confirmation sheet (scanner stays open)
+          setPendingProduct(product)
+          setPendingQuantity(1)
+          setPendingSerial('')
+          setScannerMode('confirming')
+          setShowConfirmSheet(true)
         } else {
-          // Add serials to existing item (only if same product)
-          const existingSerials = updatedItems[itemIndex].serials || []
-          const newSerials = serialResults
-            .map(r => r.code)
-            .filter(code => !existingSerials.includes(code))
-          
-          if (newSerials.length > 0) {
-            updatedItems[itemIndex].serials = [...existingSerials, ...newSerials]
-            if (updatedItems[itemIndex].serial_tracked) {
-              updatedItems[itemIndex].quantity = updatedItems[itemIndex].serials!.length
-              updatedItems[itemIndex].line_total = updatedItems[itemIndex].quantity * updatedItems[itemIndex].unit_price
-            }
-          }
+          toast.error('Product not found in inventory.', {
+            position: 'bottom-center',
+            autoClose: 3000,
+            style: { maxWidth: '90vw', fontSize: '14px' },
+          })
         }
+      } else if (result.status === 'invalid') {
+        toast.error('This product isn\'t in stock yet. Ask your manager to add or stock it.', {
+          position: 'bottom-center',
+          autoClose: 3000,
+          style: { maxWidth: '90vw', fontSize: '14px' },
+        })
+      } else if (result.status === 'not_found') {
+        toast.error('Product not found. Ask your manager to add this product.', {
+          position: 'bottom-center',
+          autoClose: 3000,
+          style: { maxWidth: '90vw', fontSize: '14px' },
+        })
       }
-
-      // Process product codes: create separate line items (don't merge with serials)
-      for (const [productId] of productGroups.entries()) {
-        const product = products.find((p) => p.id === productId)
-        if (!product) continue
-
-        // Check if item already exists for this product (from serials above)
-        const existingIndex = updatedItems.findIndex((item) => item.product_id === productId)
-        
-        if (existingIndex === -1) {
-          // Create new item for product code
-          const newItem: InvoiceItemFormData = {
-            product_id: productId,
-            quantity: product.serial_tracked ? 0 : 1,
-            unit_price: product.selling_price || 0,
-            line_total: product.serial_tracked ? 0 : (product.selling_price || 0),
-            serial_tracked: product.serial_tracked || false,
-            serials: product.serial_tracked ? [] : undefined,
-          }
-          updatedItems.push(newItem)
-        }
-        // If item exists from serials, don't create duplicate - product code scan just confirms the product
-      }
-
-      setItems(updatedItems)
     } catch (error) {
       console.error('Error processing scan:', error)
-      setScanError(error instanceof Error ? error.message : 'Failed to process scan')
+      toast.error(error instanceof Error ? error.message : 'Failed to process scan', {
+        position: 'bottom-center',
+        autoClose: 3000,
+        style: { maxWidth: '90vw', fontSize: '14px' },
+      })
     } finally {
       setScanning(false)
     }
+  }
+
+  // Handle product confirmation
+  const handleConfirmProduct = (quantity: number, serial?: string) => {
+    if (!pendingProduct) return
+
+    const updatedItems = [...items]
+    
+    // Check if item already exists for this product
+    const existingIndex = updatedItems.findIndex((item) => item.product_id === pendingProduct.id)
+    
+    if (existingIndex >= 0) {
+      // Update existing item
+      const existingItem = updatedItems[existingIndex]
+      if (pendingProduct.serial_tracked && serial) {
+        // Add serial to existing item
+        const existingSerials = existingItem.serials || []
+        if (!existingSerials.includes(serial)) {
+          existingItem.serials = [...existingSerials, serial]
+          existingItem.quantity = existingItem.serials.length
+        }
+      } else {
+        // Increase quantity
+        existingItem.quantity = (existingItem.quantity || 0) + quantity
+      }
+      existingItem.line_total = existingItem.quantity * existingItem.unit_price
+    } else {
+      // Create new item
+      const newItem: InvoiceItemFormData = {
+        product_id: pendingProduct.id,
+        quantity: pendingProduct.serial_tracked && serial ? 1 : quantity,
+        unit_price: pendingProduct.selling_price || 0,
+        line_total: 0,
+        serial_tracked: pendingProduct.serial_tracked || false,
+        serials: pendingProduct.serial_tracked && serial ? [serial] : undefined,
+      }
+      newItem.line_total = newItem.quantity * newItem.unit_price
+      updatedItems.push(newItem)
+    }
+
+    setItems(updatedItems)
+    setShowConfirmSheet(false)
+    setPendingProduct(null)
+    
+    // If scanner was open, continue scanning
+    if (scannerMode === 'confirming') {
+      setScannerMode('scanning')
+    }
+  }
+
+  // Handle cancel confirmation
+  const handleCancelConfirm = () => {
+    setShowConfirmSheet(false)
+    setPendingProduct(null)
+    
+    // If scanner was open, continue scanning
+    if (scannerMode === 'confirming') {
+      setScannerMode('scanning')
+    }
+  }
+
+  // Handle scanner open
+  const handleScanClick = () => {
+    if (!selectedCustomer) {
+      toast.error('Please select a customer first', {
+        position: 'bottom-center',
+        autoClose: 3000,
+        style: { maxWidth: '90vw', fontSize: '14px' },
+      })
+      return
+    }
+    setScannerMode('scanning')
   }
 
   // Auto-save draft
@@ -945,7 +1090,71 @@ export function InvoiceForm({
   const canProceedToStep2 = selectedCustomer !== null
   const canProceedToStep3 = items.length > 0 && items.every((item) => item.product_id && item.quantity > 0 && item.unit_price > 0)
 
-  const FormContent = (
+  // Manual retry handler
+  const handleManualRetry = () => {
+    if (draftInvoiceId) {
+      draftLoadRetries.current = 0
+      setDraftLoadError(null)
+      setIsRetrying(false)
+      loadDraftWithRetry(draftInvoiceId)
+    }
+  }
+
+  // Show loading or error state when loading draft
+  const DraftLoadingContent = (
+    <div className="flex flex-col items-center justify-center py-12 space-y-4 px-4">
+      {loadingDraft && !draftLoadError && (
+        <>
+          <LoadingSpinner size="lg" />
+          <p className="text-sm text-secondary-text">
+            {isRetrying ? 'Retrying...' : 'Loading draft...'}
+          </p>
+        </>
+      )}
+      {draftLoadError && !loadingDraft && (
+        <div className="text-center space-y-4 max-w-md">
+          <div className="text-error-dark">
+            <XCircleIcon className="h-12 w-12 mx-auto mb-2" />
+          </div>
+          <div>
+            <h3 className="text-lg font-semibold text-primary-text mb-2">
+              Failed to Load Draft
+            </h3>
+            <p className="text-sm text-secondary-text mb-4">
+              {draftLoadError}
+            </p>
+          </div>
+          <div className="flex flex-col gap-2 w-full max-w-xs">
+            <Button
+              variant="primary"
+              size="sm"
+              onClick={handleManualRetry}
+              disabled={loadingDraft}
+              className="w-full"
+            >
+              Retry
+            </Button>
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={onClose}
+              className="w-full"
+            >
+              Close
+            </Button>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+
+  // Show loading/error UI only when we're loading a draft or have a draft error
+  // Don't show form content for new transactions while draft is loading
+  const showDraftLoadingUI = draftInvoiceId && (loadingDraft || draftLoadError)
+
+  const FormContent = showDraftLoadingUI ? (
+    DraftLoadingContent
+  ) : (
     <form onSubmit={handleSubmit} className="space-y-6">
       {/* Step 1: Customer Selection */}
       {currentStep === 1 && (
@@ -1142,25 +1351,35 @@ export function InvoiceForm({
           <div>
             <h3 className="text-lg font-semibold text-primary-text mb-md">Step 2: Add Products</h3>
 
-            {/* Scanner Input */}
+            {/* Product Search Combobox */}
             <div className="mb-md">
-              <ScannerInput
-                onScan={handleScan}
-                disabled={scanning || isSubmitting || !selectedCustomer}
-                className="mb-sm"
+              <ProductSearchCombobox
+                onProductSelect={handleProductSelect}
+                onScanClick={handleScanClick}
+                disabled={isSubmitting || !selectedCustomer}
+                orgId={orgId}
+                products={products}
+                placeholder="Search / Select Product..."
               />
-              {scanError && (
-                <p className="mt-xs text-sm text-error">{scanError}</p>
-              )}
             </div>
 
+            {/* Create New Item Button */}
+            <div className="mb-md">
+              <Button 
+                type="button" 
+                variant="primary" 
+                onClick={handleAddItem}
+                disabled={isSubmitting || !selectedCustomer}
+              >
+                <PlusIcon className="h-4 w-4 mr-2" />
+                Create New Item
+              </Button>
+            </div>
+
+            {/* Items List - Auto-visible when items exist */}
             {items.length === 0 ? (
               <div className="text-center py-lg border-2 border-dashed border-neutral-300 rounded-md">
-                <p className="text-sm text-secondary-text mb-md">No items added yet</p>
-                <Button type="button" variant="primary" onClick={handleAddItem}>
-                  <PlusIcon className="h-4 w-4 mr-2" />
-                  Add First Item
-                </Button>
+                <p className="text-sm text-secondary-text">No items yet. Search or scan to add products.</p>
               </div>
             ) : (
               <div className="space-y-4">
@@ -1343,11 +1562,6 @@ export function InvoiceForm({
                     </div>
                   )
                 })}
-
-                <Button type="button" variant="secondary" onClick={handleAddItem} disabled={isSubmitting}>
-                  <PlusIcon className="h-4 w-4 mr-2" />
-                  Add Another Item
-                </Button>
               </div>
             )}
 
@@ -1589,6 +1803,39 @@ export function InvoiceForm({
           {FormContent}
         </Modal>
       )}
+
+      {/* Camera Scanner - Continuous Mode */}
+      <CameraScanner
+        isOpen={scannerMode === 'scanning' || scannerMode === 'confirming'}
+        onClose={() => {
+          setScannerMode('closed')
+          setShowConfirmSheet(false)
+          setPendingProduct(null)
+        }}
+        onScanSuccess={handleScanFromCamera}
+        continuousMode={true}
+        orgId={orgId}
+      />
+
+      {/* Backdrop - z-index 9999, dims content but NOT scanner */}
+      {scannerMode === 'confirming' && (
+        <div 
+          className="fixed inset-0 bg-black/40"
+          style={{ zIndex: 9999 }}
+          onClick={handleCancelConfirm}
+          aria-hidden="true"
+        />
+      )}
+
+      {/* Product Confirmation Sheet - z-index 10000, solid white */}
+      <ProductConfirmSheet
+        isOpen={showConfirmSheet}
+        product={pendingProduct}
+        onConfirm={handleConfirmProduct}
+        onCancel={handleCancelConfirm}
+        defaultQuantity={pendingQuantity}
+        scannerMode={scannerMode}
+      />
     </>
   )
 }

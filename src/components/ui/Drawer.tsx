@@ -8,9 +8,20 @@ interface DrawerProps {
   children: ReactNode
   className?: string
   headerAction?: ReactNode
+  hideBackdrop?: boolean // Hide default backdrop (for custom z-index layering)
+  customZIndex?: number // Custom z-index for drawer
 }
 
-export function Drawer({ isOpen, onClose, title, children, className = '', headerAction }: DrawerProps) {
+export function Drawer({ 
+  isOpen, 
+  onClose, 
+  title, 
+  children, 
+  className = '', 
+  headerAction,
+  hideBackdrop = false,
+  customZIndex,
+}: DrawerProps) {
   const drawerRef = useRef<HTMLDivElement>(null)
   const previousFocusRef = useRef<HTMLElement | null>(null)
 
@@ -83,13 +94,17 @@ export function Drawer({ isOpen, onClose, title, children, className = '', heade
     }
   }, [isOpen, onClose])
 
+  const drawerZIndex = customZIndex ?? 101
+  const backdropZIndex = drawerZIndex - 1
+
   return (
     <>
       {/* Backdrop */}
-      {isOpen && (
+      {isOpen && !hideBackdrop && (
         <div
-          className="fixed inset-0 z-[100] bg-black/50 backdrop-enter"
+          className="fixed inset-0 bg-black/50 backdrop-enter"
           style={{
+            zIndex: backdropZIndex,
             animation: 'fade-in 200ms cubic-bezier(0.0, 0.0, 0.2, 1)',
           }}
           onClick={onClose}
@@ -99,14 +114,16 @@ export function Drawer({ isOpen, onClose, title, children, className = '', heade
 
       {/* Drawer */}
       <div
-        className={`fixed bottom-0 left-0 right-0 z-[101] safe-bottom ${
+        className={`fixed bottom-0 left-0 right-0 safe-bottom ${
           isOpen ? 'drawer-enter' : ''
         } ${className}`}
         style={{
+          zIndex: drawerZIndex,
           transform: isOpen ? 'translateY(0)' : 'translateY(100%)',
           transition: isOpen
             ? 'transform 300ms cubic-bezier(0.0, 0.0, 0.2, 1)'
             : 'transform 250ms cubic-bezier(0.4, 0.0, 1, 1)',
+          backgroundColor: 'white', // Ensure solid background
         }}
         role="dialog"
         aria-modal="true"
