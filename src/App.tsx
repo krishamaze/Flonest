@@ -3,6 +3,8 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { AuthProvider, useAuth } from './contexts/AuthContext'
 import { MainLayout } from './components/layout/MainLayout'
 import { LoadingSpinner } from './components/ui/LoadingSpinner'
+import { InstallPrompt } from './components/pwa/InstallPrompt'
+import { UpdateNotification } from './components/pwa/UpdateNotification'
 
 // Lazy load pages for code splitting
 const LoginPage = lazy(() => import('./pages/LoginPage').then(m => ({ default: m.LoginPage })))
@@ -79,6 +81,8 @@ function App() {
     <AuthProvider>
       <BrowserRouter>
         <AppRoutes />
+        <InstallPrompt />
+        <UpdateNotification />
       </BrowserRouter>
     </AuthProvider>
   )
