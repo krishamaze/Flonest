@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { ArrowPathIcon } from '@heroicons/react/24/outline'
 import { useRegisterSW } from 'virtual:pwa-register/react'
+import { checkVersionSync } from '../../lib/api/version'
 
 /**
  * UpdateNotification Component
@@ -35,6 +36,29 @@ export function UpdateNotification() {
       setShowUpdate(true)
     }
   }, [needRefresh])
+
+  // Check version sync on mount and periodically
+  useEffect(() => {
+    const checkVersion = async () => {
+      try {
+        const versionCheck = await checkVersionSync()
+        if (!versionCheck.inSync) {
+          console.warn('Version mismatch detected:', versionCheck.message)
+          setShowUpdate(true)
+        }
+      } catch (error) {
+        console.error('Version check failed:', error)
+      }
+    }
+
+    // Check on mount
+    checkVersion()
+
+    // Check every 5 minutes
+    const interval = setInterval(checkVersion, 5 * 60 * 1000)
+
+    return () => clearInterval(interval)
+  }, [])
 
   const handleUpdate = async () => {
     setIsUpdating(true)

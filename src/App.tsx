@@ -1,10 +1,11 @@
-import { lazy, Suspense } from 'react'
+import { lazy, Suspense, useEffect } from 'react'
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { AuthProvider, useAuth } from './contexts/AuthContext'
 import { MainLayout } from './components/layout/MainLayout'
 import { LoadingSpinner } from './components/ui/LoadingSpinner'
 import { InstallPrompt } from './components/pwa/InstallPrompt'
 import { UpdateNotification } from './components/pwa/UpdateNotification'
+import { FRONTEND_VERSION } from './lib/api/version'
 
 // Lazy load pages for code splitting
 const LoginPage = lazy(() => import('./pages/LoginPage').then(m => ({ default: m.LoginPage })))
@@ -77,6 +78,11 @@ function AppRoutes() {
 }
 
 function App() {
+  // Log version on mount for debugging
+  useEffect(() => {
+    console.log(`FineTune Store v${FRONTEND_VERSION}`)
+  }, [])
+
   return (
     <AuthProvider>
       <BrowserRouter>
