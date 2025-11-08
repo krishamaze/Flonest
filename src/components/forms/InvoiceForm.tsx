@@ -11,7 +11,7 @@ import { Card, CardContent } from '../ui/Card'
 import { ProductSearchCombobox } from '../invoice/ProductSearchCombobox'
 import { ProductConfirmSheet } from '../invoice/ProductConfirmSheet'
 import { CameraScanner } from '../invoice/CameraScanner'
-import type { InvoiceFormData, InvoiceItemFormData, CustomerWithMaster, Org, ProductWithMaster, ScanResult } from '../../types'
+import type { InvoiceFormData, InvoiceItemFormData, CustomerWithMaster, Org, ProductWithMaster } from '../../types'
 import { lookupOrCreateCustomer, checkCustomerExists, searchCustomersByIdentifier } from '../../lib/api/customers'
 import { getAllProducts } from '../../lib/api/products'
 import { createInvoice, autoSaveInvoiceDraft, validateInvoiceItems, getDraftInvoiceByCustomer, loadDraftInvoiceData, revalidateDraftInvoice, getInvoiceById, clearDraftSessionId } from '../../lib/api/invoices'
@@ -24,7 +24,7 @@ import { ChevronLeftIcon, ChevronRightIcon, PlusIcon, TrashIcon, XCircleIcon, Bo
 import type { IdentifierType } from '../../lib/utils/identifierValidation'
 import { detectIdentifierType, validateMobile, validateGSTIN, normalizeIdentifier } from '../../lib/utils/identifierValidation'
 import { Toast } from '../ui/Toast'
-import { toast } from 'react-toastify'
+import { toast as toastNotify } from 'react-toastify'
 import { getDraftSessionId, setDraftSessionId } from '../../lib/utils/draftSession'
 import { LoadingSpinner } from '../ui/LoadingSpinner'
 
@@ -70,8 +70,6 @@ export function InvoiceForm({
   const [items, setItems] = useState<InvoiceItemFormData[]>([])
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [isSubmitting, setIsSubmitting] = useState(false)
-  const [scanning, setScanning] = useState(false)
-  const [scanError, setScanError] = useState<string | null>(null)
   const [internalDraftInvoiceId, setInternalDraftInvoiceId] = useState<string | null>(null)
   const [serialInputs, setSerialInputs] = useState<Record<number, string>>({})
   
@@ -81,7 +79,6 @@ export function InvoiceForm({
   const [showConfirmSheet, setShowConfirmSheet] = useState(false)
   const [pendingProduct, setPendingProduct] = useState<ProductWithMaster | null>(null)
   const [pendingQuantity, setPendingQuantity] = useState(1)
-  const [pendingSerial, setPendingSerial] = useState<string>('')
   
   // Draft loading state
   const [loadingDraft, setLoadingDraft] = useState(false)
@@ -561,7 +558,7 @@ export function InvoiceForm({
   // Handle product selection from combobox
   const handleProductSelect = (product: ProductWithMaster) => {
     if (!selectedCustomer) {
-      toast.error('Please select a customer first', {
+      toastNotify.error('Please select a customer first', {
         position: 'bottom-center',
         autoClose: 3000,
         style: { maxWidth: '90vw', fontSize: '14px' },
@@ -570,14 +567,13 @@ export function InvoiceForm({
     }
     setPendingProduct(product)
     setPendingQuantity(1)
-    setPendingSerial('')
     setShowConfirmSheet(true)
   }
 
   // Handle scan from camera (continuous mode)
   const handleScanFromCamera = async (code: string) => {
     if (!selectedCustomer) {
-      toast.error('Please select a customer first', {
+      toastNotify.error('Please select a customer first', {
         position: 'bottom-center',
         autoClose: 3000,
         style: { maxWidth: '90vw', fontSize: '14px' },
@@ -586,20 +582,16 @@ export function InvoiceForm({
       return
     }
 
-    setScanning(true)
-    setScanError(null)
-
     try {
       // Validate single code
       const results = await validateScannerCodes(orgId, [code])
       
       if (results.length === 0) {
-        toast.error('Product not found. Ask your manager to add this product.', {
+        toastNotify.error('Product not found. Ask your manager to add this product.', {
           position: 'bottom-center',
           autoClose: 3000,
           style: { maxWidth: '90vw', fontSize: '14px' },
         })
-        setScanning(false)
         return
       }
 
@@ -611,24 +603,23 @@ export function InvoiceForm({
           // Show confirmation sheet (scanner stays open)
           setPendingProduct(product)
           setPendingQuantity(1)
-          setPendingSerial('')
           setScannerMode('confirming')
           setShowConfirmSheet(true)
         } else {
-          toast.error('Product not found in inventory.', {
+          toastNotify.error('Product not found in inventory.', {
             position: 'bottom-center',
             autoClose: 3000,
             style: { maxWidth: '90vw', fontSize: '14px' },
           })
         }
       } else if (result.status === 'invalid') {
-        toast.error('This product isn\'t in stock yet. Ask your manager to add or stock it.', {
+        toastNotify.error('This product isn\'t in stock yet. Ask your manager to add or stock it.', {
           position: 'bottom-center',
           autoClose: 3000,
           style: { maxWidth: '90vw', fontSize: '14px' },
         })
       } else if (result.status === 'not_found') {
-        toast.error('Product not found. Ask your manager to add this product.', {
+        toastNotify.error('Product not found. Ask your manager to add this product.', {
           position: 'bottom-center',
           autoClose: 3000,
           style: { maxWidth: '90vw', fontSize: '14px' },
@@ -636,13 +627,11 @@ export function InvoiceForm({
       }
     } catch (error) {
       console.error('Error processing scan:', error)
-      toast.error(error instanceof Error ? error.message : 'Failed to process scan', {
+      toastNotify.error(error instanceof Error ? error.message : 'Failed to process scan', {
         position: 'bottom-center',
         autoClose: 3000,
         style: { maxWidth: '90vw', fontSize: '14px' },
       })
-    } finally {
-      setScanning(false)
     }
   }
 
@@ -708,7 +697,7 @@ export function InvoiceForm({
   // Handle scanner open
   const handleScanClick = () => {
     if (!selectedCustomer) {
-      toast.error('Please select a customer first', {
+      toastNotify.error('Please select a customer first', {
         position: 'bottom-center',
         autoClose: 3000,
         style: { maxWidth: '90vw', fontSize: '14px' },
@@ -1814,7 +1803,6 @@ export function InvoiceForm({
         }}
         onScanSuccess={handleScanFromCamera}
         continuousMode={true}
-        orgId={orgId}
       />
 
       {/* Backdrop - z-index 9999, dims content but NOT scanner */}

@@ -10,7 +10,6 @@ interface CameraScannerProps {
   onScanSuccess?: (code: string) => void // New: doesn't auto-close (for continuous mode)
   enabledFormats?: Html5QrcodeSupportedFormats[]
   continuousMode?: boolean // New: scanner stays open after scan
-  orgId?: string // For scan cooldown tracking
 }
 
 /**
@@ -35,7 +34,6 @@ export function CameraScanner({
     Html5QrcodeSupportedFormats.ITF,
   ],
   continuousMode = false,
-  orgId,
 }: CameraScannerProps) {
   // External state tracking to avoid Html5Qrcode's broken internal state
   type ScannerState = 'idle' | 'starting' | 'running' | 'stopping'
@@ -275,7 +273,7 @@ export function CameraScanner({
           aspectRatio: 1.0,
           disableFlip: false,
         },
-        onScanSuccess,
+        handleScanSuccess,
         onScanFailure
       )
 
@@ -413,7 +411,7 @@ export function CameraScanner({
           aspectRatio: 1.0,
           disableFlip: false,
         },
-        onScanSuccess,
+        handleScanSuccess,
         onScanFailure
       )
 
@@ -476,7 +474,7 @@ export function CameraScanner({
     await initializeScanner()
   }
 
-  const onScanSuccess = (decodedText: string) => {
+  const handleScanSuccess = (decodedText: string) => {
     // Scan cooldown: Prevent duplicate scans within 2 seconds (continuous mode)
     if (continuousMode) {
       if (lastScannedCodeRef.current === decodedText) {
