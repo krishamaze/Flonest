@@ -106,6 +106,69 @@ export function ScannerInput({
     )
   }
 
+  // Parse camera errors for user-friendly messages
+  const parseCameraError = (error: unknown): string => {
+    if (error instanceof DOMException) {
+      switch (error.name) {
+        case 'NotAllowedError':
+          return 'Camera permission denied. Please allow camera access in your browser settings.'
+        case 'NotFoundError':
+          return 'No camera found on this device.'
+        case 'NotReadableError':
+          return 'Camera is in use by another app. Close other apps and try again.'
+        case 'NotSupportedError':
+          return 'Camera not supported in this browser.'
+        default:
+          return `Camera error: ${error.message || 'Unknown error'}`
+      }
+    }
+    if (error instanceof Error) {
+      const errorMessage = error.message.toLowerCase()
+      if (errorMessage.includes('permission') || errorMessage.includes('not allowed')) {
+        return 'Camera permission denied. Please allow camera access in your browser settings.'
+      }
+      if (errorMessage.includes('not readable') || errorMessage.includes('could not start')) {
+        return 'Camera is in use by another app. Close other apps and try again.'
+      }
+    }
+    return 'Failed to access camera. Please try again.'
+  }
+
+  // Handle camera button click - request permission immediately (synchronously with user gesture)
+  const handleCameraClick = async () => {
+    // Check if camera is available
+    if (!canUseCamera()) {
+      alert('Camera not available on this device')
+      return
+    }
+
+    try {
+      // CRITICAL: Request permission IMMEDIATELY (synchronous with user tap)
+      // This ensures the browser permission prompt appears on mobile
+      console.log('Requesting camera permission...')
+      const stream = await navigator.mediaDevices.getUserMedia({ 
+        video: { facingMode: 'environment' } // Request back camera
+      })
+      
+      console.log('Permission granted! Stream:', stream)
+      
+      // Stop the stream immediately (CameraScanner will create its own)
+      stream.getTracks().forEach(track => track.stop())
+      
+      // NOW open the modal (permission already granted)
+      setShowCameraScanner(true)
+      
+    } catch (error) {
+      console.error('Camera permission error:', error)
+      
+      // Show user-friendly error message
+      const errorMessage = parseCameraError(error)
+      alert(errorMessage)
+      
+      // Do not open modal on error
+    }
+  }
+
   return (
     <>
       <div className={`relative ${className}`}>
@@ -125,7 +188,7 @@ export function ScannerInput({
         {canUseCamera() && (
           <button
             type="button"
-            onClick={() => setShowCameraScanner(true)}
+            onClick={handleCameraClick}
             disabled={disabled}
             className="absolute right-md top-[calc(1.5rem+0.25rem+11px)] transform -translate-y-1/2 p-xs rounded-md bg-primary text-text-on-primary hover:bg-primary-hover active:bg-primary-dark transition-colors disabled:opacity-50 disabled:cursor-not-allowed min-w-[32px] min-h-[32px] flex items-center justify-center touch-manipulation shadow-sm"
             aria-label="Open camera scanner"

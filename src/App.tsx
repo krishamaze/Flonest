@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { AuthProvider, useAuth } from './contexts/AuthContext'
 import { MainLayout } from './components/layout/MainLayout'
 import { LoadingSpinner } from './components/ui/LoadingSpinner'
+import { ConnectionError } from './components/ui/ConnectionError'
 import { PageTransition } from './components/ui/PageTransition'
 import { InstallPrompt } from './components/pwa/InstallPrompt'
 import { UpdateNotification } from './components/pwa/UpdateNotification'
@@ -17,8 +18,9 @@ const StockLedgerPage = lazy(() => import('./pages/StockLedgerPage').then(m => (
 const CustomersPage = lazy(() => import('./pages/CustomersPage').then(m => ({ default: m.CustomersPage })))
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
-  const { user, loading } = useAuth()
+  const { user, loading, connectionError, retrying, retryConnection } = useAuth()
 
+  // Show loading spinner while loading (max 5 seconds due to timeout)
   if (loading) {
     return (
       <div className="viewport-height flex items-center justify-center">
@@ -27,6 +29,8 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
     )
   }
 
+  // If connection error but we have a cached user, allow navigation (don't block)
+  // The connection error UI will be shown in AppRoutes if needed
   if (!user) {
     return <Navigate to="/login" replace />
   }
@@ -35,14 +39,21 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 }
 
 function AppRoutes() {
-  const { user, loading } = useAuth()
+  const { user, loading, connectionError, retrying, retryConnection } = useAuth()
 
+  // Show loading spinner while loading (max 5 seconds due to timeout)
   if (loading) {
     return (
       <div className="viewport-height flex items-center justify-center">
         <LoadingSpinner size="lg" />
       </div>
     )
+  }
+
+  // Show connection error if connection failed and we don't have a user (cached or otherwise)
+  // This ensures we always navigate - if user exists, navigation will proceed normally
+  if (connectionError && !retrying && !user) {
+    return <ConnectionError onRetry={retryConnection} retrying={retrying} />
   }
 
   return (

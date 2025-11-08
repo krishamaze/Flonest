@@ -9,7 +9,11 @@
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
     "preview": "vite preview",
     "deploy:check": "node scripts/deploy-check.js",
-    "icons:generate": "node scripts/generate-pwa-icons.cjs"
+    "icons:generate": "node scripts/generate-pwa-icons.cjs",
+    "supabase:status": "npx supabase status",
+    "supabase:types": "npx supabase gen types typescript --linked > src/types/database.ts",
+    "supabase:push": "npx supabase db push",
+    "supabase:migration:new": "npx supabase migration new"
   },
   "dependencies": {
     "@heroicons/react": "^2.2.0",
@@ -39,6 +43,7 @@
     "typescript": "^5.6.3",
     "vite": "^6.0.1",
     "vite-plugin-pwa": "^1.1.0",
-    "workbox-window": "^7.3.0"
+    "workbox-window": "^7.3.0",
+    "supabase": "^1.227.7"
   }
 }

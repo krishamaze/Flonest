@@ -126,30 +126,13 @@ export function CameraScanner({
       setSuccess(false)
       detectedCodesRef.current.clear()
 
-      // IMPORTANT: Explicitly request camera permission first
-      // This ensures the browser permission prompt ALWAYS appears on first use
-      // Html5Qrcode.getCameras() doesn't always trigger the prompt reliably
-      try {
-        const stream = await navigator.mediaDevices.getUserMedia({ 
-          video: { facingMode: 'environment' } // Request back camera
-        })
-        // Permission granted! Stop the stream immediately (Html5Qrcode will handle it)
-        stream.getTracks().forEach(track => track.stop())
-      } catch (permissionError) {
-        // Permission denied or other error
-        const parsedError = parseCameraError(permissionError)
-        setError(parsedError.message)
-        setErrorType(parsedError.type)
-        setIsScanning(false)
-        return
-      }
-
-      // Now get available cameras (permission already granted)
+      // Permission is already granted by parent component (ScannerInput)
+      // Get available cameras (permission should already be granted)
       let cameras: CameraDevice[] = []
       try {
         cameras = await Html5Qrcode.getCameras()
       } catch (error) {
-        // If getCameras fails after permission granted, it's likely a camera issue
+        // If getCameras fails, it may be a permission issue or camera problem
         const parsedError = parseCameraError(error)
         setError(parsedError.message)
         setErrorType(parsedError.type)
@@ -285,6 +268,13 @@ export function CameraScanner({
   }
 
   const handleScanAgain = async () => {
+    // If permission was denied, close modal so user can tap camera icon again
+    // This ensures permission request happens synchronously with user gesture
+    if (errorType === 'permission-denied' || errorType === 'system-blocked') {
+      onClose()
+      return
+    }
+    
     setSuccess(false)
     setError(null)
     setErrorType(null)
@@ -295,8 +285,7 @@ export function CameraScanner({
     
     // Small delay to ensure cleanup is complete
     setTimeout(() => {
-      // Re-initialize scanner - this will re-trigger permission prompts
-      // Both browser-level and Android system-level prompts will appear
+      // Re-initialize scanner (for non-permission errors like camera-in-use, etc.)
       initializeScanner()
     }, 100)
   }
