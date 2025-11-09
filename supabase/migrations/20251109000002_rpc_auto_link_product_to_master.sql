@@ -55,39 +55,20 @@ BEGIN
   -- Generate SKU: ORG-{org_prefix}-{product_sku} or ORG-{org_prefix}-{product_id}
   -- Ensure SKU is unique by appending product_id if needed
   IF v_product.sku IS NOT NULL AND v_product.sku != '' THEN
-    v_sku := 'ORG-' || v_org_prefix || '-' || v_product.sku;
-    
-    -- Check if this SKU already exists
-    SELECT id INTO v_master_product_id
-    FROM master_products
-    WHERE sku = v_sku;
-    
-    -- If exists and already linked to this product, return it
-    IF FOUND THEN
-      -- Check if this product is already linked to this master
-      IF EXISTS (
-        SELECT 1 FROM products 
-        WHERE id = p_product_id AND master_product_id = v_master_product_id
-      ) THEN
-        RETURN v_master_product_id;
-      END IF;
-      
-      -- SKU exists but not linked to this product - make it unique
-      v_sku := 'ORG-' || v_org_prefix || '-' || v_product.sku || '-' || LEFT(REPLACE(p_product_id::text, '-', ''), 6);
-    END IF;
+    v_base_sku := 'ORG-' || v_org_prefix || '-' || v_product.sku;
   ELSE
     -- No SKU, generate from product_id
-    v_sku := 'ORG-' || v_org_prefix || '-' || LEFT(REPLACE(p_product_id::text, '-', ''), 12);
+    v_base_sku := 'ORG-' || v_org_prefix || '-' || LEFT(REPLACE(p_product_id::text, '-', ''), 12);
   END IF;
   
-  -- Final check: ensure SKU is truly unique (handle rare conflicts)
-  v_base_sku := v_sku;
+  -- Ensure SKU is truly unique (handle conflicts)
+  v_sku := v_base_sku;
   WHILE EXISTS (SELECT 1 FROM master_products WHERE sku = v_sku) LOOP
     v_sku_counter := v_sku_counter + 1;
     v_sku := v_base_sku || '-' || v_sku_counter::text;
     -- Safety: prevent infinite loop
     IF v_sku_counter > 1000 THEN
-      RAISE EXCEPTION 'Could not generate unique SKU for master product';
+      RAISE EXCEPTION 'Could not generate unique SKU for master product after 1000 attempts';
     END IF;
   END LOOP;
   
