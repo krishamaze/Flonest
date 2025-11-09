@@ -39,10 +39,6 @@ export function CameraScanner({
   type ScannerState = 'idle' | 'starting' | 'running' | 'stopping'
   const scannerStateRef = useRef<ScannerState>('idle')
   
-  // Scan state machine for clarity toast management
-  type ScanState = 'idle' | 'scanning' | 'success' | 'quality_warning'
-  const [scanState, setScanState] = useState<ScanState>('idle')
-  
   const scannerRef = useRef<Html5Qrcode | null>(null)
   const containerRef = useRef<HTMLDivElement>(null)
   const [error, setError] = useState<string | null>(null)
@@ -292,7 +288,6 @@ export function CameraScanner({
       scannerStateRef.current = 'running'
       scannerStartTimeRef.current = Date.now()
       lastSuccessTimeRef.current = null
-      setScanState('scanning')
       setError(null)
       setErrorType(null)
       
@@ -346,10 +341,9 @@ export function CameraScanner({
       qualityWarningTimeoutRef.current = null
     }
 
-    // Reset timing refs and state
+    // Reset timing refs
     scannerStartTimeRef.current = null
     lastSuccessTimeRef.current = null
-    setScanState('idle')
     
     // Clear scan cooldown
     if (scanCooldownRef.current) {
@@ -446,7 +440,6 @@ export function CameraScanner({
       scannerStateRef.current = 'running'
       scannerStartTimeRef.current = Date.now()
       lastSuccessTimeRef.current = null
-      setScanState('scanning')
       
       // Clear any existing clarity error toasts
       if (clarityErrorToastIdRef.current) {
@@ -560,23 +553,8 @@ export function CameraScanner({
       clarityErrorToastIdRef.current = null
     }
 
-    // Set success state (prevents quality warnings for cooldown period)
-    setScanState('success')
-    
     // Update last success time to prevent errors right after successful scan
     lastSuccessTimeRef.current = Date.now()
-    
-    // Reset to scanning after cooldown (if continuous mode)
-    if (continuousMode) {
-      setTimeout(() => {
-        setScanState('scanning')
-      }, SUCCESS_COOLDOWN_MS)
-    } else {
-      // For non-continuous mode, reset after a brief delay
-      setTimeout(() => {
-        setScanState('idle')
-      }, 1000)
-    }
 
     // Clear any error state
     setError(null)
@@ -638,15 +616,15 @@ export function CameraScanner({
       return
     }
 
-    // Don't show warnings during success cooldown or if in success state
-    if (scanState === 'success') {
-      return
-    }
-
     // Only process clarity errors after grace period
     const now = Date.now()
     const scannerStarted = scannerStartTimeRef.current
     const lastSuccess = lastSuccessTimeRef.current
+    
+    // Don't show warnings if we recently had a successful scan
+    if (lastSuccess && now - lastSuccess < SUCCESS_COOLDOWN_MS) {
+      return
+    }
 
     // Check if grace period has passed
     if (!scannerStarted || now - scannerStarted < GRACE_PERIOD_MS) {
@@ -666,10 +644,7 @@ export function CameraScanner({
     // Debounce quality warning
     qualityWarningTimeoutRef.current = setTimeout(() => {
       // Double-check conditions (state may have changed during debounce)
-      if (scanState === 'success') {
-        return
-      }
-      
+      // Use lastSuccessTimeRef to check if we just had a successful scan
       const checkNow = Date.now()
       const checkScannerStarted = scannerStartTimeRef.current
       const checkLastSuccess = lastSuccessTimeRef.current
@@ -678,6 +653,7 @@ export function CameraScanner({
         return
       }
       
+      // Don't show warning if we recently had a successful scan
       if (checkLastSuccess && checkNow - checkLastSuccess < SUCCESS_COOLDOWN_MS) {
         return
       }
@@ -688,7 +664,6 @@ export function CameraScanner({
       }
 
       // Show subtle guide message
-      setScanState('quality_warning')
       clarityErrorToastIdRef.current = toast.warning('Image unclear - adjust focus', {
         toastId: 'scanner-quality-warning',
         position: 'top-center',

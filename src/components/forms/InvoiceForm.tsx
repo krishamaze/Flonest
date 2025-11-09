@@ -1060,16 +1060,6 @@ export function InvoiceForm({
   const canProceedToStep2 = selectedCustomer !== null
   const canProceedToStep3 = items.length > 0 && items.every((item) => item.product_id && item.quantity > 0 && item.unit_price > 0)
 
-  // Manual retry handler
-  const handleManualRetry = () => {
-    if (draftInvoiceId) {
-      draftLoadRetries.current = 0
-      setDraftLoadError(null)
-      setIsRetrying(false)
-      loadDraftWithRetry(draftInvoiceId)
-    }
-  }
-
   // Show loading or error state when loading draft
   const DraftLoadingContent = (
     <div className="flex flex-col items-center justify-center py-12 space-y-4 px-4">

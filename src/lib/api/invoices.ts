@@ -266,7 +266,8 @@ export async function cancelInvoice(invoiceId: string, orgId: string): Promise<I
 const reloadSchemaCache = async (): Promise<void> => {
   try {
     // Option 1: Via RPC function (recommended)
-    await supabase.rpc('reload_schema_cache')
+    // Type cast needed since RPC function types may not be generated yet
+    await (supabase.rpc as any)('reload_schema_cache')
     // Wait for cache to reload
     await new Promise(resolve => setTimeout(resolve, 1000))
   } catch (error) {
