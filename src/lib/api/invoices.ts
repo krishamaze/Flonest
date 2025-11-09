@@ -19,21 +19,30 @@ async function generateInvoiceNumber(orgId: string): Promise<string> {
   const dateStr = today.toISOString().slice(0, 10).replace(/-/g, '')
   const prefix = `INV-${dateStr}`
 
-  // Get the last invoice number for today
-  const { data: lastInvoice, error } = await supabase
+  // Get the last invoice number for today using ilike for case-insensitive matching
+  const { data: lastInvoices, error } = await supabase
     .from('invoices')
     .select('invoice_number')
     .eq('org_id', orgId)
-    .like('invoice_number', `${prefix}%`)
+    .ilike('invoice_number', `${prefix}%`)
     .order('invoice_number', { ascending: false })
     .limit(1)
-    .single()
 
-  if (error && error.code !== 'PGRST116') {
+  if (error) {
+    // If error is "not found", that's okay - we'll start with 001
+    if (error.code === 'PGRST116') {
+      return `${prefix}-001`
+    }
     throw new Error(`Failed to generate invoice number: ${error.message}`)
   }
 
-  if (!lastInvoice) {
+  if (!lastInvoices || lastInvoices.length === 0) {
+    return `${prefix}-001`
+  }
+
+  const lastInvoice = lastInvoices[0]
+  
+  if (!lastInvoice || !lastInvoice.invoice_number) {
     return `${prefix}-001`
   }
 
@@ -152,11 +161,11 @@ export async function createInvoice(
 
   // Create invoice items
   if (data.items.length > 0) {
-    // Validate all products exist and belong to the organization before inserting
+    // Validate all products exist and belong to the organization, and get their master_product_id
     const productIds = data.items.map(item => item.product_id)
     const { data: existingProducts, error: validationError } = await supabase
       .from('products')
-      .select('id')
+      .select('id, master_product_id')
       .eq('org_id', orgId)
       .in('id', productIds)
 
@@ -176,13 +185,28 @@ export async function createInvoice(
       throw new Error(`One or more products not found or do not belong to this organization: ${missingProducts.join(', ')}`)
     }
 
-    const itemsData: InvoiceItemInsert[] = data.items.map((item) => ({
-      invoice_id: invoice.id,
-      product_id: item.product_id,
-      quantity: item.quantity,
-      unit_price: item.unit_price,
-      line_total: item.line_total,
-    }))
+    // Create a map of product_id -> master_product_id for quick lookup
+    const productMasterMap = new Map<string, string | null>()
+    existingProducts?.forEach(p => {
+      productMasterMap.set(p.id, p.master_product_id)
+    })
+
+    // Build invoice items using master_product_id instead of product_id
+    const itemsData: InvoiceItemInsert[] = data.items.map((item) => {
+      const masterProductId = productMasterMap.get(item.product_id)
+      
+      if (!masterProductId) {
+        throw new Error(`Product ${item.product_id} does not have a master product. Please link the product to a master product before creating an invoice.`)
+      }
+
+      return {
+        invoice_id: invoice.id,
+        product_id: masterProductId, // Use master_product_id, not products.id
+        quantity: item.quantity,
+        unit_price: item.unit_price,
+        line_total: item.line_total,
+      }
+    })
 
     const { error: itemsError } = await supabase
       .from('invoice_items')
