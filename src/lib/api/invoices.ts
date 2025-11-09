@@ -191,12 +191,47 @@ export async function createInvoice(
       productMasterMap.set(p.id, p.master_product_id)
     })
 
+    // Auto-link products without master_product_id to master products
+    const productsNeedingLink = data.items
+      .map(item => item.product_id)
+      .filter(productId => {
+        const masterProductId = productMasterMap.get(productId)
+        return !masterProductId
+      })
+
+    if (productsNeedingLink.length > 0) {
+      // Auto-create master products and link them
+      for (const productId of productsNeedingLink) {
+        try {
+          const { data: masterProductId, error: linkError } = await supabase.rpc('auto_link_product_to_master' as any, {
+            p_product_id: productId,
+            p_org_id: orgId,
+          })
+
+          if (linkError) {
+            console.error(`Failed to auto-link product ${productId}:`, linkError)
+            throw new Error(`Failed to link product to master catalog: ${linkError.message}`)
+          }
+
+          if (masterProductId) {
+            productMasterMap.set(productId, masterProductId as string)
+          }
+        } catch (error) {
+          // Rollback: delete the invoice
+          await supabase.from('invoices').delete().eq('id', invoice.id)
+          throw error instanceof Error 
+            ? error 
+            : new Error(`Failed to auto-link product ${productId} to master catalog`)
+        }
+      }
+    }
+
     // Build invoice items using master_product_id instead of product_id
     const itemsData: InvoiceItemInsert[] = data.items.map((item) => {
       const masterProductId = productMasterMap.get(item.product_id)
       
       if (!masterProductId) {
-        throw new Error(`Product ${item.product_id} does not have a master product. Please link the product to a master product before creating an invoice.`)
+        throw new Error(`Product ${item.product_id} does not have a master product and could not be auto-linked.`)
       }
 
       return {
