@@ -10,10 +10,17 @@
     "preview": "vite preview",
     "deploy:check": "node scripts/deploy-check.js",
     "icons:generate": "node scripts/generate-pwa-icons.cjs",
+    "supabase:link": "node scripts/supabase-link.cjs",
+    "supabase:link:ps1": "powershell -ExecutionPolicy Bypass -File scripts/supabase-link.ps1",
+    "supabase:link:sh": "bash scripts/supabase-link.sh",
     "supabase:status": "npx supabase status",
+    "supabase:db:diff": "npx supabase db diff --linked",
+    "supabase:db:push": "npx supabase db push --linked",
+    "supabase:db:reset": "npx supabase db reset --linked",
     "supabase:types": "npx supabase gen types typescript --linked > src/types/database.ts",
-    "supabase:push": "npx supabase db push",
-    "supabase:migration:new": "npx supabase migration new"
+    "supabase:migration:new": "npx supabase migration new",
+    "db:migrate": "npm run supabase:db:push",
+    "db:types": "npm run supabase:types"
   },
   "dependencies": {
     "@heroicons/react": "^2.2.0",

@@ -1,0 +1,9 @@
+# Supabase CLI temporary files
+.temp/
+*.tmp
+
+# Do not commit project-ref or connection strings
+project-ref
+*.env
+*.key
+

@@ -26,10 +26,11 @@ npm run supabase:status
 ## ✅ Completed Setup
 
 ### 1. Project Linking
-- **Status**: ✅ Linked to remote project
+- **Status**: ✅ Linked to remote project (with direct connection)
 - **Project**: `bizfintunestore` (ref: `yzrwkznkfisfpnwzbwfw`)
 - **Region**: Southeast Asia (Singapore)
-- **Command Used**: `npx supabase link --project-ref yzrwkznkfisfpnwzbwfw`
+- **Connection**: Direct connection (--skip-pooler) - No Docker required
+- **Command Used**: `npm run supabase:link` or `npx supabase link --project-ref yzrwkznkfisfpnwzbwfw --skip-pooler`
 
 ### 2. TypeScript Types Generation
 - **Status**: ✅ Generated from remote database
@@ -77,8 +78,10 @@ npm run supabase:migration:new <migration-name>
 ### Project Management
 
 ```bash
-# Link to remote project
-npx supabase link --project-ref <project-ref>
+# Link to remote project (with direct connection, no Docker)
+npm run supabase:link
+# Or manually:
+npx supabase link --project-ref yzrwkznkfisfpnwzbwfw --skip-pooler
 
 # List all projects
 npx supabase projects list
@@ -90,19 +93,26 @@ npx supabase unlink
 npx supabase status
 ```
 
+**Important**: Always use `--skip-pooler` flag when linking to use direct connection instead of pooler. This avoids Docker requirements and connection timeout issues.
+
 ### Database Operations
 
 ```bash
-# Generate TypeScript types from remote database
+# Generate TypeScript types from cloud database
 npx supabase gen types typescript --linked > src/types/database.ts
 # Or use: npm run supabase:types
 
-# Pull remote database schema (requires Docker)
-npx supabase db pull
+# Generate migration from schema diff (uses shadow DB)
+npx supabase db diff
+# Or use: npm run supabase:db:diff
 
-# Push local migrations to remote
-npx supabase db push
-# Or use: npm run supabase:push
+# Push local migrations to cloud
+npx supabase db push --linked
+# Or use: npm run supabase:db:push
+
+# Reset cloud database (⚠️ DESTRUCTIVE - dev projects only)
+npx supabase db reset --linked
+# Or use: npm run supabase:db:reset
 
 # Create new migration
 npx supabase migration new <migration-name>
@@ -137,25 +147,27 @@ npx supabase inspect db blocking --linked
 npx supabase inspect db outliers --linked
 ```
 
-### Local Development (Requires Docker)
+### Cloud Development (No Docker Required)
 
 ```bash
-# Start local Supabase
-npx supabase start
-
-# Stop local Supabase
-npx supabase stop
-
-# Check local status
+# Check cloud project status
 npx supabase status
 # Or use: npm run supabase:status
 
-# Reset local database
-npx supabase db reset
+# Generate migration from schema diff
+npx supabase db diff
+# Or use: npm run supabase:db:diff
 
-# Seed local database
-npx supabase db seed
+# Push migrations to cloud
+npx supabase db push --linked
+# Or use: npm run supabase:db:push
+
+# Reset cloud database (⚠️ DESTRUCTIVE - dev projects only)
+npx supabase db reset --linked
+# Or use: npm run supabase:db:reset
 ```
+
+> **Note:** This project uses cloud-only development. All database operations work directly against your cloud Supabase project. No Docker required.
 
 ### Edge Functions
 
@@ -221,23 +233,27 @@ Based on generated types, your database includes:
 
 ### Daily Development
 
-1. **Start Local Development** (if using Docker):
+1. **Create New Migration**:
    ```bash
-   npx supabase start
+   npm run supabase:migration:new add_product_fields
+   # Edit migration file in supabase/migrations/
    ```
 
-2. **Generate Types After Schema Changes**:
+2. **Push Migration to Cloud**:
    ```bash
-   npm run supabase:types
+   npm run db:migrate
+   # Or: npx supabase db push --linked
+   ```
+
+3. **Generate Types After Schema Changes**:
+   ```bash
+   npm run db:types
    # Or: npx supabase gen types typescript --linked > src/types/database.ts
    ```
 
-3. **Create Migrations for Schema Changes**:
+4. **Start Development Server**:
    ```bash
-   npm run supabase:migration:new add_product_fields
-   # Edit migration file
-   npm run supabase:push
-   # Or: npx supabase db push
+   npm run dev
    ```
 
 ### Before Deployment
@@ -282,8 +298,11 @@ npx supabase inspect db blocking --linked
 npx supabase link --project-ref <your-project-ref>
 ```
 
-### Issue: "Docker not running" (for local dev)
-**Solution**: Install and start Docker Desktop, or use remote commands with `--linked` flag
+### Issue: "Access token expired"
+**Solution**: Login again to refresh your access token
+```bash
+npx supabase login
+```
 
 ### Issue: "Migration history mismatch"
 **Solution**: Repair migration
@@ -311,7 +330,8 @@ npm run supabase:types
 
 2. **Create Migrations for New Features**:
    - Use `npm run supabase:migration:new <name>` for schema changes
-   - Test locally (if Docker available) or push directly to remote
+   - Push directly to cloud with `npm run db:migrate`
+   - See `docs/CLOUD_DEV_WORKFLOW.md` for detailed workflow
 
 3. **Monitor Database Performance**:
    - Use `npx supabase inspect db` commands to monitor performance
@@ -338,6 +358,8 @@ npm run supabase:types
 
 **Last Updated**: 2025-01-14  
 **Project**: biz.finetune.store  
-**Remote Project**: bizfintunestore (yzrwkznkfisfpnwzbwfw)  
-**CLI Installation**: npm dev dependency (no global install required)
+**Cloud Project**: bizfintunestore (yzrwkznkfisfpnwzbwfw)  
+**CLI Installation**: npm dev dependency (no global install required)  
+**Workflow**: Cloud-only (no Docker required)  
+**Documentation**: See `docs/CLOUD_DEV_WORKFLOW.md` for detailed workflow guide
 
