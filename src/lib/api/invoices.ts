@@ -373,25 +373,47 @@ export async function getDraftInvoiceByCustomer(
   orgId: string,
   customerId: string
 ): Promise<(Invoice & { draft_data?: any }) | null> {
-  const { data, error } = await supabase
-    .from('invoices')
-    .select('*, draft_data')
-    .eq('org_id', orgId)
-    .eq('customer_id', customerId)
-    .eq('status', 'draft')
-    .order('updated_at', { ascending: false })
-    .limit(1)
-    .maybeSingle()
+  const loadDraft = async (retryCount = 0): Promise<(Invoice & { draft_data?: any }) | null> => {
+    try {
+      const { data, error } = await supabase
+        .from('invoices')
+        .select('*, draft_data')
+        .eq('org_id', orgId)
+        .eq('customer_id', customerId)
+        .eq('status', 'draft')
+        .order('updated_at', { ascending: false })
+        .limit(1)
+        .maybeSingle()
 
-  if (error) {
-    if (error.code === 'PGRST116') {
-      // No draft found
-      return null
+      if (error) {
+        // Check for schema cache errors
+        if ((error.code === 'PGRST200' || error.message?.includes('schema cache') || error.message?.includes('does not exist')) && retryCount === 0) {
+          console.warn('Schema cache stale for getDraftInvoiceByCustomer, reloading...')
+          await reloadSchemaCache()
+          await new Promise(resolve => setTimeout(resolve, 1000))
+          return loadDraft(1)
+        }
+        
+        if (error.code === 'PGRST116') {
+          // No draft found
+          return null
+        }
+        throw new Error(`Failed to fetch draft invoice: ${error.message}`)
+      }
+
+      return data as any
+    } catch (error) {
+      if (retryCount === 0 && (error instanceof Error && (error.message.includes('schema cache') || error.message.includes('does not exist')))) {
+        console.warn('Schema cache error in getDraftInvoiceByCustomer, retrying...')
+        await reloadSchemaCache()
+        await new Promise(resolve => setTimeout(resolve, 1000))
+        return loadDraft(1)
+      }
+      throw error
     }
-    throw new Error(`Failed to fetch draft invoice: ${error.message}`)
   }
 
-  return data as any
+  return loadDraft()
 }
 
 /**
@@ -604,23 +626,36 @@ export async function autoSaveInvoiceDraft(
     }
 
     if (existingDraft) {
-      // Update existing draft
-      const { data: updated, error: updateError } = await supabase
-        .from('invoices')
-        .update({
-          customer_id: draftData.customer_id || null,
-          subtotal: subtotal,
-          total_amount: subtotal,
-          draft_data: wrappedDraftData,
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', (existingDraft as any).id)
-        .select('id, draft_session_id')
-        .single()
+      // Update existing draft with retry logic for schema cache errors
+      const updateDraft = async (retryCount = 0): Promise<any> => {
+        const { data: updated, error: updateError } = await supabase
+          .from('invoices')
+          .update({
+            customer_id: draftData.customer_id || null,
+            subtotal: subtotal,
+            total_amount: subtotal,
+            draft_data: wrappedDraftData,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', (existingDraft as any).id)
+          .select('id, draft_session_id')
+          .single()
 
-      if (updateError) {
-        throw new Error(`Failed to update draft: ${updateError.message}`)
+        if (updateError) {
+          // Check for schema cache errors
+          if ((updateError.code === 'PGRST200' || updateError.message?.includes('schema cache') || updateError.message?.includes('does not exist') || updateError.message?.includes('updated_at')) && retryCount === 0) {
+            console.warn('Schema cache stale for autoSaveInvoiceDraft update, reloading...')
+            await reloadSchemaCache()
+            await new Promise(resolve => setTimeout(resolve, 1000))
+            return updateDraft(1)
+          }
+          throw new Error(`Failed to update draft: ${updateError.message}`)
+        }
+
+        return updated
       }
+
+      const updated = await updateDraft()
 
       const updatedData = updated as any
       return {
