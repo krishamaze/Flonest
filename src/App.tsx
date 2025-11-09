@@ -105,15 +105,18 @@ function App() {
         <InstallPrompt />
         <UpdateNotification />
         <ToastContainer
-          position="bottom-center"
+          position="top-center"
           autoClose={3000}
           hideProgressBar={false}
           closeOnClick
           pauseOnHover={false}
-          draggable
+          draggable={false}
           rtl={false}
           theme="light"
-          limit={3}
+          limit={5}
+          newestOnTop={true}
+          stacked={true}
+          style={{ zIndex: 9999 }}
         />
       </BrowserRouter>
     </AuthProvider>

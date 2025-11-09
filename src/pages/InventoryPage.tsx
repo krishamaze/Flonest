@@ -12,7 +12,7 @@ import {
   DocumentTextIcon,
 } from '@heroicons/react/24/outline'
 import { getInvoicesByOrg, revalidateDraftInvoice, deleteDraft } from '../lib/api/invoices'
-import { toast } from 'react-toastify'
+import { useToastDedupe } from '../hooks/useToastDedupe'
 
 export function InventoryPage() {
   const { user } = useAuth()
@@ -22,6 +22,9 @@ export function InventoryPage() {
   const [org, setOrg] = useState<Org | null>(null)
   const [selectedDraftId, setSelectedDraftId] = useState<string | null>(null)
   const [filter, setFilter] = useState<'all' | 'draft' | 'finalized'>('all')
+  
+  // Toast deduplication hook
+  const { showToast } = useToastDedupe()
 
   const loadOrg = useCallback(async () => {
     if (!user) return
@@ -110,12 +113,12 @@ export function InventoryPage() {
 
     try {
       await deleteDraft(invoiceId, user.orgId)
-      toast.success('Draft deleted successfully')
+      showToast('success', 'Draft deleted successfully', { autoClose: 3000 })
       // Reload invoices to reflect deletion
       await loadInvoices()
     } catch (error) {
       console.error('Error deleting draft:', error)
-      toast.error(error instanceof Error ? error.message : 'Failed to delete draft')
+      showToast('error', error instanceof Error ? error.message : 'Failed to delete draft', { autoClose: 5000 })
     }
   }
 

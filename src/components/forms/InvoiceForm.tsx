@@ -24,9 +24,10 @@ import { ChevronLeftIcon, ChevronRightIcon, PlusIcon, TrashIcon, XCircleIcon, Bo
 import type { IdentifierType } from '../../lib/utils/identifierValidation'
 import { detectIdentifierType, validateMobile, validateGSTIN, normalizeIdentifier } from '../../lib/utils/identifierValidation'
 import { Toast } from '../ui/Toast'
-import { toast as toastNotify } from 'react-toastify'
 import { getDraftSessionId, setDraftSessionId } from '../../lib/utils/draftSession'
 import { LoadingSpinner } from '../ui/LoadingSpinner'
+import { useToastDedupe } from '../../hooks/useToastDedupe'
+import { ExclamationCircleIcon } from '@heroicons/react/24/outline'
 
 interface InvoiceFormProps {
   isOpen: boolean
@@ -92,6 +93,9 @@ export function InvoiceForm({
   
   // Use prop if provided, otherwise use internal state
   const currentDraftInvoiceId = draftInvoiceId || internalDraftInvoiceId
+  
+  // Toast deduplication hook
+  const { showToast } = useToastDedupe()
 
   // Load products when form opens
   useEffect(() => {
@@ -126,6 +130,17 @@ export function InvoiceForm({
     const errorMessage = error.message?.toLowerCase() || ''
     const errorCode = error.code?.toLowerCase() || ''
     
+    // Schema cache errors are retry-able (will be handled with cache reload)
+    const isSchemaCacheError = 
+      errorCode === 'pgrst200' || 
+      errorMessage.includes('could not find a relationship') ||
+      errorMessage.includes('schema cache') ||
+      (errorMessage.includes('relationship') && errorMessage.includes('schema'))
+    
+    if (isSchemaCacheError) {
+      return true
+    }
+    
     // Retry-able errors: network issues, RLS policy errors, timeouts
     const retryablePatterns = [
       'network',
@@ -150,6 +165,7 @@ export function InvoiceForm({
       'unauthorized',
       'forbidden',
       'permission denied',
+      'draft data not found',
     ]
     
     // Check for permanent errors first
@@ -206,6 +222,7 @@ export function InvoiceForm({
         })
         setItems(restoredItems)
         setInternalDraftInvoiceId(invoiceId)
+        // Only advance to step 2 on successful load - don't auto-advance on error
         setCurrentStep(2)
         
         // Reset retry counter on success
@@ -216,10 +233,7 @@ export function InvoiceForm({
         try {
           const revalidation = await revalidateDraftInvoice(invoiceId, orgId)
           if (revalidation.updated) {
-            setToast({ 
-              message: 'Draft revalidated — missing items are now available.', 
-              type: 'success' 
-            })
+            showToast('success', 'Draft revalidated — missing items are now available.', { autoClose: 3000 })
             if (revalidation.valid) {
               const cleanedItems = restoredItems.map(item => ({
                 ...item,
@@ -254,15 +268,14 @@ export function InvoiceForm({
         const errorMessage = error instanceof Error ? error.message : 'Failed to load draft invoice'
         setDraftLoadError(errorMessage)
         setIsRetrying(false)
-        setToast({ 
-          message: errorMessage, 
-          type: 'error' 
-        })
+        // Use deduplicated toast
+        showToast('error', errorMessage, { unique: true, autoClose: 5000 })
+        // Don't auto-advance to step 2 on failure - show error UI instead
       }
     } finally {
       setLoadingDraft(false)
     }
-  }, [orgId])
+  }, [orgId, showToast, loadDraftInvoiceData, getInvoiceById, getAllProducts, revalidateDraftInvoice, setDraftSessionId])
 
   // Load draft on mount if draftInvoiceId prop is provided
   useEffect(() => {
@@ -382,7 +395,7 @@ export function InvoiceForm({
                   console.error('Error re-validating draft:', revalError)
                 }
                 
-                setToast({ message: 'Draft loaded', type: 'success' })
+                showToast('success', 'Draft loaded', { autoClose: 3000 })
                 setCurrentStep(2)
                 return
               }
@@ -558,11 +571,7 @@ export function InvoiceForm({
   // Handle product selection from combobox
   const handleProductSelect = (product: ProductWithMaster) => {
     if (!selectedCustomer) {
-      toastNotify.error('Please select a customer first', {
-        position: 'bottom-center',
-        autoClose: 3000,
-        style: { maxWidth: '90vw', fontSize: '14px' },
-      })
+      showToast('error', 'Please select a customer first', { autoClose: 3000 })
       return
     }
     setPendingProduct(product)
@@ -573,11 +582,7 @@ export function InvoiceForm({
   // Handle scan from camera (continuous mode)
   const handleScanFromCamera = async (code: string) => {
     if (!selectedCustomer) {
-      toastNotify.error('Please select a customer first', {
-        position: 'bottom-center',
-        autoClose: 3000,
-        style: { maxWidth: '90vw', fontSize: '14px' },
-      })
+      showToast('error', 'Please select a customer first', { autoClose: 3000 })
       setScannerMode('closed')
       return
     }
@@ -587,11 +592,7 @@ export function InvoiceForm({
       const results = await validateScannerCodes(orgId, [code])
       
       if (results.length === 0) {
-        toastNotify.error('Product not found. Ask your manager to add this product.', {
-          position: 'bottom-center',
-          autoClose: 3000,
-          style: { maxWidth: '90vw', fontSize: '14px' },
-        })
+        showToast('error', 'Product not found. Ask your manager to add this product.', { autoClose: 3000 })
         return
       }
 
@@ -606,32 +607,16 @@ export function InvoiceForm({
           setScannerMode('confirming')
           setShowConfirmSheet(true)
         } else {
-          toastNotify.error('Product not found in inventory.', {
-            position: 'bottom-center',
-            autoClose: 3000,
-            style: { maxWidth: '90vw', fontSize: '14px' },
-          })
+          showToast('error', 'Product not found in inventory.', { autoClose: 3000 })
         }
       } else if (result.status === 'invalid') {
-        toastNotify.error('This product isn\'t in stock yet. Ask your manager to add or stock it.', {
-          position: 'bottom-center',
-          autoClose: 3000,
-          style: { maxWidth: '90vw', fontSize: '14px' },
-        })
+        showToast('error', 'This product isn\'t in stock yet. Ask your manager to add or stock it.', { autoClose: 3000 })
       } else if (result.status === 'not_found') {
-        toastNotify.error('Product not found. Ask your manager to add this product.', {
-          position: 'bottom-center',
-          autoClose: 3000,
-          style: { maxWidth: '90vw', fontSize: '14px' },
-        })
+        showToast('error', 'Product not found. Ask your manager to add this product.', { autoClose: 3000 })
       }
     } catch (error) {
       console.error('Error processing scan:', error)
-      toastNotify.error(error instanceof Error ? error.message : 'Failed to process scan', {
-        position: 'bottom-center',
-        autoClose: 3000,
-        style: { maxWidth: '90vw', fontSize: '14px' },
-      })
+      showToast('error', error instanceof Error ? error.message : 'Failed to process scan', { autoClose: 3000 })
     }
   }
 
@@ -697,11 +682,7 @@ export function InvoiceForm({
   // Handle scanner open
   const handleScanClick = () => {
     if (!selectedCustomer) {
-      toastNotify.error('Please select a customer first', {
-        position: 'bottom-center',
-        autoClose: 3000,
-        style: { maxWidth: '90vw', fontSize: '14px' },
-      })
+      showToast('error', 'Please select a customer first', { autoClose: 3000 })
       return
     }
     setScannerMode('scanning')
@@ -739,7 +720,7 @@ export function InvoiceForm({
         const now = Date.now()
         // Only show toast if it's been more than 3 seconds since last auto-save (avoid spam)
         if (!lastAutoSaveTime || now - lastAutoSaveTime > 3000) {
-          setToast({ message: 'Draft saved automatically', type: 'success' })
+          showToast('success', 'Draft saved automatically', { autoClose: 2000 })
           setLastAutoSaveTime(now)
         }
       } catch (error) {
@@ -762,13 +743,13 @@ export function InvoiceForm({
         (item.validation_errors && item.validation_errors.length > 0)
       )
       if (hasInvalidItems) {
-        setToast({ message: 'Draft saved (contains items needing review)', type: 'info' })
+        showToast('info', 'Draft saved (contains items needing review)', { autoClose: 3000 })
       } else {
-        setToast({ message: 'Draft saved', type: 'success' })
+        showToast('success', 'Draft saved', { autoClose: 3000 })
       }
     } catch (error) {
       console.error('Manual save failed:', error)
-      setToast({ message: 'Failed to save draft', type: 'error' })
+      showToast('error', 'Failed to save draft', { autoClose: 5000 })
     }
   }
 
@@ -1101,35 +1082,50 @@ export function InvoiceForm({
         </>
       )}
       {draftLoadError && !loadingDraft && (
-        <div className="text-center space-y-4 max-w-md">
+        <div className="text-center space-y-4 max-w-md mx-auto p-lg">
           <div className="text-error-dark">
-            <XCircleIcon className="h-12 w-12 mx-auto mb-2" />
+            <ExclamationCircleIcon className="h-16 w-16 mx-auto mb-4" />
           </div>
           <div>
-            <h3 className="text-lg font-semibold text-primary-text mb-2">
+            <h3 className="text-xl font-semibold text-primary-text mb-2">
               Failed to Load Draft
             </h3>
             <p className="text-sm text-secondary-text mb-4">
               {draftLoadError}
             </p>
           </div>
-          <div className="flex flex-col gap-2 w-full max-w-xs">
+          <div className="flex flex-col gap-2 w-full max-w-xs mx-auto">
             <Button
               variant="primary"
-              size="sm"
-              onClick={handleManualRetry}
+              size="md"
+              onClick={async () => {
+                setDraftLoadError(null)
+                setIsRetrying(false)
+                draftLoadRetries.current = 0
+                await loadDraftWithRetry(draftInvoiceId!)
+              }}
               disabled={loadingDraft}
               className="w-full"
             >
-              Retry
+              {isRetrying ? 'Retrying...' : 'Retry'}
             </Button>
             <Button
               variant="secondary"
-              size="sm"
-              onClick={onClose}
+              size="md"
+              onClick={() => {
+                // Reset form and start new invoice
+                setDraftLoadError(null)
+                setInternalDraftInvoiceId(null)
+                setCurrentStep(1)
+                setIdentifier('')
+                setIdentifierValid(false)
+                setSelectedCustomer(null)
+                setItems([])
+                // Don't close the form - allow user to start new invoice
+              }}
               className="w-full"
             >
-              Close
+              Start New Invoice
             </Button>
           </div>
         </div>

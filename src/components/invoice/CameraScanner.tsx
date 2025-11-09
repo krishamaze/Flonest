@@ -39,6 +39,10 @@ export function CameraScanner({
   type ScannerState = 'idle' | 'starting' | 'running' | 'stopping'
   const scannerStateRef = useRef<ScannerState>('idle')
   
+  // Scan state machine for clarity toast management
+  type ScanState = 'idle' | 'scanning' | 'success' | 'quality_warning'
+  const [scanState, setScanState] = useState<ScanState>('idle')
+  
   const scannerRef = useRef<Html5Qrcode | null>(null)
   const containerRef = useRef<HTMLDivElement>(null)
   const [error, setError] = useState<string | null>(null)
@@ -53,10 +57,11 @@ export function CameraScanner({
   const scannerStartTimeRef = useRef<number | null>(null)
   const lastSuccessTimeRef = useRef<number | null>(null)
   const errorDebounceRef = useRef<NodeJS.Timeout | null>(null)
+  const qualityWarningTimeoutRef = useRef<NodeJS.Timeout | null>(null)
   const clarityErrorToastIdRef = useRef<string | number | null>(null)
   const GRACE_PERIOD_MS = 2000 // 2 seconds grace period for camera to focus
-  const ERROR_DEBOUNCE_MS = 500 // Wait 500ms of continuous errors before showing
-  const SUCCESS_COOLDOWN_MS = 1000 // Don't show errors for 1s after successful scan
+  const QUALITY_WARNING_DEBOUNCE_MS = 1000 // Increased from 500ms to reduce spam
+  const SUCCESS_COOLDOWN_MS = 2000 // Extended from 1000ms to 2 seconds
   
   // Scan cooldown for continuous mode (prevents duplicate scans)
   const lastScannedCodeRef = useRef<string | null>(null)
@@ -256,6 +261,12 @@ export function CameraScanner({
       const cameraId = cameras[preferredCameraIndex].id
       setCurrentCameraIndex(preferredCameraIndex)
 
+      // Calculate dynamic aspect ratio based on viewport
+      const aspectRatio = window.innerWidth / window.innerHeight
+      
+      // Calculate dynamic qrbox size (70% of screen width, max 250px)
+      const qrboxSize = Math.min(250, Math.floor(window.innerWidth * 0.7))
+
       // Create scanner instance
       const scanner = new Html5Qrcode('camera-scanner-container', {
         verbose: false,
@@ -264,13 +275,13 @@ export function CameraScanner({
 
       scannerRef.current = scanner
 
-      // Start scanning
+      // Start scanning with dynamic configuration
       await scanner.start(
         { deviceId: { exact: cameraId } },
         {
           fps: 10,
-          qrbox: { width: 250, height: 250 },
-          aspectRatio: 1.0,
+          qrbox: { width: qrboxSize, height: qrboxSize },
+          aspectRatio: aspectRatio, // CRITICAL: Match screen aspect ratio to eliminate black bars
           disableFlip: false,
         },
         handleScanSuccess,
@@ -281,6 +292,7 @@ export function CameraScanner({
       scannerStateRef.current = 'running'
       scannerStartTimeRef.current = Date.now()
       lastSuccessTimeRef.current = null
+      setScanState('scanning')
       setError(null)
       setErrorType(null)
       
@@ -289,6 +301,9 @@ export function CameraScanner({
         toast.dismiss(clarityErrorToastIdRef.current)
         clarityErrorToastIdRef.current = null
       }
+
+      // Customize UI after scanner starts (add custom corners)
+      customizeScannerUI()
     } catch (error) {
       console.error('Error initializing scanner:', error)
       scannerStateRef.current = 'idle'
@@ -324,10 +339,17 @@ export function CameraScanner({
       toast.dismiss(clarityErrorToastIdRef.current)
       clarityErrorToastIdRef.current = null
     }
+    
+    // Clear quality warning timeout
+    if (qualityWarningTimeoutRef.current) {
+      clearTimeout(qualityWarningTimeoutRef.current)
+      qualityWarningTimeoutRef.current = null
+    }
 
-    // Reset timing refs
+    // Reset timing refs and state
     scannerStartTimeRef.current = null
     lastSuccessTimeRef.current = null
+    setScanState('idle')
     
     // Clear scan cooldown
     if (scanCooldownRef.current) {
@@ -396,6 +418,12 @@ export function CameraScanner({
 
       scannerStateRef.current = 'starting'
 
+      // Calculate dynamic aspect ratio based on viewport
+      const aspectRatio = window.innerWidth / window.innerHeight
+      
+      // Calculate dynamic qrbox size (70% of screen width, max 250px)
+      const qrboxSize = Math.min(250, Math.floor(window.innerWidth * 0.7))
+
       const scanner = new Html5Qrcode('camera-scanner-container', {
         verbose: false,
         formatsToSupport: enabledFormats,
@@ -407,8 +435,8 @@ export function CameraScanner({
         { deviceId: { exact: newCameraId } },
         {
           fps: 10,
-          qrbox: { width: 250, height: 250 },
-          aspectRatio: 1.0,
+          qrbox: { width: qrboxSize, height: qrboxSize },
+          aspectRatio: aspectRatio, // CRITICAL: Match screen aspect ratio to eliminate black bars
           disableFlip: false,
         },
         handleScanSuccess,
@@ -418,12 +446,22 @@ export function CameraScanner({
       scannerStateRef.current = 'running'
       scannerStartTimeRef.current = Date.now()
       lastSuccessTimeRef.current = null
+      setScanState('scanning')
       
       // Clear any existing clarity error toasts
       if (clarityErrorToastIdRef.current) {
         toast.dismiss(clarityErrorToastIdRef.current)
         clarityErrorToastIdRef.current = null
       }
+      
+      // Clear quality warning timeout
+      if (qualityWarningTimeoutRef.current) {
+        clearTimeout(qualityWarningTimeoutRef.current)
+        qualityWarningTimeoutRef.current = null
+      }
+
+      // Customize UI after scanner starts (add custom corners)
+      customizeScannerUI()
     } catch (error) {
       console.error('Error switching camera:', error)
       scannerStateRef.current = 'idle'
@@ -504,6 +542,12 @@ export function CameraScanner({
       clearTimeout(processTimeoutRef.current)
     }
 
+    // Immediately cancel any pending quality warnings
+    if (qualityWarningTimeoutRef.current) {
+      clearTimeout(qualityWarningTimeoutRef.current)
+      qualityWarningTimeoutRef.current = null
+    }
+    
     // Clear any pending error debounce
     if (errorDebounceRef.current) {
       clearTimeout(errorDebounceRef.current)
@@ -516,8 +560,23 @@ export function CameraScanner({
       clarityErrorToastIdRef.current = null
     }
 
+    // Set success state (prevents quality warnings for cooldown period)
+    setScanState('success')
+    
     // Update last success time to prevent errors right after successful scan
     lastSuccessTimeRef.current = Date.now()
+    
+    // Reset to scanning after cooldown (if continuous mode)
+    if (continuousMode) {
+      setTimeout(() => {
+        setScanState('scanning')
+      }, SUCCESS_COOLDOWN_MS)
+    } else {
+      // For non-continuous mode, reset after a brief delay
+      setTimeout(() => {
+        setScanState('idle')
+      }, 1000)
+    }
 
     // Clear any error state
     setError(null)
@@ -571,13 +630,16 @@ export function CameraScanner({
   }
 
   const onScanFailure = (error: string) => {
-    // Ignore quiet failures (just no code detected yet)
-    if (error.includes('No MultiFormat Readers') || error.includes('NotFoundException')) {
+    // Ignore "not found" errors (normal during scanning)
+    if (error.includes('No MultiFormat Readers') || 
+        error.includes('NotFoundException') ||
+        error.includes('No QR code') || 
+        error.includes('No MultiFormat')) {
       return
     }
 
-    // Ignore "No QR code" errors - these are normal during scanning
-    if (error.includes('No QR code') || error.includes('No MultiFormat')) {
+    // Don't show warnings during success cooldown or if in success state
+    if (scanState === 'success') {
       return
     }
 
@@ -596,22 +658,26 @@ export function CameraScanner({
       return
     }
 
-    // Clear any existing debounce timer
-    if (errorDebounceRef.current) {
-      clearTimeout(errorDebounceRef.current)
+    // Clear existing timeout
+    if (qualityWarningTimeoutRef.current) {
+      clearTimeout(qualityWarningTimeoutRef.current)
     }
 
-    // Debounce error display - only show if error persists for ERROR_DEBOUNCE_MS
-    errorDebounceRef.current = setTimeout(() => {
-      // Double-check conditions before showing (in case state changed during debounce)
+    // Debounce quality warning
+    qualityWarningTimeoutRef.current = setTimeout(() => {
+      // Double-check conditions (state may have changed during debounce)
+      if (scanState === 'success') {
+        return
+      }
+      
       const checkNow = Date.now()
       const checkScannerStarted = scannerStartTimeRef.current
       const checkLastSuccess = lastSuccessTimeRef.current
-
+      
       if (!checkScannerStarted || checkNow - checkScannerStarted < GRACE_PERIOD_MS) {
         return
       }
-
+      
       if (checkLastSuccess && checkNow - checkLastSuccess < SUCCESS_COOLDOWN_MS) {
         return
       }
@@ -621,9 +687,11 @@ export function CameraScanner({
         toast.dismiss(clarityErrorToastIdRef.current)
       }
 
-      // Show subtle guide message as toast (not blocking error)
+      // Show subtle guide message
+      setScanState('quality_warning')
       clarityErrorToastIdRef.current = toast.warning('Image unclear - adjust focus', {
-        position: 'bottom-center',
+        toastId: 'scanner-quality-warning',
+        position: 'top-center',
         autoClose: 2500,
         hideProgressBar: false,
         closeOnClick: true,
@@ -633,7 +701,7 @@ export function CameraScanner({
           fontSize: '14px',
         },
       })
-    }, ERROR_DEBOUNCE_MS)
+    }, QUALITY_WARNING_DEBOUNCE_MS)
   }
 
   const playBeep = () => {
@@ -659,6 +727,41 @@ export function CameraScanner({
     }
   }
 
+  // Customize scanner UI after Html5Qrcode initializes
+  // This removes default corners and adds custom glowing corners
+  const customizeScannerUI = () => {
+    // Wait for element to be created (Html5Qrcode creates it asynchronously)
+    let attempts = 0
+    const maxAttempts = 50 // 5 seconds max (50 * 100ms)
+    let intervalId: NodeJS.Timeout | null = null
+    
+    intervalId = setInterval(() => {
+      attempts++
+      const overlayElement = document.getElementById('qr-shaded-region')
+      
+      if (overlayElement) {
+        if (intervalId) clearInterval(intervalId)
+        
+        // Remove all default corner divs (Html5Qrcode creates small divs for corners)
+        // We'll remove all child divs and add our custom ones
+        const childDivs = Array.from(overlayElement.querySelectorAll('div'))
+        childDivs.forEach(el => el.remove())
+        
+        // Add custom glowing corners
+        const corners = ['top-left', 'top-right', 'bottom-left', 'bottom-right']
+        corners.forEach(position => {
+          const corner = document.createElement('div')
+          corner.classList.add('scanner-corner', `corner-${position}`)
+          overlayElement.appendChild(corner)
+        })
+      } else if (attempts >= maxAttempts) {
+        // Cleanup after timeout
+        if (intervalId) clearInterval(intervalId)
+        console.warn('Scanner UI customization: qr-shaded-region not found after timeout')
+      }
+    }, 100)
+  }
+
   // Clear cooldown on unmount
   useEffect(() => {
     return () => {
@@ -673,11 +776,11 @@ export function CameraScanner({
   // Z-index: 9998 for scanner (below sheet 10000, above content)
   return (
     <div 
-      className="fixed top-0 left-0 w-full h-screen h-[100dvh] bg-black flex flex-col"
+      className="fixed top-0 left-0 w-full h-screen h-[100dvh] bg-black"
       style={{ zIndex: 9998 }}
     >
       {/* Header */}
-      <div className="flex items-center justify-between p-md bg-black/80 backdrop-blur-sm z-10">
+      <div className="absolute top-0 left-0 right-0 flex items-center justify-between p-md bg-black/80 backdrop-blur-sm z-20 pointer-events-auto">
         <h2 className="text-lg font-semibold text-white">Scan Barcode</h2>
         <div className="flex items-center gap-sm">
           {availableCameras.length > 1 && (
@@ -704,8 +807,8 @@ export function CameraScanner({
         </div>
       </div>
 
-      {/* Scanner Container */}
-      <div className="flex-1 relative flex items-center justify-center bg-black">
+      {/* Scanner Container - Full screen */}
+      <div className="absolute inset-0 w-full h-full">
         <div
           id="camera-scanner-container"
           ref={containerRef}
@@ -759,32 +862,34 @@ export function CameraScanner({
             )}
           </div>
         )}
-      </div>
 
-      {/* Footer Instructions */}
-      <div className="p-md bg-black/80 backdrop-blur-sm text-center">
-        {!error ? (
-          <p className="text-sm text-white/80">
-            Point camera at barcode. Multiple codes will be detected automatically.
-          </p>
-        ) : (
-          <>
-            <p className="text-sm text-white/80 mb-sm">
+        {/* Gradient Overlay with Guidance Text */}
+        {!error && (
+          <div className="scanner-gradient-overlay">
+            <p>Point camera at barcode or QR code</p>
+            <p>Align within the frame</p>
+          </div>
+        )}
+
+        {/* Error state guidance */}
+        {error && (
+          <div className="scanner-gradient-overlay">
+            <p>
               {errorType === 'permission-denied' || errorType === 'system-blocked' 
-                ? 'Tap "Scan Again" to grant camera permission.'
+                ? 'Tap "Try Again" to grant camera permission'
                 : errorType === 'camera-in-use'
-                ? 'Close other apps using the camera, then tap "Scan Again".'
-                : 'Please resolve the issue and try again.'}
+                ? 'Close other apps using the camera, then tap "Try Again"'
+                : 'Please resolve the issue and try again'}
             </p>
             {scannerStateRef.current === 'idle' && (
               <button
                 onClick={handleScanAgain}
-                className="px-lg py-sm bg-primary text-text-on-primary rounded-md font-medium hover:bg-primary-hover transition-colors"
+                className="mt-sm px-lg py-sm bg-primary text-text-on-primary rounded-md font-medium hover:bg-primary-hover transition-colors pointer-events-auto"
               >
                 Scan Again
               </button>
             )}
-          </>
+          </div>
         )}
       </div>
     </div>

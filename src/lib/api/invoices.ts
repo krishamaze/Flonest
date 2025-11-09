@@ -260,33 +260,70 @@ export async function cancelInvoice(invoiceId: string, orgId: string): Promise<I
 }
 
 /**
- * Get invoice by ID with items and customer
+ * Reload PostgREST schema cache
+ * Useful when schema cache becomes stale and relationship errors occur
  */
+const reloadSchemaCache = async (): Promise<void> => {
+  try {
+    // Option 1: Via RPC function (recommended)
+    await supabase.rpc('reload_schema_cache')
+    // Wait for cache to reload
+    await new Promise(resolve => setTimeout(resolve, 1000))
+  } catch (error) {
+    console.warn('Failed to reload schema cache via RPC, using fallback:', error)
+    // Option 2: Fallback - trigger cache reload via dummy query
+    try {
+      await supabase.from('invoices').select('id').limit(1)
+      await new Promise(resolve => setTimeout(resolve, 1000))
+    } catch (fallbackError) {
+      console.warn('Fallback schema cache reload also failed:', fallbackError)
+    }
+  }
+}
+
 export async function getInvoiceById(invoiceId: string): Promise<Invoice & {
   items: (InvoiceItem & { product: any })[]
   customer?: any
 }> {
-  const { data, error } = await supabase
-    .from('invoices')
-    .select(`
-      *,
-      items:invoice_items(
+  const loadInvoice = async (retryCount = 0): Promise<any> => {
+    const { data, error } = await supabase
+      .from('invoices')
+      .select(`
         *,
-        product:products(*)
-      ),
-      customer:customers(
-        *,
-        master_customer:master_customers(*)
-      )
-    `)
-    .eq('id', invoiceId)
-    .single()
+        items:invoice_items(
+          *,
+          product:master_products(*)
+        ),
+        customer:customers(
+          *,
+          master_customer:master_customers(*)
+        )
+      `)
+      .eq('id', invoiceId)
+      .single()
 
-  if (error) {
-    throw new Error(`Failed to fetch invoice: ${error.message}`)
+    if (error) {
+      // Detect schema cache error specifically
+      const isSchemaCacheError = 
+        error.code === 'PGRST200' || 
+        error.message?.includes('Could not find a relationship') ||
+        error.message?.includes('schema cache') ||
+        error.message?.includes('relationship') && error.message?.includes('schema')
+
+      if (isSchemaCacheError && retryCount === 0) {
+        console.warn('Schema cache stale, reloading...')
+        await reloadSchemaCache()
+        // Retry once after cache reload
+        return loadInvoice(1)
+      }
+
+      throw new Error(`Failed to fetch invoice: ${error.message}`)
+    }
+
+    return data as any
   }
 
-  return data as any
+  return loadInvoice()
 }
 
 /**
@@ -371,31 +408,53 @@ export async function loadDraftInvoiceData(invoiceId: string): Promise<{
     serial_tracked?: boolean
   }>
 } | null> {
-  const { data, error } = await supabase
-    .from('invoices')
-    .select('customer_id, draft_data, draft_session_id')
-    .eq('id', invoiceId)
-    .single()
+  const loadDraft = async (retryCount = 0): Promise<any> => {
+    const { data, error } = await supabase
+      .from('invoices')
+      .select('customer_id, draft_data, draft_session_id')
+      .eq('id', invoiceId)
+      .single()
 
-  if (error || !data) {
-    throw new Error(`Failed to load draft invoice: ${error?.message || 'Invoice not found'}`)
+    if (error) {
+      // Detect schema cache error specifically
+      const isSchemaCacheError = 
+        error.code === 'PGRST200' || 
+        error.message?.includes('Could not find a relationship') ||
+        error.message?.includes('schema cache') ||
+        error.message?.includes('relationship') && error.message?.includes('schema')
+
+      if (isSchemaCacheError && retryCount === 0) {
+        console.warn('Schema cache stale in loadDraftInvoiceData, reloading...')
+        await reloadSchemaCache()
+        // Retry once after cache reload
+        return loadDraft(1)
+      }
+
+      throw new Error(`Failed to load draft invoice: ${error.message}`)
+    }
+
+    if (!data) {
+      throw new Error('Invoice not found')
+    }
+
+    const invoiceData = data as any
+
+    if (!invoiceData.draft_data) {
+      return null
+    }
+
+    // Parse versioned draft_data JSONB
+    const draftData = invoiceData.draft_data as any
+    const draftContent = draftData.data || draftData
+
+    return {
+      customer_id: draftContent.customer_id,
+      draft_session_id: invoiceData.draft_session_id,
+      items: draftContent.items || [],
+    }
   }
 
-  const invoiceData = data as any
-
-  if (!invoiceData.draft_data) {
-    return null
-  }
-
-  // Parse versioned draft_data JSONB
-  const draftData = invoiceData.draft_data as any
-  const draftContent = draftData.data || draftData
-
-  return {
-    customer_id: draftContent.customer_id,
-    draft_session_id: invoiceData.draft_session_id,
-    items: draftContent.items || [],
-  }
+  return loadDraft()
 }
 
 /**
