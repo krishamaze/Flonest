@@ -8,6 +8,8 @@ Quick guide to set up and run the biz.finetune.store inventory management PWA.
 - **Supabase** account and project ([supabase.com](https://supabase.com))
 - **Git** (optional, for version control)
 
+> **Note:** This project uses cloud-only development (no Docker required). All database operations work directly against your cloud Supabase project via the CLI.
+
 ## Installation
 
 ### 1. Clone or Download
@@ -22,9 +24,33 @@ cd biz.finetune.store
 npm install
 ```
 
-### 3. Set Up Environment Variables
+### 3. Set Up Supabase CLI
 
-Create a `.env` file in the project root:
+Login to Supabase CLI (one-time setup):
+
+```bash
+npx supabase login
+```
+
+This will open your browser to authenticate and store your access token.
+
+### 4. Link to Cloud Project
+
+Link your local project to the cloud Supabase project:
+
+```bash
+npm run supabase:link
+```
+
+Or manually:
+
+```bash
+npx supabase link --project-ref yzrwkznkfisfpnwzbwfw
+```
+
+### 5. Set Up Environment Variables
+
+Create a `.env` file from the example:
 
 ```bash
 # Copy from example
@@ -34,15 +60,40 @@ cp .env.example .env
 Edit `.env` with your Supabase credentials:
 
 ```env
-VITE_SUPABASE_URL=https://your-project.supabase.co
-VITE_SUPABASE_ANON_KEY=your-anon-key
+# App Runtime (Frontend)
+VITE_SUPABASE_URL=https://yzrwkznkfisfpnwzbwfw.supabase.co
+VITE_SUPABASE_ANON_KEY=your-anon-key-here
+
+# CLI Authentication (from npx supabase login)
+SUPABASE_ACCESS_TOKEN=your-access-token-here
+
+# Database URLs (optional, for direct DB access)
+DATABASE_URL=postgresql://postgres.yzrwkznkfisfpnwzbwfw:your-password@aws-0-ap-southeast-1.pooler.supabase.com:6543/postgres
+DATABASE_DIRECT_URL=postgresql://postgres:your-password@db.yzrwkznkfisfpnwzbwfw.supabase.co:5432/postgres
 ```
 
-**Get these from:** Supabase Dashboard → Project Settings → API
+**Get these from:**
+- `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY`: Supabase Dashboard → Project Settings → API
+- `SUPABASE_ACCESS_TOKEN`: Automatically stored after `npx supabase login`
+- `DATABASE_URL`: Supabase Dashboard → Project Settings → Database → Connection Pooling
 
-### 4. Set Up Database
+### 6. Set Up Database
 
-Run this SQL in Supabase SQL Editor:
+The database schema is managed through migrations. Migrations are already set up in `supabase/migrations/`.
+
+To apply migrations to your cloud database:
+
+```bash
+npm run db:migrate
+```
+
+Or manually:
+
+```bash
+npx supabase db push --linked
+```
+
+**For initial setup**, you can also run SQL directly in Supabase SQL Editor if needed:
 
 ```sql
 -- Enable UUID extension
@@ -117,7 +168,21 @@ CREATE POLICY "Users can view their tenant's transactions" ON inventory_transact
   ));
 ```
 
-### 5. Create Test Data (Optional)
+### 7. Generate TypeScript Types
+
+After setting up the database, generate TypeScript types:
+
+```bash
+npm run db:types
+```
+
+Or manually:
+
+```bash
+npx supabase gen types typescript --linked > src/types/database.ts
+```
+
+### 8. Create Test Data (Optional)
 
 ```sql
 -- Insert test tenant
@@ -198,6 +263,7 @@ biz.finetune.store/
 
 ## Available Scripts
 
+### Development
 ```bash
 npm run dev          # Start development server
 npm run build        # Build for production
@@ -205,6 +271,23 @@ npm run preview      # Preview production build
 npm run lint         # Run ESLint
 npm run deploy:check # Validate deployment readiness
 ```
+
+### Supabase CLI
+```bash
+npm run supabase:link        # Link to cloud project
+npm run supabase:status      # Check project status
+npm run supabase:db:diff     # Generate migration from schema diff
+npm run supabase:db:push     # Push migrations to cloud
+npm run supabase:db:reset    # Reset cloud database (⚠️ DESTRUCTIVE)
+npm run supabase:types       # Generate TypeScript types
+npm run supabase:migration:new <name>  # Create new migration
+
+# Convenience aliases
+npm run db:migrate   # Alias for supabase:db:push
+npm run db:types     # Alias for supabase:types
+```
+
+See `docs/CLOUD_DEV_WORKFLOW.md` for detailed workflow documentation.
 
 ## Troubleshooting
 
@@ -248,10 +331,14 @@ npm run build
 
 ## Next Steps
 
-1. **Add PWA Icons** - See `public/PWA_ICONS_README.txt`
-2. **Customize Branding** - Update colors in `src/styles/index.css`
-3. **Deploy** - See `docs/DEPLOYMENT.md`
-4. **Add Features** - Start with Sprint 2 (Inventory Management)
+1. **Set Up Database** - Run `npm run db:migrate` to apply migrations
+2. **Generate Types** - Run `npm run db:types` to update TypeScript types
+3. **Start Development** - Run `npm run dev` and visit http://localhost:3000
+4. **Learn Workflow** - See `docs/CLOUD_DEV_WORKFLOW.md` for development workflow
+5. **Add PWA Icons** - See `public/PWA_ICONS_README.txt`
+6. **Customize Branding** - Update colors in `src/styles/index.css`
+7. **Deploy** - See `docs/DEPLOYMENT.md`
+8. **Add Features** - Start with Sprint 2 (Inventory Management)
 
 ## Support
 

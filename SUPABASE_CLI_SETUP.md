@@ -1,365 +1,82 @@
-# Supabase CLI Setup & Usage
+# Supabase CLI Setup
 
-## Installation
+## Quick Start
 
-The Supabase CLI is installed as a dev dependency in this project. This ensures version consistency across all team members and avoids global installation conflicts.
+### 1. Login to Supabase CLI
 
-### Setup
-
-```bash
-# Install dependencies (includes Supabase CLI)
-npm install
-
-# Verify installation
-npm run supabase:status
-```
-
-### Benefits
-
-- ✅ **Version Pinned**: CLI version is locked in `package.json`
-- ✅ **No Global Install**: No system-wide conflicts
-- ✅ **Team Consistency**: Everyone uses the same CLI version
-- ✅ **Easy Updates**: Update via `npm update supabase`
-
----
-
-## ✅ Completed Setup
-
-### 1. Project Linking
-- **Status**: ✅ Linked to remote project (with direct connection)
-- **Project**: `bizfintunestore` (ref: `yzrwkznkfisfpnwzbwfw`)
-- **Region**: Southeast Asia (Singapore)
-- **Connection**: Direct connection (--skip-pooler) - No Docker required
-- **Command Used**: `npm run supabase:link` or `npx supabase link --project-ref yzrwkznkfisfpnwzbwfw --skip-pooler`
-
-### 2. TypeScript Types Generation
-- **Status**: ✅ Generated from remote database
-- **File**: `src/types/database.ts`
-- **Command Used**: `npx supabase gen types typescript --linked` (or `npm run supabase:types`)
-- **Tables Detected**:
-  - `inventory` - Inventory items with product relationships
-  - `master_products` - Product master data
-  - `invoices` - Invoice records with GST fields
-  - `invoice_items` - Invoice line items
-  - `team_members` - User team memberships
-  - `tenants` - Multi-tenant organization data
-
-### 3. Configuration Fix
-- **Issue**: Invalid `email_optional` field in `supabase/config.toml`
-- **Status**: ✅ Fixed
-
-### 4. Migration Status
-- **Local Migration**: `20251105180355_remote_commit.sql`
-- **Status**: Migration exists but needs repair
-- **Note**: Use `npx supabase migration repair` if needed
-
----
-
-## Useful Supabase CLI Commands
-
-All commands use `npx supabase` to ensure the project's pinned version is used. You can also use the npm scripts defined in `package.json`.
-
-### NPM Scripts (Recommended)
-
-```bash
-# Check Supabase status
-npm run supabase:status
-
-# Generate TypeScript types
-npm run supabase:types
-
-# Push migrations to remote
-npm run supabase:push
-
-# Create new migration (requires migration name)
-npm run supabase:migration:new <migration-name>
-```
-
-### Project Management
-
-```bash
-# Link to remote project (with direct connection, no Docker)
-npm run supabase:link
-# Or manually:
-npx supabase link --project-ref yzrwkznkfisfpnwzbwfw --skip-pooler
-
-# List all projects
-npx supabase projects list
-
-# Unlink project
-npx supabase unlink
-
-# Check link status
-npx supabase status
-```
-
-**Important**: Always use `--skip-pooler` flag when linking to use direct connection instead of pooler. This avoids Docker requirements and connection timeout issues.
-
-### Database Operations
-
-```bash
-# Generate TypeScript types from cloud database
-npx supabase gen types typescript --linked > src/types/database.ts
-# Or use: npm run supabase:types
-
-# Generate migration from schema diff (uses shadow DB)
-npx supabase db diff
-# Or use: npm run supabase:db:diff
-
-# Push local migrations to cloud
-npx supabase db push --linked
-# Or use: npm run supabase:db:push
-
-# Reset cloud database (⚠️ DESTRUCTIVE - dev projects only)
-npx supabase db reset --linked
-# Or use: npm run supabase:db:reset
-
-# Create new migration
-npx supabase migration new <migration-name>
-# Or use: npm run supabase:migration:new <migration-name>
-
-# List migrations
-npx supabase migration list
-
-# Repair migration history
-npx supabase migration repair --status applied <migration-timestamp>
-```
-
-### Database Inspection (Remote)
-
-```bash
-# Table statistics
-npx supabase inspect db table-stats --linked
-
-# Database statistics
-npx supabase inspect db db-stats --linked
-
-# Index statistics
-npx supabase inspect db index-stats --linked
-
-# Long-running queries
-npx supabase inspect db long-running-queries --linked
-
-# Blocking queries
-npx supabase inspect db blocking --linked
-
-# Query performance outliers
-npx supabase inspect db outliers --linked
-```
-
-### Cloud Development (No Docker Required)
-
-```bash
-# Check cloud project status
-npx supabase status
-# Or use: npm run supabase:status
-
-# Generate migration from schema diff
-npx supabase db diff
-# Or use: npm run supabase:db:diff
-
-# Push migrations to cloud
-npx supabase db push --linked
-# Or use: npm run supabase:db:push
-
-# Reset cloud database (⚠️ DESTRUCTIVE - dev projects only)
-npx supabase db reset --linked
-# Or use: npm run supabase:db:reset
-```
-
-> **Note:** This project uses cloud-only development. All database operations work directly against your cloud Supabase project. No Docker required.
-
-### Edge Functions
-
-```bash
-# List functions
-npx supabase functions list
-
-# Deploy function
-npx supabase functions deploy <function-name>
-
-# Serve functions locally
-npx supabase functions serve
-```
-
-### Storage
-
-```bash
-# List buckets
-npx supabase storage ls
-
-# Create bucket
-npx supabase storage create <bucket-name>
-
-# Upload file
-npx supabase storage upload <bucket-name> <file-path>
-```
-
----
-
-## Current Database Schema
-
-Based on generated types, your database includes:
-
-### Tables
-
-1. **inventory**
-   - Stores inventory items with product relationships
-   - Fields: `id`, `tenant_id`, `product_id`, `quantity`, `cost_price`, `selling_price`
-
-2. **master_products**
-   - Product master data
-   - Fields: `id`, `tenant_id`, `name`, `sku`, `description`, `status`
-
-3. **invoices**
-   - Invoice records with GST support
-   - Fields: `id`, `tenant_id`, `invoice_number`, `total_amount`, `cgst_amount`, `sgst_amount`, `status`
-
-4. **invoice_items**
-   - Invoice line items
-   - Fields: `id`, `invoice_id`, `product_id`, `quantity`, `unit_price`, `line_total`
-
-5. **team_members**
-   - User team memberships and roles
-   - Fields: `user_id`, `tenant_id`, `email`, `role`
-
-6. **tenants**
-   - Multi-tenant organizations
-   - Fields: `id`, `name`, `slug`
-
----
-
-## Workflow Recommendations
-
-### Daily Development
-
-1. **Create New Migration**:
-   ```bash
-   npm run supabase:migration:new add_product_fields
-   # Edit migration file in supabase/migrations/
-   ```
-
-2. **Push Migration to Cloud**:
-   ```bash
-   npm run db:migrate
-   # Or: npx supabase db push --linked
-   ```
-
-3. **Generate Types After Schema Changes**:
-   ```bash
-   npm run db:types
-   # Or: npx supabase gen types typescript --linked > src/types/database.ts
-   ```
-
-4. **Start Development Server**:
-   ```bash
-   npm run dev
-   ```
-
-### Before Deployment
-
-1. **Generate Latest Types**:
-   ```bash
-   npm run supabase:types
-   # Or: npx supabase gen types typescript --linked > src/types/database.ts
-   ```
-
-2. **Check Migration Status**:
-   ```bash
-   npx supabase migration list
-   ```
-
-3. **Push Migrations** (if any):
-   ```bash
-   npm run supabase:push
-   # Or: npx supabase db push
-   ```
-
-### Database Monitoring
-
-```bash
-# Check table sizes
-npx supabase inspect db table-stats --linked
-
-# Monitor query performance
-npx supabase inspect db outliers --linked
-
-# Check for blocking queries
-npx supabase inspect db blocking --linked
-```
-
----
-
-## Troubleshooting
-
-### Issue: "Cannot find project ref"
-**Solution**: Link project first
-```bash
-npx supabase link --project-ref <your-project-ref>
-```
-
-### Issue: "Access token expired"
-**Solution**: Login again to refresh your access token
 ```bash
 npx supabase login
 ```
 
-### Issue: "Migration history mismatch"
-**Solution**: Repair migration
-```bash
-npx supabase migration repair --status applied <migration-timestamp>
+This opens your browser to authenticate and stores your access token.
+
+### 2. Set Environment Variables
+
+Add these to your `.env` file:
+
+```env
+# CLI Authentication (from npx supabase login)
+SUPABASE_ACCESS_TOKEN=your-access-token-here
+
+# Database password for CLI operations
+SUPABASE_DB_PASSWORD=your-database-password-here
 ```
 
-### Issue: "Types not updating"
-**Solution**: Regenerate types
+**Get these from:**
+- `SUPABASE_ACCESS_TOKEN`: Automatically stored after `npx supabase login`
+- `SUPABASE_DB_PASSWORD`: Supabase Dashboard → Project Settings → Database
+
+### 3. Link Project
+
 ```bash
+npm run supabase:link
+```
+
+This links your local project to the cloud Supabase project using direct connection (no Docker required).
+
+### 4. Apply Migrations
+
+```bash
+npm run supabase:db:push
+```
+
+## Available Commands
+
+```bash
+# Link to cloud project
+npm run supabase:link
+
+# Check status
+npm run supabase:status
+
+# Push migrations
+npm run supabase:db:push
+
+# Generate TypeScript types
 npm run supabase:types
-# Or: npx supabase gen types typescript --linked > src/types/database.ts
+
+# Create new migration
+npm run supabase:migration:new <name>
 ```
 
-### Issue: "Command not found: supabase"
-**Solution**: Use `npx supabase` instead of `supabase`, or run `npm install` to install dependencies
+## Project Details
 
----
+- **Project Ref**: `yzrwkznkfisfpnwzbwfw`
+- **Connection**: Direct connection (--skip-pooler) - No Docker required
+- **Migrations**: Stored in `supabase/migrations/`
 
-## Next Steps
+## Troubleshooting
 
-1. **Update TypeScript Types Regularly**:
-   - Run `npm run supabase:types` after any schema changes
-   - Commit updated types to git
+### Missing Environment Variables
 
-2. **Create Migrations for New Features**:
-   - Use `npm run supabase:migration:new <name>` for schema changes
-   - Push directly to cloud with `npm run db:migrate`
-   - See `docs/CLOUD_DEV_WORKFLOW.md` for detailed workflow
+If you see "Missing required environment variables":
+1. Check your `.env` file exists
+2. Ensure `SUPABASE_DB_PASSWORD` and `SUPABASE_ACCESS_TOKEN` are set
+3. Run `npx supabase login` if access token is missing
 
-3. **Monitor Database Performance**:
-   - Use `npx supabase inspect db` commands to monitor performance
-   - Check for long-running queries and optimize
+### Connection Timeout
 
-4. **Set Up CI/CD** (Optional):
-   - Add type generation to build process
-   - Automate migration checks
-
-5. **Update CLI Version**:
-   - Update via `npm update supabase`
-   - Version is pinned in `package.json` under `devDependencies`
-
----
-
-## CLI Version
-
-- **Installation**: Installed via npm as dev dependency
-- **Version**: See `package.json` → `devDependencies.supabase`
-- **Update Command**: `npm update supabase`
-- **No Global Install**: CLI is project-scoped, avoiding version conflicts
-
----
-
-**Last Updated**: 2025-01-14  
-**Project**: biz.finetune.store  
-**Cloud Project**: bizfintunestore (yzrwkznkfisfpnwzbwfw)  
-**CLI Installation**: npm dev dependency (no global install required)  
-**Workflow**: Cloud-only (no Docker required)  
-**Documentation**: See `docs/CLOUD_DEV_WORKFLOW.md` for detailed workflow guide
-
+The CLI uses direct connection (--skip-pooler) to avoid timeout issues. If you still experience problems:
+1. Check your network connection
+2. Verify database password is correct
+3. Try unlink and re-link: `npx supabase unlink && npm run supabase:link`
