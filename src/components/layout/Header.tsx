@@ -1,6 +1,7 @@
 import { useAuth } from '../../contexts/AuthContext'
 import { ArrowRightOnRectangleIcon } from '@heroicons/react/24/outline'
 import { Button } from '../ui/Button'
+import { NotificationBell } from '../notifications/NotificationBell'
 
 export function Header() {
   const { user, signOut } = useAuth()
@@ -22,6 +23,7 @@ export function Header() {
         </div>
 
         <div className="flex items-center gap-sm">
+          <NotificationBell />
           <Button
             variant="ghost"
             size="sm"

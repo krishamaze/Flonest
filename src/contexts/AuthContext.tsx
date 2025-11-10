@@ -285,6 +285,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             email: syncedData.profile.email,
             orgId: syncedData.org.id,
             role: (syncedData.membership.role || 'viewer') as 'owner' | 'staff' | 'viewer',
+            isInternal: syncedData.profile.is_internal || false,
           }
           setUser(userData)
           setConnectionError(false) // Clear connection error on successful load
@@ -303,6 +304,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         email: profile.email,
         orgId: org.id,
         role: (membership.role || 'viewer') as 'owner' | 'staff' | 'viewer',
+        isInternal: profile.is_internal || false,
       }
       setUser(userData)
       setConnectionError(false) // Clear connection error on successful load

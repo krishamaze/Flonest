@@ -482,7 +482,19 @@ vercel env pull
 
 ## Version Update System
 
-### How It Works
+### App Version vs Schema Version
+
+The version system tracks two separate types of changes:
+
+- **App Version (Frontend Code)**: Tracks frontend code/UI changes (e.g., "1.0.1"). Changes frequently, low-risk, non-breaking. Automatically updated via GitHub Action on deployment.
+
+- **Schema Version (Database Structure)**: Tracks database schema changes (e.g., "2.3.0"). Changes rarely, high-risk, can be breaking. Requires manual process with review, testing, and backups.
+
+**Important**: App version updates are automated and safe. Schema version changes require careful planning and manual execution. See [Schema Change Workflow](#schema-change-workflow) below.
+
+### App Version Workflow (Automated)
+
+**How It Works:**
 
 1. **Developer updates version:**
    - Updates `version` in `package.json`
@@ -497,11 +509,12 @@ vercel env pull
    - Triggers on push to `main` that modifies `package.json` or `src/lib/api/version.ts`
    - Extracts version from `package.json`
    - Calls Supabase RPC function `update_app_version()`
-   - Updates database version to match frontend
+   - Updates **app version** only (not schema version)
+   - No schema impact - only updates version record
 
 4. **Users get notified:**
    - Frontend checks version on app mount, visibility change, or network reconnect
-   - If versions don't match, notification appears
+   - If app versions don't match, notification appears
    - User taps to refresh and get new version
 
 ### Version Check Frequency
@@ -514,13 +527,138 @@ The app checks for version updates:
 
 This ensures users are notified of updates without excessive battery drain.
 
-### Manual Version Update
+### Manual App Version Update
 
-If the GitHub Action fails, you can manually update the database version:
+If the GitHub Action fails, you can manually update the app version:
 
 ```sql
 -- Via Supabase SQL Editor
 SELECT update_app_version('1.0.1', 'Your release notes here');
+```
+
+### Schema Change Workflow (Manual)
+
+**⚠️ Important**: Schema changes are high-risk and require manual review, testing, and backups. They are NOT automated.
+
+**When to Update Schema Version:**
+- Adding/removing columns from tables
+- Creating/dropping tables
+- Changing column types
+- Adding/removing indexes or constraints
+- Any structural database changes
+
+**Schema Change Process:**
+
+1. **Create Migration File:**
+   ```bash
+   npm run supabase:migration:new add_new_column_to_products
+   ```
+   - Creates migration file in `supabase/migrations/`
+   - Write SQL for schema change
+
+2. **Review Migration:**
+   - Review SQL for correctness
+   - Check for breaking changes
+   - Verify rollback SQL is possible
+   - Get peer review (if team)
+
+3. **Test in Staging:**
+   - Apply migration to staging database
+   - Test API contracts
+   - Verify frontend compatibility
+   - Test rollback procedure
+
+4. **Backup Database:**
+   - Create database backup before production migration
+   - Store backup securely
+   - Document backup location
+
+5. **Apply Migration:**
+   ```bash
+   npm run db:migrate
+   ```
+   - Or apply via Supabase Dashboard SQL Editor
+   - Monitor for errors
+   - Verify migration success
+
+6. **Update Schema Version:**
+   
+   **Option A: Via GitHub Action Workflow (Recommended)**
+   - Go to GitHub repository → Actions
+   - Select "Schema Migration" workflow
+   - Click "Run workflow"
+   - Fill in workflow inputs (migration file, schema version, etc.)
+   - Workflow will apply migration and update schema version
+   
+   **Option B: Manual Update**
+   ```sql
+   -- Via Supabase SQL Editor
+   SELECT update_app_version(
+     '1.0.1',  -- App version (if also updated)
+     'Added tax_rate column to products',  -- Release notes
+     '2.1.0',  -- Schema version (NEW)
+     'ALTER TABLE products DROP COLUMN tax_rate;'  -- Rollback SQL (optional)
+   );
+   ```
+   
+   **For detailed workflow guide, see [Schema Migration Workflow](./SCHEMA_MIGRATION_WORKFLOW.md)**
+
+7. **Update App Version (if needed):**
+   - If schema change requires frontend updates, also update app version
+   - Frontend code should be deployed before or after schema migration
+   - See [Version Coupling Guidelines](#version-coupling-guidelines) below
+
+8. **Monitor for Errors:**
+   - Watch Supabase logs for schema-related errors
+   - Monitor version notification alerts
+   - Check for constraint violations
+   - Verify API contracts
+
+**For detailed schema migration workflow, see:**
+- [Schema Migrations Guide](./SCHEMA_MIGRATIONS.md) - Complete guide for schema changes
+- [Schema Migration Workflow](./SCHEMA_MIGRATION_WORKFLOW.md) - GitHub Action workflow guide
+
+### Version Coupling Guidelines
+
+**When to pair schema changes with app version bumps:**
+- Schema changes require frontend updates (e.g., new form fields for added columns)
+- API contract changes (e.g., new required fields)
+- Breaking changes that affect user experience
+- New features that require both schema and frontend changes
+
+**When schema changes can be independent:**
+- Backend-only optimizations (e.g., adding indexes)
+- Internal schema improvements (e.g., adding constraints)
+- Performance improvements that don't affect API
+- Data migrations that don't change API contracts
+
+**Example - Coupled Change:**
+```sql
+-- Schema: Add email_verified column
+ALTER TABLE users ADD COLUMN email_verified BOOLEAN DEFAULT false;
+
+-- Update both versions
+SELECT update_app_version(
+  '1.1.0',  -- App version (frontend needs to handle new field)
+  'Add email verification feature',
+  '2.1.0',  -- Schema version
+  'ALTER TABLE users DROP COLUMN email_verified;'  -- Rollback
+);
+```
+
+**Example - Independent Change:**
+```sql
+-- Schema: Add index for performance
+CREATE INDEX idx_products_category ON products(category);
+
+-- Update schema version only (keep current app version)
+-- First, get current app version, then update with same app version but new schema version
+SELECT update_app_version(
+  (SELECT version FROM app_versions WHERE is_current = true LIMIT 1),  -- Keep current app version
+  'Add index for products category',
+  '2.1.1',  -- Schema version (patch increment)
+  'DROP INDEX idx_products_category;'  -- Rollback
+);
 ```
 
 **Need Help?** 

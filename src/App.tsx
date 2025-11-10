@@ -9,6 +9,7 @@ import { PageTransition } from './components/ui/PageTransition'
 import { InstallPrompt } from './components/pwa/InstallPrompt'
 import { UpdateNotification } from './components/pwa/UpdateNotification'
 import { FRONTEND_VERSION } from './lib/api/version'
+import { ProtectedRoute, ReviewerRoute } from './components/ProtectedRoute'
 
 // Lazy load pages for code splitting
 const LoginPage = lazy(() => import('./pages/LoginPage').then(m => ({ default: m.LoginPage })))
@@ -17,27 +18,9 @@ const ProductsPage = lazy(() => import('./pages/ProductsPage').then(m => ({ defa
 const InventoryPage = lazy(() => import('./pages/InventoryPage').then(m => ({ default: m.InventoryPage })))
 const StockLedgerPage = lazy(() => import('./pages/StockLedgerPage').then(m => ({ default: m.StockLedgerPage })))
 const CustomersPage = lazy(() => import('./pages/CustomersPage').then(m => ({ default: m.CustomersPage })))
-
-function ProtectedRoute({ children }: { children: React.ReactNode }) {
-  const { user, loading } = useAuth()
-
-  // Show loading spinner while loading (max 5 seconds due to timeout)
-  if (loading) {
-    return (
-      <div className="viewport-height flex items-center justify-center">
-        <LoadingSpinner size="lg" />
-      </div>
-    )
-  }
-
-  // If connection error but we have a cached user, allow navigation (don't block)
-  // The connection error UI will be shown in AppRoutes if needed
-  if (!user) {
-    return <Navigate to="/login" replace />
-  }
-
-  return <>{children}</>
-}
+const ReviewerDashboardPage = lazy(() => import('./pages/ReviewerDashboardPage').then(m => ({ default: m.ReviewerDashboardPage })))
+const NotificationsPage = lazy(() => import('./pages/NotificationsPage').then(m => ({ default: m.NotificationsPage })))
+const PendingProductsPage = lazy(() => import('./pages/PendingProductsPage').then(m => ({ default: m.PendingProductsPage })))
 
 function AppRoutes() {
   const { user, loading, connectionError, retrying, retryConnection } = useAuth()
@@ -84,6 +67,22 @@ function AppRoutes() {
             <Route path="inventory" element={<InventoryPage />} />
             <Route path="stock-ledger" element={<StockLedgerPage />} />
             <Route path="customers" element={<CustomersPage />} />
+            <Route path="notifications" element={<NotificationsPage />} />
+            <Route path="pending-products" element={<PendingProductsPage />} />
+          </Route>
+          <Route
+            path="/reviewer"
+            element={
+              <ReviewerRoute>
+                <MainLayout />
+              </ReviewerRoute>
+            }
+          >
+            <Route index element={<ReviewerDashboardPage />} />
+            <Route path="queue" element={<ReviewerDashboardPage />} />
+            <Route path="hsn" element={<ReviewerDashboardPage />} />
+            <Route path="blocked-invoices" element={<ReviewerDashboardPage />} />
+            <Route path="monitor" element={<ReviewerDashboardPage />} />
           </Route>
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>

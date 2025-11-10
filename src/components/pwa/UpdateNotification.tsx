@@ -7,6 +7,10 @@ import { checkVersionSync } from '../../lib/api/version'
  * UpdateNotification Component
  * Shows a small update icon when a new version is available
  * Tapping it updates the app quietly
+ * 
+ * Note: This component checks app versions only (frontend code changes).
+ * Schema versions are tracked separately and monitored in backend logs/admin dashboards.
+ * Schema version mismatches do not trigger user notifications.
  */
 export function UpdateNotification() {
   const [showUpdate, setShowUpdate] = useState(false)

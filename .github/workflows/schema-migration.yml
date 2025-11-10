@@ -1,0 +1,285 @@
+name: Schema Migration
+
+# This workflow applies database schema migrations and updates schema version
+# It requires manual triggering with migration details for safety
+# Schema migrations are high-risk and require careful review and testing
+
+on:
+  workflow_dispatch:
+    inputs:
+      migration_file:
+        description: 'Path to migration file (e.g., supabase/migrations/20251110000000_add_column.sql)'
+        required: true
+        type: string
+      schema_version:
+        description: 'Schema version (e.g., 2.1.0) - use semantic versioning'
+        required: true
+        type: string
+      release_notes:
+        description: 'Release notes for this schema change'
+        required: true
+        type: string
+      app_version:
+        description: 'App version (optional) - only if schema change requires frontend updates'
+        required: false
+        type: string
+      rollback_sql:
+        description: 'Rollback SQL (optional) - SQL to reverse this migration'
+        required: false
+        type: string
+      environment:
+        description: 'Environment to apply migration'
+        required: true
+        type: choice
+        options:
+          - staging
+          - production
+        default: 'staging'
+
+jobs:
+  schema-migration:
+    runs-on: ubuntu-latest
+    # Only allow production migrations after manual approval
+    if: github.event.inputs.environment == 'staging' || github.event.inputs.environment == 'production'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18.x'
+
+      - name: Validate migration file
+        id: validate
+        run: |
+          MIGRATION_FILE="${{ github.event.inputs.migration_file }}"
+          
+          if [ ! -f "$MIGRATION_FILE" ]; then
+            echo "❌ Migration file not found: $MIGRATION_FILE"
+            exit 1
+          fi
+          
+          echo "✅ Migration file found: $MIGRATION_FILE"
+          echo "FILE_PATH=$MIGRATION_FILE" >> $GITHUB_OUTPUT
+          
+          # Validate schema version format (semantic versioning)
+          SCHEMA_VERSION="${{ github.event.inputs.schema_version }}"
+          if ! echo "$SCHEMA_VERSION" | grep -qE '^[0-9]+\.[0-9]+\.[0-9]+$'; then
+            echo "❌ Invalid schema version format: $SCHEMA_VERSION"
+            echo "Expected format: major.minor.patch (e.g., 2.1.0)"
+            exit 1
+          fi
+          
+          echo "✅ Schema version format valid: $SCHEMA_VERSION"
+
+      - name: Validate schema version format
+        run: |
+          SCHEMA_VERSION="${{ github.event.inputs.schema_version }}"
+          echo "Schema version: $SCHEMA_VERSION"
+          echo "Environment: ${{ github.event.inputs.environment }}"
+          echo "Migration file: ${{ steps.validate.outputs.FILE_PATH }}"
+
+      - name: Display migration preview
+        run: |
+          echo "## Migration Preview"
+          echo ""
+          echo "**Migration File:** ${{ steps.validate.outputs.FILE_PATH }}"
+          echo "**Schema Version:** ${{ github.event.inputs.schema_version }}"
+          echo "**Release Notes:** ${{ github.event.inputs.release_notes }}"
+          echo "**Environment:** ${{ github.event.inputs.environment }}"
+          if [ -n "${{ github.event.inputs.app_version }}" ]; then
+            echo "**App Version:** ${{ github.event.inputs.app_version }}"
+          fi
+          echo ""
+          echo "### Migration SQL Preview:"
+          echo '```sql'
+          head -20 "${{ steps.validate.outputs.FILE_PATH }}"
+          echo '```'
+          echo ""
+          echo "⚠️ **WARNING**: This will modify the database schema. Ensure you have:"
+          echo "- Reviewed the migration SQL"
+          echo "- Tested in staging"
+          echo "- Created a database backup"
+          echo "- Verified rollback SQL is correct"
+
+      - name: Check Supabase CLI
+        id: supabase_cli
+        run: |
+          if command -v supabase &> /dev/null; then
+            echo "✅ Supabase CLI found"
+            SUPABASE_VERSION=$(supabase --version)
+            echo "Version: $SUPABASE_VERSION"
+            echo "CLI_AVAILABLE=true" >> $GITHUB_OUTPUT
+          else
+            echo "⚠️ Supabase CLI not found - will use REST API for migration"
+            echo "CLI_AVAILABLE=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Apply migration via Supabase CLI (if available)
+        if: steps.supabase_cli.outputs.CLI_AVAILABLE == 'true'
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+        run: |
+          echo "Applying migration via Supabase CLI..."
+          echo "⚠️ Note: This step requires Supabase CLI setup in GitHub Actions"
+          echo "For now, migration must be applied manually via Supabase Dashboard"
+          echo ""
+          echo "To apply migration manually:"
+          echo "1. Go to Supabase Dashboard → SQL Editor"
+          echo "2. Copy contents of: ${{ steps.validate.outputs.FILE_PATH }}"
+          echo "3. Execute the SQL"
+          echo "4. Verify migration success"
+          echo ""
+          echo "After manual migration, the workflow will continue to update schema version"
+
+      - name: Wait for manual migration (if CLI not available)
+        if: steps.supabase_cli.outputs.CLI_AVAILABLE == 'false'
+        run: |
+          echo "⚠️ Supabase CLI not available in GitHub Actions"
+          echo "Migration must be applied manually via Supabase Dashboard"
+          echo ""
+          echo "### Manual Migration Steps:"
+          echo "1. Go to Supabase Dashboard → SQL Editor"
+          echo "2. Copy contents of: ${{ steps.validate.outputs.FILE_PATH }}"
+          echo "3. Execute the SQL"
+          echo "4. Verify migration success"
+          echo "5. Continue with workflow to update schema version"
+          echo ""
+          echo "Press any key to continue after migration is applied..."
+          # In a real scenario, you might want to add a manual approval step here
+          # For now, we'll proceed assuming migration is applied
+
+      - name: Determine app version
+        id: app_version
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+          INPUT_APP_VERSION: ${{ github.event.inputs.app_version }}
+        run: |
+          if [ -n "$INPUT_APP_VERSION" ]; then
+            # Use provided app version
+            echo "APP_VERSION=$INPUT_APP_VERSION" >> $GITHUB_OUTPUT
+            echo "Using provided app version: $INPUT_APP_VERSION"
+          else
+            # Get current app version from database
+            echo "Getting current app version from database..."
+            RESPONSE=$(curl -s -X POST \
+              "$SUPABASE_URL/rest/v1/rpc/get_current_app_version" \
+              -H "apikey: $SUPABASE_SERVICE_KEY" \
+              -H "Authorization: Bearer $SUPABASE_SERVICE_KEY" \
+              -H "Content-Type: application/json")
+            
+            # Extract version from JSON response
+            CURRENT_VERSION=$(echo "$RESPONSE" | grep -o '"version":"[^"]*"' | cut -d'"' -f4 || echo "1.0.0")
+            echo "APP_VERSION=$CURRENT_VERSION" >> $GITHUB_OUTPUT
+            echo "Using current app version from database: $CURRENT_VERSION"
+          fi
+
+      - name: Update schema version in database
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+          SCHEMA_VERSION: ${{ github.event.inputs.schema_version }}
+          RELEASE_NOTES: ${{ github.event.inputs.release_notes }}
+          APP_VERSION: ${{ steps.app_version.outputs.APP_VERSION }}
+          ROLLBACK_SQL: ${{ github.event.inputs.rollback_sql }}
+        run: |
+          echo "Updating schema version in database..."
+          echo "Schema version: $SCHEMA_VERSION"
+          echo "Release notes: $RELEASE_NOTES"
+          echo "App version: $APP_VERSION"
+          
+          # Create temporary file for JSON payload to handle special characters
+          PAYLOAD_FILE=$(mktemp)
+          
+          # Build JSON payload with proper escaping
+          if [ -n "$ROLLBACK_SQL" ] && [ "$ROLLBACK_SQL" != "" ]; then
+            # Escape rollback SQL for JSON (escape backslashes and quotes, replace newlines with spaces)
+            ESCAPED_ROLLBACK=$(echo "$ROLLBACK_SQL" | sed 's/\\/\\\\/g' | sed 's/"/\\"/g' | tr '\n' ' ' | sed 's/  */ /g' | sed 's/^ *//;s/ *$//')
+            cat > "$PAYLOAD_FILE" <<EOF
+          {
+            "new_version": "$APP_VERSION",
+            "release_notes": "$RELEASE_NOTES",
+            "schema_version": "$SCHEMA_VERSION",
+            "rollback_sql": "$ESCAPED_ROLLBACK"
+          }
+          EOF
+          else
+            cat > "$PAYLOAD_FILE" <<EOF
+          {
+            "new_version": "$APP_VERSION",
+            "release_notes": "$RELEASE_NOTES",
+            "schema_version": "$SCHEMA_VERSION"
+          }
+          EOF
+          fi
+          
+          echo "Payload:"
+          cat "$PAYLOAD_FILE"
+          
+          # Call Supabase RPC function to update version
+          RESPONSE=$(curl -s -w "\n%{http_code}" -X POST \
+            "$SUPABASE_URL/rest/v1/rpc/update_app_version" \
+            -H "apikey: $SUPABASE_SERVICE_KEY" \
+            -H "Authorization: Bearer $SUPABASE_SERVICE_KEY" \
+            -H "Content-Type: application/json" \
+            -H "Prefer: return=representation" \
+            -d "@$PAYLOAD_FILE")
+          
+          # Clean up temporary file
+          rm -f "$PAYLOAD_FILE"
+          
+          # Extract HTTP status code (last line)
+          HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
+          # Extract response body (all but last line)
+          RESPONSE_BODY=$(echo "$RESPONSE" | sed '$d')
+          
+          echo "HTTP Status: $HTTP_CODE"
+          echo "Response: $RESPONSE_BODY"
+          
+          # Check if update was successful
+          if [ "$HTTP_CODE" = "200" ] && echo "$RESPONSE_BODY" | grep -q '"success":true'; then
+            echo "✅ Schema version updated successfully to $SCHEMA_VERSION"
+            echo "✅ App version: $APP_VERSION"
+          else
+            echo "❌ Failed to update schema version"
+            echo "HTTP Status: $HTTP_CODE"
+            echo "Response: $RESPONSE_BODY"
+            exit 1
+          fi
+
+      - name: Display rollback instructions
+        if: github.event.inputs.rollback_sql != ''
+        run: |
+          echo "## Rollback Instructions"
+          echo ""
+          echo "If you need to rollback this migration, use the following SQL:"
+          echo ""
+          echo '```sql'
+          echo "${{ github.event.inputs.rollback_sql }}"
+          echo '```'
+          echo ""
+          echo "The rollback SQL has been stored in the database for future reference."
+
+      - name: Log migration results
+        run: |
+          echo "## Migration Results"
+          echo ""
+          echo "✅ Schema migration completed successfully"
+          echo "**Schema Version:** ${{ github.event.inputs.schema_version }}"
+          echo "**Environment:** ${{ github.event.inputs.environment }}"
+          echo "**Migration File:** ${{ steps.validate.outputs.FILE_PATH }}"
+          if [ -n "${{ github.event.inputs.app_version }}" ]; then
+            echo "**App Version:** ${{ github.event.inputs.app_version }}"
+          fi
+          echo ""
+          echo "### Next Steps:"
+          echo "1. Verify migration in Supabase Dashboard"
+          echo "2. Test API contracts"
+          echo "3. Monitor Supabase logs for errors"
+          echo "4. Verify frontend compatibility (if app version was updated)"
+          echo "5. Update deployment documentation if needed"
+

@@ -3,14 +3,17 @@ import { XMarkIcon } from '@heroicons/react/24/outline'
 import {
   ArrowPathIcon,
   UserGroupIcon,
+  ClipboardDocumentCheckIcon,
+  DocumentTextIcon,
 } from '@heroicons/react/24/outline'
+import { useAuth } from '../../contexts/AuthContext'
 
 interface MoreMenuProps {
   isOpen: boolean
   onClose: () => void
 }
 
-const moreMenuItems = [
+const baseMenuItems = [
   {
     to: '/stock-ledger',
     label: 'Stock Ledger',
@@ -23,23 +26,35 @@ const moreMenuItems = [
     icon: UserGroupIcon,
     description: 'Manage customers',
   },
-  // Future items can be added here:
-  // {
-  //   to: '/reports',
-  //   label: 'Reports',
-  //   icon: ChartBarIcon,
-  //   description: 'View reports',
-  // },
-  // {
-  //   to: '/settings',
-  //   label: 'Settings',
-  //   icon: Cog6ToothIcon,
-  //   description: 'App settings',
-  // },
 ]
 
 export function MoreMenu({ isOpen, onClose }: MoreMenuProps) {
+  const { user } = useAuth()
+
   if (!isOpen) return null
+
+  // Build menu items based on user role
+  const moreMenuItems = [...baseMenuItems]
+
+  // Add reviewer link for internal users
+  if (user?.isInternal) {
+    moreMenuItems.push({
+      to: '/reviewer',
+      label: 'Reviewer',
+      icon: ClipboardDocumentCheckIcon,
+      description: 'Review product submissions',
+    })
+  }
+
+  // Add pending products link for org owners
+  if (user && !user.isInternal) {
+    moreMenuItems.push({
+      to: '/pending-products',
+      label: 'My Submissions',
+      icon: DocumentTextIcon,
+      description: 'View pending product submissions',
+    })
+  }
 
   return (
     <>

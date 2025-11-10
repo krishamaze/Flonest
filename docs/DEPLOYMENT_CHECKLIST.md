@@ -187,14 +187,83 @@ Use this checklist before deploying to production.
 - [ ] User notification for major updates
 - [ ] Changelog maintained
 
-### Version Management
+### App Version Management
 - [ ] Update version in `package.json` before deploying
 - [ ] Update `FRONTEND_VERSION` in `src/lib/api/version.ts` to match `package.json`
-- [ ] GitHub Action automatically updates database version after deployment
-- [ ] Verify version sync after deployment (frontend/backend versions match)
+- [ ] GitHub Action automatically updates database app version after deployment
+- [ ] Verify app version sync after deployment (frontend/backend app versions match)
 - [ ] GitHub Secrets configured:
   - [ ] `SUPABASE_URL` - Supabase project URL
   - [ ] `SUPABASE_SERVICE_KEY` - Supabase service role key (not anon key)
+
+### Schema Changes (Manual Process)
+
+**⚠️ Important**: Schema changes are high-risk and require manual review, testing, and backups. They are NOT automated like app version updates.
+
+#### Pre-Migration
+- [ ] Migration SQL reviewed for correctness
+- [ ] Check for breaking changes
+- [ ] Verify rollback SQL is possible
+- [ ] Peer review completed (if team)
+- [ ] Migration tested in staging environment
+- [ ] API contracts verified in staging
+- [ ] Frontend compatibility tested in staging
+- [ ] Rollback procedure tested in staging
+
+#### Database Backup
+- [ ] Database backup created before production migration
+- [ ] Backup stored securely
+- [ ] Backup location documented
+- [ ] Backup verified (can be restored)
+
+#### Migration Execution
+- [ ] Migration applied to production database
+- [ ] Migration monitored for errors
+- [ ] Migration success verified
+- [ ] No constraint violations detected
+- [ ] API contracts verified in production
+
+#### Version Update
+- [ ] Schema version updated (choose one method):
+  
+  **Option A: Via GitHub Action Workflow (Recommended)**
+  - [ ] GitHub Action workflow triggered
+  - [ ] Workflow inputs provided (migration file, schema version, etc.)
+  - [ ] Workflow completed successfully
+  - [ ] Schema version updated in database
+  - [ ] Rollback SQL stored in database
+  
+  **Option B: Manual Update**
+  - [ ] Schema version updated via RPC:
+    ```sql
+    SELECT update_app_version(
+      '1.0.1',  -- App version (if also updated)
+      'Migration release notes',
+      '2.1.0',  -- Schema version
+      'ROLLBACK SQL HERE'  -- Rollback SQL
+    );
+    ```
+  - [ ] Rollback SQL stored in database
+  
+- [ ] App version updated (if schema change requires frontend updates)
+- [ ] Version update verified
+- [ ] See [Schema Migration Workflow](./SCHEMA_MIGRATION_WORKFLOW.md) for detailed guide
+
+#### Post-Migration
+- [ ] Supabase logs monitored for schema-related errors
+- [ ] Version notification alerts checked
+- [ ] Constraint violations monitored
+- [ ] API contracts verified
+- [ ] Frontend functionality tested
+- [ ] User data integrity verified
+- [ ] Performance impact assessed
+
+#### Rollback Plan
+- [ ] Rollback SQL documented and tested
+- [ ] Rollback procedure documented
+- [ ] Rollback can be executed if needed
+- [ ] Data restoration plan (if needed)
+- [ ] Communication plan for users (if rollback needed)
 
 ---
 
@@ -252,18 +321,19 @@ vercel rollback
 
 ---
 
-## Version Update Workflow
+## App Version Update Workflow
 
-### Automatic Version Updates
+### Automatic App Version Updates
 
-After deploying to production, the GitHub Action (`.github/workflows/update-db-version.yml`) automatically updates the database version:
+After deploying to production, the GitHub Action (`.github/workflows/update-db-version.yml`) automatically updates the database app version:
 
 1. **Trigger**: Push to `main` branch that modifies `package.json` or `src/lib/api/version.ts`
-2. **Extract**: Version from `package.json`
+2. **Extract**: App version from `package.json`
 3. **Update**: Database via Supabase RPC function `update_app_version()`
-4. **Result**: Frontend and backend versions stay in sync
+4. **Result**: Frontend and backend app versions stay in sync
+5. **Note**: Only updates app version, NOT schema version
 
-### Manual Version Update (if needed)
+### Manual App Version Update (if needed)
 
 If the GitHub Action fails or you need to update manually:
 
@@ -272,16 +342,56 @@ If the GitHub Action fails or you need to update manually:
 SELECT update_app_version('1.0.1', 'Your release notes here');
 ```
 
+### Schema Version Update (Manual Process)
+
+Schema versions are updated manually after schema migrations. See [Schema Changes Checklist](#schema-changes-manual-process) above.
+
+**Option A: Via GitHub Action Workflow (Recommended)**
+1. Go to GitHub repository → Actions
+2. Select "Schema Migration" workflow
+3. Click "Run workflow"
+4. Fill in workflow inputs
+5. Workflow applies migration and updates schema version
+
+**Option B: Manual Schema Version Update**
+```sql
+-- Via Supabase SQL Editor
+-- If updating app version too:
+SELECT update_app_version(
+  '1.0.1',  -- App version
+  'Schema migration release notes',
+  '2.1.0',  -- Schema version
+  'ROLLBACK SQL HERE'  -- Rollback SQL (optional)
+);
+
+-- If keeping current app version (schema-only update):
+SELECT update_app_version(
+  (SELECT version FROM app_versions WHERE is_current = true LIMIT 1),  -- Keep current app version
+  'Schema migration release notes',
+  '2.1.0',  -- Schema version
+  'ROLLBACK SQL HERE'  -- Rollback SQL (optional)
+);
+```
+
+**For detailed workflow guide, see [Schema Migration Workflow](./SCHEMA_MIGRATION_WORKFLOW.md)**
+
 ### Troubleshooting Version Sync
 
-**Issue: Versions are out of sync**
+**Issue: App versions are out of sync**
 - Check GitHub Actions log for errors
 - Verify `SUPABASE_URL` and `SUPABASE_SERVICE_KEY` secrets are set correctly
-- Manually update database version if needed (see above)
+- Manually update database app version if needed (see above)
+
+**Issue: Schema versions are out of sync**
+- Verify schema migration was completed
+- Check if schema version was updated after migration
+- Manually update schema version if needed (see above)
+- Verify schema version matches current database structure
 
 **Issue: Version notification not showing**
 - Check browser console for version check errors
 - Verify frontend can reach Supabase API
 - Check network connectivity
 - Verify service worker is registered
+- Note: Version notifications check app versions only, not schema versions
 

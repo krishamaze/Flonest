@@ -5,13 +5,17 @@ import { supabase } from '../supabase'
 // When deploying new versions:
 // 1. Update version in package.json
 // 2. Update FRONTEND_VERSION here to match
-// 3. GitHub Action will automatically update database version after deployment
+// 3. GitHub Action will automatically update database app version after deployment
+//
+// Note: Schema versions are tracked separately and updated manually after schema migrations.
+// See docs/SCHEMA_MIGRATIONS.md for schema version update process.
 export const FRONTEND_VERSION = '1.0.0'
 
 export interface AppVersion {
   version: string
   release_notes?: string
   released_at: string
+  schema_version?: string
 }
 
 /**
@@ -27,6 +31,7 @@ export async function getCurrentBackendVersion(): Promise<AppVersion> {
         version: FRONTEND_VERSION,
         release_notes: 'Unable to fetch version',
         released_at: new Date().toISOString(),
+        schema_version: '1.0.0',
       }
     }
 
@@ -35,6 +40,7 @@ export async function getCurrentBackendVersion(): Promise<AppVersion> {
         version: FRONTEND_VERSION,
         release_notes: 'Unknown version',
         released_at: new Date().toISOString(),
+        schema_version: '1.0.0',
       }
     }
 
@@ -43,6 +49,7 @@ export async function getCurrentBackendVersion(): Promise<AppVersion> {
       version: result.version || FRONTEND_VERSION,
       release_notes: result.release_notes,
       released_at: result.released_at || new Date().toISOString(),
+      schema_version: result.schema_version || '1.0.0',
     }
   } catch (error) {
     console.error('Error fetching backend version:', error)
@@ -50,7 +57,22 @@ export async function getCurrentBackendVersion(): Promise<AppVersion> {
       version: FRONTEND_VERSION,
       release_notes: 'Error fetching version',
       released_at: new Date().toISOString(),
+      schema_version: '1.0.0',
     }
+  }
+}
+
+/**
+ * Get current schema version from Supabase
+ * Useful for monitoring and admin dashboards
+ */
+export async function getCurrentSchemaVersion(): Promise<string> {
+  try {
+    const backendVersion = await getCurrentBackendVersion()
+    return backendVersion.schema_version || '1.0.0'
+  } catch (error) {
+    console.error('Error fetching schema version:', error)
+    return '1.0.0'
   }
 }
 

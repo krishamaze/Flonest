@@ -67,7 +67,7 @@ SUPABASE_ACCESS_TOKEN=your-access-token-here
 
 ## GitHub Secrets (for Version Updates)
 
-These secrets are required for the GitHub Action that automatically updates the database version after deployment:
+These secrets are required for the GitHub Action that automatically updates the database app version after deployment:
 
 ```env
 # GitHub Secrets (set in GitHub repository settings)
@@ -84,12 +84,45 @@ SUPABASE_SERVICE_KEY=your-service-role-key-here
 - `SUPABASE_SERVICE_KEY` is different from `VITE_SUPABASE_ANON_KEY`
 - Service role key bypasses RLS - only use for automated scripts
 - Never commit service role key to Git
+- Used for app version updates only (not schema versions)
 
 **How to add GitHub Secrets:**
 1. Go to GitHub repository → Settings → Secrets and variables → Actions
 2. Click "New repository secret"
 3. Add `SUPABASE_URL` with your Supabase project URL
 4. Add `SUPABASE_SERVICE_KEY` with your service role key
+
+## Schema Version Tracking
+
+The system tracks two separate version types:
+
+- **App Version**: Tracks frontend code/UI changes (e.g., "1.0.1"). Automatically updated via GitHub Action.
+- **Schema Version**: Tracks database structure changes (e.g., "2.3.0"). Manually updated after schema migrations.
+
+### Schema Version Format
+
+Use semantic versioning (major.minor.patch):
+- **Major**: Breaking changes (e.g., removing columns, changing types)
+- **Minor**: Additive changes (e.g., adding columns, new tables)
+- **Patch**: Non-breaking changes (e.g., indexes, constraints)
+
+**Example:** `2.3.1` = Major version 2, minor version 3, patch 1
+
+### Schema Version Updates
+
+Schema versions are updated manually after schema migrations via the `update_app_version()` RPC function:
+
+```sql
+-- Update schema version after migration
+SELECT update_app_version(
+  '1.1.0',  -- App version (if also updated)
+  'Add tax_rate column to products',  -- Release notes
+  '2.1.0',  -- Schema version
+  'ALTER TABLE products DROP COLUMN tax_rate;'  -- Rollback SQL (optional)
+);
+```
+
+**For detailed schema migration workflow, see [Schema Migrations Guide](./docs/SCHEMA_MIGRATIONS.md)**
 
 ## Summary
 
@@ -99,9 +132,11 @@ SUPABASE_SERVICE_KEY=your-service-role-key-here
 - `SUPABASE_DB_PASSWORD` - Required for CLI
 - `SUPABASE_ACCESS_TOKEN` - Required for CLI
 
-### ✅ GitHub Secrets (for automated version updates):
+### ✅ GitHub Secrets (for automated app version updates):
 - `SUPABASE_URL` - Supabase project URL
 - `SUPABASE_SERVICE_KEY` - Service role key (for GitHub Actions)
+
+**Note:** Schema versions are updated manually, not via GitHub Actions.
 
 ### ⚠️ Optional (Remove if not needed):
 - `DATABASE_URL` - Only if you use direct DB access tools

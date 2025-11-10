@@ -22,6 +22,7 @@ export interface AuthUser {
   email: string
   orgId: string
   role: UserRole
+  isInternal: boolean
 }
 
 export interface InventoryWithProduct extends Inventory {

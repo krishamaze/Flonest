@@ -1,8 +1,11 @@
-name: Update Database Version After Deploy
+name: Update Database App Version After Deploy
 
-# This workflow updates the database version after a successful deployment
+# This workflow updates the database app version (frontend code version) after a successful deployment
 # It runs after code is pushed to main (which triggers Vercel auto-deployment)
 # The version is extracted from package.json and updated in Supabase
+# 
+# Note: This workflow only updates app versions, NOT schema versions.
+# Schema versions are updated manually via the schema-migration workflow.
 
 on:
   push:
@@ -57,7 +60,7 @@ jobs:
           echo "RELEASE_NOTES=$RELEASE_NOTES" >> $GITHUB_OUTPUT
           echo "Release notes: $RELEASE_NOTES"
 
-      - name: Update Supabase database version
+      - name: Update Supabase database app version
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
@@ -65,11 +68,14 @@ jobs:
           RELEASE_NOTES: ${{ steps.release_notes.outputs.RELEASE_NOTES }}
           COMMIT_SHA: ${{ github.sha }}
         run: |
-          echo "Updating database version to $VERSION"
+          echo "Updating database app version to $VERSION"
           echo "Release notes: $RELEASE_NOTES"
           echo "Commit: $COMMIT_SHA"
+          echo "Note: This updates app version only, not schema version"
           
-          # Call Supabase RPC function to update version
+          # Call Supabase RPC function to update app version
+          # Note: schema_version and rollback_sql parameters are not provided (optional)
+          # The RPC function will keep the current schema version unchanged
           RESPONSE=$(curl -s -w "\n%{http_code}" -X POST \
             "$SUPABASE_URL/rest/v1/rpc/update_app_version" \
             -H "apikey: $SUPABASE_SERVICE_KEY" \
@@ -88,9 +94,12 @@ jobs:
           
           # Check if update was successful
           if [ "$HTTP_CODE" = "200" ] && echo "$RESPONSE_BODY" | grep -q '"success":true'; then
-            echo "✅ Database version updated successfully to $VERSION"
+            echo "✅ Database app version updated successfully to $VERSION"
+            # Extract schema version from response for logging
+            SCHEMA_VERSION=$(echo "$RESPONSE_BODY" | grep -o '"schema_version":"[^"]*"' | cut -d'"' -f4 || echo "unknown")
+            echo "✅ Schema version remains: $SCHEMA_VERSION"
           else
-            echo "❌ Failed to update database version"
+            echo "❌ Failed to update database app version"
             echo "HTTP Status: $HTTP_CODE"
             echo "Response: $RESPONSE_BODY"
             exit 1
@@ -98,7 +107,8 @@ jobs:
 
       - name: Log version update
         run: |
-          echo "✅ Database version updated to ${{ steps.version.outputs.VERSION }}"
+          echo "✅ Database app version updated to ${{ steps.version.outputs.VERSION }}"
           echo "Commit: ${{ github.sha }}"
           echo "Triggered by: ${{ github.actor }}"
+          echo "Note: Schema version unchanged (updated separately via schema-migration workflow)"
 

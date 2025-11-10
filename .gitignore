@@ -71,6 +71,8 @@ coverage/
 *.swp
 *.swo
 *~
+migration-to-apply.sql
+*.sql.tmp
 
 # Supabase
 supabase/.branches/
