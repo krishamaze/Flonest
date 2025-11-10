@@ -101,7 +101,8 @@ END;
 $$;
 
 -- Grant execute permission to authenticated users
-GRANT EXECUTE ON FUNCTION search_master_products TO authenticated;
+-- Specify full function signature to avoid ambiguity
+GRANT EXECUTE ON FUNCTION search_master_products(text, text, text, text, integer, integer, boolean) TO authenticated;
 
 COMMIT;
 
