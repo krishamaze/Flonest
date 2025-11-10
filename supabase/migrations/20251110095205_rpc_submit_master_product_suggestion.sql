@@ -6,13 +6,13 @@ BEGIN;
 CREATE OR REPLACE FUNCTION submit_master_product_suggestion(
   p_name text,
   p_sku text,
+  p_org_id uuid,
+  p_user_id uuid,
   p_barcode_ean text DEFAULT NULL,
   p_category text DEFAULT NULL,
   p_suggested_hsn_code text DEFAULT NULL,
   p_base_unit text DEFAULT 'pcs',
-  p_base_price numeric DEFAULT NULL,
-  p_org_id uuid,
-  p_user_id uuid
+  p_base_price numeric DEFAULT NULL
 )
 RETURNS uuid
 LANGUAGE plpgsql

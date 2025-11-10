@@ -123,13 +123,13 @@ export async function submitMasterProductSuggestion(
     {
       p_name: params.name,
       p_sku: params.sku,
+      p_org_id: params.org_id,
+      p_user_id: params.user_id,
       p_barcode_ean: params.barcode_ean || null,
       p_category: params.category || null,
       p_suggested_hsn_code: params.suggested_hsn_code || null,
       p_base_unit: params.base_unit || 'pcs',
       p_base_price: params.base_price || null,
-      p_org_id: params.org_id,
-      p_user_id: params.user_id,
     }
   )
 
