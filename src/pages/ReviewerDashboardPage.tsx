@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react'
-import { useAuth } from '../contexts/AuthContext'
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card'
 import { LoadingSpinner } from '../components/ui/LoadingSpinner'
 import { getPendingReviews } from '../lib/api/master-product-review'
@@ -12,7 +11,7 @@ import {
   DocumentTextIcon,
   ChartBarIcon,
 } from '@heroicons/react/24/outline'
-import { Link, Routes, Route, useLocation } from 'react-router-dom'
+import { Link, useLocation } from 'react-router-dom'
 import { ReviewQueue } from '../components/reviewer/ReviewQueue'
 import { HSNManager } from '../components/reviewer/HSNManager'
 import { BlockedInvoices } from '../components/reviewer/BlockedInvoices'
@@ -25,7 +24,6 @@ interface ReviewerStats {
 }
 
 function ReviewerDashboardHome() {
-  const { user } = useAuth()
   const [stats, setStats] = useState<ReviewerStats | null>(null)
   const [loading, setLoading] = useState(true)
 

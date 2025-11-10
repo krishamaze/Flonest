@@ -78,7 +78,7 @@ export async function getMasterProductReviews(
   masterProductId: string
 ): Promise<MasterProductReview[]> {
   const { data, error } = await supabase
-    .from('master_product_reviews')
+    .from('master_product_reviews' as any)
     .select('*')
     .eq('master_product_id', masterProductId)
     .order('reviewed_at', { ascending: false })

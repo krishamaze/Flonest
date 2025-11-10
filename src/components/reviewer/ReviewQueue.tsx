@@ -4,7 +4,6 @@ import type { MasterProduct } from '../../lib/api/master-products'
 import { Card, CardContent } from '../ui/Card'
 import { LoadingSpinner } from '../ui/LoadingSpinner'
 import { Input } from '../ui/Input'
-import { Button } from '../ui/Button'
 import {
   MagnifyingGlassIcon,
   ClockIcon,

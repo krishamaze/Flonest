@@ -46,6 +46,8 @@ export type Database = {
           is_current: boolean | null
           release_notes: string | null
           released_at: string | null
+          rollback_sql: string | null
+          schema_version: string | null
           updated_at: string | null
           version: string
         }
@@ -55,6 +57,8 @@ export type Database = {
           is_current?: boolean | null
           release_notes?: string | null
           released_at?: string | null
+          rollback_sql?: string | null
+          schema_version?: string | null
           updated_at?: string | null
           version: string
         }
@@ -64,10 +68,47 @@ export type Database = {
           is_current?: boolean | null
           release_notes?: string | null
           released_at?: string | null
+          rollback_sql?: string | null
+          schema_version?: string | null
           updated_at?: string | null
           version?: string
         }
         Relationships: []
+      }
+      category_map: {
+        Row: {
+          category_name: string
+          confidence_score: number | null
+          created_at: string | null
+          id: string
+          suggested_hsn_code: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          category_name: string
+          confidence_score?: number | null
+          created_at?: string | null
+          id?: string
+          suggested_hsn_code?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          category_name?: string
+          confidence_score?: number | null
+          created_at?: string | null
+          id?: string
+          suggested_hsn_code?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "category_map_suggested_hsn_code_fkey"
+            columns: ["suggested_hsn_code"]
+            isOneToOne: false
+            referencedRelation: "hsn_master"
+            referencedColumns: ["hsn_code"]
+          },
+        ]
       }
       customer_identifiers: {
         Row: {
@@ -164,6 +205,39 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      hsn_master: {
+        Row: {
+          category: string | null
+          chapter_code: string | null
+          created_at: string | null
+          description: string
+          gst_rate: number
+          hsn_code: string
+          is_active: boolean | null
+          last_updated_at: string | null
+        }
+        Insert: {
+          category?: string | null
+          chapter_code?: string | null
+          created_at?: string | null
+          description: string
+          gst_rate: number
+          hsn_code: string
+          is_active?: boolean | null
+          last_updated_at?: string | null
+        }
+        Update: {
+          category?: string | null
+          chapter_code?: string | null
+          created_at?: string | null
+          description?: string
+          gst_rate?: number
+          hsn_code?: string
+          is_active?: boolean | null
+          last_updated_at?: string | null
+        }
+        Relationships: []
       }
       inventory: {
         Row: {
@@ -309,6 +383,7 @@ export type Database = {
           status: string | null
           subtotal: number
           total_amount: number
+          updated_at: string | null
         }
         Insert: {
           cgst_amount?: number | null
@@ -325,6 +400,7 @@ export type Database = {
           status?: string | null
           subtotal: number
           total_amount: number
+          updated_at?: string | null
         }
         Update: {
           cgst_amount?: number | null
@@ -341,6 +417,7 @@ export type Database = {
           status?: string | null
           subtotal?: number
           total_amount?: number
+          updated_at?: string | null
         }
         Relationships: [
           {
@@ -401,56 +478,147 @@ export type Database = {
         }
         Relationships: []
       }
+      master_product_reviews: {
+        Row: {
+          action: string
+          field_changes: Json | null
+          id: string
+          master_product_id: string
+          new_approval_status: string | null
+          note: string | null
+          previous_approval_status: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+        }
+        Insert: {
+          action: string
+          field_changes?: Json | null
+          id?: string
+          master_product_id: string
+          new_approval_status?: string | null
+          note?: string | null
+          previous_approval_status?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+        }
+        Update: {
+          action?: string
+          field_changes?: Json | null
+          id?: string
+          master_product_id?: string
+          new_approval_status?: string | null
+          note?: string | null
+          previous_approval_status?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "master_product_reviews_master_product_id_fkey"
+            columns: ["master_product_id"]
+            isOneToOne: false
+            referencedRelation: "master_products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "master_product_reviews_reviewed_by_fkey"
+            columns: ["reviewed_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       master_products: {
         Row: {
+          approval_status: string | null
           barcode_ean: string | null
           base_price: number
           base_unit: string | null
           category: string | null
           created_at: string | null
+          created_by: string | null
           gst_rate: number | null
           gst_type: string | null
           hsn_code: string | null
           id: string
           min_selling_price: number
           name: string
+          rejection_reason: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
           sku: string
           status: string | null
+          submitted_org_id: string | null
           updated_at: string | null
         }
         Insert: {
+          approval_status?: string | null
           barcode_ean?: string | null
           base_price: number
           base_unit?: string | null
           category?: string | null
           created_at?: string | null
+          created_by?: string | null
           gst_rate?: number | null
           gst_type?: string | null
           hsn_code?: string | null
           id?: string
           min_selling_price: number
           name: string
+          rejection_reason?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
           sku: string
           status?: string | null
+          submitted_org_id?: string | null
           updated_at?: string | null
         }
         Update: {
+          approval_status?: string | null
           barcode_ean?: string | null
           base_price?: number
           base_unit?: string | null
           category?: string | null
           created_at?: string | null
+          created_by?: string | null
           gst_rate?: number | null
           gst_type?: string | null
           hsn_code?: string | null
           id?: string
           min_selling_price?: number
           name?: string
+          rejection_reason?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
           sku?: string
           status?: string | null
+          submitted_org_id?: string | null
           updated_at?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "master_products_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "master_products_reviewed_by_fkey"
+            columns: ["reviewed_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "master_products_submitted_org_id_fkey"
+            columns: ["submitted_org_id"]
+            isOneToOne: false
+            referencedRelation: "orgs"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       memberships: {
         Row: {
@@ -485,6 +653,47 @@ export type Database = {
           {
             foreignKeyName: "memberships_profile_id_fkey"
             columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      notifications: {
+        Row: {
+          created_at: string | null
+          id: string
+          message: string
+          read_at: string | null
+          related_id: string | null
+          title: string
+          type: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          message: string
+          read_at?: string | null
+          related_id?: string | null
+          title: string
+          type: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          message?: string
+          read_at?: string | null
+          related_id?: string | null
+          title?: string
+          type?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notifications_user_id_fkey"
+            columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
@@ -677,6 +886,7 @@ export type Database = {
           email: string
           full_name: string | null
           id: string
+          is_internal: boolean
           updated_at: string | null
         }
         Insert: {
@@ -685,6 +895,7 @@ export type Database = {
           email: string
           full_name?: string | null
           id: string
+          is_internal?: boolean
           updated_at?: string | null
         }
         Update: {
@@ -693,6 +904,7 @@ export type Database = {
           email?: string
           full_name?: string | null
           id?: string
+          is_internal?: boolean
           updated_at?: string | null
         }
         Relationships: []
@@ -757,6 +969,12 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      auto_link_product_to_master:
+        | { Args: { p_org_id: string; p_product_id: string }; Returns: string }
+        | {
+            Args: { p_org_id: string; p_product_id: string; p_user_id?: string }
+            Returns: string
+          }
       auto_save_invoice_draft: {
         Args: { p_draft_data: Json; p_org_id: string; p_user_id: string }
         Returns: string
@@ -799,6 +1017,12 @@ export type Database = {
       current_user_org_id: { Args: never; Returns: string }
       current_user_tenant_id: { Args: never; Returns: string }
       get_current_app_version: { Args: never; Returns: Json }
+      get_master_product_gst_rate: {
+        Args: { p_master_product_id: string }
+        Returns: number
+      }
+      is_internal_user: { Args: { user_id: string }; Returns: boolean }
+      reload_schema_cache: { Args: never; Returns: undefined }
       reserve_serials_for_invoice: {
         Args: {
           p_invoice_item_id: string
@@ -807,33 +1031,100 @@ export type Database = {
         }
         Returns: Json
       }
-      search_master_products: {
+      review_master_product: {
         Args: {
-          result_limit?: number
-          result_offset?: number
-          search_category?: string
-          search_ean?: string
-          search_query?: string
-          search_sku?: string
+          p_action: string
+          p_changes?: Json
+          p_hsn_code?: string
+          p_master_product_id: string
+          p_note?: string
+          p_reviewer_id: string
         }
-        Returns: {
-          barcode_ean: string
-          base_price: number
-          base_unit: string
-          category: string
-          created_at: string
-          gst_rate: number
-          gst_type: string
-          hsn_code: string
-          id: string
-          name: string
-          sku: string
-          status: string
-          updated_at: string
-        }[]
+        Returns: boolean
       }
+      search_master_products:
+        | {
+            Args: {
+              include_pending?: boolean
+              result_limit?: number
+              result_offset?: number
+              search_category?: string
+              search_ean?: string
+              search_query?: string
+              search_sku?: string
+            }
+            Returns: {
+              approval_status: string
+              barcode_ean: string
+              base_price: number
+              base_unit: string
+              category: string
+              created_at: string
+              gst_rate: number
+              gst_type: string
+              hsn_code: string
+              id: string
+              name: string
+              sku: string
+              status: string
+              updated_at: string
+            }[]
+          }
+        | {
+            Args: {
+              result_limit?: number
+              result_offset?: number
+              search_category?: string
+              search_ean?: string
+              search_query?: string
+              search_sku?: string
+            }
+            Returns: {
+              barcode_ean: string
+              base_price: number
+              base_unit: string
+              category: string
+              created_at: string
+              gst_rate: number
+              gst_type: string
+              hsn_code: string
+              id: string
+              name: string
+              sku: string
+              status: string
+              updated_at: string
+            }[]
+          }
       show_limit: { Args: never; Returns: number }
       show_trgm: { Args: { "": string }; Returns: string[] }
+      submit_master_product_suggestion: {
+        Args: {
+          p_barcode_ean?: string
+          p_base_price?: number
+          p_base_unit?: string
+          p_category?: string
+          p_name: string
+          p_org_id: string
+          p_sku: string
+          p_suggested_hsn_code?: string
+          p_user_id: string
+        }
+        Returns: string
+      }
+      update_app_version:
+        | {
+            Args: { new_version: string; release_notes?: string }
+            Returns: Json
+          }
+        | {
+            Args: {
+              new_version: string
+              release_notes?: string
+              rollback_sql?: string
+              schema_version?: string
+            }
+            Returns: Json
+          }
       upsert_master_customer: {
         Args: {
           p_address?: string
@@ -844,10 +1135,12 @@ export type Database = {
         }
         Returns: string
       }
-      validate_invoice_items: {
-        Args: { p_items: Json; p_org_id: string }
-        Returns: Json
-      }
+      validate_invoice_items:
+        | { Args: { p_items: Json; p_org_id: string }; Returns: Json }
+        | {
+            Args: { p_allow_draft?: boolean; p_items: Json; p_org_id: string }
+            Returns: Json
+          }
       validate_scanner_codes: {
         Args: { p_codes: string[]; p_org_id: string }
         Returns: Json

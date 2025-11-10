@@ -71,7 +71,7 @@ export function BlockedInvoiceDetails({
             <div>
               <p className="text-sm text-secondary-text">Created</p>
               <p className="text-base font-medium text-primary-text">
-                {new Date(invoice.created_at).toLocaleString()}
+                {invoice.created_at ? new Date(invoice.created_at).toLocaleString() : 'N/A'}
               </p>
             </div>
             <div>

@@ -23,7 +23,7 @@ export interface SearchHSNParams {
  */
 export async function getHSNByCode(hsnCode: string): Promise<HSNMaster> {
   const { data, error } = await supabase
-    .from('hsn_master')
+    .from('hsn_master' as any)
     .select('*')
     .eq('hsn_code', hsnCode)
     .eq('is_active', true)
@@ -37,7 +37,7 @@ export async function getHSNByCode(hsnCode: string): Promise<HSNMaster> {
     throw new Error('HSN code not found')
   }
 
-  return data as HSNMaster
+  return data as unknown as HSNMaster
 }
 
 /**
@@ -47,7 +47,7 @@ export async function searchHSN(
   params: SearchHSNParams = {}
 ): Promise<HSNMaster[]> {
   let query = supabase
-    .from('hsn_master')
+    .from('hsn_master' as any)
     .select('*')
     .eq('is_active', true)
 
@@ -75,7 +75,7 @@ export async function searchHSN(
     throw new Error(`Failed to search HSN: ${error.message}`)
   }
 
-  return (data || []) as HSNMaster[]
+  return (data || []) as unknown as HSNMaster[]
 }
 
 /**
@@ -83,7 +83,7 @@ export async function searchHSN(
  */
 export async function getHSNByCategory(category: string): Promise<HSNMaster[]> {
   const { data, error } = await supabase
-    .from('hsn_master')
+    .from('hsn_master' as any)
     .select('*')
     .eq('category', category)
     .eq('is_active', true)
@@ -93,7 +93,7 @@ export async function getHSNByCategory(category: string): Promise<HSNMaster[]> {
     throw new Error(`Failed to fetch HSN by category: ${error.message}`)
   }
 
-  return (data || []) as HSNMaster[]
+  return (data || []) as unknown as HSNMaster[]
 }
 
 /**
@@ -104,12 +104,13 @@ export async function suggestHSNFromCategory(
 ): Promise<HSNMaster | null> {
   // First, try to get suggested HSN from category_map
   const { data: categoryMap, error: categoryError } = await supabase
-    .from('category_map')
+    .from('category_map' as any)
     .select('suggested_hsn_code')
     .eq('category_name', category)
     .single()
 
-  if (categoryError || !categoryMap?.suggested_hsn_code) {
+  const categoryMapData = categoryMap as unknown as { suggested_hsn_code?: string | null } | null
+  if (categoryError || !categoryMapData?.suggested_hsn_code) {
     // Fallback: get first HSN from category
     const hsnList = await getHSNByCategory(category)
     return hsnList.length > 0 ? hsnList[0] : null
@@ -117,7 +118,7 @@ export async function suggestHSNFromCategory(
 
   // Get the suggested HSN code
   try {
-    return await getHSNByCode(categoryMap.suggested_hsn_code)
+    return await getHSNByCode(categoryMapData.suggested_hsn_code)
   } catch (error) {
     // If suggested HSN doesn't exist, fallback to first HSN in category
     const hsnList = await getHSNByCategory(category)

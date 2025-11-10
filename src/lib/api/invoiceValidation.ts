@@ -1,5 +1,5 @@
 import { supabase } from '../supabase'
-import type { Invoice, InvoiceItem } from '../../types'
+import type { Invoice } from '../../types'
 
 export interface BlockedInvoice {
   invoice: Invoice
@@ -129,7 +129,7 @@ export async function getBlockedInvoices(
 
       // Validate HSN code exists in hsn_master
       const { data: hsnData, error: hsnError } = await supabase
-        .from('hsn_master')
+        .from('hsn_master' as any)
         .select('hsn_code')
         .eq('hsn_code', masterProduct.hsn_code)
         .eq('is_active', true)

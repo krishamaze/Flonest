@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef } from 'react'
-import { Card, CardContent, CardHeader, CardTitle } from '../ui/Card'
+import { Card, CardContent } from '../ui/Card'
 import { LoadingSpinner } from '../ui/LoadingSpinner'
 import { Input } from '../ui/Input'
 import { Button } from '../ui/Button'
@@ -9,8 +9,6 @@ import {
   createHSNCode,
   updateHSNCode,
   deleteHSNCode,
-  type CreateHSNCodeData,
-  type UpdateHSNCodeData,
 } from '../../lib/api/hsn'
 import type { HSNMaster } from '../../types'
 import {

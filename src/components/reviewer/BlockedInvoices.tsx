@@ -1,11 +1,10 @@
 import { useEffect, useState } from 'react'
-import { Card, CardContent, CardHeader, CardTitle } from '../ui/Card'
+import { Card, CardContent } from '../ui/Card'
 import { LoadingSpinner } from '../ui/LoadingSpinner'
 import { Input } from '../ui/Input'
-import { getBlockedInvoices, getInvoiceValidationErrors } from '../../lib/api/invoiceValidation'
+import { getBlockedInvoices } from '../../lib/api/invoiceValidation'
 import type { BlockedInvoice } from '../../lib/api/invoiceValidation'
 import { ExclamationTriangleIcon, ArrowRightIcon } from '@heroicons/react/24/outline'
-import { Link } from 'react-router-dom'
 import { BlockedInvoiceDetails } from './BlockedInvoiceDetails'
 
 export function BlockedInvoices() {
@@ -74,7 +73,7 @@ export function BlockedInvoices() {
 
   const filteredInvoices = orgFilter
     ? blockedInvoices.filter(inv => 
-        inv.invoice.org_id.toLowerCase().includes(orgFilter.toLowerCase())
+        inv.invoice.org_id?.toLowerCase().includes(orgFilter.toLowerCase())
       )
     : blockedInvoices
 
@@ -136,8 +135,8 @@ export function BlockedInvoices() {
                       </span>
                     </div>
                     <div className="space-y-xs text-sm text-secondary-text">
-                      <p>Org ID: {blockedInvoice.invoice.org_id}</p>
-                      <p>Created: {new Date(blockedInvoice.invoice.created_at).toLocaleString()}</p>
+                      <p>Org ID: {blockedInvoice.invoice.org_id || 'N/A'}</p>
+                      <p>Created: {blockedInvoice.invoice.created_at ? new Date(blockedInvoice.invoice.created_at).toLocaleString() : 'N/A'}</p>
                       <div className="flex flex-wrap gap-xs mt-sm">
                         {blockedInvoice.errors.slice(0, 3).map((error, idx) => (
                           <span

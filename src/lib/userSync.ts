@@ -45,6 +45,7 @@ export async function syncUserProfile(authUser: User): Promise<UserProfileWithOr
         email: authUser.email || '',
         full_name: authUser.user_metadata?.full_name || null,
         avatar_url: authUser.user_metadata?.avatar_url || null,
+        is_internal: false, // Default to false for new users
       }
 
       const { data: newProfile, error: createProfileError } = await supabase

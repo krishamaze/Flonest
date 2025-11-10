@@ -11,7 +11,6 @@ import {
 } from '../lib/api/notifications'
 import type { Notification, NotificationType } from '../lib/api/notifications'
 import { CheckCircleIcon, XCircleIcon, ExclamationTriangleIcon } from '@heroicons/react/24/outline'
-import { Link } from 'react-router-dom'
 
 export function NotificationsPage() {
   const { user } = useAuth()

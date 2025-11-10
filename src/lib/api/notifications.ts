@@ -28,7 +28,7 @@ export async function getNotifications(
   filters?: NotificationFilters
 ): Promise<Notification[]> {
   let query = supabase
-    .from('notifications')
+    .from('notifications' as any)
     .select('*')
     .eq('user_id', userId)
     .order('created_at', { ascending: false })
@@ -59,7 +59,7 @@ export async function getNotifications(
     throw new Error(`Failed to fetch notifications: ${error.message}`)
   }
 
-  return (data || []) as Notification[]
+  return (data || []) as unknown as Notification[]
 }
 
 /**
@@ -67,7 +67,7 @@ export async function getNotifications(
  */
 export async function markAsRead(notificationId: string): Promise<void> {
   const { error } = await supabase
-    .from('notifications')
+    .from('notifications' as any)
     .update({ read_at: new Date().toISOString() })
     .eq('id', notificationId)
 
@@ -81,7 +81,7 @@ export async function markAsRead(notificationId: string): Promise<void> {
  */
 export async function markAllAsRead(userId: string): Promise<void> {
   const { error } = await supabase
-    .from('notifications')
+    .from('notifications' as any)
     .update({ read_at: new Date().toISOString() })
     .eq('user_id', userId)
     .is('read_at', null)
@@ -96,7 +96,7 @@ export async function markAllAsRead(userId: string): Promise<void> {
  */
 export async function getUnreadCount(userId: string): Promise<number> {
   const { count, error } = await supabase
-    .from('notifications')
+    .from('notifications' as any)
     .select('*', { count: 'exact', head: true })
     .eq('user_id', userId)
     .is('read_at', null)
@@ -113,7 +113,7 @@ export async function getUnreadCount(userId: string): Promise<number> {
  */
 export async function deleteNotification(notificationId: string): Promise<void> {
   const { error } = await supabase
-    .from('notifications')
+    .from('notifications' as any)
     .delete()
     .eq('id', notificationId)
 

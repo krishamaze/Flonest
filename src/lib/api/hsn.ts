@@ -30,7 +30,7 @@ export interface UpdateHSNCodeData {
  */
 export async function getHSNCodes(filters?: HSNFilters): Promise<HSNMaster[]> {
   let query = supabase
-    .from('hsn_master')
+    .from('hsn_master' as any)
     .select('*')
     .order('hsn_code', { ascending: true })
 
@@ -60,7 +60,7 @@ export async function getHSNCodes(filters?: HSNFilters): Promise<HSNMaster[]> {
     throw new Error(`Failed to fetch HSN codes: ${error.message}`)
   }
 
-  return (data || []) as HSNMaster[]
+  return (data || []) as unknown as HSNMaster[]
 }
 
 /**
@@ -68,7 +68,7 @@ export async function getHSNCodes(filters?: HSNFilters): Promise<HSNMaster[]> {
  */
 export async function getHSNCode(hsnCode: string): Promise<HSNMaster | null> {
   const { data, error } = await supabase
-    .from('hsn_master')
+    .from('hsn_master' as any)
     .select('*')
     .eq('hsn_code', hsnCode)
     .single()
@@ -80,7 +80,7 @@ export async function getHSNCode(hsnCode: string): Promise<HSNMaster | null> {
     throw new Error(`Failed to fetch HSN code: ${error.message}`)
   }
 
-  return data as HSNMaster
+  return data as unknown as HSNMaster
 }
 
 /**
@@ -89,7 +89,7 @@ export async function getHSNCode(hsnCode: string): Promise<HSNMaster | null> {
  */
 export async function createHSNCode(data: CreateHSNCodeData): Promise<HSNMaster> {
   const { data: hsn, error } = await supabase
-    .from('hsn_master')
+    .from('hsn_master' as any)
     .insert([{
       hsn_code: data.hsn_code,
       description: data.description,
@@ -108,7 +108,7 @@ export async function createHSNCode(data: CreateHSNCodeData): Promise<HSNMaster>
     throw new Error(`Failed to create HSN code: ${error.message}`)
   }
 
-  return hsn as HSNMaster
+  return hsn as unknown as HSNMaster
 }
 
 /**
@@ -130,7 +130,7 @@ export async function updateHSNCode(
   updateData.last_updated_at = new Date().toISOString()
 
   const { data: hsn, error } = await supabase
-    .from('hsn_master')
+    .from('hsn_master' as any)
     .update(updateData)
     .eq('hsn_code', hsnCode)
     .select()
@@ -143,7 +143,7 @@ export async function updateHSNCode(
     throw new Error(`Failed to update HSN code: ${error.message}`)
   }
 
-  return hsn as HSNMaster
+  return hsn as unknown as HSNMaster
 }
 
 /**
@@ -152,7 +152,7 @@ export async function updateHSNCode(
  */
 export async function deleteHSNCode(hsnCode: string): Promise<void> {
   const { error } = await supabase
-    .from('hsn_master')
+    .from('hsn_master' as any)
     .update({ is_active: false, last_updated_at: new Date().toISOString() })
     .eq('hsn_code', hsnCode)
 
