@@ -34,10 +34,10 @@ export async function reviewMasterProduct(
     {
       p_master_product_id: params.master_product_id,
       p_action: params.action,
+      p_reviewer_id: params.reviewer_id,
       p_changes: params.changes ? JSON.stringify(params.changes) : null,
       p_note: params.note || null,
       p_hsn_code: params.hsn_code || null,
-      p_reviewer_id: params.reviewer_id,
     }
   )
 

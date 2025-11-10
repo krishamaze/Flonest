@@ -6,10 +6,10 @@ BEGIN;
 CREATE OR REPLACE FUNCTION review_master_product(
   p_master_product_id uuid,
   p_action text,
+  p_reviewer_id uuid,
   p_changes jsonb DEFAULT NULL,
   p_note text DEFAULT NULL,
-  p_hsn_code text DEFAULT NULL,
-  p_reviewer_id uuid
+  p_hsn_code text DEFAULT NULL
 )
 RETURNS boolean
 LANGUAGE plpgsql
