@@ -973,29 +973,53 @@ export function InvoiceForm({
         serial_tracked: item.serial_tracked || false,
       }))
 
-      const validation = await validateInvoiceItems(orgId, validationItems)
+      // Validate items - allow drafts (pending masters allowed)
+      const validation = await validateInvoiceItems(orgId, validationItems, true)
 
       if (!validation.valid) {
         // Group errors by type
         const productErrors = validation.errors.filter(e => e.type === 'product_not_found')
         const serialErrors = validation.errors.filter(e => e.type === 'serial_not_found')
         const stockErrors = validation.errors.filter(e => e.type === 'insufficient_stock')
+        const masterProductErrors = validation.errors.filter(e => 
+          e.type === 'master_product_not_approved' || 
+          e.type === 'master_product_missing_hsn' ||
+          e.type === 'master_product_not_linked' ||
+          e.type === 'master_product_invalid_hsn'
+        )
 
         // Update items with validation errors and available stock
         const updatedItems = items.map((item, index) => {
           const itemErrors = validation.errors.filter(e => e.item_index === index + 1)
           const stockError = itemErrors.find(e => e.type === 'insufficient_stock')
+          const masterProductError = itemErrors.find(e => 
+            e.type === 'master_product_not_approved' || 
+            e.type === 'master_product_missing_hsn' ||
+            e.type === 'master_product_not_linked' ||
+            e.type === 'master_product_invalid_hsn'
+          )
           
           return {
             ...item,
             validation_errors: itemErrors.map(e => e.message),
             stock_available: stockError?.available_stock,
+            // Add master product error info if present
+            ...(masterProductError && {
+              master_product_error: {
+                type: masterProductError.type,
+                message: masterProductError.message,
+                approval_status: masterProductError.approval_status,
+              }
+            }),
           }
         })
         setItems(updatedItems)
 
         // Show toast with error summary
         let errorMessage = 'Invoice validation failed: '
+        if (masterProductErrors.length > 0) {
+          errorMessage += `${masterProductErrors.length} product(s) pending master approval. You can save as draft; finalization will unlock after approval. `
+        }
         if (productErrors.length > 0) {
           errorMessage += `${productErrors.length} product(s) not found. `
         }

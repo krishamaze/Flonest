@@ -180,7 +180,8 @@ export async function getProducts(
         hsn_code,
         base_price,
         name,
-        sku
+        sku,
+        approval_status
       )
     `, { count: 'exact' })
     .eq('org_id', orgId)
@@ -240,7 +241,8 @@ export async function getProduct(productId: string): Promise<Product> {
         hsn_code,
         base_price,
         name,
-        sku
+        sku,
+        approval_status
       )
     `)
     .eq('id', productId)

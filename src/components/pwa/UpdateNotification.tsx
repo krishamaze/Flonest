@@ -37,27 +37,98 @@ export function UpdateNotification() {
     }
   }, [needRefresh])
 
-  // Check version sync on mount and periodically
-  useEffect(() => {
-    const checkVersion = async () => {
+  // Retry wrapper with exponential backoff
+  const checkVersionWithRetry = async (maxRetries: number = 3): Promise<void> => {
+    for (let attempt = 0; attempt < maxRetries; attempt++) {
       try {
         const versionCheck = await checkVersionSync()
         if (!versionCheck.inSync) {
           console.warn('Version mismatch detected:', versionCheck.message)
           setShowUpdate(true)
         }
+        return // Success, exit retry loop
       } catch (error) {
-        console.error('Version check failed:', error)
+        const isLastAttempt = attempt === maxRetries - 1
+        const errorMessage = error instanceof Error ? error.message : String(error)
+        
+        // Check if error is retryable (network errors, timeouts, 5xx errors)
+        const isRetryable = 
+          errorMessage.includes('network') ||
+          errorMessage.includes('timeout') ||
+          errorMessage.includes('fetch') ||
+          (error && typeof error === 'object' && 'status' in error && 
+           typeof error.status === 'number' && error.status >= 500)
+
+        console.error(
+          `Version check failed (attempt ${attempt + 1}/${maxRetries}):`,
+          error
+        )
+
+        if (!isLastAttempt && isRetryable) {
+          // Exponential backoff: 1s, 2s, 4s
+          const delay = Math.pow(2, attempt) * 1000
+          console.log(`Retrying in ${delay}ms...`)
+          await new Promise(resolve => setTimeout(resolve, delay))
+        } else if (isLastAttempt) {
+          console.warn(
+            'Version check failed after all retries, will try again on next event/interval'
+          )
+        } else {
+          // Non-retryable error (e.g., 4xx, data validation)
+          console.error('Non-retryable error detected, stopping retries')
+          return
+        }
+      }
+    }
+  }
+
+  // Event-driven version checks (battery-efficient)
+  useEffect(() => {
+    let intervalId: NodeJS.Timeout | undefined
+
+    const checkVersion = async () => {
+      // Only check if app is visible and online
+      if (document.visibilityState === 'visible' && navigator.onLine) {
+        await checkVersionWithRetry()
       }
     }
 
     // Check on mount
     checkVersion()
 
-    // Check every 5 minutes
-    const interval = setInterval(checkVersion, 5 * 60 * 1000)
+    // Check on visibility change (user returns to app)
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        console.log('App visible, checking version')
+        checkVersion()
+      }
+    }
 
-    return () => clearInterval(interval)
+    // Check on network reconnect
+    const handleOnline = () => {
+      console.log('Network reconnected, checking version')
+      checkVersion()
+    }
+
+    // Register event listeners
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+    window.addEventListener('online', handleOnline)
+
+    // Fallback: Check every 30 minutes for long-running sessions (only when visible)
+    intervalId = setInterval(() => {
+      if (document.visibilityState === 'visible' && navigator.onLine) {
+        console.log('Periodic fallback check (30 min)')
+        checkVersion()
+      }
+    }, 30 * 60 * 1000)
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
+      window.removeEventListener('online', handleOnline)
+      if (intervalId) {
+        clearInterval(intervalId)
+      }
+    }
   }, [])
 
   const handleUpdate = async () => {

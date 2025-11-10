@@ -92,8 +92,32 @@ export async function createInvoice(
       try {
         const product = await getProduct(item.product_id) as ProductWithMaster
         
-        // Get product's GST rate from master product
-        const productGstRate = product.master_product?.gst_rate
+        // Get master_product_id
+        const masterProductId = product.master_product?.id || product.master_product_id
+
+        if (!masterProductId) {
+          console.warn(`Product ${item.product_id} does not have a master product, skipping GST calculation`)
+          continue
+        }
+
+        // Get GST rate from hsn_master via RPC (preferred method)
+        let productGstRate: number | null = null
+        try {
+          const { data: gstRate, error: gstError } = await supabase.rpc('get_master_product_gst_rate' as any, {
+            p_master_product_id: masterProductId,
+          })
+          
+          if (!gstError && gstRate !== null) {
+            productGstRate = gstRate as number
+          } else {
+            // Fallback to master_product.gst_rate (legacy support)
+            productGstRate = product.master_product?.gst_rate || null
+          }
+        } catch (error) {
+          // Fallback to master_product.gst_rate if RPC fails
+          console.warn(`Failed to get GST rate from hsn_master for product ${item.product_id}, using fallback`)
+          productGstRate = product.master_product?.gst_rate || null
+        }
 
         // Skip GST calculation if product has no GST rate
         if (!productGstRate || productGstRate <= 0) {
@@ -206,6 +230,7 @@ export async function createInvoice(
           const { data: masterProductId, error: linkError } = await supabase.rpc('auto_link_product_to_master' as any, {
             p_product_id: productId,
             p_org_id: orgId,
+            p_user_id: userId,
           })
 
           if (linkError) {
@@ -279,6 +304,87 @@ export async function finalizeInvoice(invoiceId: string, orgId: string): Promise
 
   if (invoice.status !== 'draft') {
     throw new Error(`Cannot finalize invoice with status: ${invoice.status}`)
+  }
+
+  // Validate items before finalization (block pending masters)
+  const items = (invoice.items || []) as InvoiceItem[]
+  if (items.length > 0) {
+    // Note: invoice_items.product_id stores master_product_id, not org product_id
+    // We need to find org products that have these master_product_ids
+    const masterProductIds = items.map(item => item.product_id)
+    
+    // Get org products that have these master_product_ids
+    const { data: orgProducts } = await supabase
+      .from('products')
+      .select('id, master_product_id, serial_tracked')
+      .in('master_product_id', masterProductIds)
+      .eq('org_id', orgId)
+      .eq('status', 'active')
+
+    // Create a map: master_product_id -> org product
+    const masterToOrgProductMap = new Map(
+      (orgProducts || []).map(p => [p.master_product_id, p])
+    )
+
+    // Build validation items using org product_ids
+    // For each invoice item (which has master_product_id), find the corresponding org product
+    const validationItems: Array<{
+      product_id: string
+      quantity: number
+      serials: string[]
+      serial_tracked: boolean
+    }> = []
+
+    for (const item of items) {
+      const orgProduct = masterToOrgProductMap.get(item.product_id)
+      
+      if (!orgProduct) {
+        // No org product found for this master_product_id
+        // This shouldn't happen if invoice was created correctly, but handle it
+        throw new Error(
+          `Cannot finalize invoice: No org product found for master product ${item.product_id}. ` +
+          `This may indicate a data inconsistency. Please contact support.`
+        )
+      }
+
+      validationItems.push({
+        product_id: orgProduct.id, // Use org product_id for validation
+        quantity: item.quantity || 1,
+        serials: [], // Serial validation handled separately if needed
+        serial_tracked: orgProduct.serial_tracked || false,
+      })
+    }
+
+    // Validate with allowDraft=false to block pending masters
+    const validation = await validateInvoiceItems(orgId, validationItems, false)
+
+    if (!validation.valid) {
+      const masterProductErrors = validation.errors.filter(e => 
+        e.type === 'master_product_not_approved' || 
+        e.type === 'master_product_missing_hsn' ||
+        e.type === 'master_product_not_linked' ||
+        e.type === 'master_product_invalid_hsn'
+      )
+
+      if (masterProductErrors.length > 0) {
+        throw new Error(
+          `Cannot finalize invoice: ${masterProductErrors.length} product(s) pending master approval or missing HSN code. ` +
+          `Please wait for approval or contact support.`
+        )
+      }
+
+      // Other validation errors (shouldn't happen if draft was valid, but check anyway)
+      const otherErrors = validation.errors.filter(e => 
+        e.type !== 'master_product_not_approved' && 
+        e.type !== 'master_product_missing_hsn' &&
+        e.type !== 'master_product_not_linked' &&
+        e.type !== 'master_product_invalid_hsn'
+      )
+
+      if (otherErrors.length > 0) {
+        throw new Error(`Cannot finalize invoice: ${otherErrors[0].message}`)
+      }
+    }
   }
 
   // Update invoice status
@@ -549,7 +655,8 @@ export async function validateInvoiceItems(
     quantity: number
     serials?: string[]
     serial_tracked?: boolean
-  }>
+  }>,
+  allowDraft: boolean = false
 ): Promise<{
   valid: boolean
   errors: Array<{
@@ -560,12 +667,16 @@ export async function validateInvoiceItems(
     serial?: string
     available_stock?: number
     requested_quantity?: number
+    master_product_id?: string
+    approval_status?: string
+    hsn_code?: string
   }>
 }> {
   try {
     const { data, error } = await supabase.rpc('validate_invoice_items' as any, {
       p_org_id: orgId,
       p_items: items,
+      p_allow_draft: allowDraft,
     })
 
     if (error) {
@@ -614,7 +725,8 @@ export async function revalidateDraftInvoice(
     }))
 
     // Validate items
-    const validation = await validateInvoiceItems(orgId, items)
+    // For draft invoices, allow pending master products
+    const validation = await validateInvoiceItems(orgId, items, true)
 
     // Check if status changed (was invalid, now valid)
     const invoiceData = invoice as any

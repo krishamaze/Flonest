@@ -14,6 +14,7 @@ export type Customer = Database['public']['Tables']['customers']['Row']
 
 export type UserRole = 'owner' | 'staff' | 'viewer'
 export type ProductStatus = 'active' | 'inactive' | 'pending'
+export type ApprovalStatus = 'pending' | 'auto_pass' | 'approved' | 'rejected'
 export type InvoiceStatus = 'draft' | 'finalized' | 'cancelled'
 
 export interface AuthUser {
@@ -52,7 +53,40 @@ export interface ProductWithMaster extends Product {
     base_price: number | null
     name: string
     sku: string
+    approval_status: ApprovalStatus
   } | null
+}
+
+export interface HSNMaster {
+  hsn_code: string
+  description: string
+  gst_rate: number
+  category: string | null
+  chapter_code: string | null
+  is_active: boolean
+  last_updated_at: string | null
+  created_at: string | null
+}
+
+export interface CategoryMap {
+  id: string
+  category_name: string
+  suggested_hsn_code: string | null
+  confidence_score: number
+  created_at: string | null
+  updated_at: string | null
+}
+
+export interface MasterProductReview {
+  id: string
+  master_product_id: string
+  action: 'submitted' | 'approved' | 'rejected' | 'edited' | 'auto_passed' | 'migrated'
+  reviewed_by: string | null
+  reviewed_at: string
+  note: string | null
+  field_changes: Record<string, any> | null
+  previous_approval_status: string | null
+  new_approval_status: string | null
 }
 
 export interface StockLedgerFormData {

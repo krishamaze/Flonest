@@ -74,6 +74,12 @@ Use this checklist before deploying to production.
 - [ ] `VITE_SUPABASE_ANON_KEY` added (Preview)
 - [ ] Environment variables encrypted
 
+### GitHub Secrets (for Version Updates)
+- [ ] `SUPABASE_URL` added to GitHub Secrets
+- [ ] `SUPABASE_SERVICE_KEY` added to GitHub Secrets (service role key, not anon key)
+- [ ] GitHub Action workflow enabled (`.github/workflows/update-db-version.yml`)
+- [ ] Version update workflow tested
+
 ### Deployment
 - [ ] Initial deployment successful
 - [ ] Build logs reviewed (no errors)
@@ -92,6 +98,9 @@ Use this checklist before deploying to production.
 - [ ] Test offline mode
 - [ ] Check service worker in DevTools
 - [ ] Verify manifest in DevTools
+- [ ] Verify version sync (frontend version matches database version)
+- [ ] Check GitHub Actions log for version update success
+- [ ] Test version notification (if versions are out of sync, notification should appear)
 
 ### Supabase Configuration
 - [ ] Add Vercel URL to Supabase allowed origins
@@ -178,6 +187,15 @@ Use this checklist before deploying to production.
 - [ ] User notification for major updates
 - [ ] Changelog maintained
 
+### Version Management
+- [ ] Update version in `package.json` before deploying
+- [ ] Update `FRONTEND_VERSION` in `src/lib/api/version.ts` to match `package.json`
+- [ ] GitHub Action automatically updates database version after deployment
+- [ ] Verify version sync after deployment (frontend/backend versions match)
+- [ ] GitHub Secrets configured:
+  - [ ] `SUPABASE_URL` - Supabase project URL
+  - [ ] `SUPABASE_SERVICE_KEY` - Supabase service role key (not anon key)
+
 ---
 
 ## Quick Deploy Commands
@@ -197,12 +215,19 @@ vercel --prod
 
 ### Subsequent Deployments
 ```bash
+# 1. Update version in package.json (e.g., 1.0.0 → 1.0.1)
+# 2. Update FRONTEND_VERSION in src/lib/api/version.ts to match
+
 # Via Git (recommended)
 git add .
 git commit -m "Your changes"
 git push origin main
 
-# Via CLI
+# GitHub Action will automatically:
+# - Deploy to Vercel (via auto-deploy)
+# - Update database version after successful deployment
+
+# Via CLI (if needed)
 vercel --prod
 ```
 
@@ -222,6 +247,41 @@ vercel rollback
 
 ---
 
-**Last Updated:** 2025-11-05  
+**Last Updated:** 2025-11-09  
 **Next Review:** [Set date for next review]
+
+---
+
+## Version Update Workflow
+
+### Automatic Version Updates
+
+After deploying to production, the GitHub Action (`.github/workflows/update-db-version.yml`) automatically updates the database version:
+
+1. **Trigger**: Push to `main` branch that modifies `package.json` or `src/lib/api/version.ts`
+2. **Extract**: Version from `package.json`
+3. **Update**: Database via Supabase RPC function `update_app_version()`
+4. **Result**: Frontend and backend versions stay in sync
+
+### Manual Version Update (if needed)
+
+If the GitHub Action fails or you need to update manually:
+
+```sql
+-- Via Supabase SQL Editor
+SELECT update_app_version('1.0.1', 'Your release notes here');
+```
+
+### Troubleshooting Version Sync
+
+**Issue: Versions are out of sync**
+- Check GitHub Actions log for errors
+- Verify `SUPABASE_URL` and `SUPABASE_SERVICE_KEY` secrets are set correctly
+- Manually update database version if needed (see above)
+
+**Issue: Version notification not showing**
+- Check browser console for version check errors
+- Verify frontend can reach Supabase API
+- Check network connectivity
+- Verify service worker is registered
 

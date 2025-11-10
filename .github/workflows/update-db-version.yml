@@ -1,0 +1,104 @@
+name: Update Database Version After Deploy
+
+# This workflow updates the database version after a successful deployment
+# It runs after code is pushed to main (which triggers Vercel auto-deployment)
+# The version is extracted from package.json and updated in Supabase
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'package.json'
+      - 'src/lib/api/version.ts'
+  workflow_dispatch:
+    # Allow manual triggering if needed
+
+jobs:
+  update-version:
+    runs-on: ubuntu-latest
+    # Workflow runs when:
+    # 1. Push to main that modifies package.json or src/lib/api/version.ts (paths filter)
+    # 2. Manual trigger via workflow_dispatch
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18.x'
+
+      - name: Extract version from package.json
+        id: version
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
+          echo "Extracted version: $VERSION"
+
+      - name: Prepare release notes
+        id: release_notes
+        run: |
+          # Get commit message (first line, max 200 chars)
+          # Handle both push events and manual triggers
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            # Manual trigger - use default message
+            RELEASE_NOTES="Manual version update via GitHub Actions"
+          else
+            # Push event - use commit message
+            COMMIT_MSG="${{ github.event.head_commit.message }}"
+            if [ -z "$COMMIT_MSG" ]; then
+              RELEASE_NOTES="Version update from commit ${{ github.sha }}"
+            else
+              RELEASE_NOTES=$(echo "$COMMIT_MSG" | head -n 1 | cut -c1-200)
+            fi
+          fi
+          echo "RELEASE_NOTES=$RELEASE_NOTES" >> $GITHUB_OUTPUT
+          echo "Release notes: $RELEASE_NOTES"
+
+      - name: Update Supabase database version
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+          VERSION: ${{ steps.version.outputs.VERSION }}
+          RELEASE_NOTES: ${{ steps.release_notes.outputs.RELEASE_NOTES }}
+          COMMIT_SHA: ${{ github.sha }}
+        run: |
+          echo "Updating database version to $VERSION"
+          echo "Release notes: $RELEASE_NOTES"
+          echo "Commit: $COMMIT_SHA"
+          
+          # Call Supabase RPC function to update version
+          RESPONSE=$(curl -s -w "\n%{http_code}" -X POST \
+            "$SUPABASE_URL/rest/v1/rpc/update_app_version" \
+            -H "apikey: $SUPABASE_SERVICE_KEY" \
+            -H "Authorization: Bearer $SUPABASE_SERVICE_KEY" \
+            -H "Content-Type: application/json" \
+            -H "Prefer: return=representation" \
+            -d "{\"new_version\": \"$VERSION\", \"release_notes\": \"$RELEASE_NOTES\"}")
+          
+          # Extract HTTP status code (last line)
+          HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
+          # Extract response body (all but last line)
+          RESPONSE_BODY=$(echo "$RESPONSE" | sed '$d')
+          
+          echo "HTTP Status: $HTTP_CODE"
+          echo "Response: $RESPONSE_BODY"
+          
+          # Check if update was successful
+          if [ "$HTTP_CODE" = "200" ] && echo "$RESPONSE_BODY" | grep -q '"success":true'; then
+            echo "✅ Database version updated successfully to $VERSION"
+          else
+            echo "❌ Failed to update database version"
+            echo "HTTP Status: $HTTP_CODE"
+            echo "Response: $RESPONSE_BODY"
+            exit 1
+          fi
+
+      - name: Log version update
+        run: |
+          echo "✅ Database version updated to ${{ steps.version.outputs.VERSION }}"
+          echo "Commit: ${{ github.sha }}"
+          echo "Triggered by: ${{ github.actor }}"
+

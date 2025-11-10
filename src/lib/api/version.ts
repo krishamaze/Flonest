@@ -1,7 +1,11 @@
 import { supabase } from '../supabase'
 
-// Current frontend version (sync with package.json)
-// UPDATE THIS when deploying new versions
+// Current frontend version
+// IMPORTANT: Keep this in sync with package.json version
+// When deploying new versions:
+// 1. Update version in package.json
+// 2. Update FRONTEND_VERSION here to match
+// 3. GitHub Action will automatically update database version after deployment
 export const FRONTEND_VERSION = '1.0.0'
 
 export interface AppVersion {

@@ -119,9 +119,13 @@ Click "Deploy" and wait for the build to complete (~2-3 minutes)
 
 ### Environment Variables
 
-**Required for Production:**
+**Required for Production (Vercel):**
 - `VITE_SUPABASE_URL` - Your Supabase project URL
 - `VITE_SUPABASE_ANON_KEY` - Your Supabase anonymous key
+
+**Required for Version Updates (GitHub Secrets):**
+- `SUPABASE_URL` - Your Supabase project URL
+- `SUPABASE_SERVICE_KEY` - Your Supabase service role key (⚠️ Keep secret!)
 
 **Optional:**
 - `NODE_VERSION` - Set to 18 (configured in vercel.json)
@@ -130,7 +134,9 @@ Click "Deploy" and wait for the build to complete (~2-3 minutes)
 - All client-side env vars must be prefixed with `VITE_`
 - Never commit `.env` file to Git
 - Use Vercel's environment variable UI for secrets
+- Use GitHub Secrets for `SUPABASE_SERVICE_KEY` (not Vercel env vars)
 - Same Supabase project can be used for preview/production
+- Service role key bypasses RLS - only use for automated scripts
 
 ---
 
@@ -140,9 +146,15 @@ Click "Deploy" and wait for the build to complete (~2-3 minutes)
 
 **Production Deployment:**
 ```bash
+# 1. Update version in package.json (e.g., 1.0.0 → 1.0.1)
+# 2. Update FRONTEND_VERSION in src/lib/api/version.ts to match
+# 3. Commit and push
+git add .
+git commit -m "Release v1.0.1: Your changes"
 git push origin main
 ```
-- Triggers production deployment
+- Triggers production deployment to Vercel
+- GitHub Action automatically updates database version after deployment
 - URL: https://biz-finetune-store.vercel.app
 - Custom domain: Configure in Vercel dashboard
 
@@ -154,6 +166,7 @@ git push origin feature/new-feature
 - Triggers preview deployment
 - URL: https://biz-finetune-store-git-feature-new-feature.vercel.app
 - Unique URL for each branch/PR
+- Version updates do not run for preview deployments (only production)
 
 **Pull Request Deployments:**
 - Automatic preview deployment for each PR
@@ -324,6 +337,24 @@ onTTFB(sendToAnalytics)
 - Update service worker version
 - Check Workbox configuration in `vite.config.ts`
 
+### Version Sync Issues
+
+**Versions are out of sync**
+- Check GitHub Actions log for version update errors
+- Verify `SUPABASE_URL` and `SUPABASE_SERVICE_KEY` secrets are set in GitHub
+- Manually update database version if needed:
+  ```sql
+  SELECT update_app_version('1.0.1', 'Manual update');
+  ```
+- Verify frontend version matches database version
+
+**Version notification not showing**
+- Check browser console for version check errors
+- Verify frontend can reach Supabase API
+- Check network connectivity
+- Verify service worker is registered
+- Test version check: Open DevTools → Network → Look for `get_current_app_version` call
+
 ---
 
 ## Environment-Specific Configuration
@@ -430,17 +461,71 @@ vercel env pull
    - Update redirect URLs for auth
    - Test authentication flow
 
-4. **Monitor and optimize:**
+4. **Set up GitHub Secrets for version updates:**
+   - Go to GitHub repository → Settings → Secrets and variables → Actions
+   - Add `SUPABASE_URL` secret (your Supabase project URL)
+   - Add `SUPABASE_SERVICE_KEY` secret (service role key from Supabase Dashboard → API)
+   - Verify GitHub Action workflow (`.github/workflows/update-db-version.yml`) is enabled
+   - Test by pushing a version update to `main` branch
+
+5. **Monitor and optimize:**
    - Check Vercel Analytics
    - Monitor Web Vitals
    - Optimize based on metrics
+   - Verify version sync after deployments
 
 ---
 
 **Deployment URL:** https://biz-finetune-store.vercel.app (after deployment)
 
+---
+
+## Version Update System
+
+### How It Works
+
+1. **Developer updates version:**
+   - Updates `version` in `package.json`
+   - Updates `FRONTEND_VERSION` in `src/lib/api/version.ts`
+   - Commits and pushes to `main` branch
+
+2. **Vercel deploys:**
+   - Auto-deploys on push to `main`
+   - New frontend code with updated version is deployed
+
+3. **GitHub Action updates database:**
+   - Triggers on push to `main` that modifies `package.json` or `src/lib/api/version.ts`
+   - Extracts version from `package.json`
+   - Calls Supabase RPC function `update_app_version()`
+   - Updates database version to match frontend
+
+4. **Users get notified:**
+   - Frontend checks version on app mount, visibility change, or network reconnect
+   - If versions don't match, notification appears
+   - User taps to refresh and get new version
+
+### Version Check Frequency
+
+The app checks for version updates:
+- On app mount (initial check)
+- When app becomes visible (user returns to app)
+- When network reconnects (user comes back online)
+- Every 30 minutes as fallback (long-running sessions)
+
+This ensures users are notified of updates without excessive battery drain.
+
+### Manual Version Update
+
+If the GitHub Action fails, you can manually update the database version:
+
+```sql
+-- Via Supabase SQL Editor
+SELECT update_app_version('1.0.1', 'Your release notes here');
+```
+
 **Need Help?** 
 - Vercel Docs: https://vercel.com/docs
 - Vite Deployment: https://vitejs.dev/guide/static-deploy.html
 - PWA Deployment: https://vite-pwa-org.netlify.app/deployment/
+- GitHub Actions: https://docs.github.com/en/actions
 

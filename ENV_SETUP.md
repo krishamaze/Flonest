@@ -65,6 +65,32 @@ SUPABASE_ACCESS_TOKEN=your-access-token-here
 # DATABASE_DIRECT_URL=postgresql://postgres.yzrwkznkfisfpnwzbwfw:password@aws-1-ap-southeast-1.pooler.supabase.com:6543/postgres
 ```
 
+## GitHub Secrets (for Version Updates)
+
+These secrets are required for the GitHub Action that automatically updates the database version after deployment:
+
+```env
+# GitHub Secrets (set in GitHub repository settings)
+SUPABASE_URL=https://yzrwkznkfisfpnwzbwfw.supabase.co
+SUPABASE_SERVICE_KEY=your-service-role-key-here
+```
+
+**Get these from:**
+- `SUPABASE_URL`: Supabase Dashboard → Project Settings → API → Project URL
+- `SUPABASE_SERVICE_KEY`: Supabase Dashboard → Project Settings → API → Service Role Key (⚠️ Keep this secret!)
+
+**Important Notes:**
+- These are stored as GitHub Secrets, NOT in `.env` file
+- `SUPABASE_SERVICE_KEY` is different from `VITE_SUPABASE_ANON_KEY`
+- Service role key bypasses RLS - only use for automated scripts
+- Never commit service role key to Git
+
+**How to add GitHub Secrets:**
+1. Go to GitHub repository → Settings → Secrets and variables → Actions
+2. Click "New repository secret"
+3. Add `SUPABASE_URL` with your Supabase project URL
+4. Add `SUPABASE_SERVICE_KEY` with your service role key
+
 ## Summary
 
 ### ✅ Keep in .env:
@@ -72,6 +98,10 @@ SUPABASE_ACCESS_TOKEN=your-access-token-here
 - `VITE_SUPABASE_ANON_KEY` - Required for app
 - `SUPABASE_DB_PASSWORD` - Required for CLI
 - `SUPABASE_ACCESS_TOKEN` - Required for CLI
+
+### ✅ GitHub Secrets (for automated version updates):
+- `SUPABASE_URL` - Supabase project URL
+- `SUPABASE_SERVICE_KEY` - Service role key (for GitHub Actions)
 
 ### ⚠️ Optional (Remove if not needed):
 - `DATABASE_URL` - Only if you use direct DB access tools
