@@ -286,6 +286,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               email: syncedProfile.email,
               orgId: null,
               role: null,
+              branchId: null,
               isInternal: true,
             }
             setUser(userData)
@@ -301,7 +302,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               id: syncedProfile.id,
               email: syncedProfile.email,
               orgId: syncedData.org.id,
-              role: (syncedData.membership.role || 'viewer') as 'owner' | 'staff' | 'viewer',
+              role: (syncedData.membership.role || 'staff') as 'owner' | 'branch_head' | 'staff',
+              branchId: syncedData.membership.branch_id || null,
               isInternal: false,
             }
             setUser(userData)
@@ -317,6 +319,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             email: syncedProfile.email,
             orgId: null,
             role: null,
+            branchId: null,
             isInternal: false,
           }
           setUser(userData)
@@ -340,6 +343,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           email: profile.email,
           orgId: null,
           role: null,
+          branchId: null,
           isInternal: true,
         }
         setUser(userData)
@@ -349,13 +353,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return
       }
 
-      // For non-internal users, load membership
+      // For non-internal users, load membership (including branch_id)
+      // Only load active memberships - pending memberships cannot access the app
       let membershipsResult
       if (useTimeout) {
         const queryPromise = supabase
           .from('memberships')
           .select('*, profiles(*), orgs(*)')
           .eq('profile_id', authUser.id)
+          .eq('membership_status', 'active')
           .limit(1)
         const timeoutPromise = createTimeoutPromise(CONNECTION_TIMEOUT)
         membershipsResult = await Promise.race([queryPromise, timeoutPromise])
@@ -364,6 +370,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           .from('memberships')
           .select('*, profiles(*), orgs(*)')
           .eq('profile_id', authUser.id)
+          .eq('membership_status', 'active')
           .limit(1)
       }
 
@@ -384,7 +391,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           id: membershipProfile.id,
           email: membershipProfile.email,
           orgId: org.id,
-          role: (membership.role || 'viewer') as 'owner' | 'staff' | 'viewer',
+          role: (membership.role || 'staff') as 'owner' | 'branch_head' | 'staff',
+          branchId: membership.branch_id || null,
           isInternal: membershipProfile.is_internal || false,
         }
         setUser(userData)
@@ -398,6 +406,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           email: profile.email,
           orgId: null,
           role: null,
+          branchId: null,
           isInternal: false,
         }
         setUser(userData)

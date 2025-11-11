@@ -15,6 +15,7 @@ import {
   ClipboardDocumentCheckIcon as ClipboardDocumentCheckIconSolid,
 } from '@heroicons/react/24/solid'
 import { useAuth } from '../../contexts/AuthContext'
+import { hasPermission, MANAGE_PRODUCTS } from '../../lib/permissions'
 import { MoreMenu } from './MoreMenu'
 
 const navItems = [
@@ -77,7 +78,17 @@ export function BottomNav() {
     )
   }
 
-  // For org users, show org routes
+  // For org users, show org routes based on permissions
+  // Filter nav items based on role permissions
+  const visibleNavItems = navItems.filter((item) => {
+    // Products page requires MANAGE_PRODUCTS permission (owner/branch_head only)
+    if (item.to === '/products') {
+      return hasPermission(user, MANAGE_PRODUCTS)
+    }
+    // Dashboard and Inventory are visible to all org users
+    return true
+  })
+
   // Check if any "More" menu route is active
   const isMoreMenuActive = ['/stock-ledger', '/customers', '/reviewer', '/pending-products'].some(path => 
     location.pathname.startsWith(path)
@@ -91,7 +102,7 @@ export function BottomNav() {
         aria-label="Main navigation"
       >
         <div className="flex items-center justify-around h-16 pb-safe min-h-[64px]">
-          {navItems.map((item) => (
+          {visibleNavItems.map((item) => (
             <NavLink
               key={item.to}
               to={item.to}

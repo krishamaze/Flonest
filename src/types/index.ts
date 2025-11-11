@@ -12,7 +12,7 @@ export type StockLedger = Database['public']['Tables']['stock_ledger']['Row']
 export type MasterCustomer = Database['public']['Tables']['master_customers']['Row']
 export type Customer = Database['public']['Tables']['customers']['Row']
 
-export type UserRole = 'owner' | 'staff' | 'viewer'
+export type UserRole = 'owner' | 'branch_head' | 'staff'
 export type ProductStatus = 'active' | 'inactive' | 'pending'
 export type ApprovalStatus = 'pending' | 'auto_pass' | 'approved' | 'rejected'
 export type InvoiceStatus = 'draft' | 'finalized' | 'cancelled'
@@ -20,8 +20,9 @@ export type InvoiceStatus = 'draft' | 'finalized' | 'cancelled'
 export interface AuthUser {
   id: string
   email: string
-  orgId: string | null // null if user hasn't joined an org yet
-  role: UserRole | null // null if user hasn't joined an org yet
+  orgId: string | null // null if user hasn't joined an org yet or is internal
+  role: UserRole | null // null if user hasn't joined an org yet or is internal
+  branchId: string | null // null for owners (org-wide) or if user hasn't joined an org yet
   isInternal: boolean
 }
 

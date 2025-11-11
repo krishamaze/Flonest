@@ -7,6 +7,7 @@ import {
   DocumentTextIcon,
 } from '@heroicons/react/24/outline'
 import { useAuth } from '../../contexts/AuthContext'
+import { hasPermission, MANAGE_INVENTORY } from '../../lib/permissions'
 
 interface MoreMenuProps {
   isOpen: boolean
@@ -45,8 +46,24 @@ export function MoreMenu({ isOpen, onClose }: MoreMenuProps) {
       description: 'Review product submissions',
     })
   } else {
-    // Org users see org routes
-    moreMenuItems.push(...baseMenuItems)
+    // Org users see org routes based on permissions
+    // Stock Ledger: owner and branch_head only
+    if (hasPermission(user, MANAGE_INVENTORY)) {
+      moreMenuItems.push({
+        to: '/stock-ledger',
+        label: 'Stock Ledger',
+        icon: ArrowPathIcon,
+        description: 'View stock transactions',
+      })
+    }
+    
+    // Customers: all org users
+    moreMenuItems.push({
+      to: '/customers',
+      label: 'Customers',
+      icon: UserGroupIcon,
+      description: 'Manage customers',
+    })
     
     // Add pending products link for org users
     moreMenuItems.push({

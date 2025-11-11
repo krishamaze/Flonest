@@ -10,6 +10,8 @@ import { InstallPrompt } from './components/pwa/InstallPrompt'
 import { UpdateNotification } from './components/pwa/UpdateNotification'
 import { FRONTEND_VERSION } from './lib/api/version'
 import { ProtectedRoute, ReviewerRoute } from './components/ProtectedRoute'
+import { RoleProtectedRoute } from './components/RoleProtectedRoute'
+import { MANAGE_PRODUCTS, VIEW_FINANCIALS, MANAGE_INVENTORY } from './lib/permissions'
 
 // Lazy load pages for code splitting
 const LoginPage = lazy(() => import('./pages/LoginPage').then(m => ({ default: m.LoginPage })))
@@ -83,9 +85,23 @@ function AppRoutes() {
               }
             >
             <Route index element={<DashboardPage />} />
-            <Route path="products" element={<ProductsPage />} />
+            <Route 
+              path="products" 
+              element={
+                <RoleProtectedRoute requiredPermission={MANAGE_PRODUCTS}>
+                  <ProductsPage />
+                </RoleProtectedRoute>
+              } 
+            />
             <Route path="inventory" element={<InventoryPage />} />
-            <Route path="stock-ledger" element={<StockLedgerPage />} />
+            <Route 
+              path="stock-ledger" 
+              element={
+                <RoleProtectedRoute requiredRole={['owner', 'branch_head']}>
+                  <StockLedgerPage />
+                </RoleProtectedRoute>
+              } 
+            />
             <Route path="customers" element={<CustomersPage />} />
             <Route path="notifications" element={<NotificationsPage />} />
             <Route path="pending-products" element={<PendingProductsPage />} />

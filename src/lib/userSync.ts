@@ -71,11 +71,12 @@ export async function syncUserProfile(authUser: User): Promise<UserProfileWithOr
       return null
     }
 
-    // Check if user has any memberships
+    // Check if user has any active memberships (pending memberships cannot access)
     const { data: existingMembership, error: membershipError } = await supabase
       .from('memberships')
       .select('*, orgs(*)')
       .eq('profile_id', authUser.id)
+      .eq('membership_status', 'active')
       .maybeSingle()
 
     if (membershipError) {
@@ -160,11 +161,12 @@ export async function needsProfileSync(userId: string): Promise<boolean> {
       return true // Needs profile
     }
 
-    // Check if user has a membership
+    // Check if user has an active membership
     const { data: membership, error: membershipError } = await supabase
       .from('memberships')
       .select('id')
       .eq('profile_id', userId)
+      .eq('membership_status', 'active')
       .maybeSingle()
 
     if (membershipError) {

@@ -3,12 +3,19 @@ import { useAuth } from '../contexts/AuthContext'
 import { supabase } from '../lib/supabase'
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card'
 import { LoadingSpinner } from '../components/ui/LoadingSpinner'
+import { Button } from '../components/ui/Button'
 import {
   CubeIcon,
   ArrowTrendingUpIcon,
   ArrowTrendingDownIcon,
   ExclamationTriangleIcon,
+  UserPlusIcon,
+  CheckCircleIcon,
 } from '@heroicons/react/24/outline'
+import { getPendingMemberships, approveMembership } from '../lib/api/memberships'
+import { canManageOrgSettings, canManageUsers } from '../lib/permissions'
+import { toast } from 'react-toastify'
+import { AddStaffForm } from '../components/staff/AddStaffForm'
 
 interface DashboardStats {
   totalProducts: number
@@ -22,6 +29,9 @@ export function DashboardPage() {
   const { user } = useAuth()
   const [stats, setStats] = useState<DashboardStats | null>(null)
   const [loading, setLoading] = useState(true)
+  const [pendingMemberships, setPendingMemberships] = useState<any[]>([])
+  const [loadingPending, setLoadingPending] = useState(false)
+  const [showAddStaffForm, setShowAddStaffForm] = useState(false)
 
   const loadDashboardStats = useCallback(async () => {
     if (!user || !user.orgId) return
@@ -73,9 +83,35 @@ export function DashboardPage() {
     }
   }, [user])
 
+  const loadPendingMemberships = useCallback(async () => {
+    if (!user || !user.orgId || !canManageOrgSettings(user)) return
+
+    setLoadingPending(true)
+    try {
+      const pending = await getPendingMemberships(user.orgId!)
+      setPendingMemberships(pending)
+    } catch (error) {
+      console.error('Error loading pending memberships:', error)
+    } finally {
+      setLoadingPending(false)
+    }
+  }, [user])
+
+  const handleApproveMembership = async (membershipId: string) => {
+    try {
+      await approveMembership(membershipId)
+      toast.success('Membership approved successfully')
+      // Reload pending memberships
+      await loadPendingMemberships()
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to approve membership')
+    }
+  }
+
   useEffect(() => {
     loadDashboardStats()
-  }, [loadDashboardStats])
+    loadPendingMemberships()
+  }, [loadDashboardStats, loadPendingMemberships])
 
   if (loading) {
     return (
@@ -158,6 +194,46 @@ export function DashboardPage() {
         </Card>
       </div>
 
+      {/* Pending Approvals (Owner only) */}
+      {canManageOrgSettings(user) && pendingMemberships.length > 0 && (
+        <Card className="shadow-sm border-warning">
+          <CardHeader>
+            <CardTitle className="text-base font-medium flex items-center gap-sm">
+              <ExclamationTriangleIcon className="h-5 w-5 text-warning" />
+              Pending Staff Approvals ({pendingMemberships.length})
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="p-4 pt-0">
+            <div className="space-y-3">
+              {pendingMemberships.map((item) => (
+                <div
+                  key={item.membership.id}
+                  className="flex items-center justify-between gap-md p-md rounded-md border border-warning-light bg-warning-light/20"
+                >
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-primary-text">
+                      {item.profile.email}
+                    </p>
+                    <p className="text-xs text-secondary-text mt-xs">
+                      Branch: {item.branch?.name || 'Unknown'} • Created by Branch Head
+                    </p>
+                  </div>
+                  <Button
+                    size="sm"
+                    variant="primary"
+                    onClick={() => handleApproveMembership(item.membership.id)}
+                    className="flex-shrink-0"
+                  >
+                    <CheckCircleIcon className="h-4 w-4 mr-xs" />
+                    Approve
+                  </Button>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Quick Actions Card */}
       <Card className="shadow-sm">
         <CardHeader>
@@ -185,9 +261,35 @@ export function DashboardPage() {
                 <p className="text-xs text-secondary-text">Increase stock quantity</p>
               </div>
             </button>
+            {canManageUsers(user) && (
+              <button 
+                onClick={() => setShowAddStaffForm(true)}
+                className="flex items-center gap-md rounded-md border border-neutral-200 p-md text-left min-h-[44px] transition-all duration-200 hover:bg-neutral-50 hover:border-neutral-300 active:scale-[0.98]"
+                aria-label="Add Staff"
+              >
+                <UserPlusIcon className="h-5 w-5 text-primary shrink-0" aria-hidden="true" />
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-primary-text">Add Staff</p>
+                  <p className="text-xs text-secondary-text">
+                    {user?.role === 'owner' ? 'Add staff member' : 'Request staff approval'}
+                  </p>
+                </div>
+              </button>
+            )}
           </div>
         </CardContent>
       </Card>
+
+      {/* Add Staff Form Modal */}
+      {canManageUsers(user) && (
+        <AddStaffForm
+          isOpen={showAddStaffForm}
+          onClose={() => setShowAddStaffForm(false)}
+          onSuccess={() => {
+            loadPendingMemberships()
+          }}
+        />
+      )}
     </div>
   )
 }
