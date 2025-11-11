@@ -67,3 +67,14 @@ Keep formatting clean and consistent.
 
 Prioritize performance optimization.
 
+
+Documentation Files
+
+NEVER create .md documentation files unless explicitly requested by the user.
+
+Prefer communicating information via chat instead of creating documentation files.
+
+Do not create test results, summaries, deployment logs, or other documentation files automatically.
+
+Only create .md files when the user explicitly asks for documentation to be written.
+
