@@ -43,6 +43,9 @@ lerna-debug.log*
 .classpath
 .settings/
 
+# Cursor MCP configuration (contains sensitive tokens)
+.cursor/mcp.json
+
 # OS
 .DS_Store
 .DS_Store?

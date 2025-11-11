@@ -57,189 +57,232 @@ export function LoginPage() {
 
   return (
     <div className="viewport-height-safe bg-bg-page safe-top safe-bottom flex flex-col overflow-hidden">
-      <div className="flex-1 flex items-center justify-center px-md py-md min-h-0">
+      <div className="flex-1 flex items-center justify-center px-md py-lg min-h-0">
         <div className="w-full max-w-md page-enter">
-        {/* Header */}
-        <div className="mb-8 text-center">
-          <div className="mx-auto mb-md flex h-16 w-16 items-center justify-center rounded-2xl bg-primary shadow-lg">
-            <span className="text-3xl font-bold text-on-primary">I</span>
+          {/* Header */}
+          <div className="mb-xl text-center">
+            <div className="mx-auto mb-lg flex h-16 w-16 items-center justify-center rounded-lg bg-primary shadow-primary">
+              <span className="text-3xl font-bold text-on-primary">I</span>
+            </div>
+            <h1 className="text-3xl font-bold text-primary-text mb-xs">Inventory System</h1>
+            <p className="text-base text-secondary-text">Manage your inventory</p>
           </div>
-          <h1 className="text-3xl font-bold text-primary-text">Inventory System</h1>
-          <p className="mt-sm text-secondary-text">Manage your inventory</p>
-        </div>
 
-        {/* Auth Form Card */}
-        <div className="rounded-lg bg-bg-card p-2xl shadow-sm border border-neutral-200 overflow-hidden w-full box-border">
-          <form onSubmit={handleSubmit} className="space-y-4 w-full">
-            {/* Error Message */}
-            {error && (
-              <div 
-                className="rounded-lg bg-error-light border border-error p-md break-words"
-                role="alert"
-                id="login-error"
-                aria-live="polite"
-              >
-                <p className="text-sm text-error-dark break-words">{error}</p>
-              </div>
-            )}
+          {/* Auth Form Card */}
+          <div className="rounded-lg bg-bg-card p-xl shadow-md border border-color">
+            <form onSubmit={handleSubmit} className="space-y-md">
+              {/* Error Message */}
+              {error && (
+                <div 
+                  className="rounded-md p-md break-words bg-error-light border border-solid"
+                  style={{ borderColor: 'var(--color-error)' }}
+                  role="alert"
+                  id="login-error"
+                  aria-live="polite"
+                >
+                  <p className="text-sm break-words text-error">
+                    {error}
+                  </p>
+                </div>
+              )}
 
-            {/* Success Message */}
-            {message && (
-              <div 
-                className="rounded-md bg-success-light border border-success p-md break-words"
-                role="status"
-                aria-live="polite"
-              >
-                <p className="text-sm text-success-dark break-words">{message}</p>
-              </div>
-            )}
+              {/* Success Message */}
+              {message && (
+                <div 
+                  className="rounded-md p-md break-words bg-success-light border border-solid"
+                  style={{ borderColor: 'var(--color-success)' }}
+                  role="status"
+                  aria-live="polite"
+                >
+                  <p className="text-sm break-words text-success">
+                    {message}
+                  </p>
+                </div>
+              )}
 
-            {/* Email Input */}
-            <Input
-              type="email"
-              label="Email"
-              placeholder="you@example.com"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-              disabled={loading}
-              autoComplete="email"
-              aria-describedby={error && view !== 'forgot_password' ? 'login-error' : undefined}
-            />
-
-            {/* Password Input - only show for sign_in and sign_up */}
-            {(view === 'sign_in' || view === 'sign_up') && (
+              {/* Email Input */}
               <Input
-                type="password"
-                label="Password"
-                placeholder="••••••••"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
+                type="email"
+                label="Email"
+                placeholder="you@example.com"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
                 required
                 disabled={loading}
-                minLength={6}
-                autoComplete={view === 'sign_in' ? 'current-password' : 'new-password'}
-                aria-describedby={error ? 'login-error' : undefined}
+                autoComplete="email"
+                aria-describedby={error && view !== 'forgot_password' ? 'login-error' : undefined}
               />
-            )}
 
-            {/* Submit Button */}
-            <Button
-              type="submit"
-              variant="primary"
-              size="lg"
-              className="w-full"
-              isLoading={loading}
-              disabled={loading}
-            >
-              {loading
-                ? view === 'sign_in'
-                  ? 'Signing in...'
+              {/* Password Input - only show for sign_in and sign_up */}
+              {(view === 'sign_in' || view === 'sign_up') && (
+                <Input
+                  type="password"
+                  label="Password"
+                  placeholder="••••••••"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                  disabled={loading}
+                  minLength={6}
+                  autoComplete={view === 'sign_in' ? 'current-password' : 'new-password'}
+                  aria-describedby={error ? 'login-error' : undefined}
+                />
+              )}
+
+              {/* Submit Button */}
+              <Button
+                type="submit"
+                variant="primary"
+                size="lg"
+                className="w-full"
+                isLoading={loading}
+                disabled={loading}
+              >
+                {loading
+                  ? view === 'sign_in'
+                    ? 'Signing in...'
+                    : view === 'sign_up'
+                    ? 'Signing up...'
+                    : 'Sending...'
+                  : view === 'sign_in'
+                  ? 'Sign In'
                   : view === 'sign_up'
-                  ? 'Signing up...'
-                  : 'Sending...'
-                : view === 'sign_in'
-                ? 'Sign In'
-                : view === 'sign_up'
-                ? 'Sign Up'
-                : 'Send reset instructions'}
-            </Button>
+                  ? 'Sign Up'
+                  : 'Send reset instructions'}
+              </Button>
 
-            {/* View Switch Links */}
-            <div className="space-y-3 text-center text-sm">
-              {view === 'sign_in' && (
-                <>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setView('forgot_password')
-                      setError(null)
-                      setMessage(null)
-                    }}
-                    className="text-primary hover:text-primary-hover hover:underline text-sm"
-                  >
-                    Forgot your password?
-                  </button>
-                  <div className="pt-sm border-t border-neutral-200">
-                    <span className="text-secondary-text block mb-sm">Don't have an account?</span>
+              {/* View Switch Links */}
+              <div className="space-y-md text-center">
+                {view === 'sign_in' && (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setView('forgot_password')
+                        setError(null)
+                        setMessage(null)
+                      }}
+                      className="text-sm font-medium transition-base hover:opacity-80"
+                      style={{
+                        color: 'var(--color-primary)'
+                      }}
+                    >
+                      Forgot your password?
+                    </button>
+                    <div className="pt-md border-t border-color">
+                      <span className="block mb-sm text-sm text-secondary-text">
+                        Don't have an account?
+                      </span>
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        size="md"
+                        className="w-full"
+                        onClick={() => {
+                          setView('sign_up')
+                          setError(null)
+                          setMessage(null)
+                        }}
+                      >
+                        Sign up
+                      </Button>
+                    </div>
+                  </>
+                )}
+
+                {view === 'sign_up' && (
+                  <div className="pt-md border-t border-color">
+                    <span className="block mb-sm text-sm text-secondary-text">
+                      Already have an account?
+                    </span>
                     <Button
                       type="button"
                       variant="secondary"
                       size="md"
                       className="w-full"
                       onClick={() => {
-                        setView('sign_up')
+                        setView('sign_in')
                         setError(null)
                         setMessage(null)
                       }}
                     >
-                      Sign up
+                      Sign in
                     </Button>
                   </div>
-                </>
-              )}
+                )}
 
-              {view === 'sign_up' && (
-                <div className="pt-sm border-t border-neutral-200">
-                  <span className="text-secondary-text block mb-sm">Already have an account?</span>
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    size="md"
-                    className="w-full"
-                    onClick={() => {
-                      setView('sign_in')
-                      setError(null)
-                      setMessage(null)
-                    }}
-                  >
-                    Sign in
-                  </Button>
-                </div>
-              )}
-
-              {view === 'forgot_password' && (
-                <div className="pt-sm border-t border-neutral-200">
-                  <span className="text-secondary-text block mb-sm">Remember your password?</span>
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    size="md"
-                    className="w-full"
-                    onClick={() => {
-                      setView('sign_in')
-                      setError(null)
-                      setMessage(null)
-                    }}
-                  >
-                    Sign in
-                  </Button>
-                </div>
-              )}
-            </div>
-          </form>
-        </div>
-
-        {/* Demo credentials hint */}
-        {view === 'sign_in' && (
-          <div className="mt-6 rounded-lg bg-blue-50 border border-blue-200 p-4">
-            <p className="text-sm text-blue-800 font-medium mb-1">Demo Account</p>
-            <p className="text-xs text-secondary-text">
-              Email: <span className="font-mono">demo@example.com</span>
-            </p>
-            <p className="text-xs text-secondary-text">
-              Password: <span className="font-mono">password</span>
-            </p>
-            <p className="text-xs text-blue-600 mt-1">
-              Or sign up to create your own account with automatic tenant setup
-            </p>
+                {view === 'forgot_password' && (
+                  <div className="pt-md border-t border-color">
+                    <span className="block mb-sm text-sm text-secondary-text">
+                      Remember your password?
+                    </span>
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      size="md"
+                      className="w-full"
+                      onClick={() => {
+                        setView('sign_in')
+                        setError(null)
+                        setMessage(null)
+                      }}
+                    >
+                      Sign in
+                    </Button>
+                  </div>
+                )}
+              </div>
+            </form>
           </div>
-        )}
 
-        {/* Footer */}
-        <p className="mt-lg text-center text-xs text-muted-text">
-          Powered by Supabase Auth • Secure & Reliable
-        </p>
+          {/* Test Accounts */}
+          {view === 'sign_in' && (
+            <div className="mt-lg rounded-lg p-md bg-primary-light border border-solid" style={{ borderColor: 'var(--color-primary)' }}>
+              <p className="text-sm font-semibold mb-sm text-primary-text">
+                Test Accounts
+              </p>
+              <div className="space-y-xs text-xs">
+                <div>
+                  <span className="font-medium text-secondary-text">
+                    Reviewer:
+                  </span>
+                  <span className="font-mono ml-xs text-primary-text">
+                    internal@test.com
+                  </span>
+                </div>
+                <div>
+                  <span className="font-medium text-secondary-text">
+                    Owner:
+                  </span>
+                  <span className="font-mono ml-xs text-primary-text">
+                    owner@test.com
+                  </span>
+                </div>
+                <div 
+                  className="pt-xs mt-xs border-t"
+                  style={{
+                    borderColor: 'var(--color-primary)',
+                    opacity: 0.3
+                  }}
+                >
+                  <span className="font-medium text-secondary-text">
+                    Password:
+                  </span>
+                  <span className="font-mono ml-xs text-primary-text">
+                    password
+                  </span>
+                </div>
+              </div>
+              <p className="text-xs mt-sm text-secondary-text">
+                Or sign up to create your own account
+              </p>
+            </div>
+          )}
+
+          {/* Footer */}
+          <p className="mt-lg text-center text-xs text-muted-text">
+            Powered by Supabase Auth • Secure & Reliable
+          </p>
         </div>
       </div>
     </div>

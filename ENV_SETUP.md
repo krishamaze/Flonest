@@ -59,6 +59,14 @@ SUPABASE_DB_PASSWORD=your-database-password-here
 SUPABASE_ACCESS_TOKEN=your-access-token-here
 
 # =============================================================================
+# Optional: Service Role Key (for Admin Scripts)
+# =============================================================================
+# Required for scripts like create-internal-user.cjs
+# Get from: Supabase Dashboard → Project Settings → API → Service Role Key
+# ⚠️  Keep this secret! Never commit to Git. Has admin access (bypasses RLS).
+# SUPABASE_SERVICE_KEY=your-service-role-key-here
+
+# =============================================================================
 # Optional: Direct Database Access (Only if needed)
 # =============================================================================
 # DATABASE_URL=postgresql://postgres:password@db.yzrwkznkfisfpnwzbwfw.supabase.co:5432/postgres
@@ -131,6 +139,12 @@ SELECT update_app_version(
 - `VITE_SUPABASE_ANON_KEY` - Required for app
 - `SUPABASE_DB_PASSWORD` - Required for CLI
 - `SUPABASE_ACCESS_TOKEN` - Required for CLI
+
+### ✅ Optional (for admin scripts):
+- `SUPABASE_SERVICE_KEY` - Service role key (for scripts like `create-internal-user.cjs`)
+  - Get from: Supabase Dashboard → Project Settings → API → Service Role Key
+  - ⚠️  Keep this secret! Has admin access (bypasses RLS)
+  - Required for creating internal user accounts locally
 
 ### ✅ GitHub Secrets (for automated app version updates):
 - `SUPABASE_URL` - Supabase project URL

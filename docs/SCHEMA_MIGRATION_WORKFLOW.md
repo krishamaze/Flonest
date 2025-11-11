@@ -37,6 +37,8 @@ When triggering the workflow manually, you'll need to provide:
 
 ### Step 1: Create Migration File
 
+**Use CLI (MCP cannot create files):**
+
 ```bash
 npm run supabase:migration:new add_tax_rate_to_products
 ```
@@ -101,6 +103,17 @@ ALTER TABLE products DROP COLUMN tax_rate;
 
 ### Step 7: Apply Migration
 
+**Option A: Use MCP (Recommended - Faster)**
+- In Cursor chat: "Apply migration [migration_name]"
+- MCP will read the migration file and apply it directly
+- No CLI or terminal needed
+
+**Option B: Use CLI**
+```bash
+npm run supabase:db:push
+```
+
+**Option C: Use GitHub Workflow**
 The workflow will:
 
 1. **Validate migration file**: Checks if file exists and schema version format

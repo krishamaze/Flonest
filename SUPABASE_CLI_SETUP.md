@@ -1,8 +1,10 @@
 # Supabase CLI Setup
 
+> **Note:** This project uses **MCP (Model Context Protocol)** as the primary method for Supabase operations. Use CLI only when MCP cannot perform the task (e.g., creating migration files).
+
 ## Quick Start
 
-### 1. Login to Supabase CLI
+### 1. Login to Supabase CLI (One-time setup)
 
 ```bash
 npx supabase login
@@ -26,7 +28,7 @@ SUPABASE_DB_PASSWORD=your-database-password-here
 - `SUPABASE_ACCESS_TOKEN`: Automatically stored after `npx supabase login`
 - `SUPABASE_DB_PASSWORD`: Supabase Dashboard → Project Settings → Database
 
-### 3. Link Project
+### 3. Link Project (One-time setup)
 
 ```bash
 npm run supabase:link
@@ -34,30 +36,59 @@ npm run supabase:link
 
 This links your local project to the cloud Supabase project using direct connection (no Docker required).
 
-### 4. Apply Migrations
+## MCP vs CLI: When to Use What
 
-```bash
-npm run supabase:db:push
-```
+### ✅ Use MCP (Recommended for daily operations)
+
+| Operation | MCP Method | CLI Alternative |
+|-----------|-----------|-----------------|
+| Apply migrations | Use Cursor chat: "Apply migration X" | `npm run supabase:db:push` |
+| Generate TypeScript types | Use Cursor chat: "Generate TypeScript types" | `npm run supabase:types` |
+| Query database | Use Cursor chat: "Query my database..." | N/A |
+| List tables | Use Cursor chat: "List my tables" | N/A |
+| View logs | Use Cursor chat: "Show Supabase logs" | N/A |
+
+**Benefits:**
+- Faster workflow (no terminal needed)
+- Integrated with Cursor chat
+- Direct database access
+- See [MCP Setup Guide](.cursor/MCP_SETUP.md) for details
+
+### ⚙️ Use CLI (Required for specific tasks)
+
+| Operation | CLI Command | Why CLI is needed |
+|-----------|-------------|-------------------|
+| Create migration file | `npm run supabase:migration:new <name>` | Creates local file in `supabase/migrations/` |
+| Generate schema diff | `npm run supabase:db:diff` | Compares local vs remote schema |
+| Check status | `npm run supabase:status` | Shows local Supabase status |
 
 ## Available Commands
 
+### CLI Commands (Use when MCP can't do it)
+
 ```bash
-# Link to cloud project
+# Link to cloud project (one-time)
 npm run supabase:link
 
 # Check status
 npm run supabase:status
 
-# Push migrations
-npm run supabase:db:push
-
-# Generate TypeScript types
-npm run supabase:types
-
-# Create new migration
+# Create new migration file (CLI only)
 npm run supabase:migration:new <name>
+
+# Generate schema diff (CLI only)
+npm run supabase:db:diff
 ```
+
+### MCP Operations (Use via Cursor chat)
+
+- Apply migrations: Ask Cursor to apply a migration
+- Generate types: Ask Cursor to generate TypeScript types
+- Query database: Ask Cursor to run SQL queries
+- List tables: Ask Cursor to show database tables
+- View logs: Ask Cursor to show service logs
+
+See [MCP Setup Guide](.cursor/MCP_SETUP.md) for complete list.
 
 ## Project Details
 

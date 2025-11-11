@@ -18,7 +18,8 @@
     "supabase:types": "npx supabase gen types typescript --linked > src/types/database.ts",
     "supabase:migration:new": "npx supabase migration new",
     "db:migrate": "npm run supabase:db:push",
-    "db:types": "npm run supabase:types"
+    "db:types": "npm run supabase:types",
+    "create:internal-user": "node scripts/create-internal-user.cjs"
   },
   "dependencies": {
     "@heroicons/react": "^2.2.0",
