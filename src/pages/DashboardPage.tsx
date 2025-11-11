@@ -24,7 +24,7 @@ export function DashboardPage() {
   const [loading, setLoading] = useState(true)
 
   const loadDashboardStats = useCallback(async () => {
-    if (!user) return
+    if (!user || !user.orgId) return
 
     try {
       // Execute all queries in parallel for better performance

@@ -68,7 +68,7 @@ export function PendingProductsPage() {
   }, [searchQuery])
 
   const loadProducts = async () => {
-    if (!user) return
+    if (!user || !user.orgId) return
 
     setLoading(true)
     try {

@@ -21,7 +21,7 @@ export function StockLedgerPage() {
   const [filterType, setFilterType] = useState<'all' | 'in' | 'out' | 'adjustment'>('all')
 
   const loadStockLedger = useCallback(async () => {
-    if (!user) return
+    if (!user || !user.orgId) return
 
     try {
       const data = await getStockLedgerWithProducts(user.orgId)
@@ -38,7 +38,7 @@ export function StockLedgerPage() {
   }, [loadStockLedger])
 
   const handleCreateTransaction = async (data: any) => {
-    if (!user) return
+    if (!user || !user.orgId) return
     await createStockTransaction(user.orgId, user.id, data)
     await loadStockLedger()
   }
@@ -231,7 +231,7 @@ export function StockLedgerPage() {
           isOpen={isTransactionFormOpen}
           onClose={() => setIsTransactionFormOpen(false)}
           onSubmit={handleCreateTransaction}
-          orgId={user.orgId}
+          orgId={user.orgId!}
         />
       )}
     </div>

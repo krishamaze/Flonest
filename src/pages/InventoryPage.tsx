@@ -27,7 +27,7 @@ export function InventoryPage() {
   const { showToast } = useToastDedupe()
 
   const loadOrg = useCallback(async () => {
-    if (!user) return
+    if (!user || !user.orgId) return
 
     try {
       const { data, error } = await supabase
@@ -44,7 +44,7 @@ export function InventoryPage() {
   }, [user])
 
   const loadInvoices = useCallback(async () => {
-    if (!user) return
+    if (!user || !user.orgId) return
 
     try {
       const data = await getInvoicesByOrg(user.orgId)
@@ -84,7 +84,7 @@ export function InventoryPage() {
   }, [invoices, filter])
 
   const handleDraftClick = async (invoiceId: string) => {
-    if (!user) return
+    if (!user || !user.orgId) return
     
     try {
       // Re-validate draft before opening
@@ -109,7 +109,7 @@ export function InventoryPage() {
   }
 
   const handleDeleteDraft = async (invoiceId: string) => {
-    if (!user) return
+    if (!user || !user.orgId) return
 
     try {
       await deleteDraft(invoiceId, user.orgId)
@@ -322,7 +322,7 @@ export function InventoryPage() {
             setSelectedDraftId(null)
             // Optionally navigate to invoice view
           }}
-          orgId={user.orgId}
+          orgId={user.orgId!}
           userId={user.id}
           org={org}
           draftInvoiceId={selectedDraftId || undefined}

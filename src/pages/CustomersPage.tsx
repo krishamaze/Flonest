@@ -18,7 +18,7 @@ export function CustomersPage() {
   const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null)
 
   const loadCustomers = useCallback(async () => {
-    if (!user) return
+    if (!user || !user.orgId) return
 
     setLoading(true)
     try {

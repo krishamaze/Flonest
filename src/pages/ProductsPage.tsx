@@ -24,7 +24,7 @@ export function ProductsPage() {
   const [availableCategories, setAvailableCategories] = useState<string[]>([])
 
   const loadProducts = useCallback(async () => {
-    if (!user) return
+    if (!user || !user.orgId) return
 
     setLoading(true)
     try {
@@ -96,7 +96,7 @@ export function ProductsPage() {
   const hasPrevPage = currentPage > 1
 
   const handleCreateProduct = async (data: any) => {
-    if (!user) return
+    if (!user || !user.orgId) return
     await createProduct(user.orgId, data)
     await loadProducts()
   }
@@ -341,14 +341,16 @@ export function ProductsPage() {
       )}
 
       {/* Product Form */}
-      <ProductForm
-        isOpen={isFormOpen}
-        onClose={handleFormClose}
-        onSubmit={editingProduct ? handleUpdateProduct : handleCreateProduct}
-        product={editingProduct}
-        orgId={user?.orgId}
-        userId={user?.id}
-      />
+      {user && (
+        <ProductForm
+          isOpen={isFormOpen}
+          onClose={handleFormClose}
+          onSubmit={editingProduct ? handleUpdateProduct : handleCreateProduct}
+          product={editingProduct}
+          orgId={user.orgId!}
+          userId={user.id}
+        />
+      )}
     </div>
   )
 }
