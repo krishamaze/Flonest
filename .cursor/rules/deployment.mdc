@@ -8,7 +8,6 @@ Never use vercel deploy, vercel --prod, or vercel.
 
 Always deploy using git push — it triggers Vercel automatically.
 main branch = production deployment.
-After push, check deployment status and fix any errors immediately.
 
 Use descriptive commit messages.
 
@@ -17,6 +16,22 @@ Only use Vercel CLI for: status, logs, env ls, inspect.
 No localhost dev — test directly in production.
 
 Desktop access allowed temporarily for Cursor automation.
+
+Post-Push Deployment Verification Workflow
+
+AFTER git push, ALWAYS:
+1. Verify deployment status using Vercel MCP:
+   - Use `list_deployments` to get latest deployment
+   - Use `get_deployment` to check deployment state
+   - Use `get_deployment_build_logs` to check for errors
+2. If deployment has errors:
+   - Check build logs for TypeScript errors, build failures, or other issues
+   - Fix errors immediately
+   - Commit and push fixes
+   - Verify deployment status again
+3. If deployment is READY:
+   - Check for any database migrations that need to be applied
+   - Verify application is working correctly
 
 Supabase Database Operations
 
@@ -29,12 +44,15 @@ For migrations:
 - List tables: ALWAYS use Supabase MCP `list_tables` tool
 - Generate TypeScript types: ALWAYS use Supabase MCP `generate_typescript_types` tool
 - View logs: ALWAYS use Supabase MCP `get_logs` tool
+- List migrations: ALWAYS use Supabase MCP `list_migrations` tool to check applied migrations
 
-When deploying:
+When deploying with database changes:
 1. Create migration file locally using CLI: `npm run supabase:migration:new <name>`
 2. Write migration SQL in the file
 3. Apply migration using Supabase MCP: Use `apply_migration` tool in Cursor chat
 4. Commit and push to git (Vercel deploys automatically)
+5. After push, verify deployment status using Vercel MCP
+6. Verify migration was applied using Supabase MCP `list_migrations` tool
 
 Never run `supabase db push`, `npx supabase db push`, or any CLI database push commands.
 
