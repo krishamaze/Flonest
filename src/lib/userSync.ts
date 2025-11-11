@@ -6,8 +6,6 @@ type Profile = Database['public']['Tables']['profiles']['Row']
 type Org = Database['public']['Tables']['orgs']['Row']
 type Membership = Database['public']['Tables']['memberships']['Row']
 type ProfileInsert = Database['public']['Tables']['profiles']['Insert']
-type OrgInsert = Database['public']['Tables']['orgs']['Insert']
-type MembershipInsert = Database['public']['Tables']['memberships']['Insert']
 
 export interface UserProfileWithOrg {
   profile: Profile
@@ -16,11 +14,12 @@ export interface UserProfileWithOrg {
 }
 
 /**
- * Sync authenticated user to profiles and memberships tables
- * This ensures every authenticated user has a profile and creates an org with membership
+ * Sync authenticated user to profiles table
+ * Creates profile if it doesn't exist, but does NOT auto-create orgs
+ * Users must be invited to an org or join via org code
  *
  * @param authUser - The authenticated user from Supabase Auth
- * @returns The user profile with org and membership or null if sync failed
+ * @returns The user profile with org and membership if user has membership, or null if no membership exists
  */
 export async function syncUserProfile(authUser: User): Promise<UserProfileWithOrg | null> {
   try {
@@ -87,54 +86,10 @@ export async function syncUserProfile(authUser: User): Promise<UserProfileWithOr
       }
     }
 
-    // No membership exists, create org and membership
-    console.log('No membership found, creating default org...')
-
-    const orgData: OrgInsert = {
-      name: `${authUser.email?.split('@')[0]}'s Company`,
-      slug: `${authUser.email?.split('@')[0]?.toLowerCase().replace(/[^a-z0-9]+/g, '-')}-${Date.now()}`,
-      state: 'Default', // Default state, user can update later
-      gst_enabled: false,
-    }
-
-    const { data: newOrg, error: createOrgError } = await supabase
-      .from('orgs')
-      .insert([orgData])
-      .select()
-      .single()
-
-    if (createOrgError || !newOrg) {
-      console.error('Error creating org:', createOrgError)
-      throw createOrgError
-    }
-
-    console.log('Created new org:', newOrg)
-
-    // Create membership
-    const membershipData: MembershipInsert = {
-      profile_id: authUser.id,
-      org_id: newOrg.id,
-      role: 'owner', // First user is always owner
-    }
-
-    const { data: newMembership, error: createMembershipError } = await supabase
-      .from('memberships')
-      .insert([membershipData])
-      .select()
-      .single()
-
-    if (createMembershipError || !newMembership) {
-      console.error('Error creating membership:', createMembershipError)
-      throw createMembershipError
-    }
-
-    console.log('Successfully created membership:', newMembership)
-
-    return {
-      profile,
-      membership: newMembership,
-      org: newOrg,
-    }
+    // No membership exists - user must be invited or join an org
+    // Auto-org creation is disabled in production
+    console.log('No membership found - user must be invited to an org or join via org code')
+    return null
   } catch (error) {
     console.error('Error syncing user profile:', error)
     return null

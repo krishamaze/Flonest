@@ -20,8 +20,8 @@ export type InvoiceStatus = 'draft' | 'finalized' | 'cancelled'
 export interface AuthUser {
   id: string
   email: string
-  orgId: string
-  role: UserRole
+  orgId: string | null // null if user hasn't joined an org yet
+  role: UserRole | null // null if user hasn't joined an org yet
   isInternal: boolean
 }
 

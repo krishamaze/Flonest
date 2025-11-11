@@ -266,7 +266,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       const membership = memberships && memberships.length > 0 ? memberships[0] : null
 
-      // If membership doesn't exist, sync it automatically
+      // If membership doesn't exist, sync profile (but don't auto-create org)
       if (!membership) {
         console.log('User profile not found, syncing...')
         
@@ -280,6 +280,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
 
         if (syncedData && syncedData.profile && syncedData.membership && syncedData.org) {
+          // User has org and membership
           const userData = {
             id: syncedData.profile.id,
             email: syncedData.profile.email,
@@ -288,12 +289,44 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             isInternal: syncedData.profile.is_internal || false,
           }
           setUser(userData)
-          setConnectionError(false) // Clear connection error on successful load
-          // Cache successful session
+          setConnectionError(false)
+          const currentSession = await supabase.auth.getSession().then(({ data }) => data.session)
+          saveCachedSession(currentSession, userData)
+        } else if (syncedData && syncedData.profile) {
+          // User has profile but no org - needs to join an org
+          const userData = {
+            id: syncedData.profile.id,
+            email: syncedData.profile.email,
+            orgId: null,
+            role: null,
+            isInternal: syncedData.profile.is_internal || false,
+          }
+          setUser(userData)
+          setConnectionError(false)
           const currentSession = await supabase.auth.getSession().then(({ data }) => data.session)
           saveCachedSession(currentSession, userData)
         } else {
-          console.error('Failed to sync user profile')
+          // Failed to sync - check if profile exists at least
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('id, email, is_internal')
+            .eq('id', authUser.id)
+            .maybeSingle()
+
+          if (profile) {
+            // Profile exists but no membership - user needs to join org
+            const userData = {
+              id: profile.id,
+              email: profile.email,
+              orgId: null,
+              role: null,
+              isInternal: profile.is_internal || false,
+            }
+            setUser(userData)
+            setConnectionError(false)
+          } else {
+            console.error('Failed to sync user profile - no profile found')
+          }
         }
     } else if (membership && membership.profiles && membership.orgs) {
       // Membership exists, use it
@@ -345,7 +378,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       password,
     })
     if (error) throw error
-    // Note: User profile and membership will be created automatically on first login via syncUserProfile
+    // Note: User profile will be created on first login via syncUserProfile
+    // User must be invited to an org or join via org code - no auto-org creation
   }
 
   const signOut = async () => {
