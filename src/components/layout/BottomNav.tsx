@@ -45,7 +45,6 @@ export function BottomNav() {
 
   // For internal users, show only reviewer route
   if (user?.isInternal) {
-    const isReviewerActive = location.pathname.startsWith('/reviewer')
     return (
       <nav 
         className="fixed bottom-0 left-0 right-0 z-40 border-t border-neutral-200 bg-bg-card shadow-sm safe-bottom"
