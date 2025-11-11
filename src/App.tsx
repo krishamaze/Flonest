@@ -11,7 +11,7 @@ import { UpdateNotification } from './components/pwa/UpdateNotification'
 import { FRONTEND_VERSION } from './lib/api/version'
 import { ProtectedRoute, ReviewerRoute } from './components/ProtectedRoute'
 import { RoleProtectedRoute } from './components/RoleProtectedRoute'
-import { MANAGE_PRODUCTS, VIEW_FINANCIALS, MANAGE_INVENTORY } from './lib/permissions'
+import { MANAGE_PRODUCTS } from './lib/permissions'
 
 // Lazy load pages for code splitting
 const LoginPage = lazy(() => import('./pages/LoginPage').then(m => ({ default: m.LoginPage })))

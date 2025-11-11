@@ -30,7 +30,6 @@ export function DashboardPage() {
   const [stats, setStats] = useState<DashboardStats | null>(null)
   const [loading, setLoading] = useState(true)
   const [pendingMemberships, setPendingMemberships] = useState<any[]>([])
-  const [loadingPending, setLoadingPending] = useState(false)
   const [showAddStaffForm, setShowAddStaffForm] = useState(false)
 
   const loadDashboardStats = useCallback(async () => {
@@ -86,14 +85,11 @@ export function DashboardPage() {
   const loadPendingMemberships = useCallback(async () => {
     if (!user || !user.orgId || !canManageOrgSettings(user)) return
 
-    setLoadingPending(true)
     try {
       const pending = await getPendingMemberships(user.orgId!)
       setPendingMemberships(pending)
     } catch (error) {
       console.error('Error loading pending memberships:', error)
-    } finally {
-      setLoadingPending(false)
     }
   }, [user])
 

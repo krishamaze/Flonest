@@ -3,7 +3,7 @@ import { Navigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { AccessDenied } from './ui/AccessDenied'
 import { hasPermission, type Permission } from '../lib/permissions'
-import type { UserRole } from '../types'
+import type { UserRole, AuthUser } from '../types'
 
 interface RoleProtectedRouteProps {
   children: ReactNode
@@ -76,7 +76,7 @@ export function RoleProtectedRoute({
  * Helper function to check if user can access a route
  */
 export function canAccessRoute(
-  user: { role: UserRole | null; isInternal: boolean } | null,
+  user: AuthUser | null,
   requiredRole?: UserRole | UserRole[],
   requiredPermission?: Permission
 ): boolean {

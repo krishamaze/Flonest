@@ -9,7 +9,6 @@ import { useAuth } from '../../contexts/AuthContext'
 import { createStaffMembership } from '../../lib/api/memberships'
 import { supabase } from '../../lib/supabase'
 import { toast } from 'react-toastify'
-import { LoadingSpinner } from '../ui/LoadingSpinner'
 
 interface AddStaffFormProps {
   isOpen: boolean
@@ -37,7 +36,8 @@ export function AddStaffForm({ isOpen, onClose, onSuccess }: AddStaffFormProps) 
     if (!user?.orgId) return
 
     try {
-      const { data, error } = await supabase
+      // Query branches table (using type assertion since types may not be updated yet)
+      const { data, error } = await (supabase as any)
         .from('branches')
         .select('*')
         .eq('org_id', user.orgId)
@@ -55,6 +55,7 @@ export function AddStaffForm({ isOpen, onClose, onSuccess }: AddStaffFormProps) 
       }
     } catch (error) {
       console.error('Error loading branches:', error)
+      toast.error('Failed to load branches')
     }
   }
 
@@ -86,7 +87,7 @@ export function AddStaffForm({ isOpen, onClose, onSuccess }: AddStaffFormProps) 
         .from('memberships')
         .select('id')
         .eq('profile_id', data.id)
-        .eq('org_id', user?.orgId)
+        .eq('org_id', user?.orgId || '')
         .maybeSingle()
 
       if (existingMembership) {
@@ -118,9 +119,14 @@ export function AddStaffForm({ isOpen, onClose, onSuccess }: AddStaffFormProps) 
       return
     }
 
+    if (!userFound?.id || !branchId) {
+      toast.error('Missing required information')
+      return
+    }
+
     setLoading(true)
     try {
-      await createStaffMembership(userFound.id, branchId, userFound.email)
+      await createStaffMembership(userFound.id, branchId, userFound.email || '')
       toast.success(
         user?.role === 'owner'
           ? 'Staff member added successfully'
@@ -184,14 +190,14 @@ export function AddStaffForm({ isOpen, onClose, onSuccess }: AddStaffFormProps) 
             value={branchId}
             onChange={(e) => setBranchId(e.target.value)}
             required
-          >
-            <option value="">Select a branch</option>
-            {branches.map((branch) => (
-              <option key={branch.id} value={branch.id}>
-                {branch.name}
-              </option>
-            ))}
-          </Select>
+            options={[
+              { value: '', label: 'Select a branch' },
+              ...branches.map((branch: any) => ({
+                value: branch.id,
+                label: branch.name,
+              })),
+            ]}
+          />
         </div>
       )}
 

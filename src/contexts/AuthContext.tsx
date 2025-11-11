@@ -303,7 +303,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               email: syncedProfile.email,
               orgId: syncedData.org.id,
               role: (syncedData.membership.role || 'staff') as 'owner' | 'branch_head' | 'staff',
-              branchId: syncedData.membership.branch_id || null,
+              branchId: (syncedData.membership as any).branch_id || null,
               isInternal: false,
             }
             setUser(userData)
@@ -392,7 +392,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           email: membershipProfile.email,
           orgId: org.id,
           role: (membership.role || 'staff') as 'owner' | 'branch_head' | 'staff',
-          branchId: membership.branch_id || null,
+          branchId: (membership as any).branch_id || null,
           isInternal: membershipProfile.is_internal || false,
         }
         setUser(userData)
