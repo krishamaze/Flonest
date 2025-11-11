@@ -23,15 +23,18 @@ AFTER git push, ALWAYS:
 1. Verify deployment status using Vercel MCP:
    - Use `list_deployments` to get latest deployment
    - Use `get_deployment` to check deployment state
-   - Use `get_deployment_build_logs` to check for errors
+   - If state is BUILDING, wait and check again until state is READY or ERROR
+   - Use `get_deployment_build_logs` to check for errors if needed
 2. If deployment has errors:
    - Check build logs for TypeScript errors, build failures, or other issues
    - Fix errors immediately
    - Commit and push fixes
-   - Verify deployment status again
+   - Verify deployment status again (wait for BUILDING to complete)
 3. If deployment is READY:
+   - Deployment is successful and live
    - Check for any database migrations that need to be applied
    - Verify application is working correctly
+4. NEVER consider deployment complete until state is READY (not BUILDING)
 
 Supabase Database Operations
 
