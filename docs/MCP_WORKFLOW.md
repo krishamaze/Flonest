@@ -1,6 +1,8 @@
 # MCP-First Workflow Guide
 
-This project uses **MCP (Model Context Protocol)** as the primary method for Supabase and GitHub operations. Use CLI only when MCP cannot perform the task.
+**IMPORTANT: Always use Supabase MCP for database operations. Never use Supabase CLI for applying migrations or database changes.**
+
+This project uses **MCP (Model Context Protocol)** as the primary method for Supabase and GitHub operations. Use CLI only when MCP cannot perform the task (e.g., creating migration files).
 
 ## Quick Reference
 
@@ -52,10 +54,11 @@ npm run supabase:migration:new add_new_feature
 
 **Step 2: Write SQL in the migration file**
 
-**Step 3: Apply Migration (Use MCP)**
+**Step 3: Apply Migration (ALWAYS use MCP - NEVER use CLI)**
 ```
-In Cursor: "Apply migration add_new_feature"
+In Cursor: "Apply migration add_new_feature using Supabase MCP"
 ```
+**Never run:** `npm run supabase:db:push` or `supabase db push` - always use MCP `apply_migration` tool.
 
 **Step 4: Generate Types (Use MCP)**
 ```
@@ -75,4 +78,6 @@ In Cursor: "Generate TypeScript types"
 See:
 - [MCP Setup Guide](../.cursor/MCP_SETUP.md) - MCP configuration
 - [Supabase CLI Setup](../SUPABASE_CLI_SETUP.md) - CLI setup (for tasks MCP can't do)
+
+
 

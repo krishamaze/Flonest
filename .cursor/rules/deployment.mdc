@@ -18,6 +18,26 @@ No localhost dev — test directly in production.
 
 Desktop access allowed temporarily for Cursor automation.
 
+Supabase Database Operations
+
+ALWAYS use Supabase MCP for database operations. Never use Supabase CLI commands for migrations or database changes.
+
+For migrations:
+- Create migration file: Use CLI only (`npm run supabase:migration:new <name>`) to create the file
+- Apply migration: ALWAYS use Supabase MCP `apply_migration` tool, never use `supabase db push` or CLI commands
+- Query database: ALWAYS use Supabase MCP `execute_sql` tool
+- List tables: ALWAYS use Supabase MCP `list_tables` tool
+- Generate TypeScript types: ALWAYS use Supabase MCP `generate_typescript_types` tool
+- View logs: ALWAYS use Supabase MCP `get_logs` tool
+
+When deploying:
+1. Create migration file locally using CLI: `npm run supabase:migration:new <name>`
+2. Write migration SQL in the file
+3. Apply migration using Supabase MCP: Use `apply_migration` tool in Cursor chat
+4. Commit and push to git (Vercel deploys automatically)
+
+Never run `supabase db push`, `npx supabase db push`, or any CLI database push commands.
+
 Development
 
 

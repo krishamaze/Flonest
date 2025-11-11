@@ -38,15 +38,18 @@ This links your local project to the cloud Supabase project using direct connect
 
 ## MCP vs CLI: When to Use What
 
-### ✅ Use MCP (Recommended for daily operations)
+**🚨 CRITICAL: Always use Supabase MCP for database operations. Never use CLI commands like `supabase db push` for migrations.**
 
-| Operation | MCP Method | CLI Alternative |
-|-----------|-----------|-----------------|
-| Apply migrations | Use Cursor chat: "Apply migration X" | `npm run supabase:db:push` |
-| Generate TypeScript types | Use Cursor chat: "Generate TypeScript types" | `npm run supabase:types` |
-| Query database | Use Cursor chat: "Query my database..." | N/A |
-| List tables | Use Cursor chat: "List my tables" | N/A |
-| View logs | Use Cursor chat: "Show Supabase logs" | N/A |
+### ✅ Use MCP (REQUIRED for database operations)
+
+| Operation | MCP Method | CLI Alternative (DO NOT USE) |
+|-----------|-----------|----------------------------|
+| **Apply migrations** | **ALWAYS use MCP:** "Apply migration X using Supabase MCP" | ❌ `npm run supabase:db:push` - NEVER USE |
+| **Generate TypeScript types** | Use Cursor chat: "Generate TypeScript types" | ❌ `npm run supabase:types` - Use MCP instead |
+| **Query database** | Use Cursor chat: "Query my database..." | N/A |
+| **List tables** | Use Cursor chat: "List my tables" | N/A |
+| **View logs** | Use Cursor chat: "Show Supabase logs" | N/A |
+| **Execute SQL** | Use Cursor chat: "Execute SQL: SELECT..." | N/A |
 
 **Benefits:**
 - Faster workflow (no terminal needed)
@@ -54,13 +57,18 @@ This links your local project to the cloud Supabase project using direct connect
 - Direct database access
 - See [MCP Setup Guide](.cursor/MCP_SETUP.md) for details
 
-### ⚙️ Use CLI (Required for specific tasks)
+### ⚙️ Use CLI (ONLY for file creation tasks)
 
 | Operation | CLI Command | Why CLI is needed |
 |-----------|-------------|-------------------|
 | Create migration file | `npm run supabase:migration:new <name>` | Creates local file in `supabase/migrations/` |
 | Generate schema diff | `npm run supabase:db:diff` | Compares local vs remote schema |
 | Check status | `npm run supabase:status` | Shows local Supabase status |
+
+**⚠️ Never use CLI for:**
+- ❌ Applying migrations (`supabase db push`)
+- ❌ Running SQL queries
+- ❌ Generating types (use MCP instead)
 
 ## Available Commands
 
