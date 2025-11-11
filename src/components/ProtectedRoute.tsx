@@ -1,6 +1,8 @@
-import { Navigate } from 'react-router-dom'
+import { Navigate, useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { LoadingSpinner } from './ui/LoadingSpinner'
+import { Button } from './ui/Button'
+import { supabase } from '../lib/supabase'
 
 /**
  * Protected route that requires authentication and org membership
@@ -24,24 +26,49 @@ export function ProtectedRoute({ children }: { children: React.ReactNode }) {
   // Redirect to onboarding (org join/invite flow) when implemented
   // For now, show a message that they need to be invited
   if (!user.orgId) {
-    return (
-      <div className="viewport-height flex items-center justify-center bg-bg-page safe-top safe-bottom p-spacing-lg">
-        <div className="max-w-md w-full text-center">
-          <h1 className="text-2xl font-bold text-text-primary mb-spacing-md">
-            Organization Required
-          </h1>
-          <p className="text-text-secondary mb-spacing-lg">
-            You need to be invited to an organization or join one using an organization code.
-          </p>
-          <p className="text-sm text-text-muted">
-            Please contact your administrator to receive an invitation.
-          </p>
-        </div>
-      </div>
-    )
+    return <OrganizationRequiredPage />
   }
 
   return <>{children}</>
+}
+
+/**
+ * Organization Required page - shown when user is authenticated but has no org
+ */
+function OrganizationRequiredPage() {
+  const navigate = useNavigate()
+  const { user } = useAuth()
+
+  const handleSignOut = async () => {
+    await supabase.auth.signOut()
+    navigate('/login', { replace: true })
+  }
+
+  return (
+    <div className="viewport-height flex items-center justify-center bg-bg-page safe-top safe-bottom p-spacing-lg">
+      <div className="max-w-md w-full text-center">
+        <h1 className="text-2xl font-bold text-text-primary mb-spacing-md">
+          Organization Required
+        </h1>
+        <p className="text-text-secondary mb-spacing-lg">
+          You need to be invited to an organization or join one using an organization code.
+        </p>
+        <p className="text-sm text-text-muted mb-spacing-lg">
+          Please contact your administrator to receive an invitation.
+        </p>
+        {user && (
+          <Button
+            variant="secondary"
+            size="md"
+            onClick={handleSignOut}
+            className="w-full"
+          >
+            Sign out
+          </Button>
+        )}
+      </div>
+    </div>
+  )
 }
 
 /**

@@ -15,17 +15,31 @@ export function LoginPage() {
   const [error, setError] = useState<string | null>(null)
   const [message, setMessage] = useState<string | null>(null)
 
+  const handlePasswordChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    // Block spaces in password field
+    const value = e.target.value.replace(/\s/g, '')
+    setPassword(value)
+  }
+
+  const handlePasswordBlur = () => {
+    // Trim leading/trailing spaces on blur
+    setPassword((prev) => prev.trim())
+  }
+
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     setLoading(true)
     setError(null)
     setMessage(null)
 
+    // Trim password before submission
+    const trimmedPassword = password.trim()
+
     try {
       if (view === 'sign_in') {
         const { error } = await supabase.auth.signInWithPassword({
           email,
-          password,
+          password: trimmedPassword,
         })
         if (error) throw error
         // Navigation will happen automatically via AuthContext
@@ -33,7 +47,7 @@ export function LoginPage() {
       } else if (view === 'sign_up') {
         const { error } = await supabase.auth.signUp({
           email,
-          password,
+          password: trimmedPassword,
         })
         if (error) throw error
         setMessage('Account created! Check your email for the confirmation link.')
@@ -120,7 +134,8 @@ export function LoginPage() {
                   label="Password"
                   placeholder="••••••••"
                   value={password}
-                  onChange={(e) => setPassword(e.target.value)}
+                  onChange={handlePasswordChange}
+                  onBlur={handlePasswordBlur}
                   required
                   disabled={loading}
                   minLength={6}
