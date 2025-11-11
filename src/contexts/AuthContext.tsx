@@ -237,16 +237,126 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const loadUserProfile = async (authUser: User, useTimeout = true) => {
     try {
-      let membershipsResult
-
+      // First, check if user is internal - short-circuit if so
+      let profileQuery
       if (useTimeout) {
-        // Wrap database query in timeout
+        const queryPromise = supabase
+          .from('profiles')
+          .select('id, email, is_internal')
+          .eq('id', authUser.id)
+          .maybeSingle()
+        const timeoutPromise = createTimeoutPromise(CONNECTION_TIMEOUT)
+        profileQuery = await Promise.race([queryPromise, timeoutPromise])
+      } else {
+        profileQuery = await supabase
+          .from('profiles')
+          .select('id, email, is_internal')
+          .eq('id', authUser.id)
+          .maybeSingle()
+      }
+
+      const { data: profile, error: profileError } = profileQuery as {
+        data: any | null
+        error: any
+      }
+
+      if (profileError) throw profileError
+
+      // If profile doesn't exist, sync it first
+      if (!profile) {
+        console.log('User profile not found, syncing...')
+        let syncedData
+        if (useTimeout) {
+          const syncPromise = syncUserProfile(authUser)
+          const timeoutPromise = createTimeoutPromise(CONNECTION_TIMEOUT)
+          syncedData = await Promise.race([syncPromise, timeoutPromise])
+        } else {
+          syncedData = await syncUserProfile(authUser)
+        }
+
+        if (syncedData && syncedData.profile) {
+          // Use synced profile data
+          const syncedProfile = syncedData.profile
+          const isInternal = syncedProfile.is_internal || false
+
+          // Short-circuit for internal users - skip membership entirely
+          if (isInternal) {
+            const userData = {
+              id: syncedProfile.id,
+              email: syncedProfile.email,
+              orgId: null,
+              role: null,
+              isInternal: true,
+            }
+            setUser(userData)
+            setConnectionError(false)
+            const currentSession = await supabase.auth.getSession().then(({ data }) => data.session)
+            saveCachedSession(currentSession, userData)
+            return
+          }
+
+          // For non-internal users, check if they have org/membership
+          if (syncedData.membership && syncedData.org) {
+            const userData = {
+              id: syncedProfile.id,
+              email: syncedProfile.email,
+              orgId: syncedData.org.id,
+              role: (syncedData.membership.role || 'viewer') as 'owner' | 'staff' | 'viewer',
+              isInternal: false,
+            }
+            setUser(userData)
+            setConnectionError(false)
+            const currentSession = await supabase.auth.getSession().then(({ data }) => data.session)
+            saveCachedSession(currentSession, userData)
+            return
+          }
+
+          // Non-internal user with no org
+          const userData = {
+            id: syncedProfile.id,
+            email: syncedProfile.email,
+            orgId: null,
+            role: null,
+            isInternal: false,
+          }
+          setUser(userData)
+          setConnectionError(false)
+          const currentSession = await supabase.auth.getSession().then(({ data }) => data.session)
+          saveCachedSession(currentSession, userData)
+          return
+        } else {
+          console.error('Failed to sync user profile - no profile found')
+          return
+        }
+      }
+
+      // Profile exists - check if internal
+      const isInternal = profile.is_internal || false
+
+      // Short-circuit for internal users - skip membership query entirely
+      if (isInternal) {
+        const userData = {
+          id: profile.id,
+          email: profile.email,
+          orgId: null,
+          role: null,
+          isInternal: true,
+        }
+        setUser(userData)
+        setConnectionError(false)
+        const currentSession = await supabase.auth.getSession().then(({ data }) => data.session)
+        saveCachedSession(currentSession, userData)
+        return
+      }
+
+      // For non-internal users, load membership
+      let membershipsResult
+      if (useTimeout) {
         const queryPromise = supabase
           .from('memberships')
           .select('*, profiles(*), orgs(*)')
           .eq('profile_id', authUser.id)
           .limit(1)
-
         const timeoutPromise = createTimeoutPromise(CONNECTION_TIMEOUT)
         membershipsResult = await Promise.race([queryPromise, timeoutPromise])
       } else {
@@ -266,85 +376,35 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       const membership = memberships && memberships.length > 0 ? memberships[0] : null
 
-      // If membership doesn't exist, sync profile (but don't auto-create org)
-      if (!membership) {
-        console.log('User profile not found, syncing...')
-        
-        let syncedData
-        if (useTimeout) {
-          const syncPromise = syncUserProfile(authUser)
-          const timeoutPromise = createTimeoutPromise(CONNECTION_TIMEOUT)
-          syncedData = await Promise.race([syncPromise, timeoutPromise])
-        } else {
-          syncedData = await syncUserProfile(authUser)
+      if (membership && membership.profiles && membership.orgs) {
+        // Membership exists, use it
+        const membershipProfile = membership.profiles as any
+        const org = membership.orgs as any
+        const userData = {
+          id: membershipProfile.id,
+          email: membershipProfile.email,
+          orgId: org.id,
+          role: (membership.role || 'viewer') as 'owner' | 'staff' | 'viewer',
+          isInternal: membershipProfile.is_internal || false,
         }
-
-        if (syncedData && syncedData.profile && syncedData.membership && syncedData.org) {
-          // User has org and membership
-          const userData = {
-            id: syncedData.profile.id,
-            email: syncedData.profile.email,
-            orgId: syncedData.org.id,
-            role: (syncedData.membership.role || 'viewer') as 'owner' | 'staff' | 'viewer',
-            isInternal: syncedData.profile.is_internal || false,
-          }
-          setUser(userData)
-          setConnectionError(false)
-          const currentSession = await supabase.auth.getSession().then(({ data }) => data.session)
-          saveCachedSession(currentSession, userData)
-        } else if (syncedData && syncedData.profile) {
-          // User has profile but no org - needs to join an org
-          const userData = {
-            id: syncedData.profile.id,
-            email: syncedData.profile.email,
-            orgId: null,
-            role: null,
-            isInternal: syncedData.profile.is_internal || false,
-          }
-          setUser(userData)
-          setConnectionError(false)
-          const currentSession = await supabase.auth.getSession().then(({ data }) => data.session)
-          saveCachedSession(currentSession, userData)
-        } else {
-          // Failed to sync - check if profile exists at least
-          const { data: profile } = await supabase
-            .from('profiles')
-            .select('id, email, is_internal')
-            .eq('id', authUser.id)
-            .maybeSingle()
-
-          if (profile) {
-            // Profile exists but no membership - user needs to join org
-            const userData = {
-              id: profile.id,
-              email: profile.email,
-              orgId: null,
-              role: null,
-              isInternal: profile.is_internal || false,
-            }
-            setUser(userData)
-            setConnectionError(false)
-          } else {
-            console.error('Failed to sync user profile - no profile found')
-          }
+        setUser(userData)
+        setConnectionError(false)
+        const currentSession = await supabase.auth.getSession().then(({ data }) => data.session)
+        saveCachedSession(currentSession, userData)
+      } else {
+        // Non-internal user with no membership
+        const userData = {
+          id: profile.id,
+          email: profile.email,
+          orgId: null,
+          role: null,
+          isInternal: false,
         }
-    } else if (membership && membership.profiles && membership.orgs) {
-      // Membership exists, use it
-      const profile = membership.profiles as any
-      const org = membership.orgs as any
-      const userData = {
-        id: profile.id,
-        email: profile.email,
-        orgId: org.id,
-        role: (membership.role || 'viewer') as 'owner' | 'staff' | 'viewer',
-        isInternal: profile.is_internal || false,
+        setUser(userData)
+        setConnectionError(false)
+        const currentSession = await supabase.auth.getSession().then(({ data }) => data.session)
+        saveCachedSession(currentSession, userData)
       }
-      setUser(userData)
-      setConnectionError(false) // Clear connection error on successful load
-      // Cache successful session
-      const currentSession = await supabase.auth.getSession().then(({ data }) => data.session)
-      saveCachedSession(currentSession, userData)
-    }
     } catch (error) {
       if (import.meta.env.DEV) {
         console.warn('[Auth Timeout] Error loading user profile:', error)

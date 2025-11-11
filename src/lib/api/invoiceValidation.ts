@@ -24,17 +24,25 @@ export interface BlockedInvoiceFilters {
 /**
  * Get blocked invoices (invoices with validation errors)
  * Internal users only - queries invoices with products that aren't approved or missing HSN
+ * 
+ * Note: For internal users, RLS policy allows SELECT on all invoices regardless of org_id filter.
+ * The org_id filter only applies to non-internal users, but this function is only called from
+ * reviewer pages (internal-only), so internal users will see all blocked invoices across all orgs.
  */
 export async function getBlockedInvoices(
   filters?: BlockedInvoiceFilters
 ): Promise<BlockedInvoice[]> {
   // First, get all draft invoices (these are the ones that might be blocked)
+  // RLS policy invoices_read_internal allows internal users to SELECT all invoices
+  // Org filter is ignored for internal users via RLS, but can be used for filtering if needed
   let invoiceQuery = supabase
     .from('invoices')
     .select('*')
     .eq('status', 'draft')
     .order('created_at', { ascending: false })
 
+  // Apply org filter if provided (for non-internal users or specific org filtering)
+  // Internal users will see all invoices regardless due to RLS policy
   if (filters?.org_id) {
     invoiceQuery = invoiceQuery.eq('org_id', filters.org_id)
   }

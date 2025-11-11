@@ -65,6 +65,12 @@ export async function syncUserProfile(authUser: User): Promise<UserProfileWithOr
       console.log('Profile already exists:', profile)
     }
 
+    // Skip membership check for internal users - they don't need orgs
+    if (profile.is_internal) {
+      console.log('Internal user detected - skipping membership check')
+      return null
+    }
+
     // Check if user has any memberships
     const { data: existingMembership, error: membershipError } = await supabase
       .from('memberships')

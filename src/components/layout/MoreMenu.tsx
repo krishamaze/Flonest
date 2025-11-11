@@ -34,9 +34,9 @@ export function MoreMenu({ isOpen, onClose }: MoreMenuProps) {
   if (!isOpen) return null
 
   // Build menu items based on user role
-  const moreMenuItems = [...baseMenuItems]
+  const moreMenuItems: typeof baseMenuItems = []
 
-  // Add reviewer link for internal users
+  // Internal users only see reviewer menu (no org routes)
   if (user?.isInternal) {
     moreMenuItems.push({
       to: '/reviewer',
@@ -44,10 +44,11 @@ export function MoreMenu({ isOpen, onClose }: MoreMenuProps) {
       icon: ClipboardDocumentCheckIcon,
       description: 'Review product submissions',
     })
-  }
-
-  // Add pending products link for org owners
-  if (user && !user.isInternal) {
+  } else {
+    // Org users see org routes
+    moreMenuItems.push(...baseMenuItems)
+    
+    // Add pending products link for org users
     moreMenuItems.push({
       to: '/pending-products',
       label: 'My Submissions',

@@ -22,6 +22,13 @@ export function ProtectedRoute({ children }: { children: React.ReactNode }) {
     return <Navigate to="/login" replace />
   }
 
+  // Internal users don't need org membership - allow them through
+  // They will be redirected to /reviewer in App.tsx if they try to access org routes
+  if (user.isInternal) {
+    return <>{children}</>
+  }
+
+  // Non-internal users must have an org
   // User is authenticated but hasn't joined an org yet
   // Redirect to onboarding (org join/invite flow) when implemented
   // For now, show a message that they need to be invited

@@ -1,5 +1,5 @@
 import { lazy, Suspense, useEffect } from 'react'
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import { ToastContainer } from 'react-toastify'
 import { AuthProvider, useAuth } from './contexts/AuthContext'
 import { MainLayout } from './components/layout/MainLayout'
@@ -21,6 +21,25 @@ const CustomersPage = lazy(() => import('./pages/CustomersPage').then(m => ({ de
 const ReviewerDashboardPage = lazy(() => import('./pages/ReviewerDashboardPage').then(m => ({ default: m.ReviewerDashboardPage })))
 const NotificationsPage = lazy(() => import('./pages/NotificationsPage').then(m => ({ default: m.NotificationsPage })))
 const PendingProductsPage = lazy(() => import('./pages/PendingProductsPage').then(m => ({ default: m.PendingProductsPage })))
+
+/**
+ * Redirect internal users away from org routes to /reviewer
+ */
+function InternalUserRedirect({ children }: { children: React.ReactNode }) {
+  const { user } = useAuth()
+  const location = useLocation()
+
+  // If internal user tries to access org routes, redirect to reviewer
+  if (user?.isInternal && location.pathname !== '/reviewer' && !location.pathname.startsWith('/reviewer/')) {
+    // Check if they're on an org route (not reviewer route)
+    const orgRoutes = ['/', '/products', '/inventory', '/stock-ledger', '/customers', '/notifications', '/pending-products']
+    if (orgRoutes.includes(location.pathname)) {
+      return <Navigate to="/reviewer" replace />
+    }
+  }
+
+  return <>{children}</>
+}
 
 function AppRoutes() {
   const { user, loading, connectionError, retrying, retryConnection } = useAuth()
@@ -49,19 +68,20 @@ function AppRoutes() {
       }
     >
       <PageTransition>
-        <Routes>
-          <Route
-            path="/login"
-            element={user ? <Navigate to="/" replace /> : <LoginPage />}
-          />
-          <Route
-            path="/"
-            element={
-              <ProtectedRoute>
-                <MainLayout />
-              </ProtectedRoute>
-            }
-          >
+        <InternalUserRedirect>
+          <Routes>
+            <Route
+              path="/login"
+              element={user ? (user.isInternal ? <Navigate to="/reviewer" replace /> : <Navigate to="/" replace />) : <LoginPage />}
+            />
+            <Route
+              path="/"
+              element={
+                <ProtectedRoute>
+                  <MainLayout />
+                </ProtectedRoute>
+              }
+            >
             <Route index element={<DashboardPage />} />
             <Route path="products" element={<ProductsPage />} />
             <Route path="inventory" element={<InventoryPage />} />
@@ -84,8 +104,9 @@ function AppRoutes() {
             <Route path="blocked-invoices" element={<ReviewerDashboardPage />} />
             <Route path="monitor" element={<ReviewerDashboardPage />} />
           </Route>
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
+        </InternalUserRedirect>
       </PageTransition>
     </Suspense>
   )
