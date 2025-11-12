@@ -107,7 +107,7 @@ export function SetupPage() {
       const slug = await generateUniqueSlug(formData.name.trim(), user.orgId)
 
       // Prepare update data
-      const gstNumber = formData.gst_number.trim() || null
+      const gstNumber = formData.gst_number.trim() || undefined
       const updateData = {
         name: formData.name.trim(),
         state: formData.state,
