@@ -50,3 +50,93 @@ Internal users and users with existing memberships are unaffected.
    - Banner should disappear
    - Refresh page - banner should not reappear
 
+---
+
+## Phase 1.5: Business Setup Flow
+
+After auto-org creation, new owners are guided through a mandatory setup flow to collect essential organization information before accessing the dashboard.
+
+### Implementation Details
+
+**Setup Detection:**
+- In `ProtectedRoute`, after verifying user has `orgId`, the org data is fetched
+- Setup is required if `org.state === "Default"` (the default value from auto-creation)
+- Internal users bypass this check entirely (short-circuited before org fetch)
+- Users without orgs still see "Organization Required" page (existing behavior)
+
+**Setup Page (`/setup`):**
+- Standalone route (not wrapped in MainLayout) accessible to authenticated users
+- Redirects to dashboard if setup already completed (prevents infinite loop)
+- Form fields:
+  - **Organization Name** (required): Business name
+  - **State** (required): Dropdown with all Indian states and union territories
+  - **Pincode** (required): 6-digit postal code with numeric validation
+  - **GST Number** (optional): 15-character alphanumeric GSTIN (if registered)
+- Form validation:
+  - All required fields must be filled
+  - Pincode must be exactly 6 digits (`/^\d{6}$/`)
+  - GST number (if provided) must be 15 characters alphanumeric (`/^[A-Z0-9]{15}$/i`)
+- On submit:
+  - Generates unique slug from organization name (lowercase, hyphens, alphanumeric only)
+  - Checks slug uniqueness and appends random suffix if collision detected
+  - Updates org with: `name`, `state`, `pincode`, `gst_number`, `gst_enabled` (true if GST provided), and `slug`
+  - Shows success toast and redirects to dashboard
+
+**Database Changes:**
+- Added `pincode VARCHAR(6)` column to `orgs` table (nullable for backward compatibility)
+- Optional constraint can be added later: `CHECK (pincode IS NULL OR pincode ~ '^[0-9]{6}$')`
+
+**Slug Uniqueness:**
+- Base slug generated from org name: lowercase, spaces → hyphens, special chars removed
+- If slug exists, appends 4-character random suffix
+- If still collision (very unlikely), uses timestamp-based suffix
+- Ensures uniqueness for future multi-org support
+
+### User Flow
+
+1. User signs up → Auto-org created with `state = "Default"`
+2. User logs in → `AuthContext` loads user with org
+3. User navigates to `/` → `ProtectedRoute` checks `org.state === "Default"`
+4. If true → Redirect to `/setup`
+5. User fills form → Submits → Org updated
+6. Redirect to `/` → Dashboard loads normally
+
+### Edge Cases
+
+- **Internal users**: Skip setup check (bypass org fetch entirely)
+- **Users without org**: Still show "Organization Required" page (existing behavior)
+- **Setup already completed**: Allow normal dashboard access
+- **Direct `/setup` access when not needed**: Redirects to dashboard (prevents infinite loop)
+- **Form validation errors**: Show inline error messages
+- **Network errors**: Show error toast, allow retry
+- **Slug collision**: Automatically handled with suffix generation
+
+### Testing
+
+1. **New user signup:**
+   - Sign up with new email
+   - On first login, should be auto-redirected to `/setup`
+   - Fill form with valid data → Should update org and redirect to dashboard
+
+2. **Existing user (setup completed):**
+   - Login with account that has `state !== "Default"`
+   - Should go straight to dashboard (no redirect)
+
+3. **Internal user:**
+   - Login as `internal@test.com`
+   - Should bypass setup check entirely
+   - Should go to reviewer dashboard
+
+4. **Direct `/setup` access:**
+   - After setup is complete, manually navigate to `/setup`
+   - Should redirect to dashboard (prevents infinite loop)
+
+5. **Form validation:**
+   - Try submitting with empty fields → Should show errors
+   - Try invalid pincode (non-6-digit) → Should show error
+   - Try invalid GST (non-15-char) → Should show error
+
+6. **Slug collision:**
+   - Create org with name that would generate duplicate slug
+   - Should append suffix automatically
+

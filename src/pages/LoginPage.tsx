@@ -45,12 +45,28 @@ export function LoginPage() {
         // Navigation will happen automatically via AuthContext
         navigate('/')
       } else if (view === 'sign_up') {
-        const { error } = await supabase.auth.signUp({
+        const { data, error } = await supabase.auth.signUp({
           email,
           password: trimmedPassword,
         })
         if (error) throw error
-        setMessage('Account created! Check your email for the confirmation link.')
+        
+        // Check if email confirmation is required
+        if (data.user && !data.session) {
+          // Email confirmation required but not sent (SMTP not configured)
+          setMessage('Account created! However, email confirmation is not configured. Please contact support or disable email confirmation in Supabase settings.')
+        } else if (data.session) {
+          // User is immediately confirmed (email confirmation disabled)
+          setMessage('Account created successfully! Redirecting...')
+          // Auto-navigate after a brief delay
+          setTimeout(() => {
+            navigate('/')
+          }, 1000)
+        } else {
+          // Email confirmation required and email should be sent
+          setMessage('Account created! Check your email for the confirmation link.')
+        }
+        
         // Clear form
         setEmail('')
         setPassword('')

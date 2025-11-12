@@ -12,31 +12,6 @@ export type Database = {
   __InternalSupabase: {
     PostgrestVersion: "13.0.5"
   }
-  graphql_public: {
-    Tables: {
-      [_ in never]: never
-    }
-    Views: {
-      [_ in never]: never
-    }
-    Functions: {
-      graphql: {
-        Args: {
-          extensions?: Json
-          operationName?: string
-          query?: string
-          variables?: Json
-        }
-        Returns: Json
-      }
-    }
-    Enums: {
-      [_ in never]: never
-    }
-    CompositeTypes: {
-      [_ in never]: never
-    }
-  }
   public: {
     Tables: {
       app_versions: {
@@ -74,6 +49,51 @@ export type Database = {
           version?: string
         }
         Relationships: []
+      }
+      branches: {
+        Row: {
+          address: string | null
+          branch_head_id: string | null
+          created_at: string | null
+          id: string
+          name: string
+          org_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          address?: string | null
+          branch_head_id?: string | null
+          created_at?: string | null
+          id?: string
+          name: string
+          org_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          address?: string | null
+          branch_head_id?: string | null
+          created_at?: string | null
+          id?: string
+          name?: string
+          org_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "branches_branch_head_id_fkey"
+            columns: ["branch_head_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "branches_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "orgs"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       category_map: {
         Row: {
@@ -369,6 +389,7 @@ export type Database = {
       }
       invoices: {
         Row: {
+          branch_id: string | null
           cgst_amount: number | null
           created_at: string | null
           created_by: string | null
@@ -386,6 +407,7 @@ export type Database = {
           updated_at: string | null
         }
         Insert: {
+          branch_id?: string | null
           cgst_amount?: number | null
           created_at?: string | null
           created_by?: string | null
@@ -403,6 +425,7 @@ export type Database = {
           updated_at?: string | null
         }
         Update: {
+          branch_id?: string | null
           cgst_amount?: number | null
           created_at?: string | null
           created_by?: string | null
@@ -420,6 +443,13 @@ export type Database = {
           updated_at?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "invoices_branch_id_fkey"
+            columns: ["branch_id"]
+            isOneToOne: false
+            referencedRelation: "branches"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "invoices_customer_id_fkey"
             columns: ["customer_id"]
@@ -622,27 +652,40 @@ export type Database = {
       }
       memberships: {
         Row: {
+          branch_id: string | null
           created_at: string | null
           id: string
+          membership_status: string | null
           org_id: string | null
           profile_id: string | null
           role: string | null
         }
         Insert: {
+          branch_id?: string | null
           created_at?: string | null
           id?: string
+          membership_status?: string | null
           org_id?: string | null
           profile_id?: string | null
           role?: string | null
         }
         Update: {
+          branch_id?: string | null
           created_at?: string | null
           id?: string
+          membership_status?: string | null
           org_id?: string | null
           profile_id?: string | null
           role?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "memberships_branch_id_fkey"
+            columns: ["branch_id"]
+            isOneToOne: false
+            referencedRelation: "branches"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "memberships_org_id_fkey"
             columns: ["org_id"]
@@ -707,6 +750,7 @@ export type Database = {
           gst_number: string | null
           id: string
           name: string
+          pincode: string | null
           slug: string
           state: string
           updated_at: string | null
@@ -717,6 +761,7 @@ export type Database = {
           gst_number?: string | null
           id?: string
           name: string
+          pincode?: string | null
           slug: string
           state: string
           updated_at?: string | null
@@ -727,6 +772,7 @@ export type Database = {
           gst_number?: string | null
           id?: string
           name?: string
+          pincode?: string | null
           slug?: string
           state?: string
           updated_at?: string | null
@@ -797,6 +843,7 @@ export type Database = {
       products: {
         Row: {
           alias_name: string | null
+          branch_id: string | null
           category: string | null
           cost_price: number | null
           created_at: string | null
@@ -817,6 +864,7 @@ export type Database = {
         }
         Insert: {
           alias_name?: string | null
+          branch_id?: string | null
           category?: string | null
           cost_price?: number | null
           created_at?: string | null
@@ -837,6 +885,7 @@ export type Database = {
         }
         Update: {
           alias_name?: string | null
+          branch_id?: string | null
           category?: string | null
           cost_price?: number | null
           created_at?: string | null
@@ -856,6 +905,13 @@ export type Database = {
           updated_at?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "products_branch_id_fkey"
+            columns: ["branch_id"]
+            isOneToOne: false
+            referencedRelation: "branches"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "products_created_by_fkey"
             columns: ["created_by"]
@@ -969,6 +1025,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      approve_membership: { Args: { p_membership_id: string }; Returns: Json }
       auto_link_product_to_master:
         | { Args: { p_org_id: string; p_product_id: string }; Returns: string }
         | {
@@ -983,6 +1040,7 @@ export type Database = {
         Args: { p_org_id: string; p_serial_number: string }
         Returns: Json
       }
+      create_default_org_for_user: { Args: never; Returns: Json }
       create_product_from_master: {
         Args: {
           p_alias_name?: string
@@ -999,6 +1057,10 @@ export type Database = {
         }
         Returns: string
       }
+      create_staff_membership: {
+        Args: { p_branch_id: string; p_email: string; p_profile_id: string }
+        Returns: Json
+      }
       create_user_org: {
         Args: { org_name: string; org_slug: string; org_state?: string }
         Returns: {
@@ -1012,9 +1074,14 @@ export type Database = {
           updated_at: string
         }[]
       }
+      current_user_branch_id: { Args: never; Returns: string }
+      current_user_branch_ids: { Args: never; Returns: string[] }
       current_user_is_admin: { Args: never; Returns: boolean }
+      current_user_is_branch_head: { Args: never; Returns: boolean }
+      current_user_is_internal: { Args: never; Returns: boolean }
       current_user_is_owner: { Args: never; Returns: boolean }
       current_user_org_id: { Args: never; Returns: string }
+      current_user_role: { Args: never; Returns: string }
       current_user_tenant_id: { Args: never; Returns: string }
       get_current_app_version: { Args: never; Returns: Json }
       get_master_product_gst_rate: {
@@ -1274,9 +1341,6 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
-  graphql_public: {
-    Enums: {},
-  },
   public: {
     Enums: {},
   },

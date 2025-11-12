@@ -1,16 +1,47 @@
 import { Navigate, useNavigate } from 'react-router-dom'
+import { useEffect, useState } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { LoadingSpinner } from './ui/LoadingSpinner'
 import { Button } from './ui/Button'
 import { supabase } from '../lib/supabase'
+import type { Org } from '../types'
+
+/**
+ * Check if organization needs setup (state is "Default")
+ */
+function needsOrgSetup(org: Org | null): boolean {
+  return org?.state === 'Default'
+}
 
 /**
  * Protected route that requires authentication and org membership
  */
 export function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth()
+  const [org, setOrg] = useState<Org | null>(null)
+  const [orgLoading, setOrgLoading] = useState(false)
 
-  if (loading) {
+  // Fetch org data when user has orgId
+  useEffect(() => {
+    if (!loading && user?.orgId && !user.isInternal) {
+      setOrgLoading(true)
+      supabase
+        .from('orgs')
+        .select('*')
+        .eq('id', user.orgId)
+        .maybeSingle()
+        .then(({ data, error }) => {
+          if (error) {
+            console.error('Error fetching org:', error)
+          } else {
+            setOrg(data)
+          }
+          setOrgLoading(false)
+        })
+    }
+  }, [user?.orgId, user?.isInternal, loading])
+
+  if (loading || orgLoading) {
     return (
       <div className="viewport-height flex items-center justify-center">
         <LoadingSpinner size="lg" />
@@ -34,6 +65,11 @@ export function ProtectedRoute({ children }: { children: React.ReactNode }) {
   // For now, show a message that they need to be invited
   if (!user.orgId) {
     return <OrganizationRequiredPage />
+  }
+
+  // Check if org needs setup (state === "Default")
+  if (needsOrgSetup(org)) {
+    return <Navigate to="/setup" replace />
   }
 
   return <>{children}</>

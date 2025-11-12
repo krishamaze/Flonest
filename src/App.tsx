@@ -15,6 +15,7 @@ import { MANAGE_PRODUCTS } from './lib/permissions'
 
 // Lazy load pages for code splitting
 const LoginPage = lazy(() => import('./pages/LoginPage').then(m => ({ default: m.LoginPage })))
+const SetupPage = lazy(() => import('./pages/SetupPage').then(m => ({ default: m.SetupPage })))
 const DashboardPage = lazy(() => import('./pages/DashboardPage').then(m => ({ default: m.DashboardPage })))
 const ProductsPage = lazy(() => import('./pages/ProductsPage').then(m => ({ default: m.ProductsPage })))
 const InventoryPage = lazy(() => import('./pages/InventoryPage').then(m => ({ default: m.InventoryPage })))
@@ -75,6 +76,12 @@ function AppRoutes() {
             <Route
               path="/login"
               element={user ? (user.isInternal ? <Navigate to="/reviewer" replace /> : <Navigate to="/" replace />) : <LoginPage />}
+            />
+            <Route
+              path="/setup"
+              element={
+                user ? <SetupPage /> : <Navigate to="/login" replace />
+              }
             />
             <Route
               path="/"
