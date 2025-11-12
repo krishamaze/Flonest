@@ -107,14 +107,26 @@ export function SetupPage() {
       const slug = await generateUniqueSlug(formData.name.trim(), user.orgId)
 
       // Prepare update data
+      // If GST number is provided (non-empty), use it; otherwise set to undefined (will be converted to null)
       const gstNumber = formData.gst_number.trim() || undefined
-      const updateData = {
+      const updateData: {
+        name: string
+        state: string
+        pincode: string
+        gst_number?: string
+        gst_enabled: boolean
+        slug: string
+      } = {
         name: formData.name.trim(),
         state: formData.state,
         pincode: formData.pincode.trim(),
-        gst_number: gstNumber,
         gst_enabled: !!gstNumber,
         slug,
+      }
+      
+      // Only include gst_number if provided (non-empty)
+      if (gstNumber) {
+        updateData.gst_number = gstNumber
       }
 
       // Update org
