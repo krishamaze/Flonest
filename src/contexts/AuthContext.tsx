@@ -400,8 +400,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const currentSession = await supabase.auth.getSession().then(({ data }) => data.session)
         saveCachedSession(currentSession, userData)
       } else {
-        // Non-internal user with no membership
-        const userData = {
+        // Non-internal user with no membership - try auto-creating org
+        let finalUserData = {
           id: profile.id,
           email: profile.email,
           orgId: null,
@@ -409,10 +409,65 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           branchId: null,
           isInternal: false,
         }
-        setUser(userData)
+
+        // Auto-create org for new users (non-internal only)
+        if (!profile.is_internal) {
+          try {
+            if (import.meta.env.DEV) {
+              console.log('[Auth] No membership found, attempting auto-org creation...')
+            }
+
+            const { data: orgResult, error: orgError } = await supabase.rpc('create_default_org_for_user' as any)
+
+            if (orgError) {
+              if (import.meta.env.DEV) {
+                console.warn('[Auth] Auto-org creation failed:', orgError)
+              }
+              // Continue with null orgId - user can create manually later
+            } else if (orgResult) {
+              if (import.meta.env.DEV) {
+                console.log('[Auth] Auto-org created successfully:', orgResult)
+              }
+
+              // Reload membership to get fresh data with org and role
+              const { data: newMembershipResult, error: membershipReloadError } = await supabase
+                .from('memberships')
+                .select('*, profiles(*), orgs(*)')
+                .eq('profile_id', authUser.id)
+                .eq('membership_status', 'active')
+                .maybeSingle()
+
+              if (!membershipReloadError && newMembershipResult) {
+                const newMembership = newMembershipResult as any
+                const newMembershipProfile = newMembership.profiles as any
+                const newOrg = newMembership.orgs as any
+
+                finalUserData = {
+                  id: newMembershipProfile.id,
+                  email: newMembershipProfile.email,
+                  orgId: newOrg.id,
+                  role: (newMembership.role || 'owner') as 'owner' | 'branch_head' | 'staff',
+                  branchId: newMembership.branch_id || null,
+                  isInternal: newMembershipProfile.is_internal || false,
+                }
+
+                if (import.meta.env.DEV) {
+                  console.log('[Auth] User profile updated with new org:', finalUserData)
+                }
+              }
+            }
+          } catch (error) {
+            if (import.meta.env.DEV) {
+              console.warn('[Auth] Auto-org creation error:', error)
+            }
+            // Continue with null orgId - user can create manually later
+          }
+        }
+
+        setUser(finalUserData)
         setConnectionError(false)
         const currentSession = await supabase.auth.getSession().then(({ data }) => data.session)
-        saveCachedSession(currentSession, userData)
+        saveCachedSession(currentSession, finalUserData)
       }
     } catch (error) {
       if (import.meta.env.DEV) {

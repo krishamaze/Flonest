@@ -11,6 +11,7 @@ import {
   ExclamationTriangleIcon,
   UserPlusIcon,
   CheckCircleIcon,
+  XMarkIcon,
 } from '@heroicons/react/24/outline'
 import { getPendingMemberships, approveMembership } from '../lib/api/memberships'
 import { canManageOrgSettings, canManageUsers } from '../lib/permissions'
@@ -31,6 +32,7 @@ export function DashboardPage() {
   const [loading, setLoading] = useState(true)
   const [pendingMemberships, setPendingMemberships] = useState<any[]>([])
   const [showAddStaffForm, setShowAddStaffForm] = useState(false)
+  const [showTrialBanner, setShowTrialBanner] = useState(false)
 
   const loadDashboardStats = useCallback(async () => {
     if (!user || !user.orgId) return
@@ -109,6 +111,24 @@ export function DashboardPage() {
     loadPendingMemberships()
   }, [loadDashboardStats, loadPendingMemberships])
 
+  // Check if trial banner should be shown
+  useEffect(() => {
+    if (
+      user &&
+      !user.isInternal &&
+      user.role === 'owner' &&
+      user.orgId &&
+      !localStorage.getItem('ft_trial_banner_seen')
+    ) {
+      setShowTrialBanner(true)
+    }
+  }, [user])
+
+  const handleDismissBanner = () => {
+    localStorage.setItem('ft_trial_banner_seen', 'true')
+    setShowTrialBanner(false)
+  }
+
   if (loading) {
     return (
       <div className="flex h-64 items-center justify-center">
@@ -126,6 +146,34 @@ export function DashboardPage() {
           Welcome back, {user?.email}
         </p>
       </div>
+
+      {/* Trial Banner */}
+      {showTrialBanner && (
+        <div
+          className="relative rounded-lg p-md mb-lg"
+          style={{
+            background: 'linear-gradient(135deg, var(--color-error), var(--color-warning))',
+            color: 'white',
+            boxShadow: 'var(--shadow-md)',
+          }}
+        >
+          <button
+            onClick={handleDismissBanner}
+            className="absolute top-md right-md p-xs rounded-full hover:bg-white/20 transition-colors"
+            aria-label="Dismiss banner"
+          >
+            <XMarkIcon className="h-5 w-5" />
+          </button>
+          <div className="pr-lg">
+            <p className="text-base font-semibold mb-xs">
+              Welcome to Finetune!
+            </p>
+            <p className="text-sm opacity-90">
+              You're on a 3-month free trial worth ₹1999/month — ₹1000 off launch offer.
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* Stats Cards - compact horizontal layout */}
       <div className="flex gap-2 overflow-x-auto pb-1">
