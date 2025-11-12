@@ -401,7 +401,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         saveCachedSession(currentSession, userData)
       } else {
         // Non-internal user with no membership - try auto-creating org
-        let finalUserData = {
+        let finalUserData: AuthUser = {
           id: profile.id,
           email: profile.email,
           orgId: null,
