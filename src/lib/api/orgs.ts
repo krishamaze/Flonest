@@ -21,12 +21,23 @@ export interface UpdateOrgData {
  * @returns Updated organization
  */
 export async function updateOrg(orgId: string, data: UpdateOrgData): Promise<Org> {
+  // Convert undefined to null for Supabase (which expects null for nullable fields)
+  const updatePayload: Record<string, any> = {
+    ...data,
+    updated_at: new Date().toISOString(),
+  }
+  
+  // Convert undefined to null for nullable fields
+  if (updatePayload.gst_number === undefined) {
+    updatePayload.gst_number = null
+  }
+  if (updatePayload.pincode === undefined) {
+    updatePayload.pincode = null
+  }
+
   const { data: updatedOrg, error } = await supabase
     .from('orgs')
-    .update({
-      ...data,
-      updated_at: new Date().toISOString(),
-    })
+    .update(updatePayload)
     .eq('id', orgId)
     .select()
     .single()
