@@ -150,7 +150,7 @@ function AppRoutes() {
 function App() {
   // Log version on mount for debugging
   useEffect(() => {
-    console.log(`FineTune Store v${FRONTEND_VERSION}`)
+    console.log(`FineTune Store v${FRONTEND_VERSION} [Service Worker Auto-Update]`)
   }, [])
 
   return (
