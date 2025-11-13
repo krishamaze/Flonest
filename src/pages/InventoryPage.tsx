@@ -169,7 +169,7 @@ export function InventoryPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-md">
       {/* Invoices Section */}
       <div>
         {/* Page Header */}

@@ -93,7 +93,7 @@ export function StockLedgerPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-md">
       {/* Page Header */}
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-semibold text-primary-text">Stock Ledger</h1>
