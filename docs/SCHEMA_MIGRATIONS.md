@@ -1,6 +1,6 @@
 # Schema Migrations Guide
 
-Complete guide for managing database schema changes in biz.finetune.store.
+Complete guide for managing database schema changes in bill.finetune.store.
 
 ## Overview
 

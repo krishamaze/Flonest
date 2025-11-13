@@ -1,6 +1,6 @@
 # Vercel Deployment Guide
 
-Complete guide for deploying the biz.finetune.store React PWA to Vercel.
+Complete guide for deploying the bill.finetune.store React PWA to Vercel.
 
 ## Prerequisites
 
@@ -24,7 +24,7 @@ vercel login
 
 #### 3. Deploy from project directory
 ```bash
-cd biz.finetune.store
+cd bill.finetune.store
 vercel
 ```
 
@@ -72,7 +72,7 @@ git push origin main
 3. Select your GitHub repository
 4. Configure project:
    - **Framework Preset:** Vite
-   - **Root Directory:** `biz.finetune.store`
+   - **Root Directory:** `bill.finetune.store` (leave empty or use `.`)
    - **Build Command:** `npm run build`
    - **Output Directory:** `dist`
    - **Install Command:** `npm install`
@@ -197,7 +197,7 @@ vercel
 
 ### 1. Add Domain in Vercel
 1. Go to Project Settings → Domains
-2. Add your domain: `biz.finetune.store`
+2. Add your domain: `bill.finetune.store`
 3. Follow DNS configuration instructions
 
 ### 2. DNS Configuration

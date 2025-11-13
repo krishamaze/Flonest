@@ -18,7 +18,7 @@ Your local Git repository has been initialized and the first commit has been cre
 ### Step 1: Create GitHub Repository
 
 1. Go to https://github.com/new
-2. Repository name: `biz.finetune.store`
+2. Repository name: `biz.finetune.store` (existing repo name, keep as is)
 3. Description: `Multi-tenant inventory management PWA with React + Supabase`
 4. Visibility: **Private** (recommended) or Public
 5. **DO NOT** initialize with README, .gitignore, or license
@@ -154,7 +154,7 @@ Local Changes → Git Commit → Git Push → GitHub → Vercel Deploy → Live!
 Your repository includes:
 
 ```
-biz.finetune.store/
+bill.finetune.store/ (repo: biz.finetune.store)
 ├── .github/workflows/ci.yml    # CI/CD pipeline
 ├── src/                        # React app source
 ├── public/                     # Static assets

@@ -1,6 +1,6 @@
 # Documentation
 
-Complete documentation for the biz.finetune.store inventory management PWA.
+Complete documentation for the bill.finetune.store inventory management PWA.
 
 ## 📚 Documentation Index
 
@@ -130,7 +130,7 @@ Complete documentation for the biz.finetune.store inventory management PWA.
 ## 🏗️ Project Structure
 
 ```
-biz.finetune.store/
+bill.finetune.store/
 ├── docs/                           # 📚 Documentation (you are here)
 │   ├── README.md                  # Documentation index
 │   ├── GETTING_STARTED.md         # Setup guide

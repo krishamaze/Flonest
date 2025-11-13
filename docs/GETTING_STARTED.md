@@ -1,6 +1,6 @@
 # Getting Started
 
-Quick guide to set up and run the biz.finetune.store inventory management PWA.
+Quick guide to set up and run the bill.finetune.store inventory management PWA.
 
 ## Prerequisites
 
@@ -15,7 +15,7 @@ Quick guide to set up and run the biz.finetune.store inventory management PWA.
 ### 1. Clone or Download
 
 ```bash
-cd biz.finetune.store
+cd bill.finetune.store
 ```
 
 ### 2. Install Dependencies

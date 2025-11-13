@@ -2,6 +2,7 @@
 
 **Date:** November 13, 2025  
 **Branch:** main  
+**Production URL:** https://bill.finetune.store  
 **Status:** ✅ Complete
 
 ---

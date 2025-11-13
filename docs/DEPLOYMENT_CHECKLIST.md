@@ -62,7 +62,7 @@ Use this checklist before deploying to production.
 - [ ] Vercel account created
 - [ ] Project imported from GitHub
 - [ ] Framework preset set to "Vite"
-- [ ] Root directory set to `biz.finetune.store`
+- [ ] Root directory set to `.` (or leave empty)
 - [ ] Build command: `npm run build`
 - [ ] Output directory: `dist`
 - [ ] Install command: `npm install`
@@ -278,7 +278,7 @@ npm install -g vercel
 vercel login
 
 # Deploy
-cd biz.finetune.store
+cd bill.finetune.store
 vercel --prod
 ```
 

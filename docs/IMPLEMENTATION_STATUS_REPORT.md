@@ -428,7 +428,7 @@ The implementation is complete and correct. All edge cases from the plan have be
 **Vercel Deployment:**
 - Project ID: `prj_aMdpWV1naJP2u5F3G2CXvBVAyYBk`
 - Team ID: `team_mIxsR4vIgFgkFZlEQWEDaN86`
-- Production URL: https://biz.finetune.store
+- Production URL: https://bill.finetune.store
 - Status: Deployed and operational
 
 **Database Migrations:**

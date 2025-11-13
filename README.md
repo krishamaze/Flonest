@@ -1,6 +1,8 @@
-# biz.finetune.store
+# bill.finetune.store
 
 A mobile-first Progressive Web App (PWA) for multi-tenant inventory & sales SaaS with GST invoicing and product governance.
+
+**Production URL:** https://bill.finetune.store
 
 ## ✨ Features
 
@@ -168,7 +170,7 @@ The app uses a custom design token system in `src/styles/design-tokens.css`:
 
 ## 🚀 Deployment
 
-**Production URL:** https://biz.finetune.store
+**Production URL:** https://bill.finetune.store
 
 The app is deployed to Vercel with automatic deployments from the `main` branch:
 
