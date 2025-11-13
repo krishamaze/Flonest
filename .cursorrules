@@ -1,0 +1,226 @@
+# FineTune Business Application - Development Rules
+
+## Project Structure - TWO SEPARATE VERCEL PROJECTS
+
+This repository contains TWO separate applications with TWO separate Vercel projects:
+
+### 1. Main PWA Application (main branch)
+- **Branch:** `main`
+- **Vercel Project:** `biz.finetune`
+- **Vercel Project ID:** `prj_aMdpWV1naJP2u5F3G2CXvBVAyYBk`
+- **Team ID:** `team_mIxsR4vIgFgkFZlEQWEDaN86`
+- **Production URL:** https://biz.finetune.store
+- **Type:** Next.js/Vite PWA inventory management system
+- **NEVER merge marketing changes to main**
+
+### 2. Marketing Site (marketing branch)
+- **Branch:** `marketing`
+- **Vercel Project:** `finetunemarketing`
+- **Vercel Project ID:** `prj_hQdOUX5qE3jafJ8Q8iVwmJ6MWBt9`
+- **Team ID:** `team_mIxsR4vIgFgkFZlEQWEDaN86`
+- **Production URL:** https://bizfinetunestore.vercel.app
+- **Type:** Static HTML/CSS marketing pages
+- **Location:** `/marketing-site/` directory
+- **NEVER merge main changes to marketing**
+
+## Deployment Rules
+
+### CRITICAL: Never Mix Branches or Projects
+
+❌ **NEVER** merge `marketing` branch into `main`
+❌ **NEVER** merge `main` branch into `marketing`
+❌ **NEVER** deploy marketing site to `biz.finetune` project
+❌ **NEVER** deploy main app to `finetunemarketing` project
+
+✅ **DO** keep branches completely separate
+✅ **DO** push directly to respective branches
+✅ **DO** let Vercel auto-deploy from branch commits
+✅ **DO** verify project ID before deploying
+
+### Deployment Process
+
+**For Main PWA App (main branch):**
+```bash
+git checkout main
+# make changes to app (NOT marketing-site/)
+git add .
+git commit -m "description"
+git push origin main  # Auto-deploys to prj_aMdpWV1naJP2u5F3G2CXvBVAyYBk
+```
+
+**For Marketing Site (marketing branch):**
+```bash
+git checkout marketing
+# make changes to marketing-site/ ONLY
+git add marketing-site/
+git commit -m "description"
+git push origin marketing  # Auto-deploys to prj_hQdOUX5qE3jafJ8Q8iVwmJ6MWBt9
+```
+
+### Vercel Project Configuration
+
+**Main PWA (`biz.finetune`):**
+- Uses `vercel.json` in root with Vite configuration
+- Builds from root directory
+- Output: `dist/`
+- Framework: Vite
+- Deploys ONLY from `main` branch
+
+**Marketing Site (`finetunemarketing`):**
+- Uses `vercel.json` in root with outputDirectory: `marketing-site`
+- Builds from `marketing-site/` directory
+- No build command (static files)
+- Deploys ONLY from `marketing` branch
+
+## Code Quality
+
+- Keep the repo clean. Remove temporary or unused files.
+- Document only what's necessary for future development.
+- Avoid unnecessary notes or clutter.
+- Be direct, clear, and concise. No sugarcoating, no assumptions.
+- Don't generate unwanted .md docs — use chat instead.
+- Optimize for cognitive clarity, not cleverness.
+- Prefer local context (cognitive locality). Avoid deep abstractions.
+- Repeat code when it reduces cognitive load (PRY over DRY).
+- Abstract only when enforcing consistent global behavior.
+- Keep feedback kind and constructive.
+
+## Development Workflow
+
+- Review the codebase before building
+- Reuse existing components, functions, and RPCs
+- Keep the system tight and consistent
+- No redundant layers, no parallel logic
+- Extend, don't duplicate
+
+## Git Configuration
+
+**Current git user configuration:**
+- Email: `finetunetech.e@gmail.com`
+- Name: `FineTune`
+
+This email has Vercel team access and prevents deployment errors.
+
+## Database Operations (Main App Only)
+
+ALWAYS use Supabase MCP for database operations. Never use Supabase CLI commands for migrations or database changes.
+
+**For migrations:**
+- Create file: `npm run supabase:migration:new <name>` (CLI only for file creation)
+- Apply migration: Use Supabase MCP `apply_migration` tool (NEVER use `supabase db push`)
+- Query database: Use Supabase MCP `execute_sql` tool
+- List tables: Use Supabase MCP `list_tables` tool
+- Generate types: Use Supabase MCP `generate_typescript_types` tool
+- View logs: Use Supabase MCP `get_logs` tool
+- List migrations: Use Supabase MCP `list_migrations` tool
+
+**When deploying with database changes:**
+1. Create migration file locally: `npm run supabase:migration:new <name>`
+2. Write migration SQL in the file
+3. Apply migration using Supabase MCP in Cursor
+4. Commit and push to git (Vercel deploys automatically)
+5. Verify deployment using Vercel MCP
+6. Verify migration using Supabase MCP `list_migrations`
+
+Never run `supabase db push` or any CLI database push commands.
+
+## Post-Push Deployment Verification
+
+AFTER `git push`, ALWAYS verify deployment:
+
+1. Use Vercel MCP `list_deployments` with correct project ID
+2. Use `get_deployment` to check state (BUILDING → READY or ERROR)
+3. If BUILDING, wait and check again until complete
+4. If ERROR, check build logs with `get_deployment_build_logs`
+5. Fix errors immediately if needed
+6. NEVER consider deployment complete until state is READY
+
+**Vercel MCP Usage:**
+```javascript
+// For main PWA app
+mcp_vercel_list_deployments({
+  projectId: "prj_aMdpWV1naJP2u5F3G2CXvBVAyYBk",
+  teamId: "team_mIxsR4vIgFgkFZlEQWEDaN86"
+})
+
+// For marketing site
+mcp_vercel_list_deployments({
+  projectId: "prj_hQdOUX5qE3jafJ8Q8iVwmJ6MWBt9",
+  teamId: "team_mIxsR4vIgFgkFZlEQWEDaN86"
+})
+```
+
+## Marketing Site Specific Rules
+
+### Business Information Display
+
+All marketing pages MUST display complete Cashfree-compliant business information:
+
+- **Business Name:** FINETUNE
+- **Address:** SHOP NO.F6, DOOR NO.181/12, CHERAN PLAZA, PALAKKAD MAIN ROAD, ETTIMADAI PIRIVU, COIMBATORE – 641112, Tamil Nadu, India
+- **GSTIN:** 33CPXPK3822A2ZZ
+- **State Code:** 33 (Tamil Nadu)
+- **Contact Person:** SHANMUGARAJ KRISHNAKUMAR
+- **Phone:** +91-9994422442
+- **Email:** finetunetech.e@gmail.com
+
+### Legal Pages Requirements
+
+- **Terms & Conditions:** Last updated 13-08-2024 15:47:49
+- **Refund & Cancellation:** Last updated 13-08-2024 15:49:30
+- All legal text must be preserved verbatim
+- All timestamps must use DD-MM-YYYY HH:MM:SS format
+- Jurisdiction: Ettimadai, Tamil Nadu courts
+
+### Technical Requirements
+
+- NO JavaScript allowed (`<script>` tags forbidden)
+- NO dynamic content
+- All styles in `marketing-site/styles.css`
+- NO inline styles
+- SEO meta tags required on all pages
+- Mobile-responsive design mandatory
+
+## Styling & Design System
+
+### Design Token Usage (Marketing Site)
+
+- **NEVER** use hardcoded colors - use CSS variables from `marketing-site/styles.css`
+- **NEVER** use hardcoded spacing - use spacing variables
+- **NEVER** use inline styles
+- **NEVER** use `px` values directly - use design token variables
+
+### Color Palette
+
+```css
+--color-primary: #E2C33D;       /* FineTune yellow */
+--color-secondary: #1F2937;     /* Dark slate */
+--text-primary: #000000;
+--text-secondary: #374151;
+--bg-page: #F5F7FA;
+--bg-card: #FFFFFF;
+```
+
+### Typography
+
+- Base font: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto
+- Line height: 1.7-1.8 for readability
+- Use font-size variables, not hardcoded px values
+
+### Accessibility
+
+- Yellow text on white = BAD (poor contrast)
+- Black text on yellow = GOOD
+- All interactive elements need focus states
+- Minimum contrast ratio: 4.5:1 for normal text
+
+## Documentation Files
+
+NEVER create .md documentation files unless explicitly requested by the user.
+
+Prefer communicating information via chat instead of creating documentation files.
+
+Do not create test results, summaries, deployment logs, or other documentation files automatically.
+
+Only create .md files when the user explicitly asks for documentation to be written.
+
