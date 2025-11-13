@@ -324,7 +324,6 @@ export function SetupPage() {
           <div className="px-lg pt-md flex-shrink-0">
             <StepIndicator
               currentStep={getCurrentStepNumber()}
-              totalSteps={2}
               stepLabels={getStepLabels()}
             />
           </div>
