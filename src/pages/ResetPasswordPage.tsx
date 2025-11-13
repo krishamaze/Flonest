@@ -14,10 +14,32 @@ export function ResetPasswordPage() {
   const [error, setError] = useState<string | null>(null)
   const [isValidToken, setIsValidToken] = useState<boolean | null>(null)
 
-  const type = searchParams.get('type')
-  const accessToken = searchParams.get('access_token')
+  // Supabase sends auth params in hash fragment, not query string
+  // Parse both locations to support different auth flows
+  const getParam = (key: string): string | null => {
+    // First check query params
+    const queryParam = searchParams.get(key)
+    if (queryParam) return queryParam
+
+    // Then check hash fragment (Supabase auth tokens are here)
+    const hash = window.location.hash.substring(1) // Remove leading #
+    const hashParams = new URLSearchParams(hash)
+    return hashParams.get(key)
+  }
+
+  const type = getParam('type')
+  const accessToken = getParam('access_token')
+  const errorCode = getParam('error')
+  const errorDescription = getParam('error_description')
 
   useEffect(() => {
+    // Check for error in URL first
+    if (errorCode) {
+      setIsValidToken(false)
+      setError(errorDescription || 'Invalid or expired reset link. Please request a new password reset.')
+      return
+    }
+
     // Check if we have the required recovery parameters
     if (type !== 'recovery' || !accessToken) {
       setIsValidToken(false)
@@ -25,7 +47,7 @@ export function ResetPasswordPage() {
     } else {
       setIsValidToken(true)
     }
-  }, [type, accessToken])
+  }, [type, accessToken, errorCode, errorDescription])
 
   const handlePasswordChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     // Block spaces in password field
