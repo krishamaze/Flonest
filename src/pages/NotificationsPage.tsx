@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useAuth } from '../contexts/AuthContext'
+import { useRefresh } from '../contexts/RefreshContext'
 import { Card, CardContent } from '../components/ui/Card'
 import { LoadingSpinner } from '../components/ui/LoadingSpinner'
 import { Button } from '../components/ui/Button'
@@ -14,6 +15,7 @@ import { CheckCircleIcon, XCircleIcon, ExclamationTriangleIcon } from '@heroicon
 
 export function NotificationsPage() {
   const { user } = useAuth()
+  const { registerRefreshHandler, unregisterRefreshHandler } = useRefresh()
   const [notifications, setNotifications] = useState<Notification[]>([])
   const [loading, setLoading] = useState(true)
   const [filter, setFilter] = useState<'all' | 'unread' | NotificationType>('all')
@@ -23,6 +25,12 @@ export function NotificationsPage() {
       loadNotifications()
     }
   }, [user, filter])
+
+  // Register refresh handler for pull-to-refresh
+  useEffect(() => {
+    registerRefreshHandler(loadNotifications)
+    return () => unregisterRefreshHandler()
+  }, [registerRefreshHandler, unregisterRefreshHandler])
 
   const loadNotifications = async () => {
     if (!user) return

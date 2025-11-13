@@ -2,14 +2,14 @@ import { Outlet } from 'react-router-dom'
 import { Header } from './Header'
 import { BottomNav } from './BottomNav'
 import { PullToRefresh } from '../ui/PullToRefresh'
+import { RefreshProvider, useRefresh } from '../../contexts/RefreshContext'
 
-export function MainLayout() {
+function MainLayoutContent() {
+  const { refresh } = useRefresh()
+
   const handleRefresh = async () => {
-    // Reload the current page
-    await new Promise((resolve) => {
-      window.location.reload()
-      setTimeout(resolve, 500)
-    })
+    // Call the page-specific refresh handler registered via RefreshContext
+    await refresh()
   }
 
   return (
@@ -24,6 +24,14 @@ export function MainLayout() {
       </PullToRefresh>
       <BottomNav />
     </div>
+  )
+}
+
+export function MainLayout() {
+  return (
+    <RefreshProvider>
+      <MainLayoutContent />
+    </RefreshProvider>
   )
 }
 

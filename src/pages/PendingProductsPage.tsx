@@ -1,5 +1,6 @@
 import { useEffect, useState, useRef } from 'react'
 import { useAuth } from '../contexts/AuthContext'
+import { useRefresh } from '../contexts/RefreshContext'
 import { Card, CardContent } from '../components/ui/Card'
 import { LoadingSpinner } from '../components/ui/LoadingSpinner'
 import { Input } from '../components/ui/Input'
@@ -15,6 +16,7 @@ import { StatusHelpText } from '../components/ui/StatusHelpText'
 
 export function PendingProductsPage() {
   const { user } = useAuth()
+  const { registerRefreshHandler, unregisterRefreshHandler } = useRefresh()
   const [products, setProducts] = useState<MasterProduct[]>([])
   const [filteredProducts, setFilteredProducts] = useState<MasterProduct[]>([])
   const [loading, setLoading] = useState(true)
@@ -27,6 +29,12 @@ export function PendingProductsPage() {
       loadProducts()
     }
   }, [user])
+
+  // Register refresh handler for pull-to-refresh
+  useEffect(() => {
+    registerRefreshHandler(loadProducts)
+    return () => unregisterRefreshHandler()
+  }, [registerRefreshHandler, unregisterRefreshHandler])
 
   useEffect(() => {
     let filtered = products

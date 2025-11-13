@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback, useRef } from 'react'
 import { useAuth } from '../contexts/AuthContext'
+import { useRefresh } from '../contexts/RefreshContext'
 import type { Product, ProductWithStock } from '../types'
 import { Card, CardContent } from '../components/ui/Card'
 import { LoadingSpinner } from '../components/ui/LoadingSpinner'
@@ -11,6 +12,7 @@ import { getCurrentStockForProducts } from '../lib/api/stockCalculations'
 
 export function ProductsPage() {
   const { user } = useAuth()
+  const { registerRefreshHandler, unregisterRefreshHandler } = useRefresh()
   const [productsWithStock, setProductsWithStock] = useState<ProductWithStock[]>([])
   const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')
@@ -89,6 +91,12 @@ export function ProductsPage() {
   useEffect(() => {
     loadProducts()
   }, [currentPage, categoryFilter])
+
+  // Register refresh handler for pull-to-refresh
+  useEffect(() => {
+    registerRefreshHandler(loadProducts)
+    return () => unregisterRefreshHandler()
+  }, [registerRefreshHandler, unregisterRefreshHandler, loadProducts])
 
   // Calculate pagination
   const totalPages = Math.ceil(totalProducts / pageSize)

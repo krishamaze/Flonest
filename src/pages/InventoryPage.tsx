@@ -1,5 +1,6 @@
 import { useEffect, useState, useMemo, useCallback } from 'react'
 import { useAuth } from '../contexts/AuthContext'
+import { useRefresh } from '../contexts/RefreshContext'
 import { supabase } from '../lib/supabase'
 import type { Invoice, Org } from '../types'
 import { Card, CardContent } from '../components/ui/Card'
@@ -16,6 +17,7 @@ import { useToastDedupe } from '../hooks/useToastDedupe'
 
 export function InventoryPage() {
   const { user } = useAuth()
+  const { registerRefreshHandler, unregisterRefreshHandler } = useRefresh()
   const [invoices, setInvoices] = useState<Invoice[]>([])
   const [loading, setLoading] = useState(true)
   const [isInvoiceFormOpen, setIsInvoiceFormOpen] = useState(false)
@@ -60,6 +62,18 @@ export function InventoryPage() {
     loadOrg()
     loadInvoices()
   }, [loadOrg, loadInvoices])
+
+  // Register refresh handler for pull-to-refresh
+  useEffect(() => {
+    const refreshHandler = async () => {
+      await Promise.all([
+        loadOrg(),
+        loadInvoices()
+      ])
+    }
+    registerRefreshHandler(refreshHandler)
+    return () => unregisterRefreshHandler()
+  }, [registerRefreshHandler, unregisterRefreshHandler, loadOrg, loadInvoices])
 
   // Memoize status calculations to avoid recalculating on every render
   const invoiceStats = useMemo(() => {

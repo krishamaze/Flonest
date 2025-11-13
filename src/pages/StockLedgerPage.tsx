@@ -1,5 +1,6 @@
 import { useEffect, useState, useMemo, useCallback } from 'react'
 import { useAuth } from '../contexts/AuthContext'
+import { useRefresh } from '../contexts/RefreshContext'
 import type { StockLedger, Product } from '../types'
 import { Card, CardContent } from '../components/ui/Card'
 import { LoadingSpinner } from '../components/ui/LoadingSpinner'
@@ -15,6 +16,7 @@ import { getStockLedgerWithProducts, createStockTransaction } from '../lib/api/s
 
 export function StockLedgerPage() {
   const { user } = useAuth()
+  const { registerRefreshHandler, unregisterRefreshHandler } = useRefresh()
   const [stockLedger, setStockLedger] = useState<(StockLedger & { product: Product })[]>([])
   const [loadingLedger, setLoadingLedger] = useState(true)
   const [isTransactionFormOpen, setIsTransactionFormOpen] = useState(false)
@@ -36,6 +38,12 @@ export function StockLedgerPage() {
   useEffect(() => {
     loadStockLedger()
   }, [loadStockLedger])
+
+  // Register refresh handler for pull-to-refresh
+  useEffect(() => {
+    registerRefreshHandler(loadStockLedger)
+    return () => unregisterRefreshHandler()
+  }, [registerRefreshHandler, unregisterRefreshHandler, loadStockLedger])
 
   const handleCreateTransaction = async (data: any) => {
     if (!user || !user.orgId) return

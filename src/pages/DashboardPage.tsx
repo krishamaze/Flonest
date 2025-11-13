@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback } from 'react'
 import { useAuth } from '../contexts/AuthContext'
+import { useRefresh } from '../contexts/RefreshContext'
 import { supabase } from '../lib/supabase'
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card'
 import { LoadingSpinner } from '../components/ui/LoadingSpinner'
@@ -28,6 +29,7 @@ interface DashboardStats {
 
 export function DashboardPage() {
   const { user } = useAuth()
+  const { registerRefreshHandler, unregisterRefreshHandler } = useRefresh()
   const [stats, setStats] = useState<DashboardStats | null>(null)
   const [loading, setLoading] = useState(true)
   const [pendingMemberships, setPendingMemberships] = useState<any[]>([])
@@ -110,6 +112,18 @@ export function DashboardPage() {
     loadDashboardStats()
     loadPendingMemberships()
   }, [loadDashboardStats, loadPendingMemberships])
+
+  // Register refresh handler for pull-to-refresh
+  useEffect(() => {
+    const refreshHandler = async () => {
+      await Promise.all([
+        loadDashboardStats(),
+        loadPendingMemberships()
+      ])
+    }
+    registerRefreshHandler(refreshHandler)
+    return () => unregisterRefreshHandler()
+  }, [registerRefreshHandler, unregisterRefreshHandler, loadDashboardStats, loadPendingMemberships])
 
   // Check if trial banner should be shown
   useEffect(() => {

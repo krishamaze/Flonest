@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback, useRef } from 'react'
 import { useAuth } from '../contexts/AuthContext'
+import { useRefresh } from '../contexts/RefreshContext'
 import type { CustomerWithMaster } from '../types'
 import { Card, CardContent } from '../components/ui/Card'
 import { LoadingSpinner } from '../components/ui/LoadingSpinner'
@@ -10,6 +11,7 @@ import { getCustomersByOrg, updateOrgCustomer } from '../lib/api/customers'
 
 export function CustomersPage() {
   const { user } = useAuth()
+  const { registerRefreshHandler, unregisterRefreshHandler } = useRefresh()
   const [customers, setCustomers] = useState<CustomerWithMaster[]>([])
   const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')
@@ -34,6 +36,12 @@ export function CustomersPage() {
   useEffect(() => {
     loadCustomers()
   }, [loadCustomers])
+
+  // Register refresh handler for pull-to-refresh
+  useEffect(() => {
+    registerRefreshHandler(loadCustomers)
+    return () => unregisterRefreshHandler()
+  }, [registerRefreshHandler, unregisterRefreshHandler, loadCustomers])
 
   // Debounced search
   useEffect(() => {

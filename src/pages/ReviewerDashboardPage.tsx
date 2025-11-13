@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useRefresh } from '../contexts/RefreshContext'
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card'
 import { LoadingSpinner } from '../components/ui/LoadingSpinner'
 import { getPendingReviews } from '../lib/api/master-product-review'
@@ -24,12 +25,19 @@ interface ReviewerStats {
 }
 
 function ReviewerDashboardHome() {
+  const { registerRefreshHandler, unregisterRefreshHandler } = useRefresh()
   const [stats, setStats] = useState<ReviewerStats | null>(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     loadStats()
   }, [])
+
+  // Register refresh handler for pull-to-refresh
+  useEffect(() => {
+    registerRefreshHandler(loadStats)
+    return () => unregisterRefreshHandler()
+  }, [registerRefreshHandler, unregisterRefreshHandler])
 
   const loadStats = async () => {
     try {
