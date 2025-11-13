@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useRefresh } from '../../contexts/RefreshContext'
 import { Card, CardContent } from '../ui/Card'
 import { LoadingSpinner } from '../ui/LoadingSpinner'
 import { Input } from '../ui/Input'
@@ -8,6 +9,7 @@ import { ExclamationTriangleIcon, ArrowRightIcon } from '@heroicons/react/24/out
 import { BlockedInvoiceDetails } from './BlockedInvoiceDetails'
 
 export function BlockedInvoices() {
+  const { registerRefreshHandler, unregisterRefreshHandler } = useRefresh()
   const [blockedInvoices, setBlockedInvoices] = useState<BlockedInvoice[]>([])
   const [loading, setLoading] = useState(true)
   const [selectedInvoice, setSelectedInvoice] = useState<BlockedInvoice | null>(null)
@@ -17,6 +19,12 @@ export function BlockedInvoices() {
   useEffect(() => {
     loadBlockedInvoices()
   }, [])
+
+  // Register refresh handler for pull-to-refresh
+  useEffect(() => {
+    registerRefreshHandler(loadBlockedInvoices)
+    return () => unregisterRefreshHandler()
+  }, [registerRefreshHandler, unregisterRefreshHandler])
 
   const loadBlockedInvoices = async () => {
     setLoading(true)

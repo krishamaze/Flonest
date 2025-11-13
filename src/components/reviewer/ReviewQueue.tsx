@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback, useRef } from 'react'
+import { useRefresh } from '../../contexts/RefreshContext'
 import { getPendingReviews } from '../../lib/api/master-product-review'
 import type { MasterProduct } from '../../lib/api/master-products'
 import { Card, CardContent } from '../ui/Card'
@@ -16,6 +17,7 @@ import { StatusHelpText } from '../ui/StatusHelpText'
 type FilterType = 'pending' | 'rejected' | 'all'
 
 export function ReviewQueue() {
+  const { registerRefreshHandler, unregisterRefreshHandler } = useRefresh()
   const [products, setProducts] = useState<MasterProduct[]>([])
   const [filteredProducts, setFilteredProducts] = useState<MasterProduct[]>([])
   const [loading, setLoading] = useState(true)
@@ -40,6 +42,12 @@ export function ReviewQueue() {
   useEffect(() => {
     loadProducts()
   }, [loadProducts])
+
+  // Register refresh handler for pull-to-refresh
+  useEffect(() => {
+    registerRefreshHandler(loadProducts)
+    return () => unregisterRefreshHandler()
+  }, [registerRefreshHandler, unregisterRefreshHandler, loadProducts])
 
   // Filter and search products
   useEffect(() => {

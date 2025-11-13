@@ -1,4 +1,5 @@
 import { useEffect, useState, useRef } from 'react'
+import { useRefresh } from '../../contexts/RefreshContext'
 import { Card, CardContent } from '../ui/Card'
 import { LoadingSpinner } from '../ui/LoadingSpinner'
 import { Input } from '../ui/Input'
@@ -21,6 +22,7 @@ import {
 } from '@heroicons/react/24/outline'
 
 export function HSNManager() {
+  const { registerRefreshHandler, unregisterRefreshHandler } = useRefresh()
   const [hsnCodes, setHsnCodes] = useState<HSNMaster[]>([])
   const [filteredCodes, setFilteredCodes] = useState<HSNMaster[]>([])
   const [loading, setLoading] = useState(true)
@@ -42,6 +44,12 @@ export function HSNManager() {
   useEffect(() => {
     loadHSNCodes()
   }, [])
+
+  // Register refresh handler for pull-to-refresh
+  useEffect(() => {
+    registerRefreshHandler(loadHSNCodes)
+    return () => unregisterRefreshHandler()
+  }, [registerRefreshHandler, unregisterRefreshHandler, loadHSNCodes])
 
   useEffect(() => {
     let filtered = hsnCodes

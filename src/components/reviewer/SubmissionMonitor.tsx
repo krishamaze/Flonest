@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useRefresh } from '../../contexts/RefreshContext'
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/Card'
 import { LoadingSpinner } from '../ui/LoadingSpinner'
 import { getRecentSubmissions, getSubmissionStats, getSubmissionAnomalies } from '../../lib/api/submissions'
@@ -13,6 +14,7 @@ import {
 } from '@heroicons/react/24/outline'
 
 export function SubmissionMonitor() {
+  const { registerRefreshHandler, unregisterRefreshHandler } = useRefresh()
   const [recentSubmissions, setRecentSubmissions] = useState<MasterProduct[]>([])
   const [stats, setStats] = useState<SubmissionStats | null>(null)
   const [anomalies, setAnomalies] = useState<SubmissionAnomaly[]>([])
@@ -22,6 +24,12 @@ export function SubmissionMonitor() {
   useEffect(() => {
     loadData()
   }, [timeRange])
+
+  // Register refresh handler for pull-to-refresh
+  useEffect(() => {
+    registerRefreshHandler(loadData)
+    return () => unregisterRefreshHandler()
+  }, [registerRefreshHandler, unregisterRefreshHandler])
 
   const loadData = async () => {
     setLoading(true)
