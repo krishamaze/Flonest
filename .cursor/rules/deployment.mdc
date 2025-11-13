@@ -59,6 +59,36 @@ When deploying with database changes:
 
 Never run `supabase db push`, `npx supabase db push`, or any CLI database push commands.
 
+Update Detection System
+
+Service Worker Auto-Detection (No Manual Version Management!)
+
+How It Works:
+- Service Worker automatically detects new builds by comparing bundle hashes
+- Works for ANY code change (no version updates needed!)
+- Pull-to-refresh triggers: serviceWorkerRegistration.update()
+- If new bundle found → Shows yellow update button
+- User taps → App reloads with latest code
+
+What This Eliminates:
+- ❌ No package.json version updates required
+- ❌ No src/lib/api/version.ts updates
+- ❌ No database app_versions table dependency
+- ❌ No GitHub Actions for version sync
+- ❌ No version check API calls
+- ❌ No 401/network errors from version checks
+
+Simple Deployment Workflow:
+```bash
+# Make ANY change
+git add .
+git commit -m "your changes"
+git push origin main
+
+# Service Worker detects new bundle automatically
+# Pull-to-refresh shows update immediately
+```
+
 Development
 
 
@@ -98,4 +128,3 @@ Prefer communicating information via chat instead of creating documentation file
 Do not create test results, summaries, deployment logs, or other documentation files automatically.
 
 Only create .md files when the user explicitly asks for documentation to be written.
-
