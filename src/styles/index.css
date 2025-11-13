@@ -210,6 +210,11 @@ html {
   to { transform: rotate(360deg); }
 }
 
+/* Border width utilities */
+.border-3 {
+  border-width: 3px;
+}
+
 /* Android-style smooth transitions */
 /* Material Design easing curves */
 :root {
