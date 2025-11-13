@@ -1,6 +1,7 @@
 import { useState, FormEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useRegisterSW } from 'virtual:pwa-register/react'
+import { EyeIcon, EyeSlashIcon } from '@heroicons/react/24/outline'
 import { supabase } from '../lib/supabase'
 import { Button } from '../components/ui/Button'
 import { Input } from '../components/ui/Input'
@@ -18,6 +19,7 @@ export function LoginPage() {
   const [error, setError] = useState<string | null>(null)
   const [message, setMessage] = useState<string | null>(null)
   const [swRegistration, setSwRegistration] = useState<ServiceWorkerRegistration | undefined>()
+  const [showPassword, setShowPassword] = useState(false)
 
   // Register Service Worker for update checks
   useRegisterSW({
@@ -188,19 +190,34 @@ export function LoginPage() {
 
               {/* Password Input - only show for sign_in and sign_up */}
               {(view === 'sign_in' || view === 'sign_up') && (
-                <Input
-                  type="password"
-                  label="Password"
-                  placeholder="••••••••"
-                  value={password}
-                  onChange={handlePasswordChange}
-                  onBlur={handlePasswordBlur}
-                  required
-                  disabled={loading}
-                  minLength={6}
-                  autoComplete={view === 'sign_in' ? 'current-password' : 'new-password'}
-                  aria-describedby={error ? 'login-error' : undefined}
-                />
+                <div className="relative">
+                  <Input
+                    type={showPassword ? 'text' : 'password'}
+                    label="Password"
+                    placeholder="••••••••"
+                    value={password}
+                    onChange={handlePasswordChange}
+                    onBlur={handlePasswordBlur}
+                    required
+                    disabled={loading}
+                    minLength={6}
+                    autoComplete={view === 'sign_in' ? 'current-password' : 'new-password'}
+                    aria-describedby={error ? 'login-error' : undefined}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-md top-[38px] p-xs rounded-md text-muted-text hover:text-primary-text transition-colors focus:outline-2 focus:outline-primary focus:outline-offset-2"
+                    aria-label={showPassword ? 'Hide password' : 'Show password'}
+                    tabIndex={0}
+                  >
+                    {showPassword ? (
+                      <EyeSlashIcon className="h-5 w-5" />
+                    ) : (
+                      <EyeIcon className="h-5 w-5" />
+                    )}
+                  </button>
+                </div>
               )}
 
               {/* Submit Button */}
