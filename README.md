@@ -1,223 +1,224 @@
 # biz.finetune.store
 
-A mobile-first Progressive Web App (PWA) for multi-tenant inventory & sales SaaS with GST invoicing support.
+A mobile-first Progressive Web App (PWA) for multi-tenant inventory & sales SaaS with GST invoicing and product governance.
 
-## Features
+## ✨ Features
 
-- 📱 **Mobile-First Design** - Optimized for tablets and phones
+### Core Functionality
+- 📱 **Mobile-First Design** - Optimized for tablets and phones with touch-friendly UI
 - 🔄 **Offline Support** - PWA with service worker for offline functionality
-- 🏢 **Multi-Tenant** - Support for multiple organizations
-- 📦 **Product Management** - Track products, SKUs, and stock levels
-- 📊 **Inventory Tracking** - Monitor stock movements (in/out/adjustments)
-- 🧾 **GST Invoicing** - Generate invoices with GST compliance (Coming Soon)
-- 👥 **Team Management** - Role-based access control (Coming Soon)
-- 🎨 **Modern UI** - Built with TailwindCSS and Heroicons
-- 🔐 **Authentication** - Secure auth with Supabase
-- ⚡ **Fast** - Built with Vite for lightning-fast development
+- 🏢 **Multi-Tenant** - Support for multiple organizations with role-based access
+- 📦 **Product Management** - Track products, SKUs, serial numbers, and stock levels
+- 📊 **Inventory Tracking** - Monitor stock movements with detailed ledger
+- 🧾 **GST Invoicing** - Generate GST-compliant invoices with CGST/SGST/IGST
+- 📸 **Barcode Scanning** - Camera-based product and serial number scanning
+- 👥 **Team Management** - Role-based access (admin, manager, staff, reviewer)
+- 🎨 **Modern UI** - Built with TailwindCSS and design tokens
+- 🔐 **Authentication** - Secure auth with Supabase and RLS policies
+- ⚡ **Fast** - Built with Vite for lightning-fast performance
 
-## Architecture
+### Advanced Features
+- **Master Product Governance** - Internal review workflow for product catalog
+- **Serial Number Tracking** - Track individual units with serial numbers
+- **Customer Management** - Master customer database with org-specific links
+- **HSN Code Management** - Integrated HSN master with GST rate lookup
+- **Draft Invoices** - Save and resume invoice creation
+- **Stock Ledger** - Complete audit trail of all stock movements
+- **Notifications** - Real-time notifications for approvals and updates
+- **Branch Management** - Multi-branch support per organization
+
+## 🏗️ Architecture
 
 - **Frontend**: React 18 + TypeScript + Vite
-- **Styling**: TailwindCSS (mobile-first)
+- **Styling**: TailwindCSS with custom design tokens
 - **Backend**: Supabase (PostgreSQL + Auth + RLS)
 - **PWA**: vite-plugin-pwa + Workbox
 - **Icons**: Heroicons
-- **Routing**: React Router v6
-- **Strategy**: Augment-driven development
+- **Routing**: React Router v7
+- **Deployment**: Vercel (auto-deploy from git)
 
-## Sprint Progress
-
-- [x] **Sprint 1**: Foundation (Supabase + PWA scaffold + auth) ✅
-  - Supabase CLI setup
-  - React + Vite + TypeScript project
-  - TailwindCSS configuration
-  - PWA setup with offline support
-  - Authentication context
-  - Mobile-first layout with bottom navigation
-  - Core pages (Dashboard, Products, Inventory, Login)
-- [ ] **Sprint 2**: Inventory management
-- [ ] **Sprint 3**: Invoicing with GST
-- [ ] **Sprint 4**: Team management
-- [ ] **Sprint 5**: Admin dashboard
-- [ ] **Sprint 6**: PWA deployment
-- [ ] **Sprint 7**: Beta testing
-
-## Quick Start
+## 🚀 Quick Start
 
 ```bash
 # 1. Install dependencies
 npm install
 
-# 2. Set up environment variables
+# 2. Link to Supabase project (requires SUPABASE_ACCESS_TOKEN)
+npm run supabase:link
+
+# 3. Set up environment variables
 cp .env.example .env
 # Edit .env with your Supabase credentials
-
-# 3. Set up database (see docs/GETTING_STARTED.md for SQL)
 
 # 4. Run development server
 npm run dev
 ```
 
-Visit http://localhost:3000
+Visit http://localhost:5173
 
 **📖 Full Setup Guide:** See [docs/GETTING_STARTED.md](./docs/GETTING_STARTED.md)
 
-## Documentation
+## 📚 Documentation
 
+### Setup & Development
 - **[Getting Started](./docs/GETTING_STARTED.md)** - Installation and setup guide
-- **[Deployment](./docs/DEPLOYMENT.md)** - Deploy to Vercel
-- **[Deployment Checklist](./docs/DEPLOYMENT_CHECKLIST.md)** - Pre/post-deployment tasks
+- **[Environment Setup](./docs/ENV_SETUP.md)** - Environment variables configuration
+- **[Supabase CLI Setup](./docs/SUPABASE_CLI_SETUP.md)** - Local Supabase CLI configuration
 
-## Database Schema
+### Deployment
+- **[Deployment Guide](./docs/DEPLOYMENT.md)** - Deploy to Vercel via git push
+- **[Deployment Checklist](./docs/DEPLOYMENT_CHECKLIST.md)** - Pre/post-deployment verification
+- **[Schema Migration Workflow](./docs/SCHEMA_MIGRATION_WORKFLOW.md)** - Database migration process
 
-Run the following SQL in your Supabase SQL editor to create the required tables:
+### User Guides
+- **[Create Internal User](./docs/CREATE_INTERNAL_USER.md)** - Set up internal reviewer accounts
+- **[Test Accounts](./docs/TEST_ACCOUNTS.md)** - Test user credentials
+- **[Password Reset Setup](./docs/PASSWORD_RESET_SETUP.md)** - Configure password reset emails
 
-```sql
--- Create tenants table
-CREATE TABLE tenants (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  name TEXT NOT NULL,
-  slug TEXT UNIQUE NOT NULL,
-  created_at TIMESTAMPTZ DEFAULT NOW(),
-  updated_at TIMESTAMPTZ DEFAULT NOW()
-);
+### Technical Reference
+- **[MCP Workflow](./docs/MCP_WORKFLOW.md)** - Model Context Protocol tools usage
+- **[Cloud Development Workflow](./docs/CLOUD_DEV_WORKFLOW.md)** - Cloud-based development
+- **[Implementation Status Report](./docs/IMPLEMENTATION_STATUS_REPORT.md)** - Governance implementation details
 
--- Create users table
-CREATE TABLE users (
-  id UUID PRIMARY KEY REFERENCES auth.users(id),
-  tenant_id UUID REFERENCES tenants(id) NOT NULL,
-  email TEXT NOT NULL,
-  full_name TEXT,
-  role TEXT CHECK (role IN ('admin', 'manager', 'staff')) DEFAULT 'staff',
-  created_at TIMESTAMPTZ DEFAULT NOW(),
-  updated_at TIMESTAMPTZ DEFAULT NOW()
-);
+## 🗄️ Database
 
--- Create products table
-CREATE TABLE products (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  tenant_id UUID REFERENCES tenants(id) NOT NULL,
-  name TEXT NOT NULL,
-  sku TEXT NOT NULL,
-  description TEXT,
-  category TEXT,
-  unit_price DECIMAL(10,2) NOT NULL,
-  quantity INTEGER DEFAULT 0,
-  min_stock_level INTEGER DEFAULT 10,
-  created_at TIMESTAMPTZ DEFAULT NOW(),
-  updated_at TIMESTAMPTZ DEFAULT NOW(),
-  UNIQUE(tenant_id, sku)
-);
+The database uses Supabase migrations for schema management. All migrations are in `supabase/migrations/`.
 
--- Create inventory_transactions table
-CREATE TABLE inventory_transactions (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  tenant_id UUID REFERENCES tenants(id) NOT NULL,
-  product_id UUID REFERENCES products(id) NOT NULL,
-  type TEXT CHECK (type IN ('in', 'out', 'adjustment')) NOT NULL,
-  quantity INTEGER NOT NULL,
-  notes TEXT,
-  created_by UUID REFERENCES users(id) NOT NULL,
-  created_at TIMESTAMPTZ DEFAULT NOW()
-);
+**Key Tables:**
+- `orgs` - Organizations (tenants)
+- `profiles` - User profiles
+- `memberships` - User-org relationships with roles
+- `products` - Organization products
+- `master_products` - Global product catalog with governance
+- `invoices` & `invoice_items` - Sales invoices
+- `stock_ledger` - Inventory transactions
+- `master_customers` - Global customer database
+- `hsn_master` - HSN codes with GST rates
 
--- Enable Row Level Security
-ALTER TABLE tenants ENABLE ROW LEVEL SECURITY;
-ALTER TABLE users ENABLE ROW LEVEL SECURITY;
-ALTER TABLE products ENABLE ROW LEVEL SECURITY;
-ALTER TABLE inventory_transactions ENABLE ROW LEVEL SECURITY;
-
--- Create RLS policies
-CREATE POLICY "Users can view their tenant" ON tenants
-  FOR SELECT USING (id IN (SELECT tenant_id FROM users WHERE id = auth.uid()));
-
-CREATE POLICY "Users can view their profile" ON users
-  FOR SELECT USING (id = auth.uid());
-
-CREATE POLICY "Users can view their tenant's products" ON products
-  FOR SELECT USING (tenant_id IN (SELECT tenant_id FROM users WHERE id = auth.uid()));
-
-CREATE POLICY "Users can view their tenant's transactions" ON inventory_transactions
-  FOR SELECT USING (tenant_id IN (SELECT tenant_id FROM users WHERE id = auth.uid()));
-```
-
-### 4. Run Development Server
-
+**Migrations are managed via:**
 ```bash
-npm run dev
+npm run supabase:migration:new <name>  # Create new migration
+# Use Supabase MCP in Cursor to apply migrations
+npm run supabase:types                 # Generate TypeScript types
 ```
 
-The app will be available at `http://localhost:3000`
-
-## Available Scripts
-
-- `npm run dev` - Start development server
-- `npm run build` - Build for production
-- `npm run preview` - Preview production build
-- `npm run lint` - Run ESLint
-
-## Project Structure
+## 📁 Project Structure
 
 ```
 src/
 ├── components/
-│   ├── ui/           # Reusable UI components (Button, Card, Input, etc.)
-│   ├── forms/        # Form components
-│   └── layout/       # Layout components (Header, BottomNav, MainLayout)
-├── pages/            # Page components (Dashboard, Products, Inventory, Login)
-├── hooks/            # Custom React hooks
-├── lib/              # Utilities and configurations (Supabase client)
-├── types/            # TypeScript type definitions
-├── contexts/         # React contexts (AuthContext)
-├── styles/           # Global styles and Tailwind CSS
-└── assets/           # Static assets
+│   ├── ui/              # Reusable UI components (Button, Card, Input, etc.)
+│   ├── forms/           # Form components (Product, Invoice, Customer)
+│   ├── layout/          # Layout components (Header, BottomNav, MainLayout)
+│   ├── invoice/         # Invoice-specific (Scanner, ProductSearch)
+│   ├── reviewer/        # Internal reviewer components
+│   ├── customers/       # Customer management components
+│   ├── notifications/   # Notification components
+│   └── pwa/            # PWA components (Install, Update)
+├── pages/               # Page components (Dashboard, Products, Invoices, etc.)
+├── hooks/               # Custom React hooks
+├── lib/
+│   ├── api/            # API functions (organized by domain)
+│   ├── utils/          # Utility functions
+│   └── supabase.ts     # Supabase client
+├── types/               # TypeScript type definitions
+├── contexts/            # React contexts (AuthContext)
+├── styles/              # Design tokens and global styles
+└── main.tsx             # Application entry point
 ```
 
-## PWA Features
+## 🎨 Design System
 
-- **Installable** - Can be installed on mobile devices and desktop
-- **Offline Support** - Works offline with cached data
-- **App-like Experience** - Full-screen mode, splash screen
-- **Auto-updates** - Service worker updates automatically
+The app uses a custom design token system in `src/styles/design-tokens.css`:
 
-## Mobile Optimization
+- **Colors**: Primary (yellow), secondary (dark slate), semantic colors
+- **Spacing**: 8pt grid system
+- **Typography**: System fonts with consistent sizing
+- **Components**: Card-based layouts, bottom navigation, mobile-first
 
-- Touch-friendly UI with minimum 44px touch targets
-- Bottom navigation for easy thumb access
-- Responsive design with mobile-first approach
-- Safe area support for notched devices
-- Optimized for portrait orientation
+## 📱 PWA Features
 
-## Tech Stack
+- ✅ **Installable** - Add to home screen on mobile/desktop
+- ✅ **Offline Support** - Service worker caching
+- ✅ **App-like Experience** - Full-screen, splash screen
+- ✅ **Auto-updates** - Background updates with user notification
+- ✅ **Fast Loading** - Optimized bundle with code splitting
 
-- **React** 18.3.1
-- **TypeScript** 5.6.3
-- **Vite** 6.0.1
-- **TailwindCSS** 4.1.16
-- **Supabase** 2.79.0
-- **React Router** 7.9.5
-- **Heroicons** 2.2.0
-- **vite-plugin-pwa** 1.1.0
+## 🛠️ Available Scripts
 
-## Deployment
+### Development
+- `npm run dev` - Start development server (port 5173)
+- `npm run build` - Build for production
+- `npm run preview` - Preview production build
+- `npm run lint` - Run ESLint
 
-### Quick Deploy to Vercel
+### Database
+- `npm run supabase:migration:new <name>` - Create new migration
+- `npm run supabase:types` - Generate TypeScript types
+- `npm run supabase:status` - Check Supabase project status
+
+### Setup
+- `npm run create:internal-user` - Create internal reviewer account
+- `npm run configure:smtp` - Configure SMTP for emails
+- `npm run configure:redirect-urls` - Configure auth redirect URLs
+
+### Utilities
+- `npm run icons:generate` - Generate PWA icons
+- `npm run deploy:check` - Pre-deployment validation
+
+## 🚀 Deployment
+
+**Production URL:** https://biz.finetune.store
+
+The app is deployed to Vercel with automatic deployments from the `main` branch:
 
 ```bash
-npm install -g vercel
-vercel --prod
+# Commit changes
+git add .
+git commit -m "Your changes"
+
+# Deploy to production
+git push origin main
+
+# Vercel automatically builds and deploys
+# Use Vercel MCP to verify deployment status
 ```
 
-**📖 Full Deployment Guide:** See [docs/DEPLOYMENT.md](./docs/DEPLOYMENT.md)
+**⚠️ Never use `vercel deploy` command - always deploy via git push**
 
-**✅ Deployment Checklist:** See [docs/DEPLOYMENT_CHECKLIST.md](./docs/DEPLOYMENT_CHECKLIST.md)
+See [docs/DEPLOYMENT.md](./docs/DEPLOYMENT.md) for complete deployment workflow.
 
-### Pre-Deployment Validation
+## 🔐 Authentication & Roles
 
-```bash
-npm run deploy:check
-```
+The app supports multiple user roles:
 
-## License
+- **Admin** - Full organization management
+- **Manager** - Product and invoice management
+- **Staff** - Limited product and invoice access
+- **Reviewer** - Internal role for master product approval
+
+## 🧪 Testing
+
+Test accounts are available in [docs/TEST_ACCOUNTS.md](./docs/TEST_ACCOUNTS.md).
+
+## 📊 Tech Stack
+
+- **React** 18.3.1 - UI framework
+- **TypeScript** 5.6.3 - Type safety
+- **Vite** 6.0.1 - Build tool
+- **TailwindCSS** 4.1.16 - Styling
+- **Supabase** 2.79.0 - Backend & database
+- **React Router** 7.9.5 - Routing
+- **Heroicons** 2.2.0 - Icons
+- **vite-plugin-pwa** 1.1.0 - PWA support
+- **Framer Motion** 11.11.17 - Animations
+- **html5-qrcode** 2.3.8 - Barcode scanning
+
+## 📄 License
 
 MIT
+
+---
+
+**Built with ❤️ by FineTune**  
+**Last Updated:** November 13, 2025

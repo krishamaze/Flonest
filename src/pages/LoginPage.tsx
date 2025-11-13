@@ -266,49 +266,6 @@ export function LoginPage() {
             </form>
           </div>
 
-          {/* Test Accounts */}
-          {view === 'sign_in' && (
-            <div className="mt-lg rounded-lg p-md bg-primary-light border border-solid" style={{ borderColor: 'var(--color-primary)' }}>
-              <p className="text-sm font-semibold mb-sm text-primary-text">
-                Test Accounts
-              </p>
-              <div className="space-y-xs text-xs">
-                <div>
-                  <span className="font-medium text-secondary-text">
-                    Reviewer:
-                  </span>
-                  <span className="font-mono ml-xs text-primary-text">
-                    internal@test.com
-                  </span>
-                </div>
-                <div>
-                  <span className="font-medium text-secondary-text">
-                    Owner:
-                  </span>
-                  <span className="font-mono ml-xs text-primary-text">
-                    owner@test.com
-                  </span>
-                </div>
-                <div 
-                  className="pt-xs mt-xs border-t"
-                  style={{
-                    borderColor: 'var(--color-primary)',
-                    opacity: 0.3
-                  }}
-                >
-                  <span className="font-medium text-secondary-text">
-                    Password:
-                  </span>
-                  <span className="font-mono ml-xs text-primary-text">
-                    password
-                  </span>
-                </div>
-              </div>
-              <p className="text-xs mt-sm text-secondary-text">
-                Or sign up to create your own account
-              </p>
-            </div>
-          )}
 
           {/* Footer */}
           <p className="mt-lg text-center text-xs text-muted-text">
