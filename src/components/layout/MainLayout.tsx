@@ -1,11 +1,9 @@
-import { Outlet, useLocation } from 'react-router-dom'
+import { Outlet } from 'react-router-dom'
 import { Header } from './Header'
 import { BottomNav } from './BottomNav'
 import { PullToRefresh } from '../ui/PullToRefresh'
 
 export function MainLayout() {
-  const location = useLocation()
-
   const handleRefresh = async () => {
     // Reload the current page
     await new Promise((resolve) => {
