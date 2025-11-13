@@ -14,7 +14,7 @@ import { useVersionCheck } from '../../contexts/VersionCheckContext'
  * Schema version mismatches do not trigger user notifications.
  */
 export function UpdateNotification() {
-  const { showUpdateNotification, triggerUpdateNotification, hideUpdateNotification } = useVersionCheck()
+  const { showUpdateNotification, triggerUpdateNotification } = useVersionCheck()
   const [isUpdating, setIsUpdating] = useState(false)
 
   const {

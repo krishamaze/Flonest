@@ -41,6 +41,18 @@ export function HSNManager() {
   const [error, setError] = useState<string | null>(null)
   const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null)
 
+  const loadHSNCodes = async () => {
+    setLoading(true)
+    try {
+      const codes = await getHSNCodes({ is_active: undefined }) // Get all
+      setHsnCodes(codes)
+    } catch (error) {
+      console.error('Error loading HSN codes:', error)
+    } finally {
+      setLoading(false)
+    }
+  }
+
   useEffect(() => {
     loadHSNCodes()
   }, [])
@@ -49,7 +61,7 @@ export function HSNManager() {
   useEffect(() => {
     registerRefreshHandler(loadHSNCodes)
     return () => unregisterRefreshHandler()
-  }, [registerRefreshHandler, unregisterRefreshHandler, loadHSNCodes])
+  }, [registerRefreshHandler, unregisterRefreshHandler])
 
   useEffect(() => {
     let filtered = hsnCodes
@@ -84,18 +96,6 @@ export function HSNManager() {
       }
     }
   }, [searchQuery])
-
-  const loadHSNCodes = async () => {
-    setLoading(true)
-    try {
-      const codes = await getHSNCodes({ is_active: undefined }) // Get all
-      setHsnCodes(codes)
-    } catch (error) {
-      console.error('Error loading HSN codes:', error)
-    } finally {
-      setLoading(false)
-    }
-  }
 
   const handleAdd = () => {
     setEditingCode(null)
