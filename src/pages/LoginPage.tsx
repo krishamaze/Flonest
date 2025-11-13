@@ -5,12 +5,14 @@ import { Button } from '../components/ui/Button'
 import { Input } from '../components/ui/Input'
 import { PullToRefresh } from '../components/ui/PullToRefresh'
 import { checkVersionSync } from '../lib/api/version'
+import { useVersionCheck } from '../contexts/VersionCheckContext'
 import type { RefreshStatus } from '../contexts/RefreshContext'
 
 type AuthView = 'sign_in' | 'sign_up' | 'forgot_password'
 
 export function LoginPage() {
   const navigate = useNavigate()
+  const { triggerUpdateNotification } = useVersionCheck()
   const [view, setView] = useState<AuthView>('sign_in')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -37,8 +39,8 @@ export function LoginPage() {
           hasUpdate: true 
         })
         
-        // Dispatch event to show UpdateNotification button
-        window.dispatchEvent(new CustomEvent('version-mismatch-detected'))
+        // Trigger update notification via context (reliable)
+        triggerUpdateNotification()
       }
     } catch (error) {
       console.error('Version check failed:', error)

@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useCallback, ReactNode } from 'react'
 import { checkVersionSync } from '../lib/api/version'
+import { useVersionCheck } from './VersionCheckContext'
 
 export interface RefreshStatus {
   phase: 'checking-version' | 'version-mismatch' | 'refreshing-data' | 'complete'
@@ -16,6 +17,7 @@ interface RefreshContextType {
 const RefreshContext = createContext<RefreshContextType | undefined>(undefined)
 
 export function RefreshProvider({ children }: { children: ReactNode }) {
+  const { triggerUpdateNotification } = useVersionCheck()
   const [refreshHandler, setRefreshHandler] = useState<(() => Promise<void>) | null>(null)
 
   const registerRefreshHandler = useCallback((handler: () => Promise<void>) => {
@@ -46,8 +48,8 @@ export function RefreshProvider({ children }: { children: ReactNode }) {
           hasUpdate: true 
         })
         
-        // Dispatch custom event to show UpdateNotification button
-        window.dispatchEvent(new CustomEvent('version-mismatch-detected'))
+        // Trigger update notification via context (reliable state management)
+        triggerUpdateNotification()
         
         // Continue to data refresh even if update available
       }
@@ -77,7 +79,7 @@ export function RefreshProvider({ children }: { children: ReactNode }) {
       message: 'Complete', 
       hasUpdate: false 
     })
-  }, [refreshHandler])
+  }, [refreshHandler, triggerUpdateNotification])
 
   return (
     <RefreshContext.Provider value={{ registerRefreshHandler, unregisterRefreshHandler, refresh }}>

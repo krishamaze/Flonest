@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { ArrowPathIcon } from '@heroicons/react/24/outline'
 import { useRegisterSW } from 'virtual:pwa-register/react'
 import { checkVersionSync } from '../../lib/api/version'
+import { useVersionCheck } from '../../contexts/VersionCheckContext'
 
 /**
  * UpdateNotification Component
@@ -13,7 +14,7 @@ import { checkVersionSync } from '../../lib/api/version'
  * Schema version mismatches do not trigger user notifications.
  */
 export function UpdateNotification() {
-  const [showUpdate, setShowUpdate] = useState(false)
+  const { showUpdateNotification, triggerUpdateNotification, hideUpdateNotification } = useVersionCheck()
   const [isUpdating, setIsUpdating] = useState(false)
 
   const {
@@ -37,9 +38,9 @@ export function UpdateNotification() {
 
   useEffect(() => {
     if (needRefresh) {
-      setShowUpdate(true)
+      triggerUpdateNotification()
     }
-  }, [needRefresh])
+  }, [needRefresh, triggerUpdateNotification])
 
   // Retry wrapper with exponential backoff
   const checkVersionWithRetry = async (maxRetries: number = 3): Promise<void> => {
@@ -48,7 +49,7 @@ export function UpdateNotification() {
         const versionCheck = await checkVersionSync()
         if (!versionCheck.inSync) {
           console.warn('Version mismatch detected:', versionCheck.message)
-          setShowUpdate(true)
+          triggerUpdateNotification()
         }
         return // Success, exit retry loop
       } catch (error) {
@@ -114,16 +115,9 @@ export function UpdateNotification() {
       checkVersion()
     }
 
-    // Listen for version mismatch from pull-to-refresh
-    const handleVersionMismatch = () => {
-      console.log('Version mismatch detected by pull-to-refresh')
-      setShowUpdate(true)
-    }
-
     // Register event listeners
     document.addEventListener('visibilitychange', handleVisibilityChange)
     window.addEventListener('online', handleOnline)
-    window.addEventListener('version-mismatch-detected', handleVersionMismatch)
 
     // Fallback: Check every 30 minutes for long-running sessions (only when visible)
     intervalId = setInterval(() => {
@@ -136,12 +130,11 @@ export function UpdateNotification() {
     return () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange)
       window.removeEventListener('online', handleOnline)
-      window.removeEventListener('version-mismatch-detected', handleVersionMismatch)
       if (intervalId) {
         clearInterval(intervalId)
       }
     }
-  }, [])
+  }, [triggerUpdateNotification])
 
   const handleUpdate = async () => {
     setIsUpdating(true)
@@ -155,7 +148,7 @@ export function UpdateNotification() {
     }
   }
 
-  if (!showUpdate) return null
+  if (!showUpdateNotification) return null
 
   return (
     <div className="fixed bottom-20 right-4 left-4 z-[90] flex justify-center animate-slide-up">
