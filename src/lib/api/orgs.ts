@@ -11,6 +11,7 @@ export interface UpdateOrgData {
   state?: string
   pincode?: string
   gst_number?: string
+  gst_enabled?: boolean
   slug?: string
 }
 

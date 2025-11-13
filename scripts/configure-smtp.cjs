@@ -84,6 +84,11 @@ function configureSMTP(config) {
   return new Promise((resolve, reject) => {
     const accessToken = process.env.SUPABASE_ACCESS_TOKEN;
     
+    // Extract email address from config.email (handle "Name <email>" format)
+    const emailAddress = config.email.includes('<') 
+      ? config.email.match(/<(.+)>/)?.[1] || config.email
+      : config.email;
+    
     const payload = JSON.stringify({
       external_email_enabled: true,
       mailer_secure_email_change_enabled: true,
@@ -94,6 +99,7 @@ function configureSMTP(config) {
       smtp_user: config.user,
       smtp_pass: config.pass,
       smtp_sender_name: config.name,
+      smtp_reply_to: emailAddress, // Match Reply-To to From address for better Gmail trust
     });
     
     const options = {
@@ -110,6 +116,7 @@ function configureSMTP(config) {
     console.log(`   User: ${config.user}`);
     console.log(`   Email: ${config.email}`);
     console.log(`   Sender: ${config.name}`);
+    console.log(`   Reply-To: ${emailAddress} (matches From address for Gmail trust)`);
     
     const req = https.request(MANAGEMENT_API_URL, options, (res) => {
       let data = '';

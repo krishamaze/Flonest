@@ -95,7 +95,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // Listen for auth changes
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
+    } = supabase.auth.onAuthStateChange((event, session) => {
+      // Skip profile loading during password recovery flow
+      // The recovery token creates a temporary session, but we don't want to redirect
+      const isRecoveryFlow = window.location.pathname === '/reset-password' && 
+        (window.location.search.includes('type=recovery') || window.location.hash.includes('type=recovery'))
+      
+      if (isRecoveryFlow && (event === 'PASSWORD_RECOVERY' || event === 'TOKEN_REFRESHED')) {
+        // During recovery, just set the session but don't load profile
+        // This prevents auto-redirect away from reset password page
+        setSession(session)
+        return
+      }
+
       setSession(session)
       if (session?.user) {
         loadUserProfile(session.user, false)

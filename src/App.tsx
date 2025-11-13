@@ -15,6 +15,7 @@ import { MANAGE_PRODUCTS } from './lib/permissions'
 
 // Lazy load pages for code splitting
 const LoginPage = lazy(() => import('./pages/LoginPage').then(m => ({ default: m.LoginPage })))
+const ResetPasswordPage = lazy(() => import('./pages/ResetPasswordPage').then(m => ({ default: m.ResetPasswordPage })))
 const SetupPage = lazy(() => import('./pages/SetupPage').then(m => ({ default: m.SetupPage })))
 const DashboardPage = lazy(() => import('./pages/DashboardPage').then(m => ({ default: m.DashboardPage })))
 const ProductsPage = lazy(() => import('./pages/ProductsPage').then(m => ({ default: m.ProductsPage })))
@@ -46,9 +47,15 @@ function InternalUserRedirect({ children }: { children: React.ReactNode }) {
 
 function AppRoutes() {
   const { user, loading, connectionError, retrying, retryConnection } = useAuth()
+  const location = useLocation()
+
+  // Check if we're on the reset password page with recovery params
+  const isRecoveryFlow = location.pathname === '/reset-password' && 
+    (location.search.includes('type=recovery') || location.hash.includes('type=recovery'))
 
   // Show loading spinner while loading (max 5 seconds due to timeout)
-  if (loading) {
+  // But skip loading check if we're in recovery flow (let ResetPasswordPage handle its own loading)
+  if (loading && !isRecoveryFlow) {
     return (
       <div className="viewport-height flex items-center justify-center">
         <LoadingSpinner size="lg" />
@@ -57,8 +64,8 @@ function AppRoutes() {
   }
 
   // Show connection error if connection failed and we don't have a user (cached or otherwise)
-  // This ensures we always navigate - if user exists, navigation will proceed normally
-  if (connectionError && !retrying && !user) {
+  // Skip this check during recovery flow
+  if (connectionError && !retrying && !user && !isRecoveryFlow) {
     return <ConnectionError onRetry={retryConnection} retrying={retrying} />
   }
 
@@ -76,6 +83,10 @@ function AppRoutes() {
             <Route
               path="/login"
               element={user ? (user.isInternal ? <Navigate to="/reviewer" replace /> : <Navigate to="/" replace />) : <LoginPage />}
+            />
+            <Route
+              path="/reset-password"
+              element={<ResetPasswordPage />}
             />
             <Route
               path="/setup"

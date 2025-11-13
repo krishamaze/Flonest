@@ -20,7 +20,8 @@
     "db:migrate": "npm run supabase:db:push",
     "db:types": "npm run supabase:types",
     "create:internal-user": "node scripts/create-internal-user.cjs",
-    "configure:smtp": "node scripts/configure-smtp.cjs"
+    "configure:smtp": "node scripts/configure-smtp.cjs",
+    "configure:redirect-urls": "node scripts/configure-redirect-urls.cjs"
   },
   "dependencies": {
     "@heroicons/react": "^2.2.0",
