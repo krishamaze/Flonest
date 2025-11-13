@@ -3,6 +3,9 @@ import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { Button } from '../components/ui/Button'
 import { Input } from '../components/ui/Input'
+import { PullToRefresh } from '../components/ui/PullToRefresh'
+import { checkVersionSync } from '../lib/api/version'
+import type { RefreshStatus } from '../contexts/RefreshContext'
 
 type AuthView = 'sign_in' | 'sign_up' | 'forgot_password'
 
@@ -14,6 +17,40 @@ export function LoginPage() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [message, setMessage] = useState<string | null>(null)
+
+  const handleRefresh = async (onStatusChange?: (status: RefreshStatus) => void) => {
+    // Login page only checks for app updates (no user data to refresh)
+    onStatusChange?.({ 
+      phase: 'checking-version', 
+      message: 'Checking for updates...', 
+      hasUpdate: false 
+    })
+
+    try {
+      const versionCheck = await checkVersionSync()
+      
+      if (!versionCheck.inSync) {
+        console.warn('Version mismatch detected on login page:', versionCheck.message)
+        onStatusChange?.({ 
+          phase: 'version-mismatch', 
+          message: 'New version available!', 
+          hasUpdate: true 
+        })
+        
+        // Dispatch event to show UpdateNotification button
+        window.dispatchEvent(new CustomEvent('version-mismatch-detected'))
+      }
+    } catch (error) {
+      console.error('Version check failed:', error)
+    }
+
+    // Complete
+    onStatusChange?.({ 
+      phase: 'complete', 
+      message: 'Complete', 
+      hasUpdate: false 
+    })
+  }
 
   const handlePasswordChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     // Block spaces in password field
@@ -87,7 +124,8 @@ export function LoginPage() {
 
   return (
     <div className="viewport-height-safe bg-bg-page safe-top safe-bottom flex flex-col overflow-hidden">
-      <div className="flex-1 flex items-center justify-center px-md py-lg min-h-screen overflow-y-auto">
+      <PullToRefresh onRefresh={handleRefresh}>
+        <div className="flex-1 flex items-center justify-center px-md py-lg min-h-screen">
         <div className="w-full max-w-md page-enter">
           {/* Header */}
           <div className="mb-xl text-center">
@@ -272,7 +310,8 @@ export function LoginPage() {
             Powered by Supabase Auth • Secure & Reliable
           </p>
         </div>
-      </div>
+        </div>
+      </PullToRefresh>
     </div>
   )
 }
