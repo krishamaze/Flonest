@@ -2,11 +2,10 @@ import { CheckIcon } from '@heroicons/react/24/solid'
 
 interface StepIndicatorProps {
   currentStep: number
-  totalSteps: number
   stepLabels: string[]
 }
 
-export function StepIndicator({ currentStep, totalSteps, stepLabels }: StepIndicatorProps) {
+export function StepIndicator({ currentStep, stepLabels }: StepIndicatorProps) {
   return (
     <div className="flex items-center justify-center gap-sm mb-lg">
       {stepLabels.map((label, index) => {
