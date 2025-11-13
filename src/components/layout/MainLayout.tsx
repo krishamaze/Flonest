@@ -1,5 +1,4 @@
 import { Outlet } from 'react-router-dom'
-import { useEffect } from 'react'
 import { useRegisterSW } from 'virtual:pwa-register/react'
 import { Header } from './Header'
 import { BottomNav } from './BottomNav'
@@ -9,14 +8,10 @@ import { RefreshProvider, useRefresh } from '../../contexts/RefreshContext'
 function MainLayoutContent() {
   const { refresh, registerServiceWorker } = useRefresh()
 
-  // Register service worker with RefreshContext
-  const {
-    needRefresh: [needRefresh],
-    offlineReady: [offlineReady],
-    updateServiceWorker,
-  } = useRegisterSW({
+  // Register service worker with RefreshContext for pull-to-refresh
+  useRegisterSW({
     onRegistered(registration) {
-      console.log('SW registered:', registration)
+      console.log('SW registered in MainLayout:', registration)
       // Share SW registration with RefreshContext for pull-to-refresh
       registerServiceWorker(registration)
     },
