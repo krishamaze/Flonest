@@ -1,49 +1,52 @@
 import { useState, FormEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useRegisterSW } from 'virtual:pwa-register/react'
 import { supabase } from '../lib/supabase'
 import { Button } from '../components/ui/Button'
 import { Input } from '../components/ui/Input'
 import { PullToRefresh } from '../components/ui/PullToRefresh'
-import { checkVersionSync } from '../lib/api/version'
-import { useVersionCheck } from '../contexts/VersionCheckContext'
 import type { RefreshStatus } from '../contexts/RefreshContext'
 
 type AuthView = 'sign_in' | 'sign_up' | 'forgot_password'
 
 export function LoginPage() {
   const navigate = useNavigate()
-  const { triggerUpdateNotification } = useVersionCheck()
   const [view, setView] = useState<AuthView>('sign_in')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [message, setMessage] = useState<string | null>(null)
+  const [swRegistration, setSwRegistration] = useState<ServiceWorkerRegistration | undefined>()
+
+  // Register Service Worker for update checks
+  useRegisterSW({
+    onRegistered(registration) {
+      console.log('SW registered on login page:', registration)
+      setSwRegistration(registration)
+    },
+  })
 
   const handleRefresh = async (onStatusChange?: (status: RefreshStatus) => void) => {
-    // Login page only checks for app updates (no user data to refresh)
+    // Use Service Worker to check for updates (no version table needed!)
     onStatusChange?.({ 
       phase: 'checking-version', 
       message: 'Checking for updates...', 
       hasUpdate: false 
     })
 
-    try {
-      const versionCheck = await checkVersionSync()
-      
-      if (!versionCheck.inSync) {
-        console.warn('Version mismatch detected on login page:', versionCheck.message)
-        onStatusChange?.({ 
-          phase: 'version-mismatch', 
-          message: 'New version available!', 
-          hasUpdate: true 
-        })
+    if (swRegistration) {
+      try {
+        // Trigger SW to check for new bundle
+        console.log('Pull-to-refresh triggering Service Worker update check...')
+        await swRegistration.update()
+        console.log('Service Worker update check complete')
         
-        // Trigger update notification via context (reliable)
-        triggerUpdateNotification()
+        // If new bundle found, SW will set needRefresh=true
+        // UpdateNotification will automatically show yellow button
+      } catch (error) {
+        console.error('Service Worker update check failed:', error)
       }
-    } catch (error) {
-      console.error('Version check failed:', error)
     }
 
     // Complete

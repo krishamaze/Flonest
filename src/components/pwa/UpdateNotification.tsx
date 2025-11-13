@@ -1,17 +1,25 @@
 import { useState, useEffect } from 'react'
 import { ArrowPathIcon } from '@heroicons/react/24/outline'
 import { useRegisterSW } from 'virtual:pwa-register/react'
-import { checkVersionSync } from '../../lib/api/version'
 import { useVersionCheck } from '../../contexts/VersionCheckContext'
 
 /**
  * UpdateNotification Component
- * Shows a small update icon when a new version is available
- * Tapping it updates the app quietly
+ * Uses Service Worker bundle hash detection for ALL update checks
+ * No version table needed - SW automatically detects new builds
  * 
- * Note: This component checks app versions only (frontend code changes).
- * Schema versions are tracked separately and monitored in backend logs/admin dashboards.
- * Schema version mismatches do not trigger user notifications.
+ * How it works:
+ * 1. Service Worker compares bundle hashes (not version numbers)
+ * 2. If new bundle detected → needRefresh = true
+ * 3. Show yellow update button
+ * 4. User taps → updateServiceWorker() → app reloads with new bundle
+ * 
+ * Triggers:
+ * - Pull-to-refresh (calls registration.update())
+ * - Close/reopen app (SW auto-checks)
+ * - Visibility change (SW auto-checks)
+ * - Network reconnect (SW auto-checks)
+ * - Periodic checks (SW handles automatically)
  */
 export function UpdateNotification() {
   const { showUpdateNotification, triggerUpdateNotification } = useVersionCheck()
@@ -24,117 +32,21 @@ export function UpdateNotification() {
     onRegistered(registration: ServiceWorkerRegistration | undefined) {
       console.log('SW registered:', registration)
       
-      // Check for updates periodically (every 1 hour)
-      if (registration) {
-        setInterval(() => {
-          registration.update()
-        }, 60 * 60 * 1000)
-      }
+      // Service Worker will automatically check for updates
+      // We don't need manual periodic checks anymore
     },
     onRegisterError(error: Error) {
       console.error('SW registration error:', error)
     },
   })
 
+  // Show update notification when Service Worker detects new bundle
   useEffect(() => {
     if (needRefresh) {
+      console.log('Service Worker detected new bundle, showing update notification')
       triggerUpdateNotification()
     }
   }, [needRefresh, triggerUpdateNotification])
-
-  // Retry wrapper with exponential backoff
-  const checkVersionWithRetry = async (maxRetries: number = 3): Promise<void> => {
-    for (let attempt = 0; attempt < maxRetries; attempt++) {
-      try {
-        const versionCheck = await checkVersionSync()
-        if (!versionCheck.inSync) {
-          console.warn('Version mismatch detected:', versionCheck.message)
-          triggerUpdateNotification()
-        }
-        return // Success, exit retry loop
-      } catch (error) {
-        const isLastAttempt = attempt === maxRetries - 1
-        const errorMessage = error instanceof Error ? error.message : String(error)
-        
-        // Check if error is retryable (network errors, timeouts, 5xx errors)
-        const isRetryable = 
-          errorMessage.includes('network') ||
-          errorMessage.includes('timeout') ||
-          errorMessage.includes('fetch') ||
-          (error && typeof error === 'object' && 'status' in error && 
-           typeof error.status === 'number' && error.status >= 500)
-
-        console.error(
-          `Version check failed (attempt ${attempt + 1}/${maxRetries}):`,
-          error
-        )
-
-        if (!isLastAttempt && isRetryable) {
-          // Exponential backoff: 1s, 2s, 4s
-          const delay = Math.pow(2, attempt) * 1000
-          console.log(`Retrying in ${delay}ms...`)
-          await new Promise(resolve => setTimeout(resolve, delay))
-        } else if (isLastAttempt) {
-          console.warn(
-            'Version check failed after all retries, will try again on next event/interval'
-          )
-        } else {
-          // Non-retryable error (e.g., 4xx, data validation)
-          console.error('Non-retryable error detected, stopping retries')
-          return
-        }
-      }
-    }
-  }
-
-  // Event-driven version checks (battery-efficient)
-  useEffect(() => {
-    let intervalId: NodeJS.Timeout | undefined
-
-    const checkVersion = async () => {
-      // Only check if app is visible and online
-      if (document.visibilityState === 'visible' && navigator.onLine) {
-        await checkVersionWithRetry()
-      }
-    }
-
-    // Check on mount
-    checkVersion()
-
-    // Check on visibility change (user returns to app)
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === 'visible') {
-        console.log('App visible, checking version')
-        checkVersion()
-      }
-    }
-
-    // Check on network reconnect
-    const handleOnline = () => {
-      console.log('Network reconnected, checking version')
-      checkVersion()
-    }
-
-    // Register event listeners
-    document.addEventListener('visibilitychange', handleVisibilityChange)
-    window.addEventListener('online', handleOnline)
-
-    // Fallback: Check every 30 minutes for long-running sessions (only when visible)
-    intervalId = setInterval(() => {
-      if (document.visibilityState === 'visible' && navigator.onLine) {
-        console.log('Periodic fallback check (30 min)')
-        checkVersion()
-      }
-    }, 30 * 60 * 1000)
-
-    return () => {
-      document.removeEventListener('visibilitychange', handleVisibilityChange)
-      window.removeEventListener('online', handleOnline)
-      if (intervalId) {
-        clearInterval(intervalId)
-      }
-    }
-  }, [triggerUpdateNotification])
 
   const handleUpdate = async () => {
     setIsUpdating(true)
