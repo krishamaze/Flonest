@@ -143,12 +143,16 @@ body {
   background: var(--bg-page);
   /* Prevent scrolling on body - let individual pages handle it */
   overflow-x: hidden;
+  /* Disable native pull-to-refresh to prevent height jumps in PWA */
+  overscroll-behavior-y: contain;
 }
 
 /* Use dynamic viewport height for consistent sizing across devices */
 html {
   height: 100%;
   height: 100dvh; /* Dynamic viewport height - accounts for mobile browser bars */
+  /* Disable native pull-to-refresh at root level */
+  overscroll-behavior-y: contain;
 }
 
 #root {

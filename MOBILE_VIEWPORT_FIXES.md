@@ -134,7 +134,37 @@ html {
 
 ---
 
-## 5. ✅ Overflow & Container Sizing
+## 5. ✅ Pull-to-Refresh Disabled (Prevents Height Jumps)
+
+### Issue
+Native browser pull-to-refresh causes viewport height jumps after reload, especially on mobile. This is expected browser behavior—mobile browsers avoid updating layout during scroll for performance, then recalculate viewport after refresh gesture completes.
+
+### Solution
+**File:** `src/styles/index.css`
+
+```css
+html {
+  overscroll-behavior-y: contain; /* Disable pull-to-refresh at root */
+}
+
+body {
+  overscroll-behavior-y: contain; /* Disable pull-to-refresh on body */
+}
+```
+
+### Why This Works
+- ✅ `overscroll-behavior-y: contain` stops native pull-to-refresh gesture
+- ✅ Prevents viewport height changes during refresh
+- ✅ Maintains consistent layout in PWA mode
+- ✅ Standard approach for PWAs (iOS standalone mode already disables this)
+- ✅ Works on Chrome Android and modern browsers
+
+### Custom Refresh UI (Future Enhancement)
+If refresh functionality is needed, implement custom pull-to-refresh UI that maintains layout state.
+
+---
+
+## 6. ✅ Overflow & Container Sizing
 
 ### Implementation
 **File:** `src/components/layout/MainLayout.tsx`
@@ -166,7 +196,7 @@ body {
 
 ---
 
-## 6. ✅ Login Page Layout
+## 7. ✅ Login Page Layout
 
 ### Implementation
 **File:** `src/pages/LoginPage.tsx`
@@ -238,8 +268,13 @@ height: 100dvh; /* Instead of 100vh */
 
 ### ✅ Overflow Control
 ```css
+html {
+  overscroll-behavior-y: contain; /* Disable pull-to-refresh */
+}
+
 body {
   overflow-x: hidden; /* No horizontal scroll */
+  overscroll-behavior-y: contain; /* Disable pull-to-refresh */
 }
 
 .layout {
@@ -278,7 +313,7 @@ body {
 - [x] Portrait mode (primary)
 - [x] Landscape mode (if supported)
 - [x] Keyboard open/closed
-- [x] Pull-to-refresh gesture
+- [x] Pull-to-refresh disabled (no height jumps)
 - [x] Navigation gestures
 - [x] Fullscreen PWA mode
 - [x] Browser mode
@@ -414,6 +449,7 @@ body {
 | Safe area handling | ✅ Already implemented | iOS/Android notch support |
 | Dynamic viewport (100dvh) | ✅ Already implemented | Layout stability |
 | Overflow control | ✅ Already implemented | No viewport clipping |
+| Pull-to-refresh disabled | ✅ Complete | No height jumps |
 | PWA display mode | ✅ Already configured | Optimal fullscreen |
 
 **All mobile viewport issues resolved. Login page is now clean and production-ready.** ✅
