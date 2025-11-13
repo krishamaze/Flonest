@@ -114,9 +114,16 @@ export function UpdateNotification() {
       checkVersion()
     }
 
+    // Listen for version mismatch from pull-to-refresh
+    const handleVersionMismatch = () => {
+      console.log('Version mismatch detected by pull-to-refresh')
+      setShowUpdate(true)
+    }
+
     // Register event listeners
     document.addEventListener('visibilitychange', handleVisibilityChange)
     window.addEventListener('online', handleOnline)
+    window.addEventListener('version-mismatch-detected', handleVersionMismatch)
 
     // Fallback: Check every 30 minutes for long-running sessions (only when visible)
     intervalId = setInterval(() => {
@@ -129,6 +136,7 @@ export function UpdateNotification() {
     return () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange)
       window.removeEventListener('online', handleOnline)
+      window.removeEventListener('version-mismatch-detected', handleVersionMismatch)
       if (intervalId) {
         clearInterval(intervalId)
       }

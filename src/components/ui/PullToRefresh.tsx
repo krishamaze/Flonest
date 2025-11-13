@@ -1,7 +1,8 @@
 import { useState, useRef, useEffect, ReactNode } from 'react'
+import type { RefreshStatus } from '../../contexts/RefreshContext'
 
 interface PullToRefreshProps {
-  onRefresh: () => Promise<void>
+  onRefresh: (onStatusChange?: (status: RefreshStatus) => void) => Promise<void>
   children: ReactNode
   disabled?: boolean
   threshold?: number // px to trigger refresh (default 80)
@@ -20,6 +21,7 @@ export function PullToRefresh({
   const [state, setState] = useState<RefreshState>('idle')
   const [pullDistance, setPullDistance] = useState(0)
   const [isRefreshing, setIsRefreshing] = useState(false)
+  const [refreshMessage, setRefreshMessage] = useState('Refreshing...')
   
   const touchStartY = useRef(0)
   const scrollableElement = useRef<HTMLDivElement>(null)
@@ -86,7 +88,24 @@ export function PullToRefresh({
         setIsRefreshing(true)
 
         try {
-          await onRefresh()
+          // Call onRefresh with status callback
+          await onRefresh((status: RefreshStatus) => {
+            // Update message based on refresh phase
+            switch (status.phase) {
+              case 'checking-version':
+                setRefreshMessage('Checking for updates...')
+                break
+              case 'version-mismatch':
+                setRefreshMessage('New version available!')
+                break
+              case 'refreshing-data':
+                setRefreshMessage('Refreshing data...')
+                break
+              case 'complete':
+                setRefreshMessage('Complete!')
+                break
+            }
+          })
         } catch (error) {
           console.error('Refresh error:', error)
         } finally {
@@ -95,6 +114,7 @@ export function PullToRefresh({
             setPullDistance(0)
             setState('idle')
             setIsRefreshing(false)
+            setRefreshMessage('Refreshing...')
           }, 300)
         }
       } else {
@@ -192,7 +212,7 @@ export function PullToRefresh({
               }}
             >
               {state === 'refreshing'
-                ? 'Refreshing...'
+                ? refreshMessage
                 : state === 'ready'
                 ? 'Release to refresh'
                 : 'Pull to refresh'}

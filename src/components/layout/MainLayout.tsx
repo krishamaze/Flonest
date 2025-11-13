@@ -8,7 +8,7 @@ function MainLayoutContent() {
   const { refresh } = useRefresh()
 
   const handleRefresh = async () => {
-    // Call the page-specific refresh handler registered via RefreshContext
+    // Call the refresh flow (version check + data refresh)
     await refresh()
   }
 

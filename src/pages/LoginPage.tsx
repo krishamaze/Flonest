@@ -3,7 +3,6 @@ import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { Button } from '../components/ui/Button'
 import { Input } from '../components/ui/Input'
-import { PullToRefresh } from '../components/ui/PullToRefresh'
 
 type AuthView = 'sign_in' | 'sign_up' | 'forgot_password'
 
@@ -86,17 +85,9 @@ export function LoginPage() {
     }
   }
 
-  const handleRefresh = async () => {
-    await new Promise((resolve) => {
-      window.location.reload()
-      setTimeout(resolve, 500)
-    })
-  }
-
   return (
     <div className="viewport-height-safe bg-bg-page safe-top safe-bottom flex flex-col overflow-hidden">
-      <PullToRefresh onRefresh={handleRefresh}>
-        <div className="flex-1 flex items-center justify-center px-md py-lg min-h-screen">
+      <div className="flex-1 flex items-center justify-center px-md py-lg min-h-screen overflow-y-auto">
         <div className="w-full max-w-md page-enter">
           {/* Header */}
           <div className="mb-xl text-center">
@@ -281,8 +272,7 @@ export function LoginPage() {
             Powered by Supabase Auth • Secure & Reliable
           </p>
         </div>
-        </div>
-      </PullToRefresh>
+      </div>
     </div>
   )
 }
