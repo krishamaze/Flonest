@@ -121,6 +121,11 @@
   "env": {
     "NODE_VERSION": "18"
   },
-  "regions": ["iad1"]
+  "regions": ["iad1"],
+  "git": {
+    "deploymentEnabled": {
+      "main": true
+    }
+  }
 }
 
