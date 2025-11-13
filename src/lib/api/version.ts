@@ -9,7 +9,7 @@ import { supabase } from '../supabase'
 //
 // Note: Schema versions are tracked separately and updated manually after schema migrations.
 // See docs/SCHEMA_MIGRATIONS.md for schema version update process.
-export const FRONTEND_VERSION = '1.0.0'
+export const FRONTEND_VERSION = '1.0.1'
 
 export interface AppVersion {
   version: string
