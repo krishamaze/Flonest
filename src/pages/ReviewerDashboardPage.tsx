@@ -72,7 +72,7 @@ function ReviewerDashboardHome() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-md">
       {/* Page Header */}
       <div>
         <h1 className="text-xl font-semibold text-primary-text">Reviewer Dashboard</h1>
