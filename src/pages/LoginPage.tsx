@@ -142,10 +142,15 @@ export function LoginPage() {
     setError(null)
     setMessage('Redirecting to corporate SSO...')
     try {
+      // Google doesn't support offline_access scope, use different scopes based on provider
+      const scopes = ADMIN_SSO_PROVIDER === 'google' 
+        ? 'openid profile email'
+        : 'openid profile email offline_access'
+      
       await supabase.auth.signInWithOAuth({
         provider: ADMIN_SSO_PROVIDER as any,
         options: {
-          scopes: 'openid profile email offline_access',
+          scopes,
           redirectTo: `${window.location.origin}${ADMIN_SSO_REDIRECT_PATH}`,
         },
       })
