@@ -46,7 +46,7 @@ export function AccessDenied({
           <div className="mb-lg p-md bg-bg-hover rounded-md text-sm">
             <p className="text-secondary-text">
               <span className="font-medium">Current Role:</span>{' '}
-              {user.isInternal ? 'Internal Reviewer' : user.role || 'No role assigned'}
+              {user.platformAdmin ? 'Platform Admin' : user.role || 'No role assigned'}
             </p>
             {user.orgId && (
               <p className="text-secondary-text mt-xs">
@@ -57,7 +57,7 @@ export function AccessDenied({
           </div>
         )}
         <button
-          onClick={() => navigate(user?.isInternal ? '/reviewer' : '/')}
+          onClick={() => navigate(user?.platformAdmin ? '/reviewer' : '/')}
           className="w-full bg-primary text-text-on-primary font-semibold py-sm px-md rounded-md hover:bg-primary-hover transition-colors"
         >
           Go to Dashboard

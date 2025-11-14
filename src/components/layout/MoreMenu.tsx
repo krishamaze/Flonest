@@ -38,7 +38,7 @@ export function MoreMenu({ isOpen, onClose }: MoreMenuProps) {
   const moreMenuItems: typeof baseMenuItems = []
 
   // Internal users only see reviewer menu (no org routes)
-  if (user?.isInternal) {
+  if (user?.platformAdmin) {
     moreMenuItems.push({
       to: '/reviewer',
       label: 'Reviewer',
@@ -47,7 +47,7 @@ export function MoreMenu({ isOpen, onClose }: MoreMenuProps) {
     })
   } else {
     // Org users see org routes based on permissions
-    // Stock Ledger: owner and branch_head only
+    // Stock Ledger: admin and branch_head only
     if (hasPermission(user, MANAGE_INVENTORY)) {
       moreMenuItems.push({
         to: '/stock-ledger',

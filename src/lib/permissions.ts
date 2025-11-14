@@ -11,6 +11,11 @@ export const MANAGE_PRODUCTS = 'manage_products'
 export const MANAGE_INVENTORY = 'manage_inventory'
 export const VIEW_REPORTS = 'view_reports'
 export const MANAGE_CUSTOMERS = 'manage_customers'
+export const MANAGE_AGENTS = 'manage_agents'
+export const ISSUE_DC = 'issue_dc'
+export const ACCEPT_DC = 'accept_dc'
+export const CREATE_DC_SALE = 'create_dc_sale'
+export const VIEW_AGENT_PORTAL = 'view_agent_portal'
 
 export type Permission =
   | typeof MANAGE_ORG_SETTINGS
@@ -23,10 +28,15 @@ export type Permission =
   | typeof MANAGE_INVENTORY
   | typeof VIEW_REPORTS
   | typeof MANAGE_CUSTOMERS
+  | typeof MANAGE_AGENTS
+  | typeof ISSUE_DC
+  | typeof ACCEPT_DC
+  | typeof CREATE_DC_SALE
+  | typeof VIEW_AGENT_PORTAL
 
 // Role-based permissions map
 const ROLE_PERMISSIONS: Record<UserRole, Permission[]> = {
-  owner: [
+  admin: [
     MANAGE_ORG_SETTINGS,
     MANAGE_BRANCH_USERS,
     CREATE_INVOICE,
@@ -37,6 +47,11 @@ const ROLE_PERMISSIONS: Record<UserRole, Permission[]> = {
     MANAGE_INVENTORY,
     VIEW_REPORTS,
     MANAGE_CUSTOMERS,
+    MANAGE_AGENTS,
+    ISSUE_DC,
+    ACCEPT_DC,
+    CREATE_DC_SALE,
+    VIEW_AGENT_PORTAL,
   ],
   branch_head: [
     MANAGE_BRANCH_USERS,
@@ -46,10 +61,16 @@ const ROLE_PERMISSIONS: Record<UserRole, Permission[]> = {
     MANAGE_INVENTORY,
     VIEW_REPORTS,
     MANAGE_CUSTOMERS,
+    ACCEPT_DC,
+    CREATE_DC_SALE,
+    VIEW_AGENT_PORTAL,
   ],
-  staff: [
+  advisor: [
     CREATE_INVOICE,
     MANAGE_CUSTOMERS,
+    ACCEPT_DC,
+    CREATE_DC_SALE,
+    VIEW_AGENT_PORTAL,
   ],
 }
 
@@ -57,8 +78,12 @@ const ROLE_PERMISSIONS: Record<UserRole, Permission[]> = {
  * Check if user has a specific permission
  */
 export function hasPermission(user: AuthUser | null, permission: Permission): boolean {
-  if (!user || user.isInternal) {
-    // Internal users have platform-level permissions (handled separately)
+  if (!user) {
+    return false
+  }
+
+  // Platform admins have platform-level permissions (handled separately)
+  if (user.platformAdmin) {
     return false
   }
 
@@ -78,27 +103,27 @@ export function getRolePermissions(role: UserRole): Permission[] {
 }
 
 /**
- * Check if user can manage users (owner or branch_head)
+ * Check if user can manage users (admin or branch_head)
  */
 export function canManageUsers(user: AuthUser | null): boolean {
-  if (!user || user.isInternal) return false
-  return user.role === 'owner' || user.role === 'branch_head'
+  if (!user || user.platformAdmin) return false
+  return user.role === 'admin' || user.role === 'branch_head'
 }
 
 /**
- * Check if user can approve actions (owner only)
+ * Check if user can approve actions (admin only)
  */
 export function canApproveActions(user: AuthUser | null): boolean {
-  if (!user || user.isInternal) return false
-  return user.role === 'owner'
+  if (!user || user.platformAdmin) return false
+  return user.role === 'admin'
 }
 
 /**
- * Check if user can manage org settings (owner only)
+ * Check if user can manage org settings (admin only)
  */
 export function canManageOrgSettings(user: AuthUser | null): boolean {
-  if (!user || user.isInternal) return false
-  return user.role === 'owner'
+  if (!user || user.platformAdmin) return false
+  return user.role === 'admin'
 }
 
 /**
@@ -106,9 +131,41 @@ export function canManageOrgSettings(user: AuthUser | null): boolean {
  */
 export function canViewBlockedInvoices(user: AuthUser | null): boolean {
   if (!user) return false
-  // Internal users can view all blocked invoices (platform-level)
-  if (user.isInternal) return true
-  // Owner and branch_head can view blocked invoices in their org
-  return user.role === 'owner' || user.role === 'branch_head'
+  // Platform admins can view all blocked invoices (platform-level)
+  if (user.platformAdmin) return true
+  // Admin and branch_head can view blocked invoices in their org
+  return user.role === 'admin' || user.role === 'branch_head'
 }
 
+/**
+ * Check if user can manage agents (admin only, business context)
+ */
+export function canManageAgents(user: AuthUser | null): boolean {
+  if (!user || user.platformAdmin) return false
+  if (user.contextMode === 'agent') return false // Not in agent context
+  return user.role === 'admin'
+}
+
+/**
+ * Check if user can access agent portal (must have agent relationship)
+ */
+export function canAccessAgentPortal(user: AuthUser | null): boolean {
+  if (!user || user.platformAdmin) return false
+  return user.agentContext !== undefined
+}
+
+/**
+ * Check if user is in agent context mode
+ */
+export function isAgentContext(user: AuthUser | null): boolean {
+  if (!user) return false
+  return user.contextMode === 'agent'
+}
+
+/**
+ * Check if user is in business context mode
+ */
+export function isBusinessContext(user: AuthUser | null): boolean {
+  if (!user) return false
+  return user.contextMode === 'business'
+}

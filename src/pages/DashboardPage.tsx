@@ -129,8 +129,8 @@ export function DashboardPage() {
   useEffect(() => {
     if (
       user &&
-      !user.isInternal &&
-      user.role === 'owner' &&
+      !user.platformAdmin &&
+      user.role === 'admin' &&
       user.orgId &&
       !localStorage.getItem('ft_trial_banner_seen')
     ) {
@@ -252,13 +252,13 @@ export function DashboardPage() {
         </Card>
       </div>
 
-      {/* Pending Approvals (Owner only) */}
+      {/* Pending Approvals (Admin only) */}
       {canManageOrgSettings(user) && pendingMemberships.length > 0 && (
         <Card className="shadow-sm border-warning">
           <CardHeader>
             <CardTitle className="text-base font-medium flex items-center gap-sm">
               <ExclamationTriangleIcon className="h-5 w-5 text-warning" />
-              Pending Staff Approvals ({pendingMemberships.length})
+              Pending Advisor Approvals ({pendingMemberships.length})
             </CardTitle>
           </CardHeader>
           <CardContent className="p-4 pt-0">
@@ -327,9 +327,9 @@ export function DashboardPage() {
               >
                 <UserPlusIcon className="h-5 w-5 text-primary shrink-0" aria-hidden="true" />
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-primary-text">Add Staff</p>
+                  <p className="text-sm font-medium text-primary-text">Add Advisor</p>
                   <p className="text-xs text-secondary-text">
-                    {user?.role === 'owner' ? 'Add staff member' : 'Request staff approval'}
+                    {user?.role === 'admin' ? 'Add advisor' : 'Request staff approval'}
                   </p>
                 </div>
               </button>

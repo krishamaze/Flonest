@@ -50,7 +50,7 @@ export function AddStaffForm({ isOpen, onClose, onSuccess }: AddStaffFormProps) 
       if (user.role === 'branch_head' && user.branchId) {
         setBranchId(user.branchId)
       } else if (data && data.length > 0) {
-        // Owner: set first branch as default
+        // Admin: set first branch as default
         setBranchId(data[0].id)
       }
     } catch (error) {
@@ -128,9 +128,9 @@ export function AddStaffForm({ isOpen, onClose, onSuccess }: AddStaffFormProps) 
     try {
       await createStaffMembership(userFound.id, branchId, userFound.email || '')
       toast.success(
-        user?.role === 'owner'
-          ? 'Staff member added successfully'
-          : 'Staff member added and pending approval'
+        user?.role === 'admin'
+          ? 'Advisor added successfully'
+          : 'Advisor added and pending approval'
       )
       setEmail('')
       setUserFound(null)
@@ -138,7 +138,7 @@ export function AddStaffForm({ isOpen, onClose, onSuccess }: AddStaffFormProps) 
       onSuccess?.()
       onClose()
     } catch (error: any) {
-      toast.error(error.message || 'Failed to add staff member')
+      toast.error(error.message || 'Failed to add advisor')
     } finally {
       setLoading(false)
     }
@@ -180,7 +180,7 @@ export function AddStaffForm({ isOpen, onClose, onSuccess }: AddStaffFormProps) 
         )}
       </div>
 
-      {user?.role === 'owner' && (
+      {user?.role === 'admin' && (
         <div>
           <label htmlFor="branch" className="block text-sm font-medium text-primary-text mb-xs">
             Branch
@@ -212,7 +212,7 @@ export function AddStaffForm({ isOpen, onClose, onSuccess }: AddStaffFormProps) 
             className="bg-neutral-100"
           />
           <p className="mt-xs text-xs text-secondary-text">
-            Staff will be added to your branch and require owner approval
+            Advisor will be added to your branch and require admin approval
           </p>
         </div>
       )}
@@ -237,7 +237,7 @@ export function AddStaffForm({ isOpen, onClose, onSuccess }: AddStaffFormProps) 
           isLoading={loading}
           className="flex-1"
         >
-          {user?.role === 'owner' ? 'Add Staff' : 'Request Approval'}
+          {user?.role === 'admin' ? 'Add Advisor' : 'Request Approval'}
         </Button>
       </div>
     </form>

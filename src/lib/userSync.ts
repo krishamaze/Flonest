@@ -44,7 +44,7 @@ export async function syncUserProfile(authUser: User): Promise<UserProfileWithOr
         email: authUser.email || '',
         full_name: authUser.user_metadata?.full_name || null,
         avatar_url: authUser.user_metadata?.avatar_url || null,
-        is_internal: false, // Default to false for new users
+        platform_admin: false, // Default to false for new users
       }
 
       const { data: newProfile, error: createProfileError } = await supabase
@@ -65,9 +65,9 @@ export async function syncUserProfile(authUser: User): Promise<UserProfileWithOr
       console.log('Profile already exists:', profile)
     }
 
-    // Skip membership check for internal users - they don't need orgs
-    if (profile.is_internal) {
-      console.log('Internal user detected - skipping membership check')
+    // Skip membership check for platform admins - they don't need orgs
+    if (profile.platform_admin) {
+      console.log('Platform admin detected - skipping membership check')
       return null
     }
 

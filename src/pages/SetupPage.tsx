@@ -72,7 +72,7 @@ export function SetupPage() {
 
   // Fetch org data and check if setup is needed
   useEffect(() => {
-    if (!authLoading && user?.orgId && !user.isInternal) {
+    if (!authLoading && user?.orgId && !user.platformAdmin) {
       supabase
         .from('orgs')
         .select('*')
@@ -102,7 +102,7 @@ export function SetupPage() {
     } else if (!authLoading) {
       navigate('/')
     }
-  }, [user?.orgId, user?.isInternal, authLoading, navigate])
+  }, [user?.orgId, user?.platformAdmin, authLoading, navigate])
 
   // Auto-fetch pincode data for non-GST flow
   useEffect(() => {

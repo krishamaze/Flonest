@@ -35,7 +35,7 @@ export function RoleProtectedRoute({
   }
 
   // Internal users are handled separately - they should only access /reviewer routes
-  if (user.isInternal) {
+  if (user.platformAdmin) {
     return <Navigate to="/reviewer" replace />
   }
 
@@ -80,7 +80,7 @@ export function canAccessRoute(
   requiredRole?: UserRole | UserRole[],
   requiredPermission?: Permission
 ): boolean {
-  if (!user || user.isInternal) return false
+  if (!user || user.platformAdmin) return false
   if (!user.role) return false
 
   if (requiredRole) {

@@ -11,8 +11,13 @@ export type InvoiceItem = Database['public']['Tables']['invoice_items']['Row']
 export type StockLedger = Database['public']['Tables']['stock_ledger']['Row']
 export type MasterCustomer = Database['public']['Tables']['master_customers']['Row']
 export type Customer = Database['public']['Tables']['customers']['Row']
+export type AgentRelationship = Database['public']['Tables']['agent_relationships']['Row']
+export type AgentPortalPermission = Database['public']['Tables']['agent_portal_permissions']['Row']
+export type DeliveryChallan = Database['public']['Tables']['delivery_challans']['Row']
+export type DCItem = Database['public']['Tables']['dc_items']['Row']
+export type DCStockLedger = Database['public']['Tables']['dc_stock_ledger']['Row']
 
-export type UserRole = 'owner' | 'branch_head' | 'staff'
+export type UserRole = 'admin' | 'branch_head' | 'advisor'
 export type ProductStatus = 'active' | 'inactive' | 'pending'
 export type ApprovalStatus = 'pending' | 'auto_pass' | 'approved' | 'rejected'
 export type InvoiceStatus = 'draft' | 'finalized' | 'cancelled'
@@ -20,10 +25,19 @@ export type InvoiceStatus = 'draft' | 'finalized' | 'cancelled'
 export interface AuthUser {
   id: string
   email: string
-  orgId: string | null // null if user hasn't joined an org yet or is internal
-  role: UserRole | null // null if user hasn't joined an org yet or is internal
-  branchId: string | null // null for owners (org-wide) or if user hasn't joined an org yet
-  isInternal: boolean
+  orgId: string | null // null if user hasn't joined an org yet
+  role: UserRole | null // null if user hasn't joined an org yet
+  branchId: string | null // null for admins (org-wide) or if user hasn't joined an org yet
+  platformAdmin: boolean // Platform-level admin access (internal SaaS team)
+  
+  // Context mode for agent portal
+  contextMode: 'business' | 'agent'
+  agentContext?: {
+    senderOrgId: string
+    senderOrgName: string
+    relationshipId: string
+    canManage: boolean // true if they're the agent or have portal permissions
+  }
 }
 
 export interface InventoryWithProduct extends Inventory {
@@ -140,5 +154,17 @@ export interface DraftInvoiceData {
   invoice_id?: string
   customer_id?: string
   items: InvoiceItemFormData[]
+}
+
+export interface DeliveryChallanWithItems extends DeliveryChallan {
+  dc_items: DCItem[]
+  sender_org: Org
+}
+
+export interface DCStockSummary {
+  product_id: string
+  product_name: string
+  product_sku: string
+  current_stock: number
 }
 

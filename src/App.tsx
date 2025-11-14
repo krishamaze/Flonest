@@ -35,7 +35,7 @@ function InternalUserRedirect({ children }: { children: React.ReactNode }) {
   const location = useLocation()
 
   // If internal user tries to access org routes, redirect to reviewer
-  if (user?.isInternal && location.pathname !== '/reviewer' && !location.pathname.startsWith('/reviewer/')) {
+  if (user?.platformAdmin && location.pathname !== '/reviewer' && !location.pathname.startsWith('/reviewer/')) {
     // Check if they're on an org route (not reviewer route)
     const orgRoutes = ['/', '/products', '/inventory', '/stock-ledger', '/customers', '/notifications', '/pending-products']
     if (orgRoutes.includes(location.pathname)) {
@@ -83,7 +83,7 @@ function AppRoutes() {
           <Routes>
             <Route
               path="/login"
-              element={user ? (user.isInternal ? <Navigate to="/reviewer" replace /> : <Navigate to="/" replace />) : <LoginPage />}
+              element={user ? (user.platformAdmin ? <Navigate to="/reviewer" replace /> : <Navigate to="/" replace />) : <LoginPage />}
             />
             <Route
               path="/reset-password"

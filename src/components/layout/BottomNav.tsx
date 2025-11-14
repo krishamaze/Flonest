@@ -45,7 +45,7 @@ export function BottomNav() {
   const { user } = useAuth()
 
   // For internal users, show only reviewer route
-  if (user?.isInternal) {
+  if (user?.platformAdmin) {
     return (
       <nav 
         className="fixed bottom-0 left-0 right-0 z-40 border-t border-neutral-200 bg-bg-card shadow-sm safe-bottom"
@@ -81,7 +81,7 @@ export function BottomNav() {
   // For org users, show org routes based on permissions
   // Filter nav items based on role permissions
   const visibleNavItems = navItems.filter((item) => {
-    // Products page requires MANAGE_PRODUCTS permission (owner/branch_head only)
+    // Products page requires MANAGE_PRODUCTS permission (admin/branch_head only)
     if (item.to === '/products') {
       return hasPermission(user, MANAGE_PRODUCTS)
     }

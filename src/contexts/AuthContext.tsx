@@ -14,6 +14,8 @@ interface AuthContextType {
   signIn: (email: string, password: string) => Promise<void>
   signUp: (email: string, password: string) => Promise<void>
   signOut: () => Promise<void>
+  switchToBusinessMode: () => Promise<void>
+  switchToAgentMode: (senderOrgId: string) => Promise<void>
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
@@ -289,17 +291,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (syncedData && syncedData.profile) {
           // Use synced profile data
           const syncedProfile = syncedData.profile
-          const isInternal = syncedProfile.is_internal || false
+          const platformAdmin = syncedProfile.platform_admin || false
 
-          // Short-circuit for internal users - skip membership entirely
-          if (isInternal) {
+          // Short-circuit for platform admin users - skip membership entirely
+          if (platformAdmin) {
             const userData = {
               id: syncedProfile.id,
               email: syncedProfile.email,
               orgId: null,
               role: null,
               branchId: null,
-              isInternal: true,
+              platformAdmin: true,
+              contextMode: 'business' as const,
             }
             setUser(userData)
             setConnectionError(false)
@@ -308,15 +311,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             return
           }
 
-          // For non-internal users, check if they have org/membership
+          // For non-platform-admin users, check if they have org/membership
           if (syncedData.membership && syncedData.org) {
             const userData = {
               id: syncedProfile.id,
               email: syncedProfile.email,
               orgId: syncedData.org.id,
-              role: (syncedData.membership.role || 'staff') as 'owner' | 'branch_head' | 'staff',
+              role: (syncedData.membership.role || 'advisor') as 'admin' | 'branch_head' | 'advisor',
               branchId: (syncedData.membership as any).branch_id || null,
-              isInternal: false,
+              platformAdmin: false,
+              contextMode: 'business' as const,
             }
             setUser(userData)
             setConnectionError(false)
@@ -325,14 +329,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             return
           }
 
-          // Non-internal user with no org
+          // Non-platform-admin user with no org
           const userData = {
             id: syncedProfile.id,
             email: syncedProfile.email,
             orgId: null,
             role: null,
             branchId: null,
-            isInternal: false,
+            platformAdmin: false,
+            contextMode: 'business' as const,
           }
           setUser(userData)
           setConnectionError(false)
@@ -345,18 +350,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
       }
 
-      // Profile exists - check if internal
-      const isInternal = profile.is_internal || false
+      // Profile exists - check if platform admin
+      const platformAdmin = profile.platform_admin || false
 
-      // Short-circuit for internal users - skip membership query entirely
-      if (isInternal) {
+      // Short-circuit for platform admin users - skip membership query entirely
+      if (platformAdmin) {
         const userData = {
           id: profile.id,
           email: profile.email,
           orgId: null,
           role: null,
           branchId: null,
-          isInternal: true,
+          platformAdmin: true,
+          contextMode: 'business' as const,
         }
         setUser(userData)
         setConnectionError(false)
@@ -403,27 +409,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           id: membershipProfile.id,
           email: membershipProfile.email,
           orgId: org.id,
-          role: (membership.role || 'staff') as 'owner' | 'branch_head' | 'staff',
+          role: (membership.role || 'advisor') as 'admin' | 'branch_head' | 'advisor',
           branchId: (membership as any).branch_id || null,
-          isInternal: membershipProfile.is_internal || false,
+          platformAdmin: membershipProfile.platform_admin || false,
+          contextMode: 'business' as const,
         }
         setUser(userData)
         setConnectionError(false)
         const currentSession = await supabase.auth.getSession().then(({ data }) => data.session)
         saveCachedSession(currentSession, userData)
       } else {
-        // Non-internal user with no membership - try auto-creating org
+        // Non-platform-admin user with no membership - try auto-creating org
         let finalUserData: AuthUser = {
           id: profile.id,
           email: profile.email,
           orgId: null,
           role: null,
           branchId: null,
-          isInternal: false,
+          platformAdmin: false,
+          contextMode: 'business' as const,
         }
 
-        // Auto-create org for new users (non-internal only)
-        if (!profile.is_internal) {
+        // Auto-create org for new users (non-platform-admin only)
+        if (!profile.platform_admin) {
           try {
             if (import.meta.env.DEV) {
               console.log('[Auth] No membership found, attempting auto-org creation...')
@@ -458,9 +466,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                   id: newMembershipProfile.id,
                   email: newMembershipProfile.email,
                   orgId: newOrg.id,
-                  role: (newMembership.role || 'owner') as 'owner' | 'branch_head' | 'staff',
+                  role: (newMembership.role || 'admin') as 'admin' | 'branch_head' | 'advisor',
                   branchId: newMembership.branch_id || null,
-                  isInternal: newMembershipProfile.is_internal || false,
+                  platformAdmin: newMembershipProfile.platform_admin || false,
+                  contextMode: 'business' as const,
                 }
 
                 if (import.meta.env.DEV) {
@@ -526,6 +535,39 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setSession(null)
   }
 
+  const switchToBusinessMode = async () => {
+    if (!user) return
+
+    const { saveAgentContextMode } = await import('../lib/agentContext')
+    saveAgentContextMode('business')
+
+    setUser({
+      ...user,
+      contextMode: 'business',
+      agentContext: undefined,
+    })
+  }
+
+  const switchToAgentMode = async (senderOrgId: string) => {
+    if (!user) return
+
+    const { getAgentContextForOrg, saveAgentContextMode } = await import('../lib/agentContext')
+    const agentContext = await getAgentContextForOrg(user.id, senderOrgId)
+
+    if (!agentContext) {
+      console.error('User does not have access to this sender org')
+      return
+    }
+
+    saveAgentContextMode('agent', senderOrgId)
+
+    setUser({
+      ...user,
+      contextMode: 'agent',
+      agentContext,
+    })
+  }
+
   const value = {
     user,
     session,
@@ -536,6 +578,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     signIn,
     signUp,
     signOut,
+    switchToBusinessMode,
+    switchToAgentMode,
   }
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
