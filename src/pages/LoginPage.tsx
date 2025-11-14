@@ -115,6 +115,24 @@ export function LoginPage() {
         setEmail('')
         setPassword('')
       } else if (view === 'forgot_password') {
+        // First, check if the email exists in the database
+        const { data: profileExists, error: checkError } = await supabase
+          .from('profiles')
+          .select('email')
+          .eq('email', email)
+          .maybeSingle()
+
+        if (checkError) {
+          console.error('Error checking email:', checkError)
+          throw new Error('Unable to process request. Please try again.')
+        }
+
+        // If no profile found with this email, show error
+        if (!profileExists) {
+          throw new Error('This email is not registered. Please sign up first.')
+        }
+
+        // Email exists, proceed with password reset
         const { error } = await supabase.auth.resetPasswordForEmail(email, {
           redirectTo: `${window.location.origin}/reset-password`,
         })
