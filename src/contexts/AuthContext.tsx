@@ -16,6 +16,8 @@ interface AuthContextType {
   signOut: () => Promise<void>
   switchToBusinessMode: () => Promise<void>
   switchToAgentMode: (senderOrgId: string) => Promise<void>
+  requiresAdminMfa: boolean
+  refreshAdminMfaRequirement: () => Promise<void>
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
@@ -90,6 +92,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true)
   const [connectionError, setConnectionError] = useState(false)
   const [retrying, setRetrying] = useState(false)
+  const [requiresAdminMfa, setRequiresAdminMfa] = useState(false)
 
   useEffect(() => {
     initializeAuth()
@@ -148,6 +151,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               console.warn('[Auth Timeout] Using cached session after profile load failure')
             }
             setUser(cached.user)
+            if (cached.user.platformAdmin) {
+              setRequiresAdminMfa(true)
+            }
             setConnectionError(true)
             attemptBackgroundReconnect()
           } else {
@@ -172,6 +178,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
         setSession(cached.session)
         setUser(cached.user)
+        if (cached.user.platformAdmin) {
+          setRequiresAdminMfa(true)
+        }
         setConnectionError(true)
         setLoading(false)
         // Attempt background reconnection
@@ -206,6 +215,34 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }
 
+  const evaluatePlatformAdminMfa = async (platformAdmin: boolean) => {
+    if (!platformAdmin) {
+      setRequiresAdminMfa(false)
+      return
+    }
+
+    try {
+      const { data, error } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel()
+      if (error) {
+        console.warn('[Auth] Unable to load admin MFA status:', error)
+        setRequiresAdminMfa(true)
+        return
+      }
+      setRequiresAdminMfa(data.currentLevel !== 'aal2')
+    } catch (err) {
+      console.warn('[Auth] Error evaluating admin MFA status:', err)
+      setRequiresAdminMfa(true)
+    }
+  }
+
+  const finalizeUser = async (userData: AuthUser) => {
+    setUser(userData)
+    setConnectionError(false)
+    const currentSession = await supabase.auth.getSession().then(({ data }) => data.session)
+    saveCachedSession(currentSession, userData)
+    await evaluatePlatformAdminMfa(userData.platformAdmin)
+  }
+
   const retryConnection = async () => {
     if (retrying) return // Prevent spam
 
@@ -238,6 +275,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (cached && cached.user) {
         setSession(cached.session)
         setUser(cached.user)
+        if (cached.user.platformAdmin) {
+          setRequiresAdminMfa(true)
+        }
         setConnectionError(true)
         setLoading(false)
       } else {
@@ -304,10 +344,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               platformAdmin: true,
               contextMode: 'business' as const,
             }
-            setUser(userData)
-            setConnectionError(false)
-            const currentSession = await supabase.auth.getSession().then(({ data }) => data.session)
-            saveCachedSession(currentSession, userData)
+            await finalizeUser(userData)
             return
           }
 
@@ -322,10 +359,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               platformAdmin: false,
               contextMode: 'business' as const,
             }
-            setUser(userData)
-            setConnectionError(false)
-            const currentSession = await supabase.auth.getSession().then(({ data }) => data.session)
-            saveCachedSession(currentSession, userData)
+            await finalizeUser(userData)
             return
           }
 
@@ -339,10 +373,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             platformAdmin: false,
             contextMode: 'business' as const,
           }
-          setUser(userData)
-          setConnectionError(false)
-          const currentSession = await supabase.auth.getSession().then(({ data }) => data.session)
-          saveCachedSession(currentSession, userData)
+          await finalizeUser(userData)
           return
         } else {
           console.error('Failed to sync user profile - no profile found')
@@ -364,10 +395,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           platformAdmin: true,
           contextMode: 'business' as const,
         }
-        setUser(userData)
-        setConnectionError(false)
-        const currentSession = await supabase.auth.getSession().then(({ data }) => data.session)
-        saveCachedSession(currentSession, userData)
+        await finalizeUser(userData)
         return
       }
 
@@ -414,10 +442,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           platformAdmin: membershipProfile.platform_admin || false,
           contextMode: 'business' as const,
         }
-        setUser(userData)
-        setConnectionError(false)
-        const currentSession = await supabase.auth.getSession().then(({ data }) => data.session)
-        saveCachedSession(currentSession, userData)
+        await finalizeUser(userData)
       } else {
         // Non-platform-admin user with no membership - try auto-creating org
         let finalUserData: AuthUser = {
@@ -485,10 +510,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           }
         }
 
-        setUser(finalUserData)
-        setConnectionError(false)
-        const currentSession = await supabase.auth.getSession().then(({ data }) => data.session)
-        saveCachedSession(currentSession, finalUserData)
+        await finalizeUser(finalUserData)
       }
     } catch (error) {
       if (import.meta.env.DEV) {
@@ -500,6 +522,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const cached = loadCachedSession()
         if (cached && cached.user) {
           setUser(cached.user)
+          if (cached.user.platformAdmin) {
+            setRequiresAdminMfa(true)
+          }
           setConnectionError(true)
         }
       }
@@ -533,6 +558,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     clearCachedSession()
     setUser(null)
     setSession(null)
+    setRequiresAdminMfa(false)
   }
 
   const switchToBusinessMode = async () => {
@@ -568,6 +594,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     })
   }
 
+  const refreshAdminMfaRequirement = async () => {
+    if (!user) {
+      setRequiresAdminMfa(false)
+      return
+    }
+    await evaluatePlatformAdminMfa(user.platformAdmin)
+  }
+
   const value = {
     user,
     session,
@@ -580,6 +614,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     signOut,
     switchToBusinessMode,
     switchToAgentMode,
+    requiresAdminMfa,
+    refreshAdminMfaRequirement,
   }
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

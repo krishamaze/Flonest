@@ -7,6 +7,7 @@ import { Button } from '../components/ui/Button'
 import { Input } from '../components/ui/Input'
 import { PullToRefresh } from '../components/ui/PullToRefresh'
 import type { RefreshStatus } from '../contexts/RefreshContext'
+import { ADMIN_SSO_PROVIDER, ADMIN_SSO_REDIRECT_PATH, isPrivilegedAdminEmail } from '../config/security'
 
 type AuthView = 'sign_in' | 'sign_up' | 'forgot_password'
 
@@ -81,6 +82,11 @@ export function LoginPage() {
 
     try {
       if (view === 'sign_in') {
+        if (isPrivilegedAdminEmail(email)) {
+          setError('Platform admin authentication is SSO-only. Use the "Admin SSO" button below.')
+          setLoading(false)
+          return
+        }
         const { error } = await supabase.auth.signInWithPassword({
           email,
           password: trimmedPassword,
@@ -113,6 +119,11 @@ export function LoginPage() {
         setEmail('')
         setPassword('')
       } else if (view === 'forgot_password') {
+        if (isPrivilegedAdminEmail(email)) {
+          setError('Platform admin password resets require dual approval. Contact security to initiate a manual reset.')
+          setLoading(false)
+          return
+        }
         const { error } = await supabase.auth.resetPasswordForEmail(email, {
           redirectTo: `${window.location.origin}/reset-password`,
         })
@@ -124,6 +135,23 @@ export function LoginPage() {
       setError(err.message || 'An error occurred')
     } finally {
       setLoading(false)
+    }
+  }
+
+  const handleAdminSso = async () => {
+    setError(null)
+    setMessage('Redirecting to corporate SSO...')
+    try {
+      await supabase.auth.signInWithOAuth({
+        provider: ADMIN_SSO_PROVIDER as any,
+        options: {
+          scopes: 'openid profile email offline_access',
+          redirectTo: `${window.location.origin}${ADMIN_SSO_REDIRECT_PATH}`,
+        },
+      })
+    } catch (err: any) {
+      setMessage(null)
+      setError(err?.message || 'Unable to start SSO flow. Contact security.')
     }
   }
 
@@ -256,6 +284,21 @@ export function LoginPage() {
               <div className="space-y-md text-center">
                 {view === 'sign_in' && (
                   <>
+                    <div className="rounded-lg border border-color p-md text-left bg-bg-hover">
+                      <p className="text-sm text-secondary-text mb-sm font-medium">
+                        Platform admin access requires corporate SSO + MFA.
+                      </p>
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        size="md"
+                        className="w-full"
+                        onClick={handleAdminSso}
+                        disabled={loading}
+                      >
+                        Continue with Admin SSO
+                      </Button>
+                    </div>
                     <button
                       type="button"
                       onClick={() => {

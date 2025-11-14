@@ -13,6 +13,7 @@ import { FRONTEND_VERSION } from './lib/api/version'
 import { ProtectedRoute, ReviewerRoute } from './components/ProtectedRoute'
 import { RoleProtectedRoute } from './components/RoleProtectedRoute'
 import { MANAGE_PRODUCTS } from './lib/permissions'
+import { PlatformAdminSessionWatcher } from './components/security/PlatformAdminSessionWatcher'
 
 // Lazy load pages for code splitting
 const LoginPage = lazy(() => import('./pages/LoginPage').then(m => ({ default: m.LoginPage })))
@@ -37,13 +38,18 @@ const DCStockPage = lazy(() => import('./pages/agent/DCStockPage').then(m => ({ 
 const CreateDCSalePage = lazy(() => import('./pages/agent/CreateDCSalePage').then(m => ({ default: m.CreateDCSalePage })))
 const AgentCashPage = lazy(() => import('./pages/agent/AgentCashPage').then(m => ({ default: m.AgentCashPage })))
 const AgentCashOversightPage = lazy(() => import('./pages/AgentCashOversightPage').then(m => ({ default: m.AgentCashOversightPage })))
+const PlatformAdminMfaPage = lazy(() => import('./pages/PlatformAdminMfaPage').then(m => ({ default: m.PlatformAdminMfaPage })))
 
 /**
  * Redirect internal users away from org routes to /reviewer
  */
 function InternalUserRedirect({ children }: { children: React.ReactNode }) {
-  const { user } = useAuth()
+  const { user, requiresAdminMfa } = useAuth()
   const location = useLocation()
+
+  if (user?.platformAdmin && requiresAdminMfa && location.pathname !== '/admin-mfa') {
+    return <Navigate to="/admin-mfa" replace />
+  }
 
   // If internal user tries to access org routes, redirect to reviewer
   if (user?.platformAdmin && location.pathname !== '/reviewer' && !location.pathname.startsWith('/reviewer/')) {
@@ -96,6 +102,14 @@ function AppRoutes() {
               path="/login"
               element={user ? (user.platformAdmin ? <Navigate to="/reviewer" replace /> : <Navigate to="/" replace />) : <LoginPage />}
             />
+          <Route
+            path="/admin-mfa"
+            element={
+              <ProtectedRoute>
+                <PlatformAdminMfaPage />
+              </ProtectedRoute>
+            }
+          />
             <Route
               path="/reset-password"
               element={<ResetPasswordPage />}
@@ -239,6 +253,7 @@ function App() {
       <AuthProvider>
         <BrowserRouter>
           <AppRoutes />
+          <PlatformAdminSessionWatcher />
           <InstallPrompt />
           <UpdateNotification />
           <ToastContainer

@@ -1,4 +1,4 @@
-import { Navigate, useNavigate } from 'react-router-dom'
+import { Navigate, useLocation, useNavigate } from 'react-router-dom'
 import { useEffect, useState } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { LoadingSpinner } from './ui/LoadingSpinner'
@@ -17,9 +17,10 @@ function needsOrgSetup(org: Org | null): boolean {
  * Protected route that requires authentication and org membership
  */
 export function ProtectedRoute({ children }: { children: React.ReactNode }) {
-  const { user, loading } = useAuth()
+  const { user, loading, requiresAdminMfa } = useAuth()
   const [org, setOrg] = useState<Org | null>(null)
   const [orgLoading, setOrgLoading] = useState(false)
+  const location = useLocation()
 
   // Fetch org data when user has orgId
   useEffect(() => {
@@ -51,6 +52,10 @@ export function ProtectedRoute({ children }: { children: React.ReactNode }) {
 
   if (!user) {
     return <Navigate to="/login" replace />
+  }
+
+  if (user.platformAdmin && requiresAdminMfa && location.pathname !== '/admin-mfa') {
+    return <Navigate to="/admin-mfa" replace />
   }
 
   // Internal users don't need org membership - allow them through
@@ -118,7 +123,7 @@ function OrganizationRequiredPage() {
  * Reviewer route that requires internal user access
  */
 export function ReviewerRoute({ children }: { children: React.ReactNode }) {
-  const { user, loading } = useAuth()
+  const { user, loading, requiresAdminMfa } = useAuth()
 
   if (loading) {
     return (
@@ -130,6 +135,10 @@ export function ReviewerRoute({ children }: { children: React.ReactNode }) {
 
   if (!user) {
     return <Navigate to="/login" replace />
+  }
+
+  if (requiresAdminMfa) {
+    return <Navigate to="/admin-mfa" replace />
   }
 
   if (!user.platformAdmin) {

@@ -4,6 +4,7 @@ import { supabase } from '../lib/supabase'
 import { Button } from '../components/ui/Button'
 import { Input } from '../components/ui/Input'
 import { toast } from 'react-toastify'
+import { isPrivilegedAdminEmail } from '../config/security'
 
 export function ResetPasswordPage() {
   const navigate = useNavigate()
@@ -48,6 +49,24 @@ export function ResetPasswordPage() {
       setIsValidToken(true)
     }
   }, [type, accessToken, errorCode, errorDescription])
+
+  useEffect(() => {
+    const guardAdminReset = async () => {
+      if (isValidToken !== true) return
+      try {
+        const { data } = await supabase.auth.getUser()
+        const email = data.user?.email || ''
+        if (email && isPrivilegedAdminEmail(email)) {
+          setIsValidToken(false)
+          setError('Platform admin credentials cannot be reset self-service. Contact security for the dual-approval process.')
+          await supabase.auth.signOut()
+        }
+      } catch (err) {
+        console.warn('Failed to evaluate admin reset guard', err)
+      }
+    }
+    guardAdminReset()
+  }, [isValidToken])
 
   const handlePasswordChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     // Block spaces in password field

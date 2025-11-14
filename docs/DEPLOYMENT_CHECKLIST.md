@@ -47,6 +47,13 @@ Use this checklist before deploying to production.
 - [ ] Supabase RLS policies tested
 - [ ] CORS settings configured in Supabase
 - [ ] Security headers configured in `vercel.json`
+- [ ] Platform admin SSO + MFA controls validated
+  - [ ] `VITE_PLATFORM_ADMIN_EMAILS` populated with privileged identities
+  - [ ] Azure AD (Entra ID) application configured in Supabase Auth (`azure` provider)
+  - [ ] `VITE_PLATFORM_ADMIN_SSO_PROVIDER` and `VITE_PLATFORM_ADMIN_SSO_REDIRECT` set
+  - [ ] Break-glass account stored in managed HSM with dual-control checkout (Azure Key Vault or AWS CloudHSM)
+  - [ ] Manual password reset workflow documented (dual approval, no email reset links)
+  - [ ] `VITE_PLATFORM_ADMIN_IDLE_TIMEOUT_MS` / `VITE_PLATFORM_ADMIN_MAX_SESSION_MS` tuned for 15m idle / 8h absolute
 
 ### Testing
 - [ ] Authentication flow tested
@@ -276,6 +283,16 @@ vercel rollback
 ```
 
 ---
+
+## Platform Admin Access Architecture
+
+- **Identity Provider:** Microsoft Entra ID (Azure AD). Configure Supabase Auth `azure` provider with the corporate tenant app registration. Set `VITE_PLATFORM_ADMIN_SSO_PROVIDER=azure` and `VITE_PLATFORM_ADMIN_SSO_REDIRECT=/reviewer`.
+- **Flow:** Login page blocks privileged emails from password auth and routes them through Azure SSO. After the OAuth callback, the app enforces Supabase MFA (`aal2`) via the dedicated `/admin-mfa` route before unlocking reviewer routes.
+- **Session Binding:** `PlatformAdminSessionWatcher` ties reviewer sessions to the issuing device fingerprint (UA + platform + language) and enforces 15m idle / 8h absolute lifetimes. Any mismatch forces sign-out and a new SSO + MFA cycle.
+- **Manual Reset Workflow:** `resetPasswordForEmail` short-circuits for privileged identities. Password resets require a ticket approved by two platform leads, after which the temporary credential is injected via the managed HSM and rotated immediately after use.
+- **Break-Glass Account:** A single emergency credential is stored in an HSM-backed vault (Azure Key Vault Managed HSM). Access requires dual control, generates immutable audit logs, and demands on-device TOTP before reviewer access even when SSO is bypassed.
+- **Operational Tasks:** Review Conditional Access + HSM access logs weekly, rotate Azure client secrets quarterly, and verify the `/admin-mfa` flow in production after every deployment.
+- **Won’t Do:** The product will never ship a home-grown MFA stack for admins; enforcement stays inside Azure AD (SSO) + Supabase MFA APIs.
 
 ## Support Contacts
 
