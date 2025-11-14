@@ -1,5 +1,6 @@
 import { supabase } from '../supabase'
 
+// Define types with stricter unions than database schema for better type safety
 export interface AgentCashLedgerEntry {
   id: string
   sender_org_id: string
@@ -26,6 +27,8 @@ export interface OrgCashSettings {
   section_269st_limit: number
   require_deposit_proof: boolean
   require_gps_on_collection: boolean
+  created_at: string | null
+  updated_at: string | null
 }
 
 export interface CashDepositInput {
@@ -76,7 +79,7 @@ export async function recordCashReceived(
   }
 
   const { data, error } = await supabase
-    .from('agent_cash_ledger' as any)
+    .from('agent_cash_ledger')
     .insert({
       sender_org_id: senderOrgId,
       agent_user_id: agentUserId,
@@ -91,7 +94,7 @@ export async function recordCashReceived(
     .single()
 
   if (error) throw error
-  return data as unknown as AgentCashLedgerEntry
+  return data as AgentCashLedgerEntry
 }
 
 /**
@@ -119,7 +122,7 @@ export async function recordCashDeposit(
   }
 
   const { data, error } = await supabase
-    .from('agent_cash_ledger' as any)
+    .from('agent_cash_ledger')
     .insert({
       sender_org_id: senderOrgId,
       agent_user_id: agentUserId,
@@ -136,7 +139,7 @@ export async function recordCashDeposit(
     .single()
 
   if (error) throw error
-  return data as unknown as AgentCashLedgerEntry
+  return data as AgentCashLedgerEntry
 }
 
 /**
@@ -147,7 +150,7 @@ export async function getAgentCashOnHand(
   agentUserId: string
 ): Promise<number> {
   const { data, error } = await supabase
-    .rpc('get_agent_cash_on_hand' as any, {
+    .rpc('get_agent_cash_on_hand', {
       p_sender_org_id: senderOrgId,
       p_agent_user_id: agentUserId,
     })
@@ -164,7 +167,7 @@ export async function hasOverdueCash(
   agentUserId: string
 ): Promise<boolean> {
   const { data, error } = await supabase
-    .rpc('has_overdue_cash' as any, {
+    .rpc('has_overdue_cash', {
       p_sender_org_id: senderOrgId,
       p_agent_user_id: agentUserId,
     })
@@ -184,7 +187,7 @@ export async function exceedsCashLimit(
   agentUserId: string
 ): Promise<boolean> {
   const { data, error } = await supabase
-    .rpc('exceeds_cash_limit' as any, {
+    .rpc('exceeds_cash_limit', {
       p_sender_org_id: senderOrgId,
       p_agent_user_id: agentUserId,
     })
@@ -209,7 +212,7 @@ export async function getAgentCashLedger(
   }
 })[]> {
   const { data, error } = await supabase
-    .from('agent_cash_ledger' as any)
+    .from('agent_cash_ledger')
     .select(`
       *,
       invoices(invoice_number, total_amount)
@@ -234,7 +237,7 @@ export async function getPendingDeposits(
   agentUserId: string
 ): Promise<AgentCashLedgerEntry[]> {
   const { data, error } = await supabase
-    .from('agent_cash_ledger' as any)
+    .from('agent_cash_ledger')
     .select('*')
     .eq('sender_org_id', senderOrgId)
     .eq('agent_user_id', agentUserId)
@@ -243,7 +246,7 @@ export async function getPendingDeposits(
     .order('created_at', { ascending: false })
 
   if (error) throw error
-  return (data || []) as unknown as AgentCashLedgerEntry[]
+  return (data || []) as AgentCashLedgerEntry[]
 }
 
 /**
@@ -251,13 +254,13 @@ export async function getPendingDeposits(
  */
 export async function getCashSettings(orgId: string): Promise<OrgCashSettings> {
   const { data, error } = await supabase
-    .from('org_cash_settings' as any)
+    .from('org_cash_settings')
     .select('*')
     .eq('org_id', orgId)
     .single()
 
   if (error) {
-    // Return defaults if not found
+    // Return defaults if not found - match database schema
     return {
       org_id: orgId,
       max_cash_holding_days: 3,
@@ -265,10 +268,12 @@ export async function getCashSettings(orgId: string): Promise<OrgCashSettings> {
       section_269st_limit: 200000,
       require_deposit_proof: true,
       require_gps_on_collection: false,
+      created_at: null,
+      updated_at: null,
     }
   }
 
-  return data as unknown as OrgCashSettings
+  return data as OrgCashSettings
 }
 
 /**
@@ -279,7 +284,7 @@ export async function updateCashSettings(
   settings: Partial<OrgCashSettings>
 ): Promise<void> {
   const { error } = await supabase
-    .from('org_cash_settings' as any)
+    .from('org_cash_settings')
     .upsert({
       org_id: orgId,
       ...settings,
@@ -297,7 +302,7 @@ export async function verifyCashDeposit(
   verifiedBy: string
 ): Promise<void> {
   const { error } = await supabase
-    .from('agent_cash_ledger' as any)
+    .from('agent_cash_ledger')
     .update({
       status: 'verified',
       verified_at: new Date().toISOString(),
@@ -310,17 +315,16 @@ export async function verifyCashDeposit(
 
   // Also update related invoice status to 'verified' if linked
   const { data: entry } = await supabase
-    .from('agent_cash_ledger' as any)
+    .from('agent_cash_ledger')
     .select('invoice_id')
     .eq('id', entryId)
     .single()
 
-  const typedEntry = entry as any
-  if (typedEntry?.invoice_id) {
+  if (entry?.invoice_id) {
     await supabase
       .from('invoices')
       .update({ payment_status: 'verified', payment_verified_at: new Date().toISOString(), payment_verified_by: verifiedBy })
-      .eq('id', typedEntry.invoice_id)
+      .eq('id', entry.invoice_id)
   }
 }
 
@@ -333,7 +337,7 @@ export async function rejectCashDeposit(
   rejectedBy: string
 ): Promise<void> {
   const { error } = await supabase
-    .from('agent_cash_ledger' as any)
+    .from('agent_cash_ledger')
     .update({
       status: 'rejected',
       rejection_reason: reason,
@@ -361,7 +365,7 @@ export async function getAllAgentsCashLedger(
   }
 })[]> {
   const { data, error } = await supabase
-    .from('agent_cash_ledger' as any)
+    .from('agent_cash_ledger')
     .select(`
       *,
       profiles!agent_cash_ledger_agent_user_id_fkey(email, full_name),
@@ -384,7 +388,7 @@ export async function getAllAgentsCashLedger(
  */
 export async function getPendingVerifications(senderOrgId: string): Promise<number> {
   const { count, error } = await supabase
-    .from('agent_cash_ledger' as any)
+    .from('agent_cash_ledger')
     .select('*', { count: 'exact', head: true })
     .eq('sender_org_id', senderOrgId)
     .eq('status', 'pending')
