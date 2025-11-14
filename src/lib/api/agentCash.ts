@@ -91,7 +91,7 @@ export async function recordCashReceived(
     .single()
 
   if (error) throw error
-  return data
+  return data as AgentCashLedgerEntry
 }
 
 /**
@@ -136,7 +136,7 @@ export async function recordCashDeposit(
     .single()
 
   if (error) throw error
-  return data
+  return data as AgentCashLedgerEntry
 }
 
 /**
@@ -147,7 +147,7 @@ export async function getAgentCashOnHand(
   agentUserId: string
 ): Promise<number> {
   const { data, error } = await supabase
-    .rpc('get_agent_cash_on_hand', {
+    .rpc('get_agent_cash_on_hand' as any, {
       p_sender_org_id: senderOrgId,
       p_agent_user_id: agentUserId,
     })
@@ -164,7 +164,7 @@ export async function hasOverdueCash(
   agentUserId: string
 ): Promise<boolean> {
   const { data, error } = await supabase
-    .rpc('has_overdue_cash', {
+    .rpc('has_overdue_cash' as any, {
       p_sender_org_id: senderOrgId,
       p_agent_user_id: agentUserId,
     })
@@ -184,7 +184,7 @@ export async function exceedsCashLimit(
   agentUserId: string
 ): Promise<boolean> {
   const { data, error } = await supabase
-    .rpc('exceeds_cash_limit', {
+    .rpc('exceeds_cash_limit' as any, {
       p_sender_org_id: senderOrgId,
       p_agent_user_id: agentUserId,
     })
@@ -243,7 +243,7 @@ export async function getPendingDeposits(
     .order('created_at', { ascending: false })
 
   if (error) throw error
-  return data || []
+  return (data || []) as AgentCashLedgerEntry[]
 }
 
 /**
@@ -268,7 +268,7 @@ export async function getCashSettings(orgId: string): Promise<OrgCashSettings> {
     }
   }
 
-  return data
+  return data as OrgCashSettings
 }
 
 /**
