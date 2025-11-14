@@ -15,9 +15,11 @@ import {
   XMarkIcon,
 } from '@heroicons/react/24/outline'
 import { getPendingMemberships, approveMembership } from '../lib/api/memberships'
-import { canManageOrgSettings, canManageUsers } from '../lib/permissions'
+import { canManageOrgSettings, canManageUsers, canAccessAgentPortal } from '../lib/permissions'
 import { toast } from 'react-toastify'
 import { AddStaffForm } from '../components/staff/AddStaffForm'
+import { BuildingOfficeIcon } from '@heroicons/react/24/outline'
+import { useNavigate } from 'react-router-dom'
 
 interface DashboardStats {
   totalProducts: number
@@ -29,6 +31,7 @@ interface DashboardStats {
 
 export function DashboardPage() {
   const { user } = useAuth()
+  const navigate = useNavigate()
   const { registerRefreshHandler, unregisterRefreshHandler } = useRefresh()
   const [stats, setStats] = useState<DashboardStats | null>(null)
   const [loading, setLoading] = useState(true)
@@ -337,6 +340,29 @@ export function DashboardPage() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Agent Portal Card (if user has agent access) */}
+      {canAccessAgentPortal(user) && (
+        <Card className="shadow-md border-primary">
+          <CardContent className="p-md">
+            <button
+              onClick={() => navigate('/role-selector')}
+              className="w-full flex items-center gap-md p-md rounded-lg bg-primary/10 border-2 border-primary hover:bg-primary/20 transition-all"
+            >
+              <BuildingOfficeIcon className="h-8 w-8 text-primary shrink-0" />
+              <div className="flex-1 text-left">
+                <p className="text-base font-bold text-text-primary">Agent Portal</p>
+                <p className="text-sm text-text-secondary">
+                  Manage deliveries for partner businesses
+                </p>
+              </div>
+              <svg className="h-6 w-6 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+              </svg>
+            </button>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Add Staff Form Modal */}
       {canManageUsers(user) && (

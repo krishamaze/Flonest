@@ -11,7 +11,7 @@ CREATE POLICY "Orgs: Admins can update their org" ON orgs
       FROM memberships m
       INNER JOIN profiles p ON p.id = m.profile_id
       WHERE p.id = auth.uid() 
-        AND m.role IN ('admin', 'owner') -- Both admin and owner can update
+        AND m.role = 'admin' -- Only admins can update org settings
     )
   );
 

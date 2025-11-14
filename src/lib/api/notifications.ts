@@ -1,6 +1,17 @@
 import { supabase } from '../supabase'
 
-export type NotificationType = 'product_approved' | 'product_rejected' | 'invoice_blocked' | 'product_submitted'
+export type NotificationType = 
+  | 'product_approved' 
+  | 'product_rejected' 
+  | 'invoice_blocked' 
+  | 'product_submitted'
+  | 'agent_invited'
+  | 'agent_dc_issued'
+  | 'agent_dc_accepted'
+  | 'agent_dc_rejected'
+  | 'agent_sale_created'
+  | 'dc_accepted'
+  | 'dc_rejected'
 
 export interface Notification {
   id: string
@@ -120,5 +131,147 @@ export async function deleteNotification(notificationId: string): Promise<void> 
   if (error) {
     throw new Error(`Failed to delete notification: ${error.message}`)
   }
+}
+
+/**
+ * Create a notification
+ */
+async function createNotification(
+  userId: string,
+  type: NotificationType,
+  title: string,
+  message: string,
+  relatedId?: string
+): Promise<void> {
+  const { error } = await supabase
+    .from('notifications' as any)
+    .insert({
+      user_id: userId,
+      type,
+      title,
+      message,
+      related_id: relatedId || null,
+    })
+
+  if (error) {
+    console.error('Failed to create notification:', error)
+  }
+}
+
+// Agent-related notification creators
+
+/**
+ * Notify agent when they are invited
+ */
+export async function notifyAgentInvited(
+  agentUserId: string,
+  senderOrgName: string,
+  relationshipId: string
+): Promise<void> {
+  await createNotification(
+    agentUserId,
+    'agent_invited',
+    'Agent Invitation',
+    `You have been appointed as an agent for ${senderOrgName}`,
+    relationshipId
+  )
+}
+
+/**
+ * Notify agent when a DC is issued
+ */
+export async function notifyAgentDCIssued(
+  agentUserId: string,
+  dcNumber: string,
+  dcId: string
+): Promise<void> {
+  await createNotification(
+    agentUserId,
+    'agent_dc_issued',
+    'New Delivery Challan',
+    `You have received delivery challan ${dcNumber}`,
+    dcId
+  )
+}
+
+/**
+ * Notify sender when agent accepts DC
+ */
+export async function notifySenderDCAccepted(
+  senderOrgAdmins: string[],
+  dcNumber: string,
+  agentName: string,
+  dcId: string
+): Promise<void> {
+  for (const adminId of senderOrgAdmins) {
+    await createNotification(
+      adminId,
+      'dc_accepted',
+      'DC Accepted',
+      `Agent ${agentName} has accepted delivery challan ${dcNumber}`,
+      dcId
+    )
+  }
+}
+
+/**
+ * Notify sender when agent rejects DC
+ */
+export async function notifySenderDCRejected(
+  senderOrgAdmins: string[],
+  dcNumber: string,
+  agentName: string,
+  reason: string,
+  dcId: string
+): Promise<void> {
+  for (const adminId of senderOrgAdmins) {
+    await createNotification(
+      adminId,
+      'dc_rejected',
+      'DC Rejected',
+      `Agent ${agentName} rejected delivery challan ${dcNumber}. Reason: ${reason}`,
+      dcId
+    )
+  }
+}
+
+/**
+ * Notify sender when agent creates a sale
+ */
+export async function notifySenderAgentSaleCreated(
+  senderOrgAdmins: string[],
+  invoiceNumber: string,
+  agentName: string,
+  amount: number,
+  invoiceId: string
+): Promise<void> {
+  for (const adminId of senderOrgAdmins) {
+    await createNotification(
+      adminId,
+      'agent_sale_created',
+      'Agent Sale Created',
+      `Agent ${agentName} created invoice ${invoiceNumber} for ₹${amount.toLocaleString('en-IN')}`,
+      invoiceId
+    )
+  }
+}
+
+/**
+ * Get org admins for notifications
+ */
+export async function getOrgAdmins(orgId: string): Promise<string[]> {
+  const { data, error } = await supabase
+    .from('memberships')
+    .select('profile_id')
+    .eq('org_id', orgId)
+    .eq('role', 'admin')
+    .eq('membership_status', 'active')
+
+  if (error) {
+    console.error('Failed to get org admins:', error)
+    return []
+  }
+
+  return (data || []).map(m => m.profile_id)
 }
 

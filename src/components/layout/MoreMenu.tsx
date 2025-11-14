@@ -8,7 +8,7 @@ import {
   Cog6ToothIcon,
 } from '@heroicons/react/24/outline'
 import { useAuth } from '../../contexts/AuthContext'
-import { hasPermission, MANAGE_INVENTORY, canManageOrgSettings } from '../../lib/permissions'
+import { hasPermission, MANAGE_INVENTORY, canManageOrgSettings, canManageAgents } from '../../lib/permissions'
 
 interface MoreMenuProps {
   isOpen: boolean
@@ -74,6 +74,16 @@ export function MoreMenu({ isOpen, onClose }: MoreMenuProps) {
       description: 'View pending product submissions',
     })
     
+    // Add agents link for admin users only
+    if (canManageAgents(user)) {
+      moreMenuItems.push({
+        to: '/agents',
+        label: 'Agents',
+        icon: UserGroupIcon,
+        description: 'Manage sales agents',
+      })
+    }
+
     // Add settings link for admin users only
     if (canManageOrgSettings(user)) {
       moreMenuItems.push({
@@ -81,6 +91,16 @@ export function MoreMenu({ isOpen, onClose }: MoreMenuProps) {
         label: 'Settings',
         icon: Cog6ToothIcon,
         description: 'Manage organization settings',
+      })
+    }
+
+    // Add context switcher if user has agent relationships
+    if (user.agentContext) {
+      moreMenuItems.push({
+        to: '/role-selector',
+        label: 'Switch Mode',
+        icon: ArrowPathIcon,
+        description: user.contextMode === 'business' ? 'Switch to Agent Portal' : 'Switch to My Business',
       })
     }
   }

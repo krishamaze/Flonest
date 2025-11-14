@@ -27,6 +27,14 @@ const ReviewerDashboardPage = lazy(() => import('./pages/ReviewerDashboardPage')
 const NotificationsPage = lazy(() => import('./pages/NotificationsPage').then(m => ({ default: m.NotificationsPage })))
 const PendingProductsPage = lazy(() => import('./pages/PendingProductsPage').then(m => ({ default: m.PendingProductsPage })))
 const SettingsPage = lazy(() => import('./pages/SettingsPage').then(m => ({ default: m.SettingsPage })))
+const RoleSelectorPage = lazy(() => import('./pages/RoleSelectorPage').then(m => ({ default: m.RoleSelectorPage })))
+const AgentsPage = lazy(() => import('./pages/AgentsPage').then(m => ({ default: m.AgentsPage })))
+const IssueDCPage = lazy(() => import('./pages/IssueDCPage').then(m => ({ default: m.IssueDCPage })))
+const AgentStockReportPage = lazy(() => import('./pages/AgentStockReportPage').then(m => ({ default: m.AgentStockReportPage })))
+const AgentDashboardPage = lazy(() => import('./pages/agent/AgentDashboardPage').then(m => ({ default: m.AgentDashboardPage })))
+const DeliveryChallansPage = lazy(() => import('./pages/agent/DeliveryChallansPage').then(m => ({ default: m.DeliveryChallansPage })))
+const DCStockPage = lazy(() => import('./pages/agent/DCStockPage').then(m => ({ default: m.DCStockPage })))
+const CreateDCSalePage = lazy(() => import('./pages/agent/CreateDCSalePage').then(m => ({ default: m.CreateDCSalePage })))
 
 /**
  * Redirect internal users away from org routes to /reviewer
@@ -126,7 +134,54 @@ function AppRoutes() {
             <Route path="notifications" element={<NotificationsPage />} />
             <Route path="pending-products" element={<PendingProductsPage />} />
             <Route path="settings" element={<SettingsPage />} />
+            
+            {/* Agent Management Routes (Business context - Admin only) */}
+            <Route 
+              path="agents" 
+              element={
+                <RoleProtectedRoute requiredRole="admin">
+                  <AgentsPage />
+                </RoleProtectedRoute>
+              } 
+            />
+            <Route 
+              path="agents/:relationshipId/issue-dc" 
+              element={
+                <RoleProtectedRoute requiredRole="admin">
+                  <IssueDCPage />
+                </RoleProtectedRoute>
+              } 
+            />
+            <Route 
+              path="agents/:relationshipId/report" 
+              element={
+                <RoleProtectedRoute requiredRole="admin">
+                  <AgentStockReportPage />
+                </RoleProtectedRoute>
+              } 
+            />
           </Route>
+
+          {/* Role Selector - shown after login to pick context */}
+          <Route
+            path="/role-selector"
+            element={
+              <ProtectedRoute>
+                <RoleSelectorPage />
+              </ProtectedRoute>
+            }
+          />
+
+          {/* Agent Portal Routes (Agent context) */}
+          <Route path="/agent">
+            <Route index element={<Navigate to="/agent/dashboard" replace />} />
+            <Route path="dashboard" element={<AgentDashboardPage />} />
+            <Route path="delivery-challans" element={<DeliveryChallansPage />} />
+            <Route path="stock" element={<DCStockPage />} />
+            <Route path="create-sale" element={<CreateDCSalePage />} />
+          </Route>
+
+          {/* Reviewer Routes */}
           <Route
             path="/reviewer"
             element={
