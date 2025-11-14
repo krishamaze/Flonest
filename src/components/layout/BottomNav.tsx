@@ -90,7 +90,7 @@ export function BottomNav() {
   })
 
   // Check if any "More" menu route is active
-  const isMoreMenuActive = ['/stock-ledger', '/customers', '/reviewer', '/pending-products'].some(path => 
+  const isMoreMenuActive = ['/stock-ledger', '/customers', '/reviewer', '/pending-products', '/settings'].some(path => 
     location.pathname.startsWith(path)
   )
 

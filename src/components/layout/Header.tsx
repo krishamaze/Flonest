@@ -11,11 +11,15 @@ export function Header() {
       <div className="mx-auto flex h-14 items-center justify-between px-md">
         <div className="flex items-center gap-md">
           {/* Logo: 32px × 32px */}
-          <div className="flex h-8 w-8 items-center justify-center rounded-md bg-primary shadow-sm">
-            <span className="text-lg font-bold text-on-primary">I</span>
+          <div className="flex h-8 w-8 items-center justify-center rounded-md bg-white shadow-sm p-1">
+            <img 
+              src="/pwa-192x192.png" 
+              alt="finetune" 
+              className="w-full h-full object-contain"
+            />
           </div>
           <div>
-            <h1 className="text-base font-semibold text-primary-text">Inventory</h1>
+            <h1 className="text-base font-semibold text-primary-text">finetune</h1>
             {user && (
               <p className="text-xs text-muted-text truncate max-w-[150px]">{user.email}</p>
             )}

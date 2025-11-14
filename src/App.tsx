@@ -26,6 +26,7 @@ const CustomersPage = lazy(() => import('./pages/CustomersPage').then(m => ({ de
 const ReviewerDashboardPage = lazy(() => import('./pages/ReviewerDashboardPage').then(m => ({ default: m.ReviewerDashboardPage })))
 const NotificationsPage = lazy(() => import('./pages/NotificationsPage').then(m => ({ default: m.NotificationsPage })))
 const PendingProductsPage = lazy(() => import('./pages/PendingProductsPage').then(m => ({ default: m.PendingProductsPage })))
+const SettingsPage = lazy(() => import('./pages/SettingsPage').then(m => ({ default: m.SettingsPage })))
 
 /**
  * Redirect internal users away from org routes to /reviewer
@@ -116,7 +117,7 @@ function AppRoutes() {
             <Route 
               path="stock-ledger" 
               element={
-                <RoleProtectedRoute requiredRole={['owner', 'branch_head']}>
+                <RoleProtectedRoute requiredRole={['admin', 'branch_head']}>
                   <StockLedgerPage />
                 </RoleProtectedRoute>
               } 
@@ -124,6 +125,7 @@ function AppRoutes() {
             <Route path="customers" element={<CustomersPage />} />
             <Route path="notifications" element={<NotificationsPage />} />
             <Route path="pending-products" element={<PendingProductsPage />} />
+            <Route path="settings" element={<SettingsPage />} />
           </Route>
           <Route
             path="/reviewer"

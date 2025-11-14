@@ -84,7 +84,7 @@ export function RoleSelectorPage() {
           <p className="text-gray-600 mb-6">
             You don't have access to any business or agent portal yet. Please contact your administrator to get invited.
           </p>
-          <Button onClick={() => navigate('/login')} variant="outline">
+          <Button onClick={() => navigate('/login')} variant="secondary">
             Back to Login
           </Button>
         </Card>
@@ -154,7 +154,7 @@ export function RoleSelectorPage() {
                       <Button
                         key={rel.relationship.id}
                         onClick={() => handleSelectAgent(rel.senderOrg.id)}
-                        variant="outline"
+                        variant="secondary"
                         className="w-full justify-between"
                       >
                         <span>{rel.senderOrg.name}</span>

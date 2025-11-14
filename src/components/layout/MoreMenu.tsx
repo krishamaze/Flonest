@@ -5,9 +5,10 @@ import {
   UserGroupIcon,
   ClipboardDocumentCheckIcon,
   DocumentTextIcon,
+  Cog6ToothIcon,
 } from '@heroicons/react/24/outline'
 import { useAuth } from '../../contexts/AuthContext'
-import { hasPermission, MANAGE_INVENTORY } from '../../lib/permissions'
+import { hasPermission, MANAGE_INVENTORY, canManageOrgSettings } from '../../lib/permissions'
 
 interface MoreMenuProps {
   isOpen: boolean
@@ -72,6 +73,16 @@ export function MoreMenu({ isOpen, onClose }: MoreMenuProps) {
       icon: DocumentTextIcon,
       description: 'View pending product submissions',
     })
+    
+    // Add settings link for admin users only
+    if (canManageOrgSettings(user)) {
+      moreMenuItems.push({
+        to: '/settings',
+        label: 'Settings',
+        icon: Cog6ToothIcon,
+        description: 'Manage organization settings',
+      })
+    }
   }
 
   return (

@@ -1,5 +1,5 @@
 import { supabase } from './supabase'
-import type { AuthUser, AgentRelationship, Org } from '../types'
+import type { AgentRelationship, Org } from '../types'
 
 export interface AgentContextInfo {
   senderOrgId: string

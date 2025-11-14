@@ -1,8 +1,8 @@
 {
-  "name": "Inventory Management System",
-  "short_name": "Inventory",
+  "name": "finetune",
+  "short_name": "finetune",
   "description": "Multi-tenant inventory management SaaS application",
-  "theme_color": "#0ea5e9",
+  "theme_color": "#E2C33D",
   "background_color": "#ffffff",
   "display": "standalone",
   "orientation": "portrait",

@@ -180,7 +180,7 @@ export function DashboardPage() {
           </button>
           <div className="pr-lg">
             <p className="text-base font-semibold mb-xs">
-              Welcome to Finetune!
+              Welcome to finetune!
             </p>
             <p className="text-sm opacity-90">
               You're on a 3-month free trial worth ₹1999/month — ₹1000 off launch offer.

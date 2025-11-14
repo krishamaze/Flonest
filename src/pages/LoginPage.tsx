@@ -134,8 +134,12 @@ export function LoginPage() {
         <div className="w-full max-w-md page-enter">
           {/* Header */}
           <div className="mb-xl text-center">
-            <div className="mx-auto mb-lg flex h-16 w-16 items-center justify-center rounded-lg bg-primary shadow-primary">
-              <span className="text-3xl font-bold text-on-primary">I</span>
+            <div className="mx-auto mb-lg flex h-24 w-24 items-center justify-center rounded-lg bg-white shadow-primary p-md">
+              <img 
+                src="/pwa-192x192.png" 
+                alt="finetune logo" 
+                className="w-full h-full object-contain"
+              />
             </div>
             <h1 className="text-3xl font-bold text-primary-text mb-xs">
               {view === 'sign_up' ? 'Create Account' : view === 'forgot_password' ? 'Reset Password' : 'Welcome Back'}
