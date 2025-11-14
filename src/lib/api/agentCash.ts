@@ -91,7 +91,7 @@ export async function recordCashReceived(
     .single()
 
   if (error) throw error
-  return data as AgentCashLedgerEntry
+  return data as unknown as AgentCashLedgerEntry
 }
 
 /**
@@ -136,7 +136,7 @@ export async function recordCashDeposit(
     .single()
 
   if (error) throw error
-  return data as AgentCashLedgerEntry
+  return data as unknown as AgentCashLedgerEntry
 }
 
 /**
@@ -243,7 +243,7 @@ export async function getPendingDeposits(
     .order('created_at', { ascending: false })
 
   if (error) throw error
-  return (data || []) as AgentCashLedgerEntry[]
+  return (data || []) as unknown as AgentCashLedgerEntry[]
 }
 
 /**
@@ -268,7 +268,7 @@ export async function getCashSettings(orgId: string): Promise<OrgCashSettings> {
     }
   }
 
-  return data as OrgCashSettings
+  return data as unknown as OrgCashSettings
 }
 
 /**
@@ -315,11 +315,12 @@ export async function verifyCashDeposit(
     .eq('id', entryId)
     .single()
 
-  if (entry?.invoice_id) {
+  const typedEntry = entry as any
+  if (typedEntry?.invoice_id) {
     await supabase
       .from('invoices')
       .update({ payment_status: 'verified', payment_verified_at: new Date().toISOString(), payment_verified_by: verifiedBy })
-      .eq('id', entry.invoice_id)
+      .eq('id', typedEntry.invoice_id)
   }
 }
 

@@ -15,7 +15,7 @@ import {
   revokeAgentRelationship,
   reactivateAgentRelationship,
   getAgentHelpers,
-  grantPortalPermission,
+  // grantPortalPermission, // TODO: Uncomment when implementing helper grant UI
   revokePortalPermission
 } from '../lib/api/agentRelationships'
 import { 
@@ -404,7 +404,7 @@ function ManageHelpersModal({
   relationshipId: string
   agentUserId: string
 }) {
-  const { user } = useAuth()
+  // const { user } = useAuth() // TODO: Needed for helper grant functionality
   const [loading, setLoading] = useState(true)
   const [helpers, setHelpers] = useState<any[]>([])
   // TODO: Implement helper management UI

@@ -119,7 +119,11 @@ export async function getAllDCStockTransactions(
 
   if (error) throw error
 
-  return data || []
+  // Map 'products' to 'product' to match return type
+  return (data || []).map((item: any) => ({
+    ...item,
+    product: item.products
+  }))
 }
 
 /**

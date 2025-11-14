@@ -48,19 +48,19 @@ export function SettingsPage() {
     try {
       const { data, error } = await supabase
         .from('orgs')
-        .select('id, name, custom_logo_url, phone, address, gstin')
+        .select('id, name, custom_logo_url, phone, address, gst_number')
         .eq('id', user.orgId)
         .single()
 
       if (error) throw error
 
       if (data) {
-        setOrgSettings(data)
+        setOrgSettings(data as any)
         setFormData({
           name: data.name || '',
           phone: data.phone || '',
           address: data.address || '',
-          gstin: data.gstin || '',
+          gstin: data.gst_number || '',
         })
       }
     } catch (error: any) {
@@ -82,7 +82,7 @@ export function SettingsPage() {
           name: formData.name,
           phone: formData.phone,
           address: formData.address,
-          gstin: formData.gstin,
+          gst_number: formData.gstin,
         })
         .eq('id', user.orgId)
 
