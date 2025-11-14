@@ -184,7 +184,7 @@ export async function getDeliveryChallan(dcId: string): Promise<DeliveryChallanW
     ...data,
     sender_org: (data as any).orgs,
     agent_profile: (data as any).profiles,
-  } as DeliveryChallanWithDetails
+  } as unknown as DeliveryChallanWithDetails
 }
 
 /**

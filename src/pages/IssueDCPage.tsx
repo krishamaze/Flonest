@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card'
 import { Button } from '../components/ui/Button'
 import { Input } from '../components/ui/Input'
 import { LoadingSpinner } from '../components/ui/LoadingSpinner'
-import { toast } from 'react-hot-toast'
+import { toast } from 'react-toastify'
 import { 
   createDeliveryChallan,
   generateDCNumber,

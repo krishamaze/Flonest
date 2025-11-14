@@ -5,7 +5,7 @@ import { AgentPortalLayout } from '../../components/layout/AgentPortalLayout'
 import { Card, CardContent } from '../../components/ui/Card'
 import { LoadingSpinner } from '../../components/ui/LoadingSpinner'
 import { Button } from '../../components/ui/Button'
-import { toast } from 'react-hot-toast'
+import { toast } from 'react-toastify'
 import { 
   getDeliveryChallansForAgent,
   acceptDeliveryChallan,

@@ -6,12 +6,12 @@ import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/Ca
 import { Button } from '../../components/ui/Button'
 import { Input } from '../../components/ui/Input'
 import { LoadingSpinner } from '../../components/ui/LoadingSpinner'
-import { toast } from 'react-hot-toast'
+import { toast } from 'react-toastify'
 import { getDCStock, type DCStockSummary } from '../../lib/api/dcStock'
 import { createDCSale, type DCSaleItemInput } from '../../lib/api/dcSales'
 import { lookupOrCreateCustomer } from '../../lib/api/customers'
 import type { CustomerWithMaster } from '../../types'
-import { TrashIcon, PlusIcon } from '@heroicons/react/24/outline'
+import { TrashIcon, PlusIcon, CubeIcon } from '@heroicons/react/24/outline'
 
 interface SaleItem {
   product_id: string

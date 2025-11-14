@@ -95,7 +95,7 @@ export function MoreMenu({ isOpen, onClose }: MoreMenuProps) {
     }
 
     // Add context switcher if user has agent relationships
-    if (user.agentContext) {
+    if (user && user.agentContext) {
       moreMenuItems.push({
         to: '/role-selector',
         label: 'Switch Mode',

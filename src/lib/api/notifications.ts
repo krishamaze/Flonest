@@ -272,6 +272,6 @@ export async function getOrgAdmins(orgId: string): Promise<string[]> {
     return []
   }
 
-  return (data || []).map(m => m.profile_id)
+  return (data || []).map(m => m.profile_id).filter((id): id is string => id !== null)
 }
 

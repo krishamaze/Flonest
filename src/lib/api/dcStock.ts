@@ -90,10 +90,15 @@ export async function getDCStockHistory(
 
   if (error) throw error
 
-  return (data || []).map((item: any) => ({
+  return ((data || []) as any[]).map((item: any) => ({
     ...item,
     delivery_challan: item.delivery_challans,
-  }))
+  })) as (DCStockLedger & {
+    product: Product
+    delivery_challan?: {
+      dc_number: string
+    }
+  })[]
 }
 
 /**
