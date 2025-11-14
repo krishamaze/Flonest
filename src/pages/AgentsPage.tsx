@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { useNavigate } from 'react-router-dom'
-import { MainLayout } from '../components/layout/MainLayout'
+// MainLayout is handled by routing
 import { Card, CardContent } from '../components/ui/Card'
 import { Button } from '../components/ui/Button'
 import { Input } from '../components/ui/Input'
@@ -88,16 +88,14 @@ export function AgentsPage() {
 
   if (loading) {
     return (
-      <MainLayout title="Agents">
-        <div className="flex items-center justify-center py-xl">
-          <LoadingSpinner size="lg" />
-        </div>
-      </MainLayout>
+      <div className="flex items-center justify-center py-xl">
+        <LoadingSpinner size="lg" />
+      </div>
     )
   }
 
   return (
-    <MainLayout title="Agent Management">
+    <div className="pb-20">
       <div className="space-y-md max-w-4xl mx-auto pb-32">
         {/* Header */}
         <div className="flex items-center justify-between">
@@ -231,7 +229,7 @@ export function AgentsPage() {
           />
         )}
       </div>
-    </MainLayout>
+    </div>
   )
 }
 

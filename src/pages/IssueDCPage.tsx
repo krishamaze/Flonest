@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { useNavigate, useParams } from 'react-router-dom'
-import { MainLayout } from '../components/layout/MainLayout'
+// MainLayout is handled by routing
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card'
 import { Button } from '../components/ui/Button'
 import { Input } from '../components/ui/Input'
@@ -148,16 +148,14 @@ export function IssueDCPage() {
 
   if (loading) {
     return (
-      <MainLayout title="Issue DC">
-        <div className="flex items-center justify-center py-xl">
-          <LoadingSpinner size="lg" />
-        </div>
-      </MainLayout>
+      <div className="flex items-center justify-center py-xl">
+        <LoadingSpinner size="lg" />
+      </div>
     )
   }
 
   return (
-    <MainLayout title="Issue Delivery Challan">
+    <div className="pb-20">
       <div className="space-y-md max-w-4xl mx-auto pb-32">
         {/* Agent Info */}
         <Card className="shadow-sm">
@@ -283,7 +281,7 @@ export function IssueDCPage() {
           </Button>
         </div>
       </div>
-    </MainLayout>
+    </div>
   )
 }
 
