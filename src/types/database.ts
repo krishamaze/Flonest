@@ -253,6 +253,51 @@ export type Database = {
         }
         Relationships: []
       }
+      billing_plans: {
+        Row: {
+          billing_interval: string
+          created_at: string
+          description: string | null
+          id: string
+          is_active: boolean
+          max_seats: number | null
+          metadata: Json
+          name: string
+          price_in_paise: number
+          slug: string
+          trial_period_days: number
+          updated_at: string
+        }
+        Insert: {
+          billing_interval: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          max_seats?: number | null
+          metadata?: Json
+          name: string
+          price_in_paise?: number
+          slug: string
+          trial_period_days?: number
+          updated_at?: string
+        }
+        Update: {
+          billing_interval?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          max_seats?: number | null
+          metadata?: Json
+          name?: string
+          price_in_paise?: number
+          slug?: string
+          trial_period_days?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       branches: {
         Row: {
           address: string | null
@@ -1228,6 +1273,79 @@ export type Database = {
           },
         ]
       }
+      org_subscriptions: {
+        Row: {
+          cancel_at_period_end: boolean
+          canceled_at: string | null
+          created_at: string
+          current_period_end: string
+          current_period_start: string
+          ended_at: string | null
+          id: string
+          metadata: Json
+          org_id: string
+          pending_plan_id: string | null
+          plan_id: string
+          quantity: number
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          cancel_at_period_end?: boolean
+          canceled_at?: string | null
+          created_at?: string
+          current_period_end: string
+          current_period_start: string
+          ended_at?: string | null
+          id?: string
+          metadata?: Json
+          org_id: string
+          pending_plan_id?: string | null
+          plan_id: string
+          quantity?: number
+          status: string
+          updated_at?: string
+        }
+        Update: {
+          cancel_at_period_end?: boolean
+          canceled_at?: string | null
+          created_at?: string
+          current_period_end?: string
+          current_period_start?: string
+          ended_at?: string | null
+          id?: string
+          metadata?: Json
+          org_id?: string
+          pending_plan_id?: string | null
+          plan_id?: string
+          quantity?: number
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "org_subscriptions_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: true
+            referencedRelation: "orgs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "org_subscriptions_pending_plan_id_fkey"
+            columns: ["pending_plan_id"]
+            isOneToOne: false
+            referencedRelation: "billing_plans"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "org_subscriptions_plan_id_fkey"
+            columns: ["plan_id"]
+            isOneToOne: false
+            referencedRelation: "billing_plans"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       orgs: {
         Row: {
           address: string | null
@@ -1510,6 +1628,41 @@ export type Database = {
             columns: ["product_id"]
             isOneToOne: false
             referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      subscription_events: {
+        Row: {
+          actor_user_id: string | null
+          event_time: string
+          event_type: string
+          id: string
+          org_subscription_id: string
+          payload: Json
+        }
+        Insert: {
+          actor_user_id?: string | null
+          event_time?: string
+          event_type: string
+          id?: string
+          org_subscription_id: string
+          payload?: Json
+        }
+        Update: {
+          actor_user_id?: string | null
+          event_time?: string
+          event_type?: string
+          id?: string
+          org_subscription_id?: string
+          payload?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "subscription_events_org_subscription_id_fkey"
+            columns: ["org_subscription_id"]
+            isOneToOne: false
+            referencedRelation: "org_subscriptions"
             referencedColumns: ["id"]
           },
         ]

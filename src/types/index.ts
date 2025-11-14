@@ -16,6 +16,9 @@ export type AgentPortalPermission = Database['public']['Tables']['agent_portal_p
 export type DeliveryChallan = Database['public']['Tables']['delivery_challans']['Row']
 export type DCItem = Database['public']['Tables']['dc_items']['Row']
 export type DCStockLedger = Database['public']['Tables']['dc_stock_ledger']['Row']
+export type BillingPlan = Database['public']['Tables']['billing_plans']['Row']
+export type OrgSubscription = Database['public']['Tables']['org_subscriptions']['Row']
+export type SubscriptionEvent = Database['public']['Tables']['subscription_events']['Row']
 
 export type UserRole = 'admin' | 'branch_head' | 'advisor'
 export type ProductStatus = 'active' | 'inactive' | 'pending'
