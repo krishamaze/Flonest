@@ -13,6 +13,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
                      type === 'email' ? 'email' : 
                      type === 'tel' ? 'tel' : 
                      type === 'url' ? 'url' : 
+                     type === 'password' ? 'password' : 
                      'text'
 
     // Determine inputMode for better mobile keyboard
