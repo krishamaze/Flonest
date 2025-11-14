@@ -69,6 +69,13 @@ if (data.user && !data.session) {
 ```
 **Prevention**: When implementing auth features, research industry-standard security practices first. Default to more secure, even if less convenient. Always use generic messages that work for all scenarios.
 
+## [Priority 2] Empty database.ts Causing Cascading TypeScript Errors
+**Error Signature**: `File 'D:/biz.finetune.store/src/types/database.ts' is not a module`, hundreds of type errors across codebase
+**Context**: After database migrations, `database.ts` is empty or not regenerated, causing all Supabase queries to fail type checking
+**Fix**: Regenerate types using Supabase MCP: `mcp_supabase_generate_typescript_types()`. Extract from JSON response: `$json = Get-Content <file> -Raw | ConvertFrom-Json; $json.types | Set-Content 'src\types\database.ts'`. Verify file has content before pushing.
+**Pattern**: After ANY migration, regenerate types immediately. Check `database.ts` has proper `export type Database = {...}` content.
+**Prevention**: Always regenerate types after migrations. Verify types file is not empty before building. Add to deployment checklist: "Check database.ts has content".
+
 ## [Priority 2] View Not Scrollable
 **Error Signature**: Page content appears but cannot scroll, content cut off below viewport
 **Context**: Parent container has `overflow: hidden`, fixed height without scroll, or `min-h-screen` on main content forcing full viewport height with fixed header/footer
@@ -127,11 +134,38 @@ These errors occur occasionally during development or specific scenarios.
 **Fix**: Configure git: `git config user.email "finetunetech.e@gmail.com"`
 **Prevention**: Verify git config matches team email before committing.
 
+## [Priority 4] MainLayout Component Children Not Supported
+**Error Signature**: `Type '{ children: Element; title: string; }' is not assignable to type 'IntrinsicAttributes'. Property 'children' does not exist`
+**Context**: New pages wrap content in `<MainLayout>` component, but MainLayout uses `<Outlet />` and doesn't accept children
+**Fix**: Remove MainLayout wrapper from page components. Pages should return content directly - routing handles the layout. Replace `<MainLayout title="X"><content></MainLayout>` with just `<div className="pb-20"><content></div>`.
+**Pattern**: Other pages (ProductsPage, CustomersPage, etc.) don't wrap themselves in MainLayout. Check existing pages for correct structure.
+**Prevention**: When creating new pages, check how existing pages are structured. MainLayout is applied at routing level, not component level.
+
 ## [Priority 4] Branch Merge Confusion - Two Separate Projects
 **Error Signature**: Merge conflicts, wrong Vercel project deployment
 **Context**: Two branches (`main` = PWA app, `marketing` = marketing site) deploy to separate Vercel projects
 **Fix**: Work on correct branch, push directly. NEVER merge branches.
 **Prevention**: Keep `main` and `marketing` branches completely isolated.
+
+## [Priority 5] Type Assertions Required for New Supabase Tables
+**Error Signature**: `Argument of type '"table_name"' is not assignable to parameter of type 'never'` or `Type 'X' is not assignable to type 'Y'` on newly created tables
+**Context**: After creating new tables in migrations, TypeScript doesn't recognize them until types are regenerated. Queries fail with type errors.
+**Fix**: Add `as any` to table name: `.from('new_table' as any)`. Add `as unknown as Type` to return values. After deployment success, regenerate types and remove assertions.
+**Pattern**: 
+```typescript
+// Temporary fix until types regenerated:
+const { data } = await supabase
+  .from('agent_cash_ledger' as any)
+  .select()
+return data as unknown as AgentCashLedgerEntry
+
+// After type regeneration, remove assertions:
+const { data } = await supabase
+  .from('agent_cash_ledger')
+  .select()
+return data
+```
+**Prevention**: Regenerate types immediately after migrations. Use Supabase MCP for type generation during development.
 
 ## [Priority 5] Service Worker Not Detecting Updates
 **Error Signature**: New deployment live but no update notification on pull-to-refresh
@@ -144,6 +178,29 @@ These errors occur occasionally during development or specific scenarios.
 **Context**: Touch event listeners conflicting with native scroll
 **Fix**: Only trigger when `window.scrollY === 0`. Add threshold (80px+) before refresh. Prevent default only when actually pulling to refresh.
 **Prevention**: Check scroll position before handling touch events. Use thresholds to avoid accidental triggers.
+
+## [Priority 6] Supabase Type Generation Workflow (MCP Method)
+**Error Signature**: `supabase gen types` CLI fails with `.env parsing error` or authentication issues
+**Context**: Need to regenerate types after migrations, but CLI has environment issues
+**Fix**: Use Supabase MCP instead of CLI. Call `mcp_supabase_generate_typescript_types()` → extracts to temp file. Use PowerShell to extract JSON: `$json = Get-Content <temp-file> -Raw | ConvertFrom-Json; $json.types | Set-Content 'src\types\database.ts' -Encoding UTF8`.
+**Pattern**:
+```powershell
+# 1. Call Supabase MCP (returns JSON-wrapped types to temp file)
+# 2. Create extract-types.ps1:
+$json = Get-Content '<temp-file-path>' -Raw | ConvertFrom-Json
+$json.types | Set-Content 'src\types\database.ts' -Encoding UTF8
+Write-Host "Types extracted successfully"
+
+# 3. Run script:
+powershell -ExecutionPolicy Bypass -File extract-types.ps1
+
+# 4. Verify file has content:
+Get-Content src\types\database.ts -TotalCount 5
+
+# 5. Test build:
+npm run build
+```
+**Prevention**: Prefer Supabase MCP over CLI when in Cursor. MCP is more reliable and doesn't require .env file. Clean up temp script after use.
 
 ## [Priority 6] TypeScript Type Errors in Build
 **Error Signature**: Build fails with TypeScript type errors
