@@ -1,26 +1,26 @@
 # Test Accounts Setup
 
-This document describes the test accounts created for testing the reviewer dashboard system.
+This document describes the test accounts created for testing the platform admin dashboard system.
 
 ## Test Accounts
 
 ### Demo Account (Regular User)
 - **Email**: `demo@example.com`
 - **Password**: `password`
-- **Role**: Org Owner (`is_internal = false`)
+- **Role**: Org Owner (`platform_admin = false`)
 - **Access**: Regular user features (products, invoices, inventory, etc.)
 
-### Internal User Account (Reviewer)
+### Platform Admin Account
+- **Email**: `platform-admin@test.com`
+- **Password**: Set via Supabase Auth (recommended: `Test123!@#`)
+- **Role**: Platform Admin (`platform_admin = true`)
+- **Access**: Can access `/platform-admin` dashboard, review products, manage HSN codes, view blocked invoices
+
+### Internal User Account (Legacy)
 - **Email**: `internal@test.com` (default, can be customized)
 - **Password**: `password` (default, can be customized)
-- **Role**: Internal Reviewer (`is_internal = true`)
-- **Access**: Can access `/reviewer` dashboard, review products, manage HSN codes, view blocked invoices
-
-### Reviewer Account (Alternative)
-- **Email**: `reviewer@test.com`
-- **Password**: Set via Supabase Auth (recommended: `Test123!@#`)
-- **Role**: Internal Reviewer (`is_internal = true`)
-- **Access**: Can access `/reviewer` dashboard, review products, manage HSN codes
+- **Role**: Platform Admin (`platform_admin = true`)
+- **Access**: Can access `/platform-admin` dashboard, review products, manage HSN codes, view blocked invoices
 
 ### Org Owner Account
 - **Email**: `owner@test.com`
@@ -49,9 +49,9 @@ node scripts/create-internal-user.cjs internal@test.com YourPassword123!@#
 
 This script will:
 1. Create auth user in Supabase Auth
-2. Create profile with `is_internal = true`
+2. Create profile with `platform_admin = true`
 3. Verify the setup
-4. Test the `is_internal_user()` function
+4. Test the platform admin access
 
 **Method 2: Using SQL (Alternative)**
 
@@ -80,7 +80,7 @@ Create the auth user via Supabase Dashboard:
 4. Enter password: `InternalTest123!@#`
 5. Click "Create User"
 
-#### 2. Create Profile and Set is_internal
+#### 2. Create Profile and Set platform_admin
 
 Run this SQL in Supabase SQL Editor:
 
@@ -100,11 +100,11 @@ BEGIN
     RAISE EXCEPTION 'User internal@test.com not found in auth.users';
   END IF;
 
-  -- Create or update profile with is_internal = true
-  INSERT INTO profiles (id, email, full_name, is_internal)
+  -- Create or update profile with platform_admin = true
+  INSERT INTO profiles (id, email, full_name, platform_admin)
   VALUES (v_user_id, 'internal@test.com', 'Internal Test User', true)
   ON CONFLICT (id) DO UPDATE
-  SET is_internal = true;
+  SET platform_admin = true;
 
   RAISE NOTICE 'Internal user created/updated: %', v_user_id;
 END $$;
@@ -116,12 +116,12 @@ Verify the internal user was created correctly:
 
 ```sql
 -- Check profile
-SELECT id, email, is_internal, full_name
+SELECT id, email, platform_admin, full_name
 FROM profiles
 WHERE email = 'internal@test.com';
 
--- Test is_internal_user function
-SELECT is_internal_user((SELECT id FROM profiles WHERE email = 'internal@test.com'));
+-- Verify platform admin access
+SELECT platform_admin FROM profiles WHERE email = 'internal@test.com';
 ```
 
 ### Setup Other Test Accounts
@@ -132,7 +132,7 @@ Create the auth users via Supabase Dashboard or Auth API:
 
 1. Go to Supabase Dashboard → Authentication → Users
 2. Click "Add User" or use the Auth API
-3. Create user with email `reviewer@test.com`
+3. Create user with email `platform-admin@test.com`
 4. Create user with email `owner@test.com`
 5. Set passwords (recommended: `Test123!@#`)
 
@@ -145,21 +145,21 @@ The migration `20251110150002_create_test_accounts.sql` will:
 - Create sample pending products
 - Create sample HSN codes
 
-#### 3. Mark Reviewer as Internal
+#### 3. Mark Platform Admin Account
 
-After the migration runs, mark the reviewer as internal:
+After the migration runs, mark the platform admin account:
 
 ```sql
 UPDATE profiles
-SET is_internal = true
-WHERE email = 'reviewer@test.com';
+SET platform_admin = true
+WHERE email = 'platform-admin@test.com';
 ```
 
 ### 4. Verify Setup
 
-1. Log in as `internal@test.com` (or `reviewer@test.com`)
+1. Log in as `platform-admin@test.com` (or `internal@test.com`)
    - Should see "Reviewer" link in navigation
-   - Can access `/reviewer` dashboard
+   - Can access `/platform-admin` dashboard
    - Should see pending products in review queue
    - Can manage HSN codes
    - Can view blocked invoices
@@ -167,7 +167,7 @@ WHERE email = 'reviewer@test.com';
 2. Log in as `demo@example.com`
    - Should see regular user features
    - Can access products, invoices, inventory
-   - Cannot access `/reviewer` dashboard
+   - Cannot access `/platform-admin` dashboard
 
 3. Log in as `owner@test.com`
    - Should see "My Submissions" link in navigation
@@ -192,7 +192,7 @@ WHERE email = 'reviewer@test.com';
    - View pending products at `/pending-products`
    - See status updates when reviewed
 
-2. **As Reviewer**:
+2. **As Platform Admin**:
    - View pending products in review queue
    - Approve/reject products with notes
    - Add HSN codes via HSN Manager
@@ -205,9 +205,9 @@ WHERE email = 'reviewer@test.com';
 
 ## Troubleshooting
 
-### Reviewer can't access `/reviewer`
-- Check that `profiles.is_internal = true` for reviewer user
-- Verify user is logged in as `reviewer@test.com`
+### Platform Admin can't access `/platform-admin`
+- Check that `profiles.platform_admin = true` for platform admin user
+- Verify user is logged in as `platform-admin@test.com`
 
 ### Owner can't see pending products
 - Verify products have `submitted_org_id` matching owner's org

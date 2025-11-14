@@ -57,7 +57,7 @@ export function AccessDenied({
           </div>
         )}
         <button
-          onClick={() => navigate(user?.platformAdmin ? '/reviewer' : '/')}
+          onClick={() => navigate(user?.platformAdmin ? '/platform-admin' : '/')}
           className="w-full bg-primary text-text-on-primary font-semibold py-sm px-md rounded-md hover:bg-primary-hover transition-colors"
         >
           Go to Dashboard

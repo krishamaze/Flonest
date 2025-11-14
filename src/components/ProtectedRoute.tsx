@@ -59,7 +59,7 @@ export function ProtectedRoute({ children }: { children: React.ReactNode }) {
   }
 
   // Internal users don't need org membership - allow them through
-  // They will be redirected to /reviewer in App.tsx if they try to access org routes
+  // They will be redirected to /platform-admin in App.tsx if they try to access org routes
   if (user.platformAdmin) {
     return <>{children}</>
   }

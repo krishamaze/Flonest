@@ -109,7 +109,7 @@ export function BlockedInvoiceDetails({
                   {error.master_product_id && (
                     <div className="mt-xs">
                       <Link
-                        to={`/reviewer/queue`}
+                        to={`/platform-admin/queue`}
                         className="text-xs text-primary hover:underline"
                         onClick={onClose}
                       >
@@ -120,7 +120,7 @@ export function BlockedInvoiceDetails({
                   {error.hsn_code && (
                     <div className="mt-xs">
                       <Link
-                        to={`/reviewer/hsn`}
+                        to={`/platform-admin/hsn`}
                         className="text-xs text-primary hover:underline"
                         onClick={onClose}
                       >

@@ -41,7 +41,7 @@ export function MoreMenu({ isOpen, onClose }: MoreMenuProps) {
   // Internal users only see reviewer menu (no org routes)
   if (user?.platformAdmin) {
     moreMenuItems.push({
-      to: '/reviewer',
+      to: '/platform-admin',
       label: 'Reviewer',
       icon: ClipboardDocumentCheckIcon,
       description: 'Review product submissions',

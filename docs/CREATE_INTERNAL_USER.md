@@ -1,15 +1,15 @@
-# Create Internal User Account
+# Create Platform Admin Account
 
-This guide explains how to create an internal user account for testing reviewer/internal user features.
+This guide explains how to create a platform admin account for testing platform admin features.
 
 ## Overview
 
-Internal users have `is_internal = true` in their profile, which grants them access to:
-- `/reviewer` dashboard
+Platform admin users have `platform_admin = true` in their profile, which grants them access to:
+- `/platform-admin` dashboard
 - Product review functionality
 - HSN code management
 - Blocked invoices viewing
-- All internal/admin features
+- All platform admin features
 
 ## Method 1: Using Script (Recommended)
 
@@ -52,9 +52,9 @@ SUPABASE_SERVICE_KEY=your-service-role-key-here
 ### What the Script Does
 
 1. Creates auth user in Supabase Auth
-2. Creates profile with `is_internal = true`
+2. Creates profile with `platform_admin = true`
 3. Verifies the setup
-4. Tests the `is_internal_user()` function
+4. Tests platform admin access
 
 ## Method 2: Using SQL (Alternative)
 
@@ -90,8 +90,7 @@ If you prefer SQL or don't have `SUPABASE_SERVICE_KEY`, you can use SQL with you
    SELECT 
      id,
      email,
-     is_internal,
-     is_internal_user(id) as function_test
+     platform_admin
    FROM profiles
    WHERE email = 'internal@test.com';
    ```
@@ -118,7 +117,7 @@ You can also create an internal user manually via the Supabase Dashboard.
    - Go to Supabase Dashboard → SQL Editor
    - Run this SQL (replace `USER_ID` with the actual user ID):
    ```sql
-   INSERT INTO profiles (id, email, full_name, is_internal)
+   INSERT INTO profiles (id, email, full_name, platform_admin)
    VALUES (
      'USER_ID',  -- Replace with actual user ID
      'internal@test.com',
@@ -126,7 +125,7 @@ You can also create an internal user manually via the Supabase Dashboard.
      true
    )
    ON CONFLICT (id) DO UPDATE
-   SET is_internal = true;
+   SET platform_admin = true;
    ```
 
 3. **Verify:**
@@ -134,8 +133,7 @@ You can also create an internal user manually via the Supabase Dashboard.
    SELECT 
      id,
      email,
-     is_internal,
-     is_internal_user(id) as function_test
+     platform_admin
    FROM profiles
    WHERE email = 'internal@test.com';
    ```
@@ -146,31 +144,31 @@ After creating the internal user, verify the setup:
 
 ### 1. Check Profile
 ```sql
-SELECT id, email, is_internal, full_name
+SELECT id, email, platform_admin, full_name
 FROM profiles
 WHERE email = 'internal@test.com';
 ```
 
-### 2. Test Function
+### 2. Verify Platform Admin Access
 ```sql
-SELECT is_internal_user(
-  (SELECT id FROM profiles WHERE email = 'internal@test.com')
-);
+SELECT platform_admin
+FROM profiles
+WHERE email = 'internal@test.com';
 ```
 
 ### 3. Test Login
 - Log in with `internal@test.com` / `InternalTest123!@#`
 - Should see "Reviewer" link in navigation
-- Can access `/reviewer` dashboard
+- Can access `/platform-admin` dashboard
 - Can review products, manage HSN codes, view blocked invoices
 
 ## Troubleshooting
 
 ### User Already Exists
 If the user already exists, the script will:
-- Update the existing profile to set `is_internal = true`
+- Update the existing profile to set `platform_admin = true`
 - Verify the setup
-- Test the function
+- Test platform admin access
 
 ### Missing Service Role Key
 If you don't have `SUPABASE_SERVICE_KEY`:
@@ -182,9 +180,9 @@ If you get "User not found" error:
 - Create the user first via Supabase Dashboard → Authentication → Users
 - Or use the script which creates the user automatically
 
-### is_internal_user() Returns False
-If the function returns false:
-- Check that `profiles.is_internal = true`
+### Platform Admin Access Not Working
+If platform admin access is not working:
+- Check that `profiles.platform_admin = true`
 - Verify the user ID matches
 - Check RLS policies (should not block service role)
 
@@ -192,7 +190,7 @@ If the function returns false:
 
 - **Email:** `internal@test.com`
 - **Password:** `password`
-- **Role:** Internal Reviewer (`is_internal = true`)
+- **Role:** Platform Admin (`platform_admin = true`)
 
 ## Security Notes
 

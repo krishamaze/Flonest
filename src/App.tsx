@@ -41,7 +41,7 @@ const AgentCashOversightPage = lazy(() => import('./pages/AgentCashOversightPage
 const PlatformAdminMfaPage = lazy(() => import('./pages/PlatformAdminMfaPage').then(m => ({ default: m.PlatformAdminMfaPage })))
 
 /**
- * Redirect internal users away from org routes to /reviewer
+ * Redirect internal users away from org routes to /platform-admin
  */
 function InternalUserRedirect({ children }: { children: React.ReactNode }) {
   const { user, requiresAdminMfa } = useAuth()
@@ -51,12 +51,12 @@ function InternalUserRedirect({ children }: { children: React.ReactNode }) {
     return <Navigate to="/admin-mfa" replace />
   }
 
-  // If internal user tries to access org routes, redirect to reviewer
-  if (user?.platformAdmin && location.pathname !== '/reviewer' && !location.pathname.startsWith('/reviewer/')) {
-    // Check if they're on an org route (not reviewer route)
+  // If internal user tries to access org routes, redirect to platform-admin
+  if (user?.platformAdmin && location.pathname !== '/platform-admin' && !location.pathname.startsWith('/platform-admin/')) {
+    // Check if they're on an org route (not platform-admin route)
     const orgRoutes = ['/', '/products', '/inventory', '/stock-ledger', '/customers', '/notifications', '/pending-products']
     if (orgRoutes.includes(location.pathname)) {
-      return <Navigate to="/reviewer" replace />
+      return <Navigate to="/platform-admin" replace />
     }
   }
 
@@ -100,7 +100,7 @@ function AppRoutes() {
           <Routes>
             <Route
               path="/login"
-              element={user ? (user.platformAdmin ? <Navigate to="/reviewer" replace /> : <Navigate to="/" replace />) : <LoginPage />}
+              element={user ? (user.platformAdmin ? <Navigate to="/platform-admin" replace /> : <Navigate to="/" replace />) : <LoginPage />}
             />
           <Route
             path="/admin-mfa"
@@ -219,9 +219,9 @@ function AppRoutes() {
             <Route index element={<AgentCashOversightPage />} />
           </Route>
 
-          {/* Reviewer Routes */}
+          {/* Platform Admin Routes */}
           <Route
-            path="/reviewer"
+            path="/platform-admin"
             element={
               <ReviewerRoute>
                 <MainLayout />

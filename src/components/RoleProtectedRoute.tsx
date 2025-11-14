@@ -34,9 +34,9 @@ export function RoleProtectedRoute({
     return <Navigate to="/login" replace />
   }
 
-  // Internal users are handled separately - they should only access /reviewer routes
+  // Internal users are handled separately - they should only access /platform-admin routes
   if (user.platformAdmin) {
-    return <Navigate to="/reviewer" replace />
+    return <Navigate to="/platform-admin" replace />
   }
 
   // Must have org membership

@@ -54,7 +54,7 @@ export function BottomNav() {
       >
         <div className="flex items-center justify-center h-16 pb-safe min-h-[64px]">
           <NavLink
-            to="/reviewer"
+            to="/platform-admin"
             end
             className={({ isActive }) =>
               `flex flex-1 flex-col items-center justify-center gap-xs py-sm min-h-[48px] transition-colors ${
@@ -90,7 +90,7 @@ export function BottomNav() {
   })
 
   // Check if any "More" menu route is active
-  const isMoreMenuActive = ['/stock-ledger', '/customers', '/reviewer', '/pending-products', '/settings'].some(path => 
+  const isMoreMenuActive = ['/stock-ledger', '/customers', '/platform-admin', '/pending-products', '/settings'].some(path => 
     location.pathname.startsWith(path)
   )
 

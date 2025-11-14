@@ -93,7 +93,7 @@ function ReviewerDashboardHome() {
               {stats?.pendingCount || 0}
             </p>
             <Link
-              to="/reviewer/queue"
+              to="/platform-admin/queue"
               className="text-xs text-primary hover:underline"
             >
               View Queue →
@@ -111,7 +111,7 @@ function ReviewerDashboardHome() {
               {stats?.blockedInvoicesCount || 0}
             </p>
             <Link
-              to="/reviewer/blocked-invoices"
+              to="/platform-admin/blocked-invoices"
               className="text-xs text-primary hover:underline"
             >
               View Details →
@@ -128,7 +128,7 @@ function ReviewerDashboardHome() {
         <CardContent className="p-md pt-0">
           <div className="grid gap-md sm:grid-cols-2">
             <Link
-              to="/reviewer/queue"
+              to="/platform-admin/queue"
               className="flex items-center gap-md rounded-md border border-neutral-200 p-md text-left min-h-[44px] transition-all duration-200 hover:bg-neutral-50 hover:border-neutral-300 active:scale-[0.98]"
             >
               <ClipboardDocumentCheckIcon className="h-5 w-5 text-primary shrink-0" />
@@ -138,7 +138,7 @@ function ReviewerDashboardHome() {
               </div>
             </Link>
             <Link
-              to="/reviewer/hsn"
+              to="/platform-admin/hsn"
               className="flex items-center gap-md rounded-md border border-neutral-200 p-md text-left min-h-[44px] transition-all duration-200 hover:bg-neutral-50 hover:border-neutral-300 active:scale-[0.98]"
             >
               <DocumentTextIcon className="h-5 w-5 text-primary shrink-0" />
@@ -148,7 +148,7 @@ function ReviewerDashboardHome() {
               </div>
             </Link>
             <Link
-              to="/reviewer/blocked-invoices"
+              to="/platform-admin/blocked-invoices"
               className="flex items-center gap-md rounded-md border border-neutral-200 p-md text-left min-h-[44px] transition-all duration-200 hover:bg-neutral-50 hover:border-neutral-300 active:scale-[0.98]"
             >
               <ExclamationTriangleIcon className="h-5 w-5 text-error shrink-0" />
@@ -158,7 +158,7 @@ function ReviewerDashboardHome() {
               </div>
             </Link>
             <Link
-              to="/reviewer/monitor"
+              to="/platform-admin/monitor"
               className="flex items-center gap-md rounded-md border border-neutral-200 p-md text-left min-h-[44px] transition-all duration-200 hover:bg-neutral-50 hover:border-neutral-300 active:scale-[0.98]"
             >
               <ChartBarIcon className="h-5 w-5 text-primary shrink-0" />
@@ -197,7 +197,7 @@ function ReviewerDashboardHome() {
               ))}
             </div>
             <Link
-              to="/reviewer/queue"
+              to="/platform-admin/queue"
               className="mt-md block text-center text-sm text-primary hover:underline"
             >
               View All →
@@ -213,19 +213,19 @@ export function ReviewerDashboardPage() {
   const location = useLocation()
 
   // If we're on a sub-route, render the appropriate component
-  if (location.pathname === '/reviewer/queue') {
+  if (location.pathname === '/platform-admin/queue') {
     return <ReviewQueue />
   }
 
-  if (location.pathname === '/reviewer/hsn') {
+  if (location.pathname === '/platform-admin/hsn') {
     return <HSNManager />
   }
 
-  if (location.pathname === '/reviewer/blocked-invoices') {
+  if (location.pathname === '/platform-admin/blocked-invoices') {
     return <BlockedInvoices />
   }
 
-  if (location.pathname === '/reviewer/monitor') {
+  if (location.pathname === '/platform-admin/monitor') {
     return <SubmissionMonitor />
   }
 

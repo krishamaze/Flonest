@@ -32,7 +32,7 @@ export function PlatformAdminMfaPage() {
     }
 
     if (!requiresAdminMfa) {
-      navigate('/reviewer', { replace: true })
+      navigate('/platform-admin', { replace: true })
     }
   }, [user, requiresAdminMfa, navigate])
 
@@ -101,7 +101,7 @@ export function PlatformAdminMfaPage() {
 
       await refreshAdminMfaRequirement()
       setInfo('MFA completed successfully. Redirecting you to the reviewer console...')
-      navigate('/reviewer', { replace: true })
+      navigate('/platform-admin', { replace: true })
     } catch (err: any) {
       console.error('Admin MFA verification failed', err)
       setError(err?.message || 'Invalid code. Please try again.')

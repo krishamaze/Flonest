@@ -1,5 +1,5 @@
--- Migration: Create test accounts for reviewer dashboard testing
--- Creates test reviewer and org owner accounts with sample data
+-- Migration: Create test accounts for platform admin dashboard testing
+-- Creates test platform admin and org owner accounts with sample data
 
 BEGIN;
 
@@ -7,23 +7,23 @@ BEGIN;
 -- You'll need to create the auth users manually via Supabase Dashboard or Auth API
 -- This migration only creates the profiles and sample data
 
--- Test Reviewer Account
--- Auth user should be created with email: reviewer@test.com
+-- Test Platform Admin Account
+-- Auth user should be created with email: platform-admin@test.com
 -- After creating auth user, get the user ID and update the profile:
 DO $$
 DECLARE
-  v_reviewer_user_id uuid;
+  v_platform_admin_user_id uuid;
   v_owner_user_id uuid;
   v_test_org_id uuid;
   v_pending_product_id uuid;
 BEGIN
-  -- Check if test reviewer profile exists (by email lookup)
-  SELECT id INTO v_reviewer_user_id
+  -- Check if test platform admin profile exists (by email lookup)
+  SELECT id INTO v_platform_admin_user_id
   FROM profiles
-  WHERE email = 'reviewer@test.com'
+  WHERE email = 'platform-admin@test.com'
   LIMIT 1;
 
-  -- If reviewer profile doesn't exist, we'll need to create it after auth user is created
+  -- If platform admin profile doesn't exist, we'll need to create it after auth user is created
   -- For now, we'll create a placeholder that will be updated manually
   -- The auth user must be created first via Supabase Auth
 
@@ -147,9 +147,9 @@ END $$;
 
 -- Instructions comment
 COMMENT ON TABLE profiles IS 'Test accounts setup:
-1. Create auth user for reviewer@test.com via Supabase Auth
+1. Create auth user for platform-admin@test.com via Supabase Auth
 2. Create auth user for owner@test.com via Supabase Auth
-3. Update profiles.is_internal = true for reviewer@test.com
+3. Update profiles.platform_admin = true for platform-admin@test.com
 4. Run this migration to create profiles, orgs, and sample data
 5. Test passwords should be set via Supabase Auth (recommended: "Test123!@#")';
 
