@@ -285,6 +285,7 @@ export function SettingsPage() {
               <div className="flex gap-sm flex-wrap">
                 <label>
                   <input
+                    id="logo-upload"
                     type="file"
                     accept="image/*"
                     onChange={handleLogoUpload}
@@ -292,12 +293,12 @@ export function SettingsPage() {
                     className="hidden"
                   />
                   <Button
-                    as="span"
                     variant="secondary"
                     size="sm"
                     isLoading={uploading}
                     disabled={uploading}
                     className="cursor-pointer"
+                    onClick={() => document.getElementById('logo-upload')?.click()}
                   >
                     <ArrowUpTrayIcon className="h-4 w-4 mr-xs" />
                     {uploading ? 'Uploading...' : 'Upload Logo'}

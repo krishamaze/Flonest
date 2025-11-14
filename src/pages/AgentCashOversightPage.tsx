@@ -2,9 +2,8 @@ import { useState, useEffect } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { useNavigate } from 'react-router-dom'
 // MainLayout is handled by routing
-import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card'
+import { Card, CardContent } from '../components/ui/Card'
 import { Button } from '../components/ui/Button'
-import { Input } from '../components/ui/Input'
 import { LoadingSpinner } from '../components/ui/LoadingSpinner'
 import { Modal } from '../components/ui/Modal'
 import { toast } from 'react-toastify'
@@ -13,7 +12,6 @@ import {
   getPendingVerifications,
   verifyCashDeposit,
   rejectCashDeposit,
-  type AgentCashLedgerEntry
 } from '../lib/api/agentCash'
 import {
   BanknotesIcon,

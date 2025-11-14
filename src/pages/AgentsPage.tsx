@@ -397,7 +397,7 @@ function ManageHelpersModal({
   isOpen,
   onClose,
   relationshipId,
-  agentUserId
+  agentUserId: _agentUserId
 }: {
   isOpen: boolean
   onClose: () => void
@@ -407,9 +407,10 @@ function ManageHelpersModal({
   const { user } = useAuth()
   const [loading, setLoading] = useState(true)
   const [helpers, setHelpers] = useState<any[]>([])
-  const [availableUsers, setAvailableUsers] = useState<any[]>([])
-  const [selectedUserId, setSelectedUserId] = useState('')
-  const [granting, setGranting] = useState(false)
+  // TODO: Implement helper management UI
+  // const [availableUsers, setAvailableUsers] = useState<any[]>([])
+  // const [selectedUserId, setSelectedUserId] = useState('')
+  // const [granting, setGranting] = useState(false)
 
   useEffect(() => {
     if (isOpen) {
@@ -431,25 +432,26 @@ function ManageHelpersModal({
 
   const loadAvailableUsers = async () => {
     // Load branch_heads and advisors from agent's org
-    // For now, simplified - would query memberships table
-    setAvailableUsers([])
+    // TODO: Implement this when helper UI is ready
+    // setAvailableUsers([])
   }
 
-  const handleGrant = async () => {
-    if (!selectedUserId || !user) return
-
-    try {
-      setGranting(true)
-      await grantPortalPermission(relationshipId, selectedUserId, user.id)
-      toast.success('Portal access granted')
-      setSelectedUserId('')
-      loadHelpers()
-    } catch (error: any) {
-      toast.error(error.message || 'Failed to grant access')
-    } finally {
-      setGranting(false)
-    }
-  }
+  // TODO: Implement helper grant functionality
+  // const handleGrant = async () => {
+  //   if (!selectedUserId || !user) return
+  //
+  //   try {
+  //     setGranting(true)
+  //     await grantPortalPermission(relationshipId, selectedUserId, user.id)
+  //     toast.success('Portal access granted')
+  //     setSelectedUserId('')
+  //     loadHelpers()
+  //   } catch (error: any) {
+  //     toast.error(error.message || 'Failed to grant access')
+  //   } finally {
+  //     setGranting(false)
+  //   }
+  // }
 
   const handleRevoke = async (permissionId: string) => {
     if (!confirm('Remove portal access for this helper?')) return
