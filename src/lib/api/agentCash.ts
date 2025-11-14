@@ -76,7 +76,7 @@ export async function recordCashReceived(
   }
 
   const { data, error } = await supabase
-    .from('agent_cash_ledger')
+    .from('agent_cash_ledger' as any)
     .insert({
       sender_org_id: senderOrgId,
       agent_user_id: agentUserId,
@@ -119,7 +119,7 @@ export async function recordCashDeposit(
   }
 
   const { data, error } = await supabase
-    .from('agent_cash_ledger')
+    .from('agent_cash_ledger' as any)
     .insert({
       sender_org_id: senderOrgId,
       agent_user_id: agentUserId,
@@ -209,7 +209,7 @@ export async function getAgentCashLedger(
   }
 })[]> {
   const { data, error } = await supabase
-    .from('agent_cash_ledger')
+    .from('agent_cash_ledger' as any)
     .select(`
       *,
       invoices(invoice_number, total_amount)
@@ -234,7 +234,7 @@ export async function getPendingDeposits(
   agentUserId: string
 ): Promise<AgentCashLedgerEntry[]> {
   const { data, error } = await supabase
-    .from('agent_cash_ledger')
+    .from('agent_cash_ledger' as any)
     .select('*')
     .eq('sender_org_id', senderOrgId)
     .eq('agent_user_id', agentUserId)
@@ -251,7 +251,7 @@ export async function getPendingDeposits(
  */
 export async function getCashSettings(orgId: string): Promise<OrgCashSettings> {
   const { data, error } = await supabase
-    .from('org_cash_settings')
+    .from('org_cash_settings' as any)
     .select('*')
     .eq('org_id', orgId)
     .single()
@@ -279,7 +279,7 @@ export async function updateCashSettings(
   settings: Partial<OrgCashSettings>
 ): Promise<void> {
   const { error } = await supabase
-    .from('org_cash_settings')
+    .from('org_cash_settings' as any)
     .upsert({
       org_id: orgId,
       ...settings,
@@ -297,7 +297,7 @@ export async function verifyCashDeposit(
   verifiedBy: string
 ): Promise<void> {
   const { error } = await supabase
-    .from('agent_cash_ledger')
+    .from('agent_cash_ledger' as any)
     .update({
       status: 'verified',
       verified_at: new Date().toISOString(),
@@ -310,7 +310,7 @@ export async function verifyCashDeposit(
 
   // Also update related invoice status to 'verified' if linked
   const { data: entry } = await supabase
-    .from('agent_cash_ledger')
+    .from('agent_cash_ledger' as any)
     .select('invoice_id')
     .eq('id', entryId)
     .single()
@@ -332,7 +332,7 @@ export async function rejectCashDeposit(
   rejectedBy: string
 ): Promise<void> {
   const { error } = await supabase
-    .from('agent_cash_ledger')
+    .from('agent_cash_ledger' as any)
     .update({
       status: 'rejected',
       rejection_reason: reason,
@@ -360,7 +360,7 @@ export async function getAllAgentsCashLedger(
   }
 })[]> {
   const { data, error } = await supabase
-    .from('agent_cash_ledger')
+    .from('agent_cash_ledger' as any)
     .select(`
       *,
       profiles!agent_cash_ledger_agent_user_id_fkey(email, full_name),
@@ -383,7 +383,7 @@ export async function getAllAgentsCashLedger(
  */
 export async function getPendingVerifications(senderOrgId: string): Promise<number> {
   const { count, error } = await supabase
-    .from('agent_cash_ledger')
+    .from('agent_cash_ledger' as any)
     .select('*', { count: 'exact', head: true })
     .eq('sender_org_id', senderOrgId)
     .eq('status', 'pending')
