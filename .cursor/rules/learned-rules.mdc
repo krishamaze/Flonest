@@ -38,12 +38,14 @@ These errors occur frequently or have severe consequences. **Always check these 
 
 ## [Priority 1] Security Always Trumps Convenience
 **Principle**: Security best practices must NEVER be compromised for UX convenience
-**Context**: When implementing auth/security features (password reset, login, etc.)
+**Context**: When implementing auth/security features (password reset, login, signup, etc.)
 **Examples**:
 - ✅ Generic password reset messages (prevents email enumeration)
+- ✅ Generic signup success messages (don't reveal SMTP/email configuration)
 - ✅ Rate limiting on sensitive endpoints
 - ✅ Proper error handling that doesn't leak system info
 - ❌ Revealing which emails are registered
+- ❌ Revealing SMTP configuration status ("email confirmation not configured")
 - ❌ Showing detailed error messages that help attackers
 - ❌ Skipping validation for "better UX"
 **Rule**: If a security decision seems inconvenient, that's usually the correct choice. Always choose security over convenience.
@@ -52,12 +54,20 @@ These errors occur frequently or have severe consequences. **Always check these 
 // ✅ GOOD - Generic message (secure)
 setMessage('If an account exists with this email, you will receive password reset instructions.')
 
+// ✅ GOOD - Signup success (doesn't reveal email confirmation status)
+setMessage('Account created successfully! If email confirmation is required, please check your email for further instructions.')
+
 // ❌ BAD - Reveals email existence (insecure but "convenient")
 if (!userExists) {
   setError('This email is not registered. Please sign up first.')
 }
+
+// ❌ BAD - Reveals SMTP configuration (information leak)
+if (data.user && !data.session) {
+  setMessage('Account created! However, email confirmation is not configured. Please contact support.')
+}
 ```
-**Prevention**: When implementing auth features, research industry-standard security practices first. Default to more secure, even if less convenient.
+**Prevention**: When implementing auth features, research industry-standard security practices first. Default to more secure, even if less convenient. Always use generic messages that work for all scenarios.
 
 ## [Priority 2] View Not Scrollable
 **Error Signature**: Page content appears but cannot scroll, content cut off below viewport

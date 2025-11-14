@@ -95,20 +95,18 @@ export function LoginPage() {
         })
         if (error) throw error
         
-        // Check if email confirmation is required
-        if (data.user && !data.session) {
-          // Email confirmation required but not sent (SMTP not configured)
-          setMessage('Account created! However, email confirmation is not configured. Please contact support or disable email confirmation in Supabase settings.')
-        } else if (data.session) {
-          // User is immediately confirmed (email confirmation disabled)
+        // Check if user is immediately signed in (email confirmation disabled)
+        if (data.session) {
+          // User is immediately confirmed - redirect to app
           setMessage('Account created successfully! Redirecting...')
           // Auto-navigate after a brief delay
           setTimeout(() => {
             navigate('/')
           }, 1000)
         } else {
-          // Email confirmation required and email should be sent
-          setMessage('Account created! Check your email for the confirmation link.')
+          // Generic message - don't reveal email confirmation status or SMTP configuration
+          // Security: Use generic message to avoid leaking system configuration details
+          setMessage('Account created successfully! If email confirmation is required, please check your email for further instructions.')
         }
         
         // Clear form
