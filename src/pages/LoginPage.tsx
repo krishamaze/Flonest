@@ -139,8 +139,16 @@ export function LoginPage() {
             <div className="mx-auto mb-lg flex h-16 w-16 items-center justify-center rounded-lg bg-primary shadow-primary">
               <span className="text-3xl font-bold text-on-primary">I</span>
             </div>
-            <h1 className="text-3xl font-bold text-primary-text mb-xs">Inventory System</h1>
-            <p className="text-base text-secondary-text">Manage your inventory</p>
+            <h1 className="text-3xl font-bold text-primary-text mb-xs">
+              {view === 'sign_up' ? 'Create Account' : view === 'forgot_password' ? 'Reset Password' : 'Welcome Back'}
+            </h1>
+            <p className="text-base text-secondary-text">
+              {view === 'sign_up' 
+                ? 'Sign up to start managing your inventory' 
+                : view === 'forgot_password' 
+                ? 'Enter your email to reset your password'
+                : 'Sign in to your account'}
+            </p>
           </div>
 
           {/* Auth Form Card */}
