@@ -247,13 +247,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
 
       const totpFactor = factorsData?.totp?.[0]
-      if (!totpFactor || totpFactor.status !== 'verified') {
-        // No verified factor - require enrollment
+      
+      // Handle three states: none, unverified, verified
+      if (!totpFactor) {
+        // State 1: No factor exists - require enrollment
         setRequiresAdminMfa(true)
         return
       }
 
-      // Factor exists - check AAL level
+      const factorStatus = totpFactor.status as string
+
+      if (factorStatus === 'unverified') {
+        // State 2: Factor exists but not verified - require enrollment completion
+        setRequiresAdminMfa(true)
+        return
+      }
+
+      if (factorStatus !== 'verified') {
+        // Unknown status - require enrollment
+        setRequiresAdminMfa(true)
+        return
+      }
+
+      // State 3: Factor is verified - check AAL level
       const { data, error } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel()
       if (error) {
         console.warn('[Auth] Unable to load admin MFA status:', error)

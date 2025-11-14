@@ -91,28 +91,59 @@ export function PlatformAdminMfaPage() {
       if (error) throw error
 
       const totpFactor = data?.totp?.[0]
-      if (!totpFactor || totpFactor.status !== 'verified') {
-        // No verified factor found - switch to enrollment mode
+
+      // Handle three states: none, unverified, verified
+      if (!totpFactor) {
+        // State 1: No factor exists - start enrollment
         setMode('enrollment')
         setChallengeLoading(false)
         await startEnrollment()
         return
       }
 
-      // Factor exists - proceed with verification
-      setMode('verification')
-      const { data: challenge, error: challengeError } = await supabase.auth.mfa.challenge({
-        factorId: totpFactor.id,
-      })
+      const factorStatus = totpFactor.status as string
+      
+      if (factorStatus === 'unverified') {
+        // State 2: Factor exists but not verified - continue enrollment
+        // For unverified factors, we need to re-enroll to get QR code
+        // Or we could try to verify the existing factor, but Supabase doesn't provide
+        // QR code for unverified factors, so we'll delete and re-enroll
+        setMode('enrollment')
+        setChallengeLoading(false)
+        
+        // Delete unverified factor first
+        try {
+          await supabase.auth.mfa.unenroll({ factorId: totpFactor.id })
+        } catch (unenrollError) {
+          console.warn('Failed to delete unverified factor, continuing with new enrollment:', unenrollError)
+        }
+        
+        await startEnrollment()
+        return
+      }
 
-      if (challengeError) throw challengeError
+      if (factorStatus === 'verified') {
+        // State 3: Factor is verified - proceed with normal verification flow
+        setMode('verification')
+        const { data: challenge, error: challengeError } = await supabase.auth.mfa.challenge({
+          factorId: totpFactor.id,
+        })
 
-      setTotpState({
-        factorId: totpFactor.id,
-        challengeId: challenge.id,
-      })
-      setCode('')
-      setInfo('Enter the 6-digit code from your authenticator app. SMS is disabled for admins.')
+        if (challengeError) throw challengeError
+
+        setTotpState({
+          factorId: totpFactor.id,
+          challengeId: challenge.id,
+        })
+        setCode('')
+        setInfo('Enter the 6-digit code from your authenticator app. SMS is disabled for admins.')
+        return
+      }
+
+      // Unknown status - treat as unverified
+      setMode('enrollment')
+      setChallengeLoading(false)
+      await startEnrollment()
     } catch (err: any) {
       console.error('Failed to start admin MFA challenge', err)
       setError(err?.message || 'Unable to create MFA challenge. Please try again.')
