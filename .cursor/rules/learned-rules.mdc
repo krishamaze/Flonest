@@ -8,6 +8,10 @@ alwaysApply: true
 Always learn from execution errors.
 Whenever an error occurs — in build, runtime, or logic — capture the error context, record its signature, and update this file to prevent repetition.
 
+### Primary Rule — No Temporary Patches
+- "Temporary patches become permanent debt."
+- Never ship quick fixes; every change must be a durable, production-grade solution.
+
 ## Maintenance Policy
 - This file must stay concise (<500 lines)
 - Remove outdated/irrelevant sections regularly

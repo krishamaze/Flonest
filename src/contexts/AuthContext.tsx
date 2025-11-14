@@ -256,7 +256,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (useTimeout) {
         const queryPromise = supabase
           .from('profiles')
-          .select('id, email, is_internal')
+          .select('id, email, platform_admin')
           .eq('id', authUser.id)
           .maybeSingle()
         const timeoutPromise = createTimeoutPromise(CONNECTION_TIMEOUT)
@@ -264,7 +264,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       } else {
         profileQuery = await supabase
           .from('profiles')
-          .select('id, email, is_internal')
+          .select('id, email, platform_admin')
           .eq('id', authUser.id)
           .maybeSingle()
       }

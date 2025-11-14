@@ -175,7 +175,14 @@ function AppRoutes() {
           />
 
           {/* Agent Portal Routes (Agent context) */}
-          <Route path="/agent">
+          <Route
+            path="/agent"
+            element={
+              <ProtectedRoute>
+                <MainLayout />
+              </ProtectedRoute>
+            }
+          >
             <Route index element={<Navigate to="/agent/dashboard" replace />} />
             <Route path="dashboard" element={<AgentDashboardPage />} />
             <Route path="delivery-challans" element={<DeliveryChallansPage />} />
@@ -188,11 +195,15 @@ function AppRoutes() {
           <Route
             path="/agent-cash-oversight"
             element={
-              <RoleProtectedRoute requiredRole="admin">
-                <AgentCashOversightPage />
-              </RoleProtectedRoute>
+              <ProtectedRoute>
+                <RoleProtectedRoute requiredRole="admin">
+                  <MainLayout />
+                </RoleProtectedRoute>
+              </ProtectedRoute>
             }
-          />
+          >
+            <Route index element={<AgentCashOversightPage />} />
+          </Route>
 
           {/* Reviewer Routes */}
           <Route
