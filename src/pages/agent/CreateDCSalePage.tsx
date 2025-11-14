@@ -7,11 +7,13 @@ import { Button } from '../../components/ui/Button'
 import { Input } from '../../components/ui/Input'
 import { LoadingSpinner } from '../../components/ui/LoadingSpinner'
 import { toast } from 'react-toastify'
+import { supabase } from '../../lib/supabase'
 import { getDCStock, type DCStockSummary } from '../../lib/api/dcStock'
 import { createDCSale, type DCSaleItemInput } from '../../lib/api/dcSales'
 import { lookupOrCreateCustomer } from '../../lib/api/customers'
+import { recordCashReceived, validateSection269ST, getCashSettings, type OrgCashSettings } from '../../lib/api/agentCash'
 import type { CustomerWithMaster } from '../../types'
-import { TrashIcon, PlusIcon, CubeIcon } from '@heroicons/react/24/outline'
+import { TrashIcon, PlusIcon, CubeIcon, BanknotesIcon, ExclamationTriangleIcon } from '@heroicons/react/24/outline'
 
 interface SaleItem {
   product_id: string
@@ -34,10 +36,24 @@ export function CreateDCSalePage() {
   const [searchingCustomer, setSearchingCustomer] = useState(false)
   const [items, setItems] = useState<SaleItem[]>([])
   const [selectedProduct, setSelectedProduct] = useState('')
+  const [paymentMethod, setPaymentMethod] = useState<'upi' | 'payment_link' | 'cash' | 'unpaid'>('unpaid')
+  const [showCashWarning, setShowCashWarning] = useState(false)
+  const [cashSettings, setCashSettings] = useState<OrgCashSettings | null>(null)
 
   useEffect(() => {
     loadDCStock()
+    loadCashSettings()
   }, [user?.agentContext])
+
+  const loadCashSettings = async () => {
+    if (!user?.agentContext) return
+    try {
+      const settings = await getCashSettings(user.agentContext.senderOrgId)
+      setCashSettings(settings)
+    } catch (error) {
+      console.error('Error loading cash settings:', error)
+    }
+  }
 
   const loadDCStock = async () => {
     if (!user?.agentContext) {
@@ -141,12 +157,28 @@ export function CreateDCSalePage() {
       return
     }
 
+    if (paymentMethod === 'unpaid') {
+      toast.error('Please select a payment method')
+      return
+    }
+
+    // ENFORCE Section 269ST for cash payments
+    if (paymentMethod === 'cash' && cashSettings) {
+      const validation = validateSection269ST(subtotal, cashSettings.section_269st_limit)
+      if (!validation.valid) {
+        toast.error(validation.error)
+        return
+      }
+    }
+
     try {
       setSubmitting(true)
-      await createDCSale(
+
+      // Create sale
+      const result = await createDCSale(
         user.agentContext.senderOrgId,
         user.id,
-        null, // Can link to specific DC if needed
+        null,
         {
           customer_id: customer.id,
           items: items.map(i => ({
@@ -159,7 +191,33 @@ export function CreateDCSalePage() {
         user.id
       )
 
-      toast.success('Sale created successfully')
+      // Update invoice payment method
+      await supabase
+        .from('invoices')
+        .update({
+          payment_method: paymentMethod,
+          payment_status: paymentMethod === 'cash' ? 'paid' : 'unpaid',
+          paid_amount: paymentMethod === 'cash' ? subtotal : 0,
+          paid_at: paymentMethod === 'cash' ? new Date().toISOString() : null,
+        })
+        .eq('id', result.invoice.id)
+
+      // If cash payment, record in cash ledger
+      if (paymentMethod === 'cash') {
+        await recordCashReceived(
+          user.agentContext.senderOrgId,
+          user.id,
+          result.invoice.id,
+          subtotal,
+          user.id
+        )
+      }
+
+      toast.success(
+        paymentMethod === 'cash'
+          ? 'Sale created and cash recorded. Please deposit to seller account within allowed timeframe.'
+          : 'Sale created successfully'
+      )
       navigate('/agent/dashboard')
     } catch (error: any) {
       console.error('Error creating DC sale:', error)
@@ -324,6 +382,112 @@ export function CreateDCSalePage() {
           </CardContent>
         </Card>
 
+        {/* Payment Method Selection */}
+        {items.length > 0 && (
+          <Card className="shadow-sm">
+            <CardHeader>
+              <CardTitle>Payment Method</CardTitle>
+            </CardHeader>
+            <CardContent className="p-md">
+              <div className="space-y-sm">
+                {/* Digital Payments (Direct to Seller) */}
+                <label className="flex items-start gap-sm p-md border border-border-color rounded-md cursor-pointer hover:bg-bg-hover has-[:checked]:border-primary has-[:checked]:bg-primary/5">
+                  <input
+                    type="radio"
+                    name="paymentMethod"
+                    value="upi"
+                    checked={paymentMethod === 'upi'}
+                    onChange={(e) => setPaymentMethod(e.target.value as 'upi')}
+                    className="w-4 h-4 mt-1"
+                  />
+                  <div className="flex-1">
+                    <p className="text-sm font-medium text-text-primary">UPI / QR Code</p>
+                    <p className="text-xs text-text-secondary">Payment goes directly to seller's account</p>
+                  </div>
+                </label>
+
+                <label className="flex items-start gap-sm p-md border border-border-color rounded-md cursor-pointer hover:bg-bg-hover has-[:checked]:border-primary has-[:checked]:bg-primary/5">
+                  <input
+                    type="radio"
+                    name="paymentMethod"
+                    value="payment_link"
+                    checked={paymentMethod === 'payment_link'}
+                    onChange={(e) => setPaymentMethod(e.target.value as 'payment_link')}
+                    className="w-4 h-4 mt-1"
+                  />
+                  <div className="flex-1">
+                    <p className="text-sm font-medium text-text-primary">Payment Link / Gateway</p>
+                    <p className="text-xs text-text-secondary">Send payment link to customer</p>
+                  </div>
+                </label>
+
+                {/* Cash Payment */}
+                <label className="flex items-start gap-sm p-md border border-warning rounded-md cursor-pointer hover:bg-warning/5 has-[:checked]:border-warning has-[:checked]:bg-warning/10">
+                  <input
+                    type="radio"
+                    name="paymentMethod"
+                    value="cash"
+                    checked={paymentMethod === 'cash'}
+                    onChange={(e) => {
+                      setPaymentMethod(e.target.value as 'cash')
+                      setShowCashWarning(true)
+                    }}
+                    className="w-4 h-4 mt-1"
+                  />
+                  <div className="flex-1">
+                    <div className="flex items-center gap-xs mb-xs">
+                      <BanknotesIcon className="h-4 w-4 text-warning" />
+                      <p className="text-sm font-medium text-text-primary">Cash Payment</p>
+                    </div>
+                    <p className="text-xs text-text-secondary">I physically collected cash from customer</p>
+                    {cashSettings && subtotal > cashSettings.section_269st_limit && (
+                      <div className="mt-xs p-xs bg-error/10 border border-error rounded">
+                        <p className="text-xs text-error font-semibold">
+                          ⚠️ Amount exceeds ₹{cashSettings.section_269st_limit.toLocaleString('en-IN')} legal limit
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                </label>
+
+                {/* Unpaid */}
+                <label className="flex items-start gap-sm p-md border border-border-color rounded-md cursor-pointer hover:bg-bg-hover has-[:checked]:border-neutral-400 has-[:checked]:bg-neutral-50">
+                  <input
+                    type="radio"
+                    name="paymentMethod"
+                    value="unpaid"
+                    checked={paymentMethod === 'unpaid'}
+                    onChange={(e) => setPaymentMethod(e.target.value as 'unpaid')}
+                    className="w-4 h-4 mt-1"
+                  />
+                  <div className="flex-1">
+                    <p className="text-sm font-medium text-text-primary">Mark as Unpaid</p>
+                    <p className="text-xs text-text-secondary">Customer will pay later</p>
+                  </div>
+                </label>
+              </div>
+
+              {/* Cash Warning */}
+              {paymentMethod === 'cash' && showCashWarning && (
+                <div className="mt-md p-md bg-warning/10 border border-warning rounded-md">
+                  <div className="flex items-start gap-sm">
+                    <ExclamationTriangleIcon className="h-5 w-5 text-warning shrink-0 mt-1" />
+                    <div>
+                      <p className="text-sm font-semibold text-text-primary mb-xs">Important Legal Notice:</p>
+                      <ul className="text-xs text-text-secondary space-y-xs list-disc pl-md">
+                        <li>This cash legally belongs to {user?.agentContext?.senderOrgName}</li>
+                        <li>You are custodian only (Indian Contract Act - Agency)</li>
+                        <li>Must deposit within {cashSettings?.max_cash_holding_days || 3} days</li>
+                        <li>UTR/proof required for verification</li>
+                      </ul>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        )}
+
         {/* Summary & Submit */}
         {items.length > 0 && (
           <Card className="shadow-md border-primary">
@@ -336,10 +500,10 @@ export function CreateDCSalePage() {
                 onClick={handleSubmit}
                 variant="primary"
                 className="w-full"
-                disabled={!customer || items.length === 0 || submitting}
+                disabled={!customer || items.length === 0 || paymentMethod === 'unpaid' || submitting}
                 isLoading={submitting}
               >
-                Create Sale
+                {paymentMethod === 'cash' ? 'Create Sale & Record Cash' : 'Create Sale'}
               </Button>
             </CardContent>
           </Card>

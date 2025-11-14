@@ -35,6 +35,8 @@ const AgentDashboardPage = lazy(() => import('./pages/agent/AgentDashboardPage')
 const DeliveryChallansPage = lazy(() => import('./pages/agent/DeliveryChallansPage').then(m => ({ default: m.DeliveryChallansPage })))
 const DCStockPage = lazy(() => import('./pages/agent/DCStockPage').then(m => ({ default: m.DCStockPage })))
 const CreateDCSalePage = lazy(() => import('./pages/agent/CreateDCSalePage').then(m => ({ default: m.CreateDCSalePage })))
+const AgentCashPage = lazy(() => import('./pages/agent/AgentCashPage').then(m => ({ default: m.AgentCashPage })))
+const AgentCashOversightPage = lazy(() => import('./pages/AgentCashOversightPage').then(m => ({ default: m.AgentCashOversightPage })))
 
 /**
  * Redirect internal users away from org routes to /reviewer
@@ -179,7 +181,18 @@ function AppRoutes() {
             <Route path="delivery-challans" element={<DeliveryChallansPage />} />
             <Route path="stock" element={<DCStockPage />} />
             <Route path="create-sale" element={<CreateDCSalePage />} />
+            <Route path="cash" element={<AgentCashPage />} />
           </Route>
+
+          {/* Cash Oversight (Sender Admin) */}
+          <Route
+            path="/agent-cash-oversight"
+            element={
+              <RoleProtectedRoute requiredRole="admin">
+                <AgentCashOversightPage />
+              </RoleProtectedRoute>
+            }
+          />
 
           {/* Reviewer Routes */}
           <Route

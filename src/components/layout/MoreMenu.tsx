@@ -82,6 +82,14 @@ export function MoreMenu({ isOpen, onClose }: MoreMenuProps) {
         icon: UserGroupIcon,
         description: 'Manage sales agents',
       })
+      
+      // Add cash oversight for admins
+      moreMenuItems.push({
+        to: '/agent-cash-oversight',
+        label: 'Agent Cash',
+        icon: ArrowPathIcon,
+        description: 'Verify agent cash deposits',
+      })
     }
 
     // Add settings link for admin users only
