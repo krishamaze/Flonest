@@ -1,5 +1,5 @@
-import { useState, FormEvent } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useState, FormEvent, useEffect } from 'react'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useRegisterSW } from 'virtual:pwa-register/react'
 import { EyeIcon, EyeSlashIcon } from '@heroicons/react/24/outline'
 import { supabase } from '../lib/supabase'
@@ -13,6 +13,7 @@ type AuthView = 'sign_in' | 'sign_up' | 'forgot_password'
 
 export function LoginPage() {
   const navigate = useNavigate()
+  const [searchParams, setSearchParams] = useSearchParams()
   const [view, setView] = useState<AuthView>('sign_in')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -21,6 +22,15 @@ export function LoginPage() {
   const [message, setMessage] = useState<string | null>(null)
   const [swRegistration, setSwRegistration] = useState<ServiceWorkerRegistration | undefined>()
   const [showPassword, setShowPassword] = useState(false)
+
+  // Check for error parameter from OAuth rejection
+  useEffect(() => {
+    const errorParam = searchParams.get('error')
+    if (errorParam === 'unauthorized_sso') {
+      setError('Google SSO is restricted to platform administrators only. Please use regular sign-in or contact support.')
+      setSearchParams({}, { replace: true }) // Clear the error param
+    }
+  }, [searchParams, setSearchParams])
 
   // Register Service Worker for update checks
   useRegisterSW({

@@ -3,6 +3,7 @@ import { User, Session } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabase'
 import { syncUserProfile } from '../lib/userSync'
 import type { AuthUser } from '../types'
+import { isPrivilegedAdminEmail, ADMIN_SSO_PROVIDER } from '../config/security'
 
 interface AuthContextType {
   user: AuthUser | null
@@ -100,7 +101,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // Listen for auth changes
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((event, session) => {
+    } = supabase.auth.onAuthStateChange(async (event, session) => {
       // Skip profile loading during password recovery flow
       // The recovery token creates a temporary session, but we don't want to redirect
       const isRecoveryFlow = window.location.pathname === '/reset-password' && 
@@ -111,6 +112,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         // This prevents auto-redirect away from reset password page
         setSession(session)
         return
+      }
+
+      // Validate OAuth logins: Only privileged admin emails can use SSO
+      if (event === 'SIGNED_IN' && session?.user) {
+        const userEmail = session.user.email?.toLowerCase() || ''
+        const isOAuthUser = session.user.app_metadata?.provider !== 'email'
+        
+        // If user logged in via SSO (Google) but is NOT a privileged admin, reject them
+        if (isOAuthUser && ADMIN_SSO_PROVIDER === 'google' && !isPrivilegedAdminEmail(userEmail)) {
+          console.warn('[Auth] Non-admin user attempted SSO login:', userEmail)
+          await supabase.auth.signOut()
+          // Redirect to login with error message
+          window.location.href = '/login?error=unauthorized_sso'
+          return
+        }
       }
 
       setSession(session)
