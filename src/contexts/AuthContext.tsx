@@ -238,6 +238,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     try {
+      // First check if user has any factors enrolled
+      const { data: factorsData, error: factorsError } = await supabase.auth.mfa.listFactors()
+      if (factorsError) {
+        console.warn('[Auth] Unable to list MFA factors:', factorsError)
+        setRequiresAdminMfa(true) // Require MFA if we can't check factors
+        return
+      }
+
+      const totpFactor = factorsData?.totp?.[0]
+      if (!totpFactor || totpFactor.status !== 'verified') {
+        // No verified factor - require enrollment
+        setRequiresAdminMfa(true)
+        return
+      }
+
+      // Factor exists - check AAL level
       const { data, error } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel()
       if (error) {
         console.warn('[Auth] Unable to load admin MFA status:', error)

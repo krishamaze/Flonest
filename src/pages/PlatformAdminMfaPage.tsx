@@ -10,13 +10,25 @@ interface TotpState {
   challengeId: string
 }
 
+interface EnrollmentState {
+  factorId: string
+  qrCode: string
+  secret: string
+  uri: string
+}
+
+type MfaMode = 'enrollment' | 'verification'
+
 export function PlatformAdminMfaPage() {
   const navigate = useNavigate()
   const { user, requiresAdminMfa, refreshAdminMfaRequirement, signOut } = useAuth()
+  const [mode, setMode] = useState<MfaMode>('verification')
   const [totpState, setTotpState] = useState<TotpState | null>(null)
+  const [enrollmentState, setEnrollmentState] = useState<EnrollmentState | null>(null)
   const [code, setCode] = useState('')
   const [loading, setLoading] = useState(false)
   const [challengeLoading, setChallengeLoading] = useState(false)
+  const [enrollmentLoading, setEnrollmentLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [info, setInfo] = useState<string>('Authenticator app verification required.')
 
@@ -31,12 +43,46 @@ export function PlatformAdminMfaPage() {
       return
     }
 
-    if (!requiresAdminMfa) {
+    // Temporarily bypass MFA requirement check to allow enrollment
+    // After enrollment, requiresAdminMfa will be false and user will be redirected
+    if (!requiresAdminMfa && mode === 'verification') {
       navigate('/platform-admin', { replace: true })
     }
-  }, [user, requiresAdminMfa, navigate])
+  }, [user, requiresAdminMfa, navigate, mode])
 
-  const prepareChallenge = useCallback(async () => {
+  const startEnrollment = useCallback(async () => {
+    setEnrollmentLoading(true)
+    setError(null)
+
+    try {
+      const { data, error } = await supabase.auth.mfa.enroll({
+        factorType: 'totp',
+        friendlyName: 'Platform Admin Authenticator',
+      })
+
+      if (error) throw error
+
+      if (!data?.totp) {
+        throw new Error('Failed to generate TOTP enrollment data')
+      }
+
+      setEnrollmentState({
+        factorId: data.id,
+        qrCode: data.totp.qr_code,
+        secret: data.totp.secret,
+        uri: data.totp.uri,
+      })
+      setCode('')
+      setInfo('Scan the QR code with your authenticator app (Google Authenticator, Authy, etc.), then enter the 6-digit code to verify enrollment.')
+    } catch (err: any) {
+      console.error('Failed to start TOTP enrollment', err)
+      setError(err?.message || 'Unable to start enrollment. Please try again.')
+    } finally {
+      setEnrollmentLoading(false)
+    }
+  }, [])
+
+  const checkFactorsAndPrepare = useCallback(async () => {
     setChallengeLoading(true)
     setError(null)
 
@@ -45,12 +91,16 @@ export function PlatformAdminMfaPage() {
       if (error) throw error
 
       const totpFactor = data?.totp?.[0]
-      if (!totpFactor) {
-        setError('No verified authenticator factor found. Contact the security team to re-enroll.')
-        setTotpState(null)
+      if (!totpFactor || totpFactor.status !== 'verified') {
+        // No verified factor found - switch to enrollment mode
+        setMode('enrollment')
+        setChallengeLoading(false)
+        await startEnrollment()
         return
       }
 
+      // Factor exists - proceed with verification
+      setMode('verification')
       const { data: challenge, error: challengeError } = await supabase.auth.mfa.challenge({
         factorId: totpFactor.id,
       })
@@ -69,17 +119,16 @@ export function PlatformAdminMfaPage() {
     } finally {
       setChallengeLoading(false)
     }
-  }, [])
+  }, [startEnrollment])
 
   useEffect(() => {
     if (requiresAdminMfa && user?.platformAdmin) {
-      prepareChallenge()
+      checkFactorsAndPrepare()
     }
-  }, [prepareChallenge, requiresAdminMfa, user?.platformAdmin])
+  }, [checkFactorsAndPrepare, requiresAdminMfa, user?.platformAdmin])
 
   const handleVerify = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
-    if (!totpState) return
 
     const sanitizedCode = code.trim()
     if (sanitizedCode.length < 6) {
@@ -91,28 +140,59 @@ export function PlatformAdminMfaPage() {
     setError(null)
 
     try {
-      const { error: verifyError } = await supabase.auth.mfa.verify({
-        factorId: totpState.factorId,
-        challengeId: totpState.challengeId,
-        code: sanitizedCode,
-      })
+      if (mode === 'enrollment' && enrollmentState) {
+        // For enrollment verification, we need to create a challenge first
+        const { data: challenge, error: challengeError } = await supabase.auth.mfa.challenge({
+          factorId: enrollmentState.factorId,
+        })
 
-      if (verifyError) throw verifyError
+        if (challengeError) throw challengeError
 
-      await refreshAdminMfaRequirement()
-      setInfo('MFA completed successfully. Redirecting you to the reviewer console...')
-      navigate('/platform-admin', { replace: true })
+        // Verify enrollment with challenge
+        const { error: verifyError } = await supabase.auth.mfa.verify({
+          factorId: enrollmentState.factorId,
+          challengeId: challenge.id,
+          code: sanitizedCode,
+        })
+
+        if (verifyError) throw verifyError
+
+        // Enrollment successful - switch to verification mode and create challenge
+        setInfo('Enrollment successful! Please verify with a new code.')
+        setMode('verification')
+        setEnrollmentState(null)
+        await checkFactorsAndPrepare()
+      } else if (mode === 'verification' && totpState) {
+        // Verify challenge
+        const { error: verifyError } = await supabase.auth.mfa.verify({
+          factorId: totpState.factorId,
+          challengeId: totpState.challengeId,
+          code: sanitizedCode,
+        })
+
+        if (verifyError) throw verifyError
+
+        await refreshAdminMfaRequirement()
+        setInfo('MFA completed successfully. Redirecting you to the platform admin console...')
+        navigate('/platform-admin', { replace: true })
+      }
     } catch (err: any) {
       console.error('Admin MFA verification failed', err)
       setError(err?.message || 'Invalid code. Please try again.')
-      await prepareChallenge()
+      if (mode === 'verification') {
+        await checkFactorsAndPrepare()
+      }
     } finally {
       setLoading(false)
     }
   }
 
   const handleResend = async () => {
-    await prepareChallenge()
+    if (mode === 'enrollment') {
+      await startEnrollment()
+    } else {
+      await checkFactorsAndPrepare()
+    }
   }
 
   const handleSignOut = async () => {
@@ -138,65 +218,146 @@ export function PlatformAdminMfaPage() {
         </div>
 
         <div className="rounded-lg bg-bg-card p-xl shadow-md border border-color">
-          <form onSubmit={handleVerify} className="space-y-md">
-            {error && (
-              <div
-                className="rounded-md p-md bg-error-light border border-solid"
-                style={{ borderColor: 'var(--color-error)' }}
-                role="alert"
-              >
-                <p className="text-sm text-error">{error}</p>
+          {mode === 'enrollment' && enrollmentState ? (
+            <div className="space-y-md">
+              {error && (
+                <div
+                  className="rounded-md p-md bg-error-light border border-solid"
+                  style={{ borderColor: 'var(--color-error)' }}
+                  role="alert"
+                >
+                  <p className="text-sm text-error">{error}</p>
+                </div>
+              )}
+
+              <div className="rounded-md p-md bg-warning-light border border-dashed border-color">
+                <p className="text-sm text-secondary-text">{info}</p>
               </div>
-            )}
 
-            <div className="rounded-md p-md bg-warning-light border border-dashed border-color">
-              <p className="text-sm text-secondary-text">{info}</p>
+              {/* QR Code Display */}
+              <div className="flex flex-col items-center space-y-md">
+                <div className="bg-white p-lg rounded-lg border border-color">
+                  <img 
+                    src={enrollmentState.qrCode} 
+                    alt="TOTP QR Code" 
+                    className="w-48 h-48"
+                  />
+                </div>
+                <div className="text-center">
+                  <p className="text-sm text-secondary-text mb-xs">Or enter this secret manually:</p>
+                  <code className="text-xs bg-neutral-100 px-sm py-xs rounded break-all font-mono">
+                    {enrollmentState.secret}
+                  </code>
+                </div>
+              </div>
+
+              <form onSubmit={handleVerify} className="space-y-md">
+                <Input
+                  label="Verification Code"
+                  placeholder="123456"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
+                  maxLength={6}
+                  value={code}
+                  onChange={(e) => setCode(e.target.value.replace(/\D/g, ''))}
+                  required
+                  disabled={loading || enrollmentLoading}
+                />
+
+                <Button
+                  type="submit"
+                  variant="primary"
+                  size="lg"
+                  className="w-full"
+                  disabled={loading || enrollmentLoading}
+                  isLoading={loading}
+                >
+                  Verify & Complete Enrollment
+                </Button>
+
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="md"
+                  className="w-full"
+                  disabled={enrollmentLoading}
+                  onClick={handleResend}
+                >
+                  {enrollmentLoading ? 'Generating QR Code...' : 'Generate New QR Code'}
+                </Button>
+
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="md"
+                  className="w-full text-error"
+                  onClick={handleSignOut}
+                >
+                  Sign out
+                </Button>
+              </form>
             </div>
+          ) : (
+            <form onSubmit={handleVerify} className="space-y-md">
+              {error && (
+                <div
+                  className="rounded-md p-md bg-error-light border border-solid"
+                  style={{ borderColor: 'var(--color-error)' }}
+                  role="alert"
+                >
+                  <p className="text-sm text-error">{error}</p>
+                </div>
+              )}
 
-            <Input
-              label="Authenticator Code"
-              placeholder="123456"
-              inputMode="numeric"
-              pattern="[0-9]*"
-              maxLength={6}
-              value={code}
-              onChange={(e) => setCode(e.target.value.replace(/\\D/g, ''))}
-              required
-              disabled={loading || challengeLoading || !totpState}
-            />
+              <div className="rounded-md p-md bg-warning-light border border-dashed border-color">
+                <p className="text-sm text-secondary-text">{info}</p>
+              </div>
 
-            <Button
-              type="submit"
-              variant="primary"
-              size="lg"
-              className="w-full"
-              disabled={loading || challengeLoading || !totpState}
-              isLoading={loading}
-            >
-              Verify Code
-            </Button>
+              <Input
+                label="Authenticator Code"
+                placeholder="123456"
+                inputMode="numeric"
+                pattern="[0-9]*"
+                maxLength={6}
+                value={code}
+                onChange={(e) => setCode(e.target.value.replace(/\D/g, ''))}
+                required
+                disabled={loading || challengeLoading || !totpState}
+              />
 
-            <Button
-              type="button"
-              variant="secondary"
-              size="md"
-              className="w-full"
-              disabled={challengeLoading}
-              onClick={handleResend}
-            >
-              {challengeLoading ? 'Requesting Challenge...' : 'Send New Challenge'}
-            </Button>
+              <Button
+                type="submit"
+                variant="primary"
+                size="lg"
+                className="w-full"
+                disabled={loading || challengeLoading || !totpState}
+                isLoading={loading}
+              >
+                Verify Code
+              </Button>
 
-            <Button
-              type="button"
-              variant="ghost"
-              size="md"
-              className="w-full text-error"
-              onClick={handleSignOut}
-            >
-              Sign out
-            </Button>
-          </form>
+              <Button
+                type="button"
+                variant="secondary"
+                size="md"
+                className="w-full"
+                disabled={challengeLoading}
+                onClick={handleResend}
+              >
+                {challengeLoading ? 'Requesting Challenge...' : 'Send New Challenge'}
+              </Button>
+
+              <Button
+                type="button"
+                variant="ghost"
+                size="md"
+                className="w-full text-error"
+                onClick={handleSignOut}
+              >
+                Sign out
+              </Button>
+            </form>
+          )}
         </div>
       </div>
     </div>
