@@ -1,10 +1,12 @@
 import { useAuth } from '../../contexts/AuthContext'
+import { useNavigate } from 'react-router-dom'
 import { ArrowRightOnRectangleIcon } from '@heroicons/react/24/outline'
 import { Button } from '../ui/Button'
 import { NotificationBell } from '../notifications/NotificationBell'
 
 export function Header() {
   const { user, signOut } = useAuth()
+  const navigate = useNavigate()
 
   return (
     <header className="sticky top-0 z-40 border-b border-neutral-200 bg-bg-card safe-top">
@@ -33,7 +35,10 @@ export function Header() {
             size="sm"
             onClick={async () => {
               try {
+                const isPlatformAdmin = user?.platformAdmin
                 await signOut()
+                // Redirect platform admins to their login page
+                navigate(isPlatformAdmin ? '/platform-admin-login' : '/login', { replace: true })
               } catch (error) {
                 console.error('Error signing out:', error)
               }
