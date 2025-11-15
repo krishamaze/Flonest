@@ -603,12 +603,32 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   const signOut = async () => {
-    const { error } = await supabase.auth.signOut()
-    if (error) throw error
-    clearCachedSession()
-    setUser(null)
-    setSession(null)
-    setRequiresAdminMfa(false)
+    // Step 1: Clear local session immediately (fast, no network)
+    try {
+      await supabase.auth.signOut({ scope: 'local' })
+    } catch (localError) {
+      console.warn('[Auth] Local sign out failed (continuing):', localError)
+    } finally {
+      clearCachedSession()
+      setUser(null)
+      setSession(null)
+      setRequiresAdminMfa(false)
+    }
+
+    // Step 2: Attempt global sign out with timeout (best-effort)
+    const GLOBAL_SIGN_OUT_TIMEOUT_MS = 5000
+    const timeoutPromise = new Promise<never>((_, reject) => {
+      setTimeout(() => reject(new Error('Global sign out timeout')), GLOBAL_SIGN_OUT_TIMEOUT_MS)
+    })
+
+    try {
+      await Promise.race([
+        supabase.auth.signOut({ scope: 'global' }),
+        timeoutPromise,
+      ])
+    } catch (globalError) {
+      console.warn('[Auth] Global sign out failed or timed out (continuing):', globalError)
+    }
   }
 
   const switchToBusinessMode = async () => {

@@ -382,11 +382,7 @@ export function PlatformAdminMfaPage() {
     
     try {
       console.log('[SignOut] Calling signOut()')
-      await withTimeout(
-        signOut(),
-        5000,
-        'Sign out request'
-      )
+      await signOut()
       console.log('[SignOut] signOut() completed successfully')
     } catch (err) {
       console.error('[SignOut] Sign out error (will continue with redirect):', err)
