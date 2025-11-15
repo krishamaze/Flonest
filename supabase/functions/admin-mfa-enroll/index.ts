@@ -61,10 +61,19 @@ const runWithRetries = async <T>(
   throw new Error(`${operation} failed after retries`)
 }
 
+const corsHeaders: Record<string, string> = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
+}
+
 const jsonResponse = (status: number, body: Record<string, unknown>) =>
   new Response(JSON.stringify(body), {
     status,
-    headers: { "Content-Type": "application/json" },
+    headers: {
+      "Content-Type": "application/json",
+      ...corsHeaders,
+    },
   })
 
 const getUserAndProfile = async (accessToken: string) => {
@@ -226,6 +235,10 @@ Deno.serve(async (req) => {
 
   const authHeader = req.headers.get("Authorization") ?? ""
   const accessToken = authHeader.replace("Bearer", "").trim()
+
+  if (req.method === "OPTIONS") {
+    return new Response(null, { status: 200, headers: corsHeaders })
+  }
 
   if (!accessToken) {
     return jsonResponse(401, { error: "Missing Authorization header" })
