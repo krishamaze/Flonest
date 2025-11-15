@@ -49,6 +49,12 @@ export async function adminMfaStatus(): Promise<StatusResponse> {
   try {
     // Direct fetch is required because supabase.functions.invoke() doesn't support path segments
     // The invoke method only supports function names, not paths like 'admin-mfa-enroll/status'
+
+    // Add 20s timeout to prevent infinite hanging
+    const controller = new AbortController()
+    const timeoutId = setTimeout(() => controller.abort(), 20000)
+
+    console.log('[DEBUG] adminMfaStatus: Fetch starting...')
     const response = await fetch(`${supabaseUrl}/functions/v1/admin-mfa-enroll/status`, {
       method: 'POST',
       headers: {
@@ -57,7 +63,11 @@ export async function adminMfaStatus(): Promise<StatusResponse> {
         'apikey': anonKey,
       },
       body: JSON.stringify({}),
+      signal: controller.signal,
     })
+
+    clearTimeout(timeoutId)
+    console.log('[DEBUG] adminMfaStatus: Fetch completed')
 
     const elapsed = Date.now() - startTime
     console.log('[DEBUG] adminMfaStatus: Response received after', elapsed, 'ms', {
@@ -85,12 +95,18 @@ export async function adminMfaStatus(): Promise<StatusResponse> {
     return data as StatusResponse
   } catch (err: any) {
     const elapsed = Date.now() - startTime
+    const isAbortError = err?.name === 'AbortError'
     console.error('[DEBUG] adminMfaStatus: Error after', elapsed, 'ms:', {
       message: err?.message,
       stack: err?.stack,
       name: err?.name,
       type: err?.constructor?.name,
+      isTimeout: isAbortError,
     })
+
+    if (isAbortError) {
+      throw new Error('Request timed out after 20 seconds. Edge Function may be slow or unavailable.')
+    }
     throw err
   }
 }
