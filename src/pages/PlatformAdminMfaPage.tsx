@@ -4,6 +4,7 @@ import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
 import { Button } from '../components/ui/Button'
 import { Input } from '../components/ui/Input'
+import { adminMfaStart, adminMfaVerify } from '../lib/api/adminMfa'
 
 interface EnrollmentState {
   factorId: string
@@ -11,11 +12,12 @@ interface EnrollmentState {
   secret: string
 }
 
+type FlowMode = 'checking' | 'none' | 'enrollment' | 'verification'
+
 export function PlatformAdminMfaPage() {
   const navigate = useNavigate()
   const { user, requiresAdminMfa, refreshAdminMfaRequirement, signOut } = useAuth()
   const [enrollmentState, setEnrollmentState] = useState<EnrollmentState | null>(null)
-  const [challengeId, setChallengeId] = useState<string | null>(null)
   const [factorId, setFactorId] = useState<string | null>(null)
   const [code, setCode] = useState('')
   const [loading, setLoading] = useState(false)
@@ -23,50 +25,8 @@ export function PlatformAdminMfaPage() {
   const [checking, setChecking] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [info, setInfo] = useState<string>('Checking authenticator status...')
+  const [flowMode, setFlowMode] = useState<FlowMode>('checking')
   const hasCheckedRef = useRef(false)
-
-  // Timeout helper for async operations
-  const withTimeout = <T,>(promise: Promise<T>, timeoutMs: number, operation: string): Promise<T> => {
-    return Promise.race([
-      promise,
-      new Promise<T>((_, reject) =>
-        setTimeout(() => {
-          console.error(`[MFA] ${operation} timed out after ${timeoutMs}ms`)
-          reject(new Error(`${operation} timed out after ${timeoutMs}ms. Please try again.`))
-        }, timeoutMs)
-      ),
-    ])
-  }
-
-  const runWithRetry = async <T,>(
-    fn: () => Promise<T>,
-    operation: string,
-    timeoutMs = 10000,
-    retries = 1,
-  ): Promise<T> => {
-    let attempt = 0
-    let lastError: any = null
-
-    while (attempt <= retries) {
-      try {
-        return await withTimeout(fn(), timeoutMs, operation)
-      } catch (err: any) {
-        lastError = err
-        const message = err?.message?.toLowerCase() || ''
-        const isTimeout = message.includes('timed out')
-
-        if (!isTimeout || attempt === retries) {
-          throw err
-        }
-
-        console.warn(`[MFA] ${operation} attempt ${attempt + 1} timed out, retrying...`)
-        await new Promise((resolve) => setTimeout(resolve, 500))
-        attempt += 1
-      }
-    }
-
-    throw lastError
-  }
 
   useEffect(() => {
     if (!user) {
@@ -87,89 +47,35 @@ export function PlatformAdminMfaPage() {
     // Check factors ONCE on mount - no polling, no loops
     if (!hasCheckedRef.current) {
       hasCheckedRef.current = true
-      checkFactorsOnce()
+      initializeFlow()
     }
   }, [user, requiresAdminMfa, navigate])
 
-  const checkFactorsOnce = async () => {
+  const initializeFlow = async () => {
     setChecking(true)
     setError(null)
 
     try {
-      // Try to list factors with timeout - if it fails, assume no factors exist
-      const timeoutPromise = new Promise((_, reject) =>
-        setTimeout(() => reject(new Error('timeout')), 3000)
-      )
+      const response = await adminMfaStart()
 
-      const { data, error } = await Promise.race([
-        supabase.auth.mfa.listFactors(),
-        timeoutPromise,
-      ]).catch(() => ({ data: null, error: { message: 'timeout' } })) as {
-        data: any
-        error: any
-      }
-
-      if (error || !data?.totp?.length) {
-        // No factors or timeout - show enrollment button
-        setInfo('No authenticator enrolled. Click "Start Enrollment" to set up TOTP.')
-        setChecking(false)
-        return
-      }
-
-      const verifiedFactor = data.totp.find((f: any) => f.status === 'verified')
-      if (verifiedFactor) {
-        // Has verified factor - start challenge flow
-        await startChallenge(verifiedFactor.id)
+      if (response.mode === 'challenge' && response.factorId) {
+        setFactorId(response.factorId)
+        setEnrollmentState(null)
+        setFlowMode('verification')
+        setInfo('Enter the 6-digit code from your authenticator app.')
       } else {
-        // Has unverified factor - clean it up and show enrollment
-        const unverifiedFactor = data.totp.find((f: any) => f.status === 'unverified')
-        if (unverifiedFactor) {
-          try {
-            await supabase.auth.mfa.unenroll({ factorId: unverifiedFactor.id })
-          } catch (e) {
-            console.warn('Failed to clean up unverified factor:', e)
-          }
-        }
+        setFactorId(null)
+        setEnrollmentState(null)
+        setFlowMode('none')
         setInfo('No authenticator enrolled. Click "Start Enrollment" to set up TOTP.')
-        setChecking(false)
       }
     } catch (err: any) {
-      console.warn('Failed to check factors:', err)
+      console.error('Failed to load MFA status:', err)
+      setError(err?.message || 'Unable to load authenticator status. Please try again.')
+      setFlowMode('none')
       setInfo('No authenticator enrolled. Click "Start Enrollment" to set up TOTP.')
-      setChecking(false)
-    }
-  }
-
-  const startChallenge = async (fId: string) => {
-    setFactorId(fId)
-    setLoading(true)
-    setError(null)
-
-    try {
-      const { data: challenge, error: challengeError } = await runWithRetry(
-        () =>
-          supabase.auth.mfa.challenge({
-            factorId: fId,
-          }),
-        'MFA challenge request',
-        10000,
-        1
-      )
-
-      if (challengeError) throw challengeError
-      if (!challenge?.id) throw new Error('Invalid challenge response')
-
-      setChallengeId(challenge.id)
-      setInfo('Enter the 6-digit code from your authenticator app.')
-      setChecking(false)
-    } catch (err: any) {
-      console.error('Challenge failed:', err)
-      setError(err?.message || 'Failed to start verification. Try enrollment instead.')
-      setInfo('No authenticator enrolled. Click "Start Enrollment" to set up TOTP.')
-      setFactorId(null)
-      setChallengeId(null)
     } finally {
-      setLoading(false)
+      setChecking(false)
     }
   }
 
@@ -178,24 +84,19 @@ export function PlatformAdminMfaPage() {
     setError(null)
 
     try {
-      const { data, error } = await supabase.auth.mfa.enroll({
-        factorType: 'totp',
-        friendlyName: `Platform Admin ${Date.now()}`,
-      })
+      const response = await adminMfaStart('enroll')
 
-      if (error) throw error
-      if (!data?.id) throw new Error('Invalid enrollment response')
-
-      const qrCode = (data as any).qr_code || data.totp?.qr_code
-      const secret = (data as any).secret || data.totp?.secret || ''
-
-      if (!qrCode) throw new Error('Failed to generate QR code')
+      if (response.mode !== 'enrollment' || !response.factorId || !response.qrCode) {
+        throw new Error('Failed to start enrollment. Please try again.')
+      }
 
       setEnrollmentState({
-        factorId: data.id,
-        qrCode,
-        secret,
+        factorId: response.factorId,
+        qrCode: response.qrCode,
+        secret: response.secret ?? '',
       })
+      setFactorId(response.factorId)
+      setFlowMode('enrollment')
       setInfo('Scan the QR code with your authenticator app, then enter the 6-digit code to verify.')
     } catch (err: any) {
       console.error('Enrollment failed:', err)
@@ -214,67 +115,27 @@ export function PlatformAdminMfaPage() {
       return
     }
 
+    const targetFactorId = enrollmentState?.factorId ?? factorId
+    if (!targetFactorId) {
+      setError('No authenticator factor found. Start enrollment first.')
+      return
+    }
+
     setLoading(true)
     setError(null)
 
     try {
-      if (enrollmentState) {
-        // Enrollment verification: challenge → verify
-        const { data: challenge, error: challengeError } = await runWithRetry(
-          () =>
-            supabase.auth.mfa.challenge({
-              factorId: enrollmentState.factorId,
-            }),
-          'Create enrollment challenge',
-          10000,
-          1
-        )
-
-        if (challengeError) throw challengeError
-        if (!challenge?.id) throw new Error('Invalid challenge response')
-
-        const { error: verifyError } = await runWithRetry(
-          () =>
-            supabase.auth.mfa.verify({
-              factorId: enrollmentState.factorId,
-              challengeId: challenge.id,
-              code: sanitizedCode,
-            }),
-          'Verify enrollment code',
-          10000,
-          1
-        )
-
-        if (verifyError) throw verifyError
-
-        // Enrollment complete - refresh and redirect
-        setInfo('Enrollment successful! Redirecting...')
-        await refreshAdminMfaRequirement()
-        navigate('/platform-admin', { replace: true })
-      } else if (challengeId && factorId) {
-        // Regular verification
-        const { error: verifyError } = await runWithRetry(
-          () =>
-            supabase.auth.mfa.verify({
-              factorId,
-              challengeId,
-              code: sanitizedCode,
-            }),
-          'Verify MFA code',
-          10000,
-          1
-        )
-
-        if (verifyError) throw verifyError
-
-        // Verification complete
-        setInfo('Verification successful! Redirecting...')
-        await refreshAdminMfaRequirement()
-        navigate('/platform-admin', { replace: true })
-      }
+      await adminMfaVerify(targetFactorId, sanitizedCode)
+      await supabase.auth.refreshSession()
+      await refreshAdminMfaRequirement()
+      setInfo('Verification successful! Redirecting...')
+      navigate('/platform-admin', { replace: true })
     } catch (err: any) {
       console.error('Verification failed:', err)
       setError(err?.message || 'Invalid code. Please try again.')
+      if (!enrollmentState) {
+        initializeFlow()
+      }
     } finally {
       setLoading(false)
     }
@@ -312,7 +173,7 @@ export function PlatformAdminMfaPage() {
             <div className="text-center py-lg">
               <p className="text-secondary-text">{info}</p>
             </div>
-          ) : enrollmentState ? (
+          ) : enrollmentState && flowMode === 'enrollment' ? (
             <div className="space-y-md">
               {error && (
                 <div className="rounded-md p-md bg-error-light border border-error" role="alert">
@@ -364,7 +225,7 @@ export function PlatformAdminMfaPage() {
                 </Button>
               </form>
             </div>
-          ) : (
+          ) : flowMode === 'verification' ? (
             <form onSubmit={handleVerify} className="space-y-md">
               {error && (
                 <div className="rounded-md p-md bg-error-light border border-error" role="alert">
@@ -376,53 +237,54 @@ export function PlatformAdminMfaPage() {
                 <p className="text-sm text-secondary-text">{info}</p>
               </div>
 
-              {challengeId && factorId ? (
-                <>
-                  <Input
-                    label="Authenticator Code"
-                    placeholder="123456"
-                    inputMode="numeric"
-                    pattern="[0-9]*"
-                    maxLength={6}
-                    value={code}
-                    onChange={(e) => setCode(e.target.value.replace(/\D/g, ''))}
-                    required
-                    disabled={loading}
-                  />
+              <Input
+                label="Authenticator Code"
+                placeholder="123456"
+                inputMode="numeric"
+                pattern="[0-9]*"
+                maxLength={6}
+                value={code}
+                onChange={(e) => setCode(e.target.value.replace(/\D/g, ''))}
+                required
+                disabled={loading}
+              />
 
-                  <Button type="submit" variant="primary" size="lg" className="w-full" disabled={loading} isLoading={loading}>
-                    Verify Code
-                  </Button>
-
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    size="md"
-                    className="w-full"
-                    onClick={() => factorId && startChallenge(factorId)}
-                    disabled={loading}
-                  >
-                    Request New Challenge
-                  </Button>
-                </>
-              ) : (
-                <Button
-                  type="button"
-                  variant="primary"
-                  size="lg"
-                  className="w-full"
-                  onClick={startEnrollment}
-                  disabled={enrolling}
-                  isLoading={enrolling}
-                >
-                  {enrolling ? 'Starting Enrollment...' : 'Start Enrollment'}
-                </Button>
-              )}
+              <Button type="submit" variant="primary" size="lg" className="w-full" disabled={loading} isLoading={loading}>
+                Verify Code
+              </Button>
 
               <Button type="button" variant="ghost" size="md" className="w-full text-error" onClick={handleSignOut}>
                 Sign out
               </Button>
             </form>
+          ) : (
+            <div className="space-y-md">
+              {error && (
+                <div className="rounded-md p-md bg-error-light border border-error" role="alert">
+                  <p className="text-sm text-error font-semibold">{error}</p>
+                </div>
+              )}
+
+              <div className="rounded-md p-md bg-warning-light border border-dashed border-color">
+                <p className="text-sm text-secondary-text">{info}</p>
+              </div>
+
+              <Button
+                type="button"
+                variant="primary"
+                size="lg"
+                className="w-full"
+                onClick={startEnrollment}
+                disabled={enrolling}
+                isLoading={enrolling}
+              >
+                {enrolling ? 'Starting Enrollment...' : 'Start Enrollment'}
+              </Button>
+
+              <Button type="button" variant="ghost" size="md" className="w-full text-error" onClick={handleSignOut}>
+                Sign out
+              </Button>
+            </div>
           )}
         </div>
       </div>
