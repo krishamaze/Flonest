@@ -107,7 +107,10 @@ export function PlatformAdminMfaPage() {
       }
     } catch (err: any) {
       console.error('Failed to load MFA status:', err)
-      
+      console.error('Error type:', err?.constructor?.name)
+      console.error('Error message:', err?.message)
+      console.error('Error stack:', err?.stack)
+
       // Clear timeout on error
       if (loadingTimeoutRef.current) {
         clearTimeout(loadingTimeoutRef.current)
