@@ -90,12 +90,16 @@ export function PlatformAdminMfaPage() {
       }
       isCheckingRef.current = false
 
+      console.log('MFA Status Response:', response)
+
       if (response.hasVerifiedFactor && response.factorId) {
+        console.log('Setting verification mode with factorId:', response.factorId)
         setFactorId(response.factorId)
         setEnrollmentState(null)
         setFlowMode('verification')
         setInfo('Enter the 6-digit code from your authenticator app.')
       } else {
+        console.log('No verified factor found, setting none mode')
         setFactorId(null)
         setEnrollmentState(null)
         setFlowMode('none')
