@@ -67,7 +67,7 @@ export function ReviewActions({ product, reviewerId, onReviewComplete }: ReviewA
       await reviewMasterProduct({
         master_product_id: product.id,
         action,
-        reviewer_id: reviewerId,
+        reviewerId,
         note: note.trim() || undefined,
         hsn_code: hsnCode.trim() || undefined,
         changes,
