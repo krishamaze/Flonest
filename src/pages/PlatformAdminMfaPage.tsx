@@ -6,7 +6,8 @@ import { Button } from '../components/ui/Button'
 import { Input } from '../components/ui/Input'
 import { adminMfaStatus, adminMfaStart, adminMfaVerify } from '../lib/api/adminMfa'
 
-// Force rebuild: MFA status endpoint with timeout handling
+// Force rebuild v2: MFA status endpoint with timeout handling
+// Updated: 2025-11-15 - Force new chunk hash for Service Worker cache busting
 
 interface EnrollmentState {
   factorId: string
