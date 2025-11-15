@@ -1,0 +1,253 @@
+[1mdiff --git a/.cursor/rules/learned-rules.mdc b/.cursor/rules/learned-rules.mdc[m
+[1mindex 4481ed2..4ef0965 100644[m
+[1m--- a/.cursor/rules/learned-rules.mdc[m
+[1m+++ b/.cursor/rules/learned-rules.mdc[m
+[36m@@ -8,6 +8,10 @@[m [malwaysApply: true[m
+ Always learn from execution errors.[m
+ Whenever an error occurs — in build, runtime, or logic — capture the error context, record its signature, and update this file to prevent repetition.[m
+ [m
+[32m+[m[32m### Primary Rule — No Temporary Patches[m
+[32m+[m[32m- "Temporary patches become permanent debt."[m
+[32m+[m[32m- Never ship quick fixes; every change must be a durable, production-grade solution.[m
+[32m+[m
+ ## Maintenance Policy[m
+ - This file must stay concise (<500 lines)[m
+ - Remove outdated/irrelevant sections regularly[m
+[1mdiff --git a/src/App.tsx b/src/App.tsx[m
+[1mindex 98ce7fe..fc2d283 100644[m
+[1m--- a/src/App.tsx[m
+[1m+++ b/src/App.tsx[m
+[36m@@ -175,7 +175,14 @@[m [mfunction AppRoutes() {[m
+           />[m
+ [m
+           {/* Agent Portal Routes (Agent context) */}[m
+[31m-          <Route path="/agent">[m
+[32m+[m[32m          <Route[m
+[32m+[m[32m            path="/agent"[m
+[32m+[m[32m            element={[m
+[32m+[m[32m              <ProtectedRoute>[m
+[32m+[m[32m                <MainLayout />[m
+[32m+[m[32m              </ProtectedRoute>[m
+[32m+[m[32m            }[m
+[32m+[m[32m          >[m
+             <Route index element={<Navigate to="/agent/dashboard" replace />} />[m
+             <Route path="dashboard" element={<AgentDashboardPage />} />[m
+             <Route path="delivery-challans" element={<DeliveryChallansPage />} />[m
+[36m@@ -188,11 +195,15 @@[m [mfunction AppRoutes() {[m
+           <Route[m
+             path="/agent-cash-oversight"[m
+             element={[m
+[31m-              <RoleProtectedRoute requiredRole="admin">[m
+[31m-                <AgentCashOversightPage />[m
+[31m-              </RoleProtectedRoute>[m
+[32m+[m[32m              <ProtectedRoute>[m
+[32m+[m[32m                <RoleProtectedRoute requiredRole="admin">[m
+[32m+[m[32m                  <MainLayout />[m
+[32m+[m[32m                </RoleProtectedRoute>[m
+[32m+[m[32m              </ProtectedRoute>[m
+             }[m
+[31m-          />[m
+[32m+[m[32m          >[m
+[32m+[m[32m            <Route index element={<AgentCashOversightPage />} />[m
+[32m+[m[32m          </Route>[m
+ [m
+           {/* Reviewer Routes */}[m
+           <Route[m
+[1mdiff --git a/src/components/layout/AgentPortalLayout.tsx b/src/components/layout/AgentPortalLayout.tsx[m
+[1mindex 1a790a2..fdeb84d 100644[m
+[1m--- a/src/components/layout/AgentPortalLayout.tsx[m
+[1m+++ b/src/components/layout/AgentPortalLayout.tsx[m
+[36m@@ -1,6 +1,6 @@[m
+ import { ReactNode } from 'react'[m
+ import { useAuth } from '../../contexts/AuthContext'[m
+[31m-import { useNavigate } from 'react-router-dom'[m
+[32m+[m[32mimport { useLocation, useNavigate } from 'react-router-dom'[m
+ import { ArrowLeftIcon, BuildingOfficeIcon } from '@heroicons/react/24/outline'[m
+ [m
+ interface AgentPortalLayoutProps {[m
+[36m@@ -8,13 +8,22 @@[m [minterface AgentPortalLayoutProps {[m
+   title: string[m
+ }[m
+ [m
+[32m+[m[32mconst agentNavItems = [[m
+[32m+[m[32m  { label: 'Dashboard', path: '/agent/dashboard' },[m
+[32m+[m[32m  { label: 'DCs', path: '/agent/delivery-challans' },[m
+[32m+[m[32m  { label: 'Stock', path: '/agent/stock' },[m
+[32m+[m[32m  { label: 'Sale', path: '/agent/create-sale' },[m
+[32m+[m[32m  { label: 'Cash', path: '/agent/cash' },[m
+[32m+[m[32m][m
+[32m+[m
+ /**[m
+[31m- * Layout wrapper for agent portal pages[m
+[31m- * Shows distinct header with sender org name and switch mode button[m
+[32m+[m[32m * Agent portal wrapper used inside MainLayout content area.[m
+[32m+[m[32m * Provides contextual banner and quick nav while reusing global chrome.[m
+  */[m
+ export function AgentPortalLayout({ children, title }: AgentPortalLayoutProps) {[m
+   const { user, switchToBusinessMode } = useAuth()[m
+   const navigate = useNavigate()[m
+[32m+[m[32m  const location = useLocation()[m
+ [m
+   const handleSwitchToBusiness = async () => {[m
+     await switchToBusinessMode()[m
+[36m@@ -22,96 +31,54 @@[m [mexport function AgentPortalLayout({ children, title }: AgentPortalLayoutProps) {[m
+   }[m
+ [m
+   return ([m
+[31m-    <div className="viewport-height flex flex-col bg-bg-page">[m
+[31m-      {/* Agent Portal Header - Distinct styling */}[m
+[31m-      <header [m
+[31m-        className="sticky top-0 z-40 bg-secondary text-text-on-dark shadow-md"[m
+[31m-        style={{[m
+[31m-          background: 'linear-gradient(135deg, var(--color-secondary) 0%, var(--color-secondary-light) 100%)'[m
+[31m-        }}[m
+[31m-      >[m
+[31m-        <div className="px-lg py-md">[m
+[31m-          <div className="flex items-center justify-between mb-xs">[m
+[31m-            <div className="flex items-center gap-sm">[m
+[31m-              <BuildingOfficeIcon className="h-5 w-5 text-primary" />[m
+[31m-              <span className="text-sm font-medium text-primary">Agent Portal</span>[m
+[32m+[m[32m    <section className="space-y-md">[m
+[32m+[m[32m      <div className="rounded-xl bg-secondary text-text-on-dark p-lg shadow-lg relative overflow-hidden">[m
+[32m+[m[32m        <div className="flex flex-wrap items-center justify-between gap-md">[m
+[32m+[m[32m          <div>[m
+[32m+[m[32m            <div className="flex items-center gap-sm text-sm font-medium text-primary mb-xs">[m
+[32m+[m[32m              <BuildingOfficeIcon className="h-5 w-5" aria-hidden="true" />[m
+[32m+[m[32m              <span>Agent Portal</span>[m
+             </div>[m
+[31m-            <button[m
+[31m-              onClick={handleSwitchToBusiness}[m
+[31m-              className="flex items-center gap-xs text-sm text-text-on-dark hover:text-primary transition-colors"[m
+[31m-              aria-label="Switch to My Business"[m
+[31m-            >[m
+[31m-              <ArrowLeftIcon className="h-4 w-4" />[m
+[31m-              <span>My Business</span>[m
+[31m-            </button>[m
+[32m+[m[32m            <h1 className="text-2xl font-bold leading-tight">{title}</h1>[m
+[32m+[m[32m            {user?.agentContext && ([m
+[32m+[m[32m              <p className="text-sm text-text-on-dark/80 mt-xs">[m
+[32m+[m[32m                Working for {user.agentContext.senderOrgName}[m
+[32m+[m[32m              </p>[m
+[32m+[m[32m            )}[m
+           </div>[m
+[31m-          <h1 className="text-xl font-bold">{title}</h1>[m
+[31m-          {user?.agentContext && ([m
+[31m-            <p className="text-sm text-text-on-dark opacity-80 mt-xs">[m
+[31m-              Working for: {user.agentContext.senderOrgName}[m
+[31m-            </p>[m
+[31m-          )}[m
+[31m-        </div>[m
+[31m-      </header>[m
+[31m-[m
+[31m-      {/* Main Content */}[m
+[31m-      <main className="flex-1 overflow-y-auto p-lg">[m
+[31m-        {children}[m
+[31m-      </main>[m
+[31m-[m
+[31m-      {/* Agent Portal Bottom Nav */}[m
+[31m-      <nav [m
+[31m-        className="fixed bottom-0 left-0 right-0 z-40 border-t border-neutral-200 bg-bg-card shadow-sm safe-bottom"[m
+[31m-        role="navigation"[m
+[31m-        aria-label="Agent portal navigation"[m
+[31m-      >[m
+[31m-        <div className="flex justify-around">[m
+[31m-          <button[m
+[31m-            onClick={() => navigate('/agent/dashboard')}[m
+[31m-            className="flex flex-col items-center gap-1 p-sm flex-1 text-text-secondary hover:text-primary transition-colors"[m
+[31m-          >[m
+[31m-            <BuildingOfficeIcon className="h-6 w-6" />[m
+[31m-            <span className="text-xs font-medium">Dashboard</span>[m
+[31m-          </button>[m
+[31m-          <button[m
+[31m-            onClick={() => navigate('/agent/delivery-challans')}[m
+[31m-            className="flex flex-col items-center gap-1 p-sm flex-1 text-text-secondary hover:text-primary transition-colors"[m
+[31m-          >[m
+[31m-            <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">[m
+[31m-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />[m
+[31m-            </svg>[m
+[31m-            <span className="text-xs font-medium">DCs</span>[m
+[31m-          </button>[m
+           <button[m
+[31m-            onClick={() => navigate('/agent/stock')}[m
+[31m-            className="flex flex-col items-center gap-1 p-sm flex-1 text-text-secondary hover:text-primary transition-colors"[m
+[32m+[m[32m            onClick={handleSwitchToBusiness}[m
+[32m+[m[32m            className="inline-flex items-center gap-xs rounded-full border border-white/40 px-md py-xs text-sm font-semibold text-text-on-dark transition-colors hover:bg-white/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"[m
+[32m+[m[32m            aria-label="Switch to My Business view"[m
+           >[m
+[31m-            <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">[m
+[31m-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />[m
+[31m-            </svg>[m
+[31m-            <span className="text-xs font-medium">Stock</span>[m
+[31m-          </button>[m
+[31m-          <button[m
+[31m-            onClick={() => navigate('/agent/create-sale')}[m
+[31m-            className="flex flex-col items-center gap-1 p-sm flex-1 text-text-secondary hover:text-primary transition-colors"[m
+[31m-          >[m
+[31m-            <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">[m
+[31m-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />[m
+[31m-            </svg>[m
+[31m-            <span className="text-xs font-medium">Sale</span>[m
+[31m-          </button>[m
+[31m-          <button[m
+[31m-            onClick={() => navigate('/agent/cash')}[m
+[31m-            className="flex flex-col items-center gap-1 p-sm flex-1 text-text-secondary hover:text-primary transition-colors"[m
+[31m-          >[m
+[31m-            <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">[m
+[31m-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />[m
+[31m-            </svg>[m
+[31m-            <span className="text-xs font-medium">Cash</span>[m
+[32m+[m[32m            <ArrowLeftIcon className="h-4 w-4" aria-hidden="true" />[m
+[32m+[m[32m            <span>My Business</span>[m
+           </button>[m
+         </div>[m
+[31m-      </nav>[m
+[31m-    </div>[m
+[32m+[m
+[32m+[m[32m        <div className="mt-md flex flex-wrap gap-sm">[m
+[32m+[m[32m          {agentNavItems.map((item) => {[m
+[32m+[m[32m            const isActive = location.pathname.startsWith(item.path)[m
+[32m+[m[32m            return ([m
+[32m+[m[32m              <button[m
+[32m+[m[32m                key={item.path}[m
+[32m+[m[32m                onClick={() => navigate(item.path)}[m
+[32m+[m[32m                className={`flex-1 min-w-[120px] rounded-lg px-md py-sm text-sm font-semibold transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary ${[m
+[32m+[m[32m                  isActive[m
+[32m+[m[32m                    ? 'bg-primary text-text-on-primary shadow-primary'[m
+[32m+[m[32m                    : 'bg-white/15 text-text-on-dark hover:bg-white/25'[m
+[32m+[m[32m                }`}[m
+[32m+[m[32m                aria-label={`Go to ${item.label}`}[m
+[32m+[m[32m              >[m
+[32m+[m[32m                {item.label}[m
+[32m+[m[32m              </button>[m
+[32m+[m[32m            )[m
+[32m+[m[32m          })}[m
+[32m+[m[32m        </div>[m
+[32m+[m[32m      </div>[m
+[32m+[m
+[32m+[m[32m      <div className="space-y-md">{children}</div>[m
+[32m+[m[32m    </section>[m
+   )[m
+ }[m
+ [m
+[1mdiff --git a/src/contexts/AuthContext.tsx b/src/contexts/AuthContext.tsx[m
+[1mindex 22378a9..7289023 100644[m
+[1m--- a/src/contexts/AuthContext.tsx[m
+[1m+++ b/src/contexts/AuthContext.tsx[m
+[36m@@ -256,7 +256,7 @@[m [mexport function AuthProvider({ children }: { children: ReactNode }) {[m
+       if (useTimeout) {[m
+         const queryPromise = supabase[m
+           .from('profiles')[m
+[31m-          .select('id, email, is_internal')[m
+[32m+[m[32m          .select('id, email, platform_admin')[m
+           .eq('id', authUser.id)[m
+           .maybeSingle()[m
+         const timeoutPromise = createTimeoutPromise(CONNECTION_TIMEOUT)[m
+[36m@@ -264,7 +264,7 @@[m [mexport function AuthProvider({ children }: { children: ReactNode }) {[m
+       } else {[m
+         profileQuery = await supabase[m
+           .from('profiles')[m
+[31m-          .select('id, email, is_internal')[m
+[32m+[m[32m          .select('id, email, platform_admin')[m
+           .eq('id', authUser.id)[m
+           .maybeSingle()[m
+       }[m

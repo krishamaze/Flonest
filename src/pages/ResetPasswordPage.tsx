@@ -4,7 +4,6 @@ import { supabase } from '../lib/supabase'
 import { Button } from '../components/ui/Button'
 import { Input } from '../components/ui/Input'
 import { toast } from 'react-toastify'
-import { isPrivilegedAdminEmail } from '../config/security'
 
 export function ResetPasswordPage() {
   const navigate = useNavigate()
@@ -56,10 +55,20 @@ export function ResetPasswordPage() {
       try {
         const { data } = await supabase.auth.getUser()
         const email = data.user?.email || ''
-        if (email && isPrivilegedAdminEmail(email)) {
-          setIsValidToken(false)
-          setError('Platform admin credentials cannot be reset self-service. Contact security for the dual-approval process.')
-          await supabase.auth.signOut()
+        if (email) {
+          // Server-side check: Is this email a platform admin?
+          const { data: isAdmin, error: checkError } = await supabase.rpc('check_platform_admin_email' as any, {
+            p_email: email.trim().toLowerCase(),
+          })
+          
+          if (checkError) {
+            console.warn('Failed to check admin status:', checkError)
+            // Fail open - allow if check fails
+          } else if (isAdmin === true) {
+            setIsValidToken(false)
+            setError('Platform admin credentials cannot be reset self-service. Contact security for the dual-approval process.')
+            await supabase.auth.signOut()
+          }
         }
       } catch (err) {
         console.warn('Failed to evaluate admin reset guard', err)

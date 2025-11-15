@@ -105,7 +105,7 @@ export function LoginPage() {
         if (isAdmin === true) {
           // Platform admin detected - redirect to SSO
           setMessage('Platform admin detected. Redirecting to SSO...')
-          // Use same SSO flow as Admin SSO button
+          // Redirect to SSO for platform admins
           const scopes = ADMIN_SSO_PROVIDER === 'google' 
             ? 'openid profile email'
             : 'openid profile email offline_access'
@@ -183,27 +183,6 @@ export function LoginPage() {
     }
   }
 
-  const handleAdminSso = async () => {
-    setError(null)
-    setMessage('Redirecting to corporate SSO...')
-    try {
-      // Google doesn't support offline_access scope, use different scopes based on provider
-      const scopes = ADMIN_SSO_PROVIDER === 'google' 
-        ? 'openid profile email'
-        : 'openid profile email offline_access'
-      
-      await supabase.auth.signInWithOAuth({
-        provider: ADMIN_SSO_PROVIDER as any,
-        options: {
-          scopes,
-          redirectTo: `${window.location.origin}${ADMIN_SSO_REDIRECT_PATH}`,
-        },
-      })
-    } catch (err: any) {
-      setMessage(null)
-      setError(err?.message || 'Unable to start SSO flow. Contact security.')
-    }
-  }
 
   return (
     <div className="viewport-height-safe bg-bg-page safe-top safe-bottom flex flex-col overflow-hidden">
@@ -334,21 +313,9 @@ export function LoginPage() {
               <div className="space-y-md text-center">
                 {view === 'sign_in' && (
                   <>
-                    <div className="rounded-lg border border-color p-md text-left bg-bg-hover">
-                      <p className="text-sm text-secondary-text mb-sm font-medium">
-                        Platform admin access requires corporate SSO + MFA.
-                      </p>
-                      <Button
-                        type="button"
-                        variant="secondary"
-                        size="md"
-                        className="w-full"
-                        onClick={handleAdminSso}
-                        disabled={loading}
-                      >
-                        Continue with Admin SSO
-                      </Button>
-                    </div>
+                    <p className="text-xs text-muted-text">
+                      Platform admins will be automatically redirected to SSO.
+                    </p>
                     <button
                       type="button"
                       onClick={() => {

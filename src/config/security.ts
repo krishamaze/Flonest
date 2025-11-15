@@ -1,12 +1,3 @@
-const ADMIN_EMAILS = (import.meta.env.VITE_PLATFORM_ADMIN_EMAILS || '')
-  .split(',')
-  .map((email: string) => email.trim().toLowerCase())
-  .filter((email: string) => email.length > 0)
-
-export function isPrivilegedAdminEmail(email: string) {
-  return ADMIN_EMAILS.includes(email.trim().toLowerCase())
-}
-
 export const ADMIN_IDLE_TIMEOUT_MS = Number(
   import.meta.env.VITE_PLATFORM_ADMIN_IDLE_TIMEOUT_MS || 15 * 60 * 1000
 )

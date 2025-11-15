@@ -48,12 +48,13 @@ Use this checklist before deploying to production.
 - [ ] CORS settings configured in Supabase
 - [ ] Security headers configured in `vercel.json`
 - [ ] Platform admin SSO + MFA controls validated
-  - [ ] `VITE_PLATFORM_ADMIN_EMAILS` populated with privileged identities
+  - [ ] Platform admin emails configured in `profiles.platform_admin = true` (server-side only, no client exposure)
   - [ ] Google Workspace OAuth application configured in Supabase Auth (`google` provider)
   - [ ] `VITE_PLATFORM_ADMIN_SSO_PROVIDER` and `VITE_PLATFORM_ADMIN_SSO_REDIRECT` set
   - [ ] Break-glass account stored in managed HSM with dual-control checkout (Google Cloud KMS or AWS CloudHSM)
   - [ ] Manual password reset workflow documented (dual approval, no email reset links)
   - [ ] `VITE_PLATFORM_ADMIN_IDLE_TIMEOUT_MS` / `VITE_PLATFORM_ADMIN_MAX_SESSION_MS` tuned for 15m idle / 8h absolute
+  - [ ] Login flow auto-detects admins: Enter email → server checks → auto-redirects to SSO if admin
 
 ### Testing
 - [ ] Authentication flow tested
@@ -287,7 +288,7 @@ vercel rollback
 ## Platform Admin Access Architecture
 
 - **Identity Provider:** Google Workspace. Configure Supabase Auth `google` provider with the corporate Google Cloud project OAuth credentials. Set `VITE_PLATFORM_ADMIN_SSO_PROVIDER=google` and `VITE_PLATFORM_ADMIN_SSO_REDIRECT=/platform-admin`.
-- **Flow:** Login page blocks privileged emails from password auth and routes them through Google SSO. After the OAuth callback, the app enforces Supabase MFA (`aal2`) via the dedicated `/admin-mfa` route before unlocking platform-admin routes.
+- **Flow:** Login page auto-detects platform admins server-side (no client-side email list exposure). User enters email + password → server checks `profiles.platform_admin` → if admin, automatically redirects to Google SSO. After the OAuth callback, the app enforces Supabase MFA (`aal2`) via the dedicated `/admin-mfa` route before unlocking platform-admin routes.
 - **Session Binding:** `PlatformAdminSessionWatcher` ties reviewer sessions to the issuing device fingerprint (UA + platform + language) and enforces 15m idle / 8h absolute lifetimes. Any mismatch forces sign-out and a new SSO + MFA cycle.
 - **Manual Reset Workflow:** `resetPasswordForEmail` short-circuits for privileged identities. Password resets require a ticket approved by two platform leads, after which the temporary credential is injected via the managed HSM and rotated immediately after use.
 - **Break-Glass Account:** A single emergency credential is stored in an HSM-backed vault (Google Cloud KMS or AWS CloudHSM). Access requires dual control, generates immutable audit logs, and demands on-device TOTP before reviewer access even when SSO is bypassed.
