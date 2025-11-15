@@ -144,6 +144,12 @@ export function PlatformAdminMfaPage() {
   }, [])
 
   const checkFactorsAndPrepare = useCallback(async () => {
+    // Once we're actively in enrollment mode, don't re-check factors.
+    if (mode === 'enrollment' && enrollmentState) {
+      setChallengeLoading(false)
+      return
+    }
+
     setChallengeLoading(true)
     setError(null)
     setEmergencyMode(false)
@@ -240,7 +246,7 @@ export function PlatformAdminMfaPage() {
     } finally {
       setChallengeLoading(false)
     }
-  }, [startEnrollment])
+  }, [startEnrollment, mode, enrollmentState])
 
   useEffect(() => {
     if (requiresAdminMfa && user?.platformAdmin) {
@@ -313,16 +319,18 @@ export function PlatformAdminMfaPage() {
 
         console.log('[MFA] Enrollment verification successful! Factor activated.')
 
-        // Enrollment successful - refresh MFA requirement and redirect
-        await refreshAdminMfaRequirement()
-        setInfo('Enrollment successful! Redirecting to platform admin console...')
+        setInfo('Enrollment successful! Signing you out to complete setup.')
         setMode('verification')
         setEnrollmentState(null)
-        
-        // Small delay to show success message, then redirect
-        setTimeout(() => {
-          navigate('/platform-admin', { replace: true })
-        }, 1000)
+        setCode('')
+
+        try {
+          await signOut()
+        } catch (signOutErr) {
+          console.error('[MFA] Sign out after enrollment failed:', signOutErr)
+        }
+
+        navigate('/login?mfa_enrolled=1', { replace: true })
       } else if (mode === 'verification' && totpState) {
         // Verify challenge
         const { error: verifyError } = await supabase.auth.mfa.verify({
@@ -339,7 +347,11 @@ export function PlatformAdminMfaPage() {
       }
     } catch (err: any) {
       console.error('Admin MFA verification failed', err)
-      setError(err?.message || 'Invalid code. Please try again.')
+      const defaultMessage =
+        mode === 'enrollment'
+          ? 'Invalid code. Check your authenticator app and try again.'
+          : 'Invalid code. Please try again.'
+      setError(err?.message || defaultMessage)
       if (mode === 'verification') {
         await checkFactorsAndPrepare()
       }

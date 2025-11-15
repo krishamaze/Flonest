@@ -252,45 +252,33 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     try {
-      // First check if user has any factors enrolled
+      // AAL is the source of truth: if the current session is aal2, MFA is satisfied
+      const { data: aalData, error: aalError } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel()
+      if (!aalError && aalData?.currentLevel === 'aal2') {
+        setRequiresAdminMfa(false)
+        return
+      }
+
+      if (aalError) {
+        console.warn('[Auth] Unable to load admin MFA status:', aalError)
+      }
+
+      // Session is not aal2 yet - determine whether user needs enrollment or challenge
       const { data: factorsData, error: factorsError } = await supabase.auth.mfa.listFactors()
       if (factorsError) {
         console.warn('[Auth] Unable to list MFA factors:', factorsError)
-        setRequiresAdminMfa(true) // Require MFA if we can't check factors
-        return
-      }
-
-      const totpFactor = factorsData?.totp?.[0]
-      
-      // Handle three states: none, unverified, verified
-      if (!totpFactor) {
-        // State 1: No factor exists - require enrollment
         setRequiresAdminMfa(true)
         return
       }
 
-      const factorStatus = totpFactor.status as string
+      const verifiedFactor = factorsData?.totp?.find((factor) => factor.status === 'verified')
+      // If a verified factor exists, user needs to complete challenge for aal2.
+      // If not, user must enroll.
+      setRequiresAdminMfa(true)
 
-      if (factorStatus === 'unverified') {
-        // State 2: Factor exists but not verified - require enrollment completion
-        setRequiresAdminMfa(true)
+      if (!verifiedFactor) {
         return
       }
-
-      if (factorStatus !== 'verified') {
-        // Unknown status - require enrollment
-        setRequiresAdminMfa(true)
-        return
-      }
-
-      // State 3: Factor is verified - check AAL level
-      const { data, error } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel()
-      if (error) {
-        console.warn('[Auth] Unable to load admin MFA status:', error)
-        setRequiresAdminMfa(true)
-        return
-      }
-      setRequiresAdminMfa(data.currentLevel !== 'aal2')
     } catch (err) {
       console.warn('[Auth] Error evaluating admin MFA status:', err)
       setRequiresAdminMfa(true)
