@@ -13,20 +13,20 @@ import {
   ChartBarIcon,
 } from '@heroicons/react/24/outline'
 import { Link, useLocation } from 'react-router-dom'
-import { ReviewQueue } from '../components/reviewer/ReviewQueue'
-import { HSNManager } from '../components/reviewer/HSNManager'
-import { BlockedInvoices } from '../components/reviewer/BlockedInvoices'
-import { SubmissionMonitor } from '../components/reviewer/SubmissionMonitor'
+import { ReviewQueue } from '../components/platformAdmin/ReviewQueue'
+import { HSNManager } from '../components/platformAdmin/HSNManager'
+import { BlockedInvoices } from '../components/platformAdmin/BlockedInvoices'
+import { SubmissionMonitor } from '../components/platformAdmin/SubmissionMonitor'
 
-interface ReviewerStats {
+interface PlatformAdminStats {
   pendingCount: number
   blockedInvoicesCount: number
   recentSubmissions: MasterProduct[]
 }
 
-function ReviewerDashboardHome() {
+function PlatformAdminDashboardHome() {
   const { registerRefreshHandler, unregisterRefreshHandler } = useRefresh()
-  const [stats, setStats] = useState<ReviewerStats | null>(null)
+  const [stats, setStats] = useState<PlatformAdminStats | null>(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -57,7 +57,7 @@ function ReviewerDashboardHome() {
         recentSubmissions,
       })
     } catch (error) {
-      console.error('Error loading reviewer stats:', error)
+      console.error('Error loading platform admin stats:', error)
     } finally {
       setLoading(false)
     }
@@ -75,7 +75,7 @@ function ReviewerDashboardHome() {
     <div className="space-y-md">
       {/* Page Header */}
       <div>
-        <h1 className="text-xl font-semibold text-primary-text">Reviewer Dashboard</h1>
+        <h1 className="text-xl font-semibold text-primary-text">Platform Admin Dashboard</h1>
         <p className="mt-xs text-sm text-secondary-text">
           Manage product approvals and reviews
         </p>
@@ -209,7 +209,7 @@ function ReviewerDashboardHome() {
   )
 }
 
-export function ReviewerDashboardPage() {
+export function PlatformAdminDashboardPage() {
   const location = useLocation()
 
   // If we're on a sub-route, render the appropriate component
@@ -230,6 +230,6 @@ export function ReviewerDashboardPage() {
   }
 
   // Default: show dashboard home
-  return <ReviewerDashboardHome />
+  return <PlatformAdminDashboardHome />
 }
 

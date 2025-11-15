@@ -10,7 +10,7 @@ import { PageTransition } from './components/ui/PageTransition'
 import { InstallPrompt } from './components/pwa/InstallPrompt'
 import { UpdateNotification } from './components/pwa/UpdateNotification'
 import { FRONTEND_VERSION } from './lib/api/version'
-import { ProtectedRoute, ReviewerRoute } from './components/ProtectedRoute'
+import { ProtectedRoute, PlatformAdminRoute } from './components/ProtectedRoute'
 import { RoleProtectedRoute } from './components/RoleProtectedRoute'
 import { MANAGE_PRODUCTS } from './lib/permissions'
 import { PlatformAdminSessionWatcher } from './components/security/PlatformAdminSessionWatcher'
@@ -25,7 +25,7 @@ const ProductsPage = lazy(() => import('./pages/ProductsPage').then(m => ({ defa
 const InventoryPage = lazy(() => import('./pages/InventoryPage').then(m => ({ default: m.InventoryPage })))
 const StockLedgerPage = lazy(() => import('./pages/StockLedgerPage').then(m => ({ default: m.StockLedgerPage })))
 const CustomersPage = lazy(() => import('./pages/CustomersPage').then(m => ({ default: m.CustomersPage })))
-const ReviewerDashboardPage = lazy(() => import('./pages/ReviewerDashboardPage').then(m => ({ default: m.ReviewerDashboardPage })))
+const PlatformAdminDashboardPage = lazy(() => import('./pages/PlatformAdminDashboardPage').then(m => ({ default: m.PlatformAdminDashboardPage })))
 const NotificationsPage = lazy(() => import('./pages/NotificationsPage').then(m => ({ default: m.NotificationsPage })))
 const PendingProductsPage = lazy(() => import('./pages/PendingProductsPage').then(m => ({ default: m.PendingProductsPage })))
 const SettingsPage = lazy(() => import('./pages/SettingsPage').then(m => ({ default: m.SettingsPage })))
@@ -42,7 +42,7 @@ const AgentCashOversightPage = lazy(() => import('./pages/AgentCashOversightPage
 const PlatformAdminMfaPage = lazy(() => import('./pages/PlatformAdminMfaPage').then(m => ({ default: m.PlatformAdminMfaPage })))
 
 /**
- * Redirect internal users away from org routes to /platform-admin
+ * Redirect platform admins away from org routes to /platform-admin
  */
 function InternalUserRedirect({ children }: { children: React.ReactNode }) {
   const { user, requiresAdminMfa } = useAuth()
@@ -232,16 +232,16 @@ function AppRoutes() {
           <Route
             path="/platform-admin"
             element={
-              <ReviewerRoute>
+              <PlatformAdminRoute>
                 <MainLayout />
-              </ReviewerRoute>
+              </PlatformAdminRoute>
             }
           >
-            <Route index element={<ReviewerDashboardPage />} />
-            <Route path="queue" element={<ReviewerDashboardPage />} />
-            <Route path="hsn" element={<ReviewerDashboardPage />} />
-            <Route path="blocked-invoices" element={<ReviewerDashboardPage />} />
-            <Route path="monitor" element={<ReviewerDashboardPage />} />
+            <Route index element={<PlatformAdminDashboardPage />} />
+            <Route path="queue" element={<PlatformAdminDashboardPage />} />
+            <Route path="hsn" element={<PlatformAdminDashboardPage />} />
+            <Route path="blocked-invoices" element={<PlatformAdminDashboardPage />} />
+            <Route path="monitor" element={<PlatformAdminDashboardPage />} />
           </Route>
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>

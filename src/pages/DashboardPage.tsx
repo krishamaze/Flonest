@@ -17,7 +17,7 @@ import {
 import { getPendingMemberships, approveMembership } from '../lib/api/memberships'
 import { canManageOrgSettings, canManageUsers, canAccessAgentPortal } from '../lib/permissions'
 import { toast } from 'react-toastify'
-import { AddStaffForm } from '../components/staff/AddStaffForm'
+import { AddAdvisorForm } from '../components/advisors/AddAdvisorForm'
 import { BuildingOfficeIcon } from '@heroicons/react/24/outline'
 import { useNavigate } from 'react-router-dom'
 
@@ -36,7 +36,7 @@ export function DashboardPage() {
   const [stats, setStats] = useState<DashboardStats | null>(null)
   const [loading, setLoading] = useState(true)
   const [pendingMemberships, setPendingMemberships] = useState<any[]>([])
-  const [showAddStaffForm, setShowAddStaffForm] = useState(false)
+  const [showAddAdvisorForm, setShowAddAdvisorForm] = useState(false)
   const [showTrialBanner, setShowTrialBanner] = useState(false)
 
   const loadDashboardStats = useCallback(async () => {
@@ -324,7 +324,7 @@ export function DashboardPage() {
             </button>
             {canManageUsers(user) && (
               <button 
-                onClick={() => setShowAddStaffForm(true)}
+                onClick={() => setShowAddAdvisorForm(true)}
                 className="flex items-center gap-md rounded-md border border-neutral-200 p-md text-left min-h-[44px] transition-all duration-200 hover:bg-neutral-50 hover:border-neutral-300 active:scale-[0.98]"
                 aria-label="Add Staff"
               >
@@ -332,7 +332,7 @@ export function DashboardPage() {
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium text-primary-text">Add Advisor</p>
                   <p className="text-xs text-secondary-text">
-                    {user?.role === 'admin' ? 'Add advisor' : 'Request staff approval'}
+                    {user?.role === 'admin' ? 'Add advisor' : 'Request advisor approval'}
                   </p>
                 </div>
               </button>
@@ -366,9 +366,9 @@ export function DashboardPage() {
 
       {/* Add Staff Form Modal */}
       {canManageUsers(user) && (
-        <AddStaffForm
-          isOpen={showAddStaffForm}
-          onClose={() => setShowAddStaffForm(false)}
+        <AddAdvisorForm
+          isOpen={showAddAdvisorForm}
+          onClose={() => setShowAddAdvisorForm(false)}
           onSuccess={() => {
             loadPendingMemberships()
           }}

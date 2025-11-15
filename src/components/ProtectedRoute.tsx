@@ -58,13 +58,13 @@ export function ProtectedRoute({ children }: { children: React.ReactNode }) {
     return <Navigate to="/admin-mfa" replace />
   }
 
-  // Internal users don't need org membership - allow them through
+  // Platform admins don't need org membership - allow them through
   // They will be redirected to /platform-admin in App.tsx if they try to access org routes
   if (user.platformAdmin) {
     return <>{children}</>
   }
 
-  // Non-internal users must have an org
+  // Non-platform-admin users must have an org
   // User is authenticated but hasn't joined an org yet
   // Redirect to onboarding (org join/invite flow) when implemented
   // For now, show a message that they need to be invited
@@ -120,9 +120,9 @@ function OrganizationRequiredPage() {
 }
 
 /**
- * Reviewer route that requires internal user access
+ * Platform admin route that requires platform admin access
  */
-export function ReviewerRoute({ children }: { children: React.ReactNode }) {
+export function PlatformAdminRoute({ children }: { children: React.ReactNode }) {
   const { user, loading, requiresAdminMfa } = useAuth()
 
   if (loading) {
