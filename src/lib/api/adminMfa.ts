@@ -42,7 +42,12 @@ export async function adminMfaStatus(): Promise<StatusResponse> {
   console.log('[DEBUG] adminMfaStatus: Starting request at', new Date().toISOString())
   
   try {
+    // Log Supabase client config to verify URL
+    const supabaseUrl = (supabase as any).supabaseUrl || 'unknown'
+    console.log('[DEBUG] adminMfaStatus: Supabase URL:', supabaseUrl)
     console.log('[DEBUG] adminMfaStatus: Invoking Edge Function admin-mfa-enroll/status')
+    console.log('[DEBUG] adminMfaStatus: Expected URL:', `${supabaseUrl}/functions/v1/admin-mfa-enroll/status`)
+    
     const promise = supabase.functions.invoke('admin-mfa-enroll/status', {
       body: {},
     })
@@ -61,7 +66,11 @@ export async function adminMfaStatus(): Promise<StatusResponse> {
     return parseFunctionResponse<StatusResponse>(data, error)
   } catch (err: any) {
     const elapsed = Date.now() - startTime
-    console.error('[DEBUG] adminMfaStatus: Error after', elapsed, 'ms:', err)
+    console.error('[DEBUG] adminMfaStatus: Error after', elapsed, 'ms:', {
+      message: err?.message,
+      stack: err?.stack,
+      name: err?.name,
+    })
     throw err
   }
 }
