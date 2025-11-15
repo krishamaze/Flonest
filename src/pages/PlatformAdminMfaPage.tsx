@@ -270,8 +270,8 @@ export function PlatformAdminMfaPage() {
     } finally {
       setSignOutLoading(false)
     }
-    // Always navigate to login, even if signOut had an error
-    navigate('/login', { replace: true })
+    // Always navigate to login page - use window.location for reliable redirect
+    window.location.href = '/login'
   }
 
   if (!user || !user.platformAdmin) {
