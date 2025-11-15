@@ -27,7 +27,7 @@ export function PlatformAdminMfaPage() {
   const [enrolling, setEnrolling] = useState(false)
   const [checking, setChecking] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [info, setInfo] = useState<string>('Checking authenticator status...')
+  const [info, setInfo] = useState<string>('Loading MFA status...')
   const [flowMode, setFlowMode] = useState<FlowMode>('checking')
   const hasCheckedRef = useRef(false)
   const loadingTimeoutRef = useRef<NodeJS.Timeout | null>(null)
@@ -67,8 +67,7 @@ export function PlatformAdminMfaPage() {
     setChecking(true)
     isCheckingRef.current = true
     setError(null)
-    setInfo('Checking authenticator status...')
-    // Cache bust v2: Force new chunk hash for Service Worker - 2025-11-15
+    setInfo('Loading MFA status...')
 
     // Set loading state timeout (15 seconds)
     loadingTimeoutRef.current = setTimeout(() => {
