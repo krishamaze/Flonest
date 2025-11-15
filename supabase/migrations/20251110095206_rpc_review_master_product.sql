@@ -1,12 +1,12 @@
 -- Migration: Create review_master_product RPC
--- Allows internal users to approve/reject/edit master products
+-- Allows PlatformAdmin users to approve/reject/edit master products
 
 BEGIN;
 
 CREATE OR REPLACE FUNCTION review_master_product(
   p_master_product_id uuid,
   p_action text,
-  p_reviewer_id uuid,
+  p_platform_admin_id uuid,
   p_changes jsonb DEFAULT NULL,
   p_note text DEFAULT NULL,
   p_hsn_code text DEFAULT NULL
@@ -22,9 +22,9 @@ DECLARE
   v_gst_rate numeric;
   v_success boolean := false;
 BEGIN
-  -- Validate user is internal
-  IF NOT is_internal_user(p_reviewer_id) THEN
-    RAISE EXCEPTION 'Only internal users can review master products';
+  -- Validate user is PlatformAdmin
+  IF NOT is_internal_user(p_platform_admin_id) THEN
+    RAISE EXCEPTION 'Only PlatformAdmin can review master products';
   END IF;
 
   -- Validate action
@@ -82,7 +82,7 @@ BEGIN
       status = 'active',
       hsn_code = p_hsn_code,
       gst_rate = v_gst_rate, -- Store for backward compatibility, but should use hsn_master
-      reviewed_by = p_reviewer_id,
+      reviewed_by = p_platform_admin_id,
       reviewed_at = NOW(),
       rejection_reason = NULL,
       updated_at = NOW()
@@ -100,7 +100,7 @@ BEGIN
     UPDATE master_products
     SET
       approval_status = 'rejected',
-      reviewed_by = p_reviewer_id,
+      reviewed_by = p_platform_admin_id,
       reviewed_at = NOW(),
       rejection_reason = p_note,
       updated_at = NOW()
@@ -123,7 +123,7 @@ BEGIN
   VALUES (
     p_master_product_id,
     p_action,
-    p_reviewer_id,
+    p_platform_admin_id,
     NOW(),
     p_note,
     p_changes,

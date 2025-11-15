@@ -1,4 +1,4 @@
--- Migration: Update reviewer RPC functions to require AAL2
+-- Migration: Update PlatformAdmin RPC functions to require AAL2
 -- CRITICAL: RPC functions currently only check is_internal_user(), allowing bypass without MFA
 --
 -- Security risk:
@@ -15,7 +15,7 @@ BEGIN;
 CREATE OR REPLACE FUNCTION review_master_product(
   p_master_product_id uuid,
   p_action text,
-  p_reviewer_id uuid,
+  p_platform_admin_id uuid,
   p_changes jsonb DEFAULT NULL,
   p_note text DEFAULT NULL,
   p_hsn_code text DEFAULT NULL
@@ -37,9 +37,9 @@ BEGIN
     RAISE EXCEPTION 'Access denied: Platform admin with MFA (AAL2) required';
   END IF;
   
-  -- Also validate reviewer_id matches current user (defense in depth)
-  IF p_reviewer_id != auth.uid() THEN
-    RAISE EXCEPTION 'Reviewer ID must match authenticated user';
+  -- Also validate platform_admin_id matches current user (defense in depth)
+  IF p_platform_admin_id != auth.uid() THEN
+    RAISE EXCEPTION 'PlatformAdmin ID must match authenticated user';
   END IF;
 
   -- Validate action
@@ -97,7 +97,7 @@ BEGIN
       status = 'active',
       hsn_code = p_hsn_code,
       gst_rate = v_gst_rate, -- Store for backward compatibility, but should use hsn_master
-      reviewed_by = p_reviewer_id,
+      reviewed_by = p_platform_admin_id,
       reviewed_at = NOW(),
       rejection_reason = NULL,
       updated_at = NOW()
@@ -115,7 +115,7 @@ BEGIN
     UPDATE master_products
     SET
       approval_status = 'rejected',
-      reviewed_by = p_reviewer_id,
+      reviewed_by = p_platform_admin_id,
       reviewed_at = NOW(),
       rejection_reason = p_note,
       updated_at = NOW()
@@ -138,7 +138,7 @@ BEGIN
   VALUES (
     p_master_product_id,
     p_action,
-    p_reviewer_id,
+    p_platform_admin_id,
     NOW(),
     p_note,
     p_changes,
