@@ -17,21 +17,35 @@ interface StatusResponse {
 export async function adminMfaStatus(): Promise<StatusResponse> {
   const startTime = Date.now()
   console.log('[DEBUG] adminMfaStatus: Starting request at', new Date().toISOString())
-  
+
   // Get current session token
-  const { data: { session } } = await supabase.auth.getSession()
+  const { data: { session }, error: sessionError } = await supabase.auth.getSession()
+  console.log('[DEBUG] adminMfaStatus: Session check:', {
+    hasSession: !!session,
+    hasAccessToken: !!session?.access_token,
+    sessionError: sessionError?.message,
+    userId: session?.user?.id,
+    userEmail: session?.user?.email,
+  })
+
   const accessToken = session?.access_token
-  
+
   if (!accessToken) {
+    console.error('[DEBUG] adminMfaStatus: No access token available')
     throw new Error('No active session - please sign in again')
   }
-  
+
   const supabaseUrl = (supabase as any).supabaseUrl
   const anonKey = (supabase as any).supabaseKey
-  
+
   console.log('[DEBUG] adminMfaStatus: Making direct fetch to Edge Function')
   console.log('[DEBUG] adminMfaStatus: URL:', `${supabaseUrl}/functions/v1/admin-mfa-enroll/status`)
-  
+  console.log('[DEBUG] adminMfaStatus: Headers:', {
+    hasAuth: !!accessToken,
+    hasApiKey: !!anonKey,
+    tokenPrefix: accessToken.substring(0, 20) + '...',
+  })
+
   try {
     // Direct fetch is required because supabase.functions.invoke() doesn't support path segments
     // The invoke method only supports function names, not paths like 'admin-mfa-enroll/status'
@@ -44,22 +58,30 @@ export async function adminMfaStatus(): Promise<StatusResponse> {
       },
       body: JSON.stringify({}),
     })
-    
+
     const elapsed = Date.now() - startTime
     console.log('[DEBUG] adminMfaStatus: Response received after', elapsed, 'ms', {
       status: response.status,
       statusText: response.statusText,
       ok: response.ok,
+      headers: Object.fromEntries(response.headers.entries()),
     })
-    
+
     if (!response.ok) {
       const errorText = await response.text()
-      console.error('[DEBUG] adminMfaStatus: Error response:', errorText)
+      console.error('[DEBUG] adminMfaStatus: Error response:', {
+        status: response.status,
+        statusText: response.statusText,
+        body: errorText,
+      })
       throw new Error(`Edge Function returned ${response.status}: ${errorText}`)
     }
-    
-    const data = await response.json()
-    console.log('[DEBUG] adminMfaStatus: Success:', data)
+
+    const responseText = await response.text()
+    console.log('[DEBUG] adminMfaStatus: Raw response:', responseText)
+
+    const data = JSON.parse(responseText)
+    console.log('[DEBUG] adminMfaStatus: Parsed data:', data)
     return data as StatusResponse
   } catch (err: any) {
     const elapsed = Date.now() - startTime
@@ -67,6 +89,7 @@ export async function adminMfaStatus(): Promise<StatusResponse> {
       message: err?.message,
       stack: err?.stack,
       name: err?.name,
+      type: err?.constructor?.name,
     })
     throw err
   }
