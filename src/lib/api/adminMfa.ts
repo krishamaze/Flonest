@@ -42,7 +42,7 @@ export async function adminMfaStatus(): Promise<StatusResponse> {
     body: {},
   })
 
-  const { data, error } = await withTimeout(promise, 10000) // 10 second timeout
+  const { data, error } = await withTimeout(promise, 20000) // 20 second timeout (Edge Function has retries)
 
   return parseFunctionResponse<StatusResponse>(data, error)
 }

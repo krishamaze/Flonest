@@ -124,7 +124,14 @@ const handleStatus = async (accessToken: string) => {
   await getUserAndProfile(accessToken)
   const userClient = createUserClient(accessToken)
 
-  const { data, error } = await userClient.auth.mfa.listFactors()
+  // Use retry logic for listFactors as it can be slow
+  const listResult = await runWithRetries(
+    () => userClient.auth.mfa.listFactors(),
+    "List MFA factors",
+    15000, // 15 second timeout per attempt
+  )
+
+  const { data, error } = listResult
   if (error) {
     throw new Error(error.message ?? "Unable to list MFA factors")
   }
