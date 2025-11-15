@@ -6,17 +6,17 @@ import { Drawer } from '../ui/Drawer'
 import { Select } from '../ui/Select'
 import { isMobileDevice } from '../../lib/deviceDetection'
 import { useAuth } from '../../contexts/AuthContext'
-import { createStaffMembership } from '../../lib/api/memberships'
+import { createAdvisorMembership } from '../../lib/api/memberships'
 import { supabase } from '../../lib/supabase'
 import { toast } from 'react-toastify'
 
-interface AddStaffFormProps {
+interface AddAdvisorFormProps {
   isOpen: boolean
   onClose: () => void
   onSuccess?: () => void
 }
 
-export function AddStaffForm({ isOpen, onClose, onSuccess }: AddStaffFormProps) {
+export function AddAdvisorForm({ isOpen, onClose, onSuccess }: AddAdvisorFormProps) {
   const { user } = useAuth()
   const [email, setEmail] = useState('')
   const [branchId, setBranchId] = useState<string>('')
@@ -126,7 +126,7 @@ export function AddStaffForm({ isOpen, onClose, onSuccess }: AddStaffFormProps) 
 
     setLoading(true)
     try {
-      await createStaffMembership(userFound.id, branchId, userFound.email || '')
+      await createAdvisorMembership(userFound.id, branchId, userFound.email || '')
       toast.success(
         user?.role === 'admin'
           ? 'Advisor added successfully'
