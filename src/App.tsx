@@ -17,6 +17,7 @@ import { PlatformAdminSessionWatcher } from './components/security/PlatformAdmin
 
 // Lazy load pages for code splitting
 const LoginPage = lazy(() => import('./pages/LoginPage').then(m => ({ default: m.LoginPage })))
+const PlatformAdminLoginPage = lazy(() => import('./pages/PlatformAdminLoginPage').then(m => ({ default: m.PlatformAdminLoginPage })))
 const ResetPasswordPage = lazy(() => import('./pages/ResetPasswordPage').then(m => ({ default: m.ResetPasswordPage })))
 const SetupPage = lazy(() => import('./pages/SetupPage').then(m => ({ default: m.SetupPage })))
 const DashboardPage = lazy(() => import('./pages/DashboardPage').then(m => ({ default: m.DashboardPage })))
@@ -105,6 +106,10 @@ function AppRoutes() {
             <Route
               path="/login"
               element={user ? (user.platformAdmin ? <Navigate to="/platform-admin" replace /> : <Navigate to="/" replace />) : <LoginPage />}
+            />
+            <Route
+              path="/platform-admin-login"
+              element={user?.platformAdmin ? <Navigate to="/platform-admin" replace /> : <PlatformAdminLoginPage />}
             />
           <Route
             path="/admin-mfa"

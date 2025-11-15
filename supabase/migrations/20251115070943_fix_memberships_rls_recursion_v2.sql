@@ -7,7 +7,7 @@ BEGIN;
 CREATE OR REPLACE FUNCTION current_user_org_id()
 RETURNS uuid
 LANGUAGE plpgsql
-STABLE
+VOLATILE
 SECURITY DEFINER
 SET search_path TO public
 AS $$
@@ -29,7 +29,7 @@ $$;
 CREATE OR REPLACE FUNCTION current_user_role()
 RETURNS text
 LANGUAGE plpgsql
-STABLE
+VOLATILE
 SECURITY DEFINER
 SET search_path TO public
 AS $$
@@ -51,7 +51,7 @@ $$;
 CREATE OR REPLACE FUNCTION current_user_branch_id()
 RETURNS uuid
 LANGUAGE plpgsql
-STABLE
+VOLATILE
 SECURITY DEFINER
 SET search_path TO public
 AS $$
@@ -73,7 +73,7 @@ $$;
 CREATE OR REPLACE FUNCTION current_user_is_internal()
 RETURNS boolean
 LANGUAGE plpgsql
-STABLE
+VOLATILE
 SECURITY DEFINER
 SET search_path TO public
 AS $$
@@ -92,7 +92,7 @@ $$;
 CREATE OR REPLACE FUNCTION is_internal_user(user_id uuid)
 RETURNS boolean
 LANGUAGE plpgsql
-STABLE
+VOLATILE
 SECURITY DEFINER
 SET search_path TO public
 AS $$
