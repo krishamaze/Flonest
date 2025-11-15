@@ -103,16 +103,33 @@ export function PlatformAdminMfaPage() {
         throw error
       }
 
-      if (!data?.totp) {
+      // Supabase returns factor object directly in data
+      // Structure: { id, type, friendly_name, secret, uri, qr_code } (flat) OR { id, totp: { secret, uri, qr_code } } (nested)
+      if (!data || !data.id) {
         setEmergencyMode(true)
-        throw new Error('Failed to generate TOTP enrollment data')
+        throw new Error('Failed to generate TOTP enrollment data - invalid response')
       }
 
+      // Store factor ID - this is critical for verification
+      const factorId = data.id
+      
+      // Handle both response structures: flat or nested
+      const qrCode = (data as any).qr_code || data.totp?.qr_code
+      const secret = (data as any).secret || data.totp?.secret || ''
+      const uri = (data as any).uri || data.totp?.uri || ''
+      
+      if (!qrCode) {
+        setEmergencyMode(true)
+        throw new Error('Failed to generate TOTP QR code - invalid response structure')
+      }
+
+      console.log('[MFA] Enrollment successful, factor ID:', factorId, 'has QR:', !!qrCode)
+      
       setEnrollmentState({
-        factorId: data.id,
-        qrCode: data.totp.qr_code,
-        secret: data.totp.secret,
-        uri: data.totp.uri,
+        factorId: factorId,
+        qrCode: qrCode,
+        secret: secret,
+        uri: uri,
       })
       setCode('')
       setInfo('Scan the QR code with your authenticator app (Google Authenticator, Authy, etc.), then enter the 6-digit code to verify enrollment.')
@@ -245,27 +262,67 @@ export function PlatformAdminMfaPage() {
 
     try {
       if (mode === 'enrollment' && enrollmentState) {
-        // For enrollment verification, we need to create a challenge first
-        const { data: challenge, error: challengeError } = await supabase.auth.mfa.challenge({
+        // For enrollment verification: create challenge then verify
+        // This completes the enrollment and activates the factor
+        console.log('[MFA] Verifying enrollment for factor:', enrollmentState.factorId)
+        
+        const challengePromise = supabase.auth.mfa.challenge({
           factorId: enrollmentState.factorId,
         })
+        
+        const { data: challenge, error: challengeError } = await withTimeout(
+          challengePromise,
+          10000,
+          'Create enrollment challenge'
+        ).catch(() => {
+          setEmergencyMode(true)
+          throw new Error('Challenge request timed out. Please try again.')
+        })
 
-        if (challengeError) throw challengeError
+        if (challengeError) {
+          console.error('[MFA] Challenge creation failed:', challengeError)
+          throw challengeError
+        }
 
-        // Verify enrollment with challenge
-        const { error: verifyError } = await supabase.auth.mfa.verify({
+        if (!challenge?.id) {
+          throw new Error('Invalid challenge response - missing challenge ID')
+        }
+
+        console.log('[MFA] Challenge created:', challenge.id, 'verifying code...')
+
+        // Verify enrollment with challenge - this completes enrollment
+        const verifyPromise = supabase.auth.mfa.verify({
           factorId: enrollmentState.factorId,
           challengeId: challenge.id,
           code: sanitizedCode,
         })
 
-        if (verifyError) throw verifyError
+        const { error: verifyError } = await withTimeout(
+          verifyPromise,
+          10000,
+          'Verify enrollment code'
+        ).catch(() => {
+          setEmergencyMode(true)
+          throw new Error('Verification request timed out. Please try again.')
+        })
 
-        // Enrollment successful - switch to verification mode and create challenge
-        setInfo('Enrollment successful! Please verify with a new code.')
+        if (verifyError) {
+          console.error('[MFA] Verification failed:', verifyError)
+          throw verifyError
+        }
+
+        console.log('[MFA] Enrollment verification successful! Factor activated.')
+
+        // Enrollment successful - refresh MFA requirement and redirect
+        await refreshAdminMfaRequirement()
+        setInfo('Enrollment successful! Redirecting to platform admin console...')
         setMode('verification')
         setEnrollmentState(null)
-        await checkFactorsAndPrepare()
+        
+        // Small delay to show success message, then redirect
+        setTimeout(() => {
+          navigate('/platform-admin', { replace: true })
+        }, 1000)
       } else if (mode === 'verification' && totpState) {
         // Verify challenge
         const { error: verifyError } = await supabase.auth.mfa.verify({
