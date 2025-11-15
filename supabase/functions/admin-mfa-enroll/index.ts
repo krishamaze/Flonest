@@ -146,18 +146,10 @@ const handleStatus = async (accessToken: string) => {
     console.log("[DEBUG] handleStatus: Creating userClient")
     const userClient = createUserClient(accessToken)
 
-    // Use retry logic for listFactors as it can be slow
-    console.log("[DEBUG] handleStatus: Starting listFactors with retries")
+    // Direct call without retries - listFactors should be fast
+    console.log("[DEBUG] handleStatus: Calling listFactors directly")
     const listStart = Date.now()
-    const listResult = await runWithRetries(
-      () => {
-        console.log("[DEBUG] handleStatus: listFactors attempt starting")
-        return userClient.auth.mfa.listFactors()
-      },
-      "List MFA factors",
-      5000, // 5 second timeout per attempt (frontend has 20s total timeout)
-      [500, 1000], // Only 2 retries to stay under 20s total
-    )
+    const listResult = await userClient.auth.mfa.listFactors()
     console.log("[DEBUG] handleStatus: listFactors completed in", Date.now() - listStart, "ms")
 
     const { data, error } = listResult
