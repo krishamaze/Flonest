@@ -88,7 +88,15 @@ export function PlatformAdminMfaPage() {
 
     try {
       const { data, error } = await supabase.auth.mfa.listFactors()
-      if (error) throw error
+      if (error) {
+        // If we can't list factors, assume we need enrollment
+        console.error('Failed to list MFA factors:', error)
+        setMode('enrollment')
+        setChallengeLoading(false)
+        setError('Unable to check authenticator status. Starting enrollment...')
+        await startEnrollment()
+        return
+      }
 
       const totpFactor = data?.totp?.[0]
 
@@ -108,6 +116,7 @@ export function PlatformAdminMfaPage() {
         // Supabase doesn't provide QR code for unverified factors, so we delete and re-enroll
         setMode('enrollment')
         setChallengeLoading(false)
+        setError(null) // Clear any previous errors
         
         // Delete unverified factor first - this MUST succeed before we can enroll
         try {
@@ -120,6 +129,7 @@ export function PlatformAdminMfaPage() {
         } catch (unenrollError: any) {
           console.error('Failed to delete unverified factor:', unenrollError)
           setError(unenrollError?.message || 'Unable to clean up unverified authenticator. Please contact support or try signing out and back in.')
+          // Stay in enrollment mode but show error - user can retry
           // Don't proceed with enrollment if cleanup failed
         }
         return
@@ -132,7 +142,11 @@ export function PlatformAdminMfaPage() {
           factorId: totpFactor.id,
         })
 
-        if (challengeError) throw challengeError
+        if (challengeError) {
+          // If challenge fails, might be an issue - fall back to enrollment check
+          console.error('Failed to create MFA challenge:', challengeError)
+          throw challengeError
+        }
 
         setTotpState({
           factorId: totpFactor.id,
@@ -143,13 +157,24 @@ export function PlatformAdminMfaPage() {
         return
       }
 
-      // Unknown status - treat as unverified
+      // Unknown status - treat as unverified and require enrollment
+      console.warn('Unknown factor status:', factorStatus)
       setMode('enrollment')
       setChallengeLoading(false)
       await startEnrollment()
     } catch (err: any) {
       console.error('Failed to start admin MFA challenge', err)
-      setError(err?.message || 'Unable to create MFA challenge. Please try again.')
+      // On any error, default to enrollment mode to allow user to set up fresh
+      setMode('enrollment')
+      setError(err?.message || 'Unable to create MFA challenge. Starting enrollment...')
+      setChallengeLoading(false)
+      // Try to start enrollment even on error
+      try {
+        await startEnrollment()
+      } catch (enrollErr: any) {
+        console.error('Failed to start enrollment after error:', enrollErr)
+        setError(enrollErr?.message || 'Unable to start enrollment. Please try again or contact support.')
+      }
     } finally {
       setChallengeLoading(false)
     }
