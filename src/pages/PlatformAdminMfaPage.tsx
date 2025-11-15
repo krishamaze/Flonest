@@ -70,10 +70,14 @@ export function PlatformAdminMfaPage() {
     setError(null)
 
     try {
+      // Use timestamp to make friendlyName unique - prevents 422 duplicate errors
+      const timestamp = Date.now()
+      const uniqueFriendlyName = `Platform Admin ${timestamp}`
+      
       // Add timeout to enrollment request (10 seconds)
       const enrollPromise = supabase.auth.mfa.enroll({
         factorType: 'totp',
-        friendlyName: 'Platform Admin Authenticator',
+        friendlyName: uniqueFriendlyName,
       })
       
       const { data, error } = await withTimeout(
@@ -86,7 +90,15 @@ export function PlatformAdminMfaPage() {
         throw timeoutErr
       })
 
+      // Handle 422 error (factor already exists) - this shouldn't happen with unique names
+      // but handle it gracefully if it does
       if (error) {
+        if (error.status === 422 || error.message?.includes('already exists') || error.message?.includes('duplicate')) {
+          console.warn('[MFA] Enrollment failed - factor may already exist:', error)
+          setEmergencyMode(true)
+          setError('An authenticator is already enrolled. Please sign out and sign back in, or contact support.')
+          throw error
+        }
         setEmergencyMode(true)
         throw error
       }
@@ -120,123 +132,93 @@ export function PlatformAdminMfaPage() {
     setEmergencyMode(false)
 
     try {
-      // Add timeout to listFactors request (5 seconds)
-      const listFactorsPromise = supabase.auth.mfa.listFactors()
-      const { data, error } = await withTimeout(
-        listFactorsPromise,
-        5000,
-        'List MFA factors'
-      ).catch((timeoutErr) => {
-        setEmergencyMode(true)
-        setError('Unable to check authenticator status. You can sign out or try again.')
-        setChallengeLoading(false)
-        throw timeoutErr
-      })
-      if (error) {
-        // If we can't list factors, assume we need enrollment
-        console.error('Failed to list MFA factors:', error)
-        setMode('enrollment')
-        setChallengeLoading(false)
-        setError('Unable to check authenticator status. Starting enrollment...')
-        await startEnrollment()
-        return
-      }
-
-      const totpFactor = data?.totp?.[0]
-
-      // Handle three states: none, unverified, verified
-      if (!totpFactor) {
-        // State 1: No factor exists - start enrollment
-        setMode('enrollment')
-        setChallengeLoading(false)
-        await startEnrollment()
-        return
-      }
-
-      const factorStatus = totpFactor.status as string
+      // Try listFactors with very short timeout (2 seconds) - if it hangs, skip it
+      // This prevents infinite loading when listFactors() hangs
+      let totpFactor: any = null
+      let hasVerifiedFactor = false
       
-      if (factorStatus === 'unverified') {
-        // State 2: Factor exists but not verified - must delete before re-enrolling
-        // Supabase doesn't provide QR code for unverified factors, so we delete and re-enroll
-        setMode('enrollment')
-        setChallengeLoading(false)
-        setError(null) // Clear any previous errors
+      try {
+        const listFactorsPromise = supabase.auth.mfa.listFactors()
+        const { data, error } = await withTimeout(
+          listFactorsPromise,
+          2000, // Very short timeout - if it hangs, we skip it
+          'List MFA factors'
+        )
         
-        // Delete unverified factor first - this MUST succeed before we can enroll
-        try {
-          const { error: unenrollError } = await supabase.auth.mfa.unenroll({ factorId: totpFactor.id })
-          if (unenrollError) {
-            throw unenrollError
+        if (!error && data?.totp?.[0]) {
+          totpFactor = data.totp[0]
+          const factorStatus = totpFactor.status as string
+          hasVerifiedFactor = factorStatus === 'verified'
+          
+          if (factorStatus === 'unverified') {
+            // Delete unverified factor before enrolling
+            try {
+              await supabase.auth.mfa.unenroll({ factorId: totpFactor.id })
+              totpFactor = null // Clear it so we enroll fresh
+            } catch (unenrollErr) {
+              console.warn('[MFA] Failed to delete unverified factor:', unenrollErr)
+              // Continue anyway - enrollment with unique name should work
+            }
           }
-          // Successfully deleted - now start fresh enrollment
-          await startEnrollment()
-        } catch (unenrollError: any) {
-          console.error('Failed to delete unverified factor:', unenrollError)
-          setError(unenrollError?.message || 'Unable to clean up unverified authenticator. Please contact support or try signing out and back in.')
-          // Stay in enrollment mode but show error - user can retry
-          // Don't proceed with enrollment if cleanup failed
         }
-        return
+      } catch (listErr: any) {
+        // listFactors timed out or failed - skip it and go straight to enrollment
+        console.warn('[MFA] listFactors() timed out or failed, skipping factor check:', listErr)
+        // Don't set error here - we'll try enrollment which may work
       }
 
-      if (factorStatus === 'verified') {
-        // State 3: Factor is verified - proceed with normal verification flow
+      // If we have a verified factor, try verification flow
+      if (hasVerifiedFactor && totpFactor) {
         setMode('verification')
         
-        // Add timeout to challenge request (10 seconds)
-        const challengePromise = supabase.auth.mfa.challenge({
-          factorId: totpFactor.id,
-        })
-        
-        const { data: challenge, error: challengeError } = await withTimeout(
-          challengePromise,
-          10000,
-          'MFA challenge request'
-        ).catch((timeoutErr) => {
-          // Timeout occurred - enable emergency mode
-          setEmergencyMode(true)
-          setError('Challenge request timed out. You can still sign out or try again.')
-          setChallengeLoading(false)
-          throw timeoutErr
-        })
+        try {
+          const challengePromise = supabase.auth.mfa.challenge({
+            factorId: totpFactor.id,
+          })
+          
+          const { data: challenge, error: challengeError } = await withTimeout(
+            challengePromise,
+            10000,
+            'MFA challenge request'
+          )
 
-        if (challengeError) {
-          // If challenge fails, might be an issue - fall back to enrollment check
-          console.error('Failed to create MFA challenge:', challengeError)
-          setEmergencyMode(true)
-          throw challengeError
+          if (challengeError) {
+            throw challengeError
+          }
+
+          setTotpState({
+            factorId: totpFactor.id,
+            challengeId: challenge.id,
+          })
+          setCode('')
+          setInfo('Enter the 6-digit code from your authenticator app. SMS is disabled for admins.')
+          setEmergencyMode(false)
+          return
+        } catch (challengeErr: any) {
+          console.error('[MFA] Challenge failed, falling back to enrollment:', challengeErr)
+          // Fall through to enrollment
         }
-
-        setTotpState({
-          factorId: totpFactor.id,
-          challengeId: challenge.id,
-        })
-        setCode('')
-        setInfo('Enter the 6-digit code from your authenticator app. SMS is disabled for admins.')
-        setEmergencyMode(false) // Clear emergency mode on success
-        return
       }
 
-      // Unknown status - treat as unverified and require enrollment
-      console.warn('Unknown factor status:', factorStatus)
+      // No verified factor or challenge failed - start enrollment with unique name
       setMode('enrollment')
       setChallengeLoading(false)
       await startEnrollment()
+      
     } catch (err: any) {
-      console.error('Failed to start admin MFA challenge', err)
-      // On any error, enable emergency mode and allow sign out
+      console.error('[MFA] Failed to prepare MFA flow', err)
       setEmergencyMode(true)
       setMode('enrollment')
-      setError(err?.message || 'Unable to create MFA challenge. You can sign out or try again.')
+      setError(err?.message || 'Unable to prepare authenticator. You can sign out or try again.')
       setChallengeLoading(false)
-      // Try to start enrollment even on error (but don't block if it fails)
+      
+      // Try enrollment as fallback
       try {
         await startEnrollment()
-        setEmergencyMode(false) // Clear emergency mode if enrollment succeeds
+        setEmergencyMode(false) // Clear if enrollment succeeds
       } catch (enrollErr: any) {
-        console.error('Failed to start enrollment after error:', enrollErr)
+        console.error('[MFA] Enrollment fallback also failed:', enrollErr)
         setError(enrollErr?.message || 'Unable to start enrollment. You can sign out or contact support.')
-        // Keep emergency mode enabled
       }
     } finally {
       setChallengeLoading(false)
