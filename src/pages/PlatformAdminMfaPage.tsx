@@ -255,22 +255,37 @@ export function PlatformAdminMfaPage() {
     }
   }
 
-  const handleSignOut = async (e?: React.MouseEvent) => {
-    e?.preventDefault()
-    e?.stopPropagation()
+  const handleSignOut = async (e?: React.MouseEvent | React.FormEvent) => {
+    console.log('[SignOut] Button clicked', { signOutLoading, e, type: e?.type })
     
-    if (signOutLoading) return // Prevent double-clicks
+    // Always prevent default and stop propagation
+    if (e) {
+      e.preventDefault()
+      e.stopPropagation()
+    }
     
+    if (signOutLoading) {
+      console.log('[SignOut] Already loading, ignoring click')
+      return // Prevent double-clicks
+    }
+    
+    console.log('[SignOut] Starting sign out process')
     setSignOutLoading(true)
+    
     try {
+      console.log('[SignOut] Calling signOut()')
       await signOut()
+      console.log('[SignOut] signOut() completed successfully')
     } catch (err) {
-      console.error('Sign out error:', err)
+      console.error('[SignOut] Sign out error:', err)
       // Even if signOut fails, still redirect
     } finally {
       setSignOutLoading(false)
+      console.log('[SignOut] Loading state cleared')
     }
+    
     // Always navigate to login page - use window.location for reliable redirect
+    console.log('[SignOut] Redirecting to /login')
     window.location.href = '/login'
   }
 
@@ -429,8 +444,10 @@ export function PlatformAdminMfaPage() {
                 size="md"
                 className="w-full text-error"
                 onClick={handleSignOut}
+                disabled={signOutLoading || challengeLoading}
+                isLoading={signOutLoading}
               >
-                Sign out
+                {signOutLoading ? 'Signing out...' : 'Sign out'}
               </Button>
             </form>
           )}
