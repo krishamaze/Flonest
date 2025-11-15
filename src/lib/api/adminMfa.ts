@@ -41,73 +41,49 @@ export async function adminMfaStatus(): Promise<StatusResponse> {
   const startTime = Date.now()
   console.log('[DEBUG] adminMfaStatus: Starting request at', new Date().toISOString())
   
+  // Get current session token
+  const { data: { session } } = await supabase.auth.getSession()
+  const accessToken = session?.access_token
+  
+  if (!accessToken) {
+    throw new Error('No active session - please sign in again')
+  }
+  
+  const supabaseUrl = (supabase as any).supabaseUrl
+  const anonKey = (supabase as any).supabaseKey
+  
+  console.log('[DEBUG] adminMfaStatus: Making direct fetch to Edge Function')
+  console.log('[DEBUG] adminMfaStatus: URL:', `${supabaseUrl}/functions/v1/admin-mfa-enroll/status`)
+  
   try {
-    // Log Supabase client config to verify URL
-    const supabaseUrl = (supabase as any).supabaseUrl || 'unknown'
-    const anonKey = (supabase as any).supabaseKey || 'unknown'
-    console.log('[DEBUG] adminMfaStatus: Supabase URL:', supabaseUrl)
-    console.log('[DEBUG] adminMfaStatus: Invoking Edge Function admin-mfa-enroll/status')
-    console.log('[DEBUG] adminMfaStatus: Expected URL:', `${supabaseUrl}/functions/v1/admin-mfa-enroll/status`)
-    
-    // Get current session token
-    const { data: { session } } = await supabase.auth.getSession()
-    const accessToken = session?.access_token
-    
-    if (!accessToken) {
-      throw new Error('No active session - please sign in again')
-    }
-    
-    console.log('[DEBUG] adminMfaStatus: Access token present:', !!accessToken)
-    
-    // Try direct fetch first to see if request reaches server
-    const directFetchStart = Date.now()
-    try {
-      const directResponse = await fetch(`${supabaseUrl}/functions/v1/admin-mfa-enroll/status`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${accessToken}`,
-          'Content-Type': 'application/json',
-          'apikey': anonKey,
-        },
-        body: JSON.stringify({}),
-      })
-      const directElapsed = Date.now() - directFetchStart
-      console.log('[DEBUG] adminMfaStatus: Direct fetch completed in', directElapsed, 'ms', {
-        status: directResponse.status,
-        statusText: directResponse.statusText,
-        ok: directResponse.ok,
-      })
-      
-      if (!directResponse.ok) {
-        const errorText = await directResponse.text()
-        console.error('[DEBUG] adminMfaStatus: Direct fetch error:', errorText)
-        throw new Error(`Edge Function returned ${directResponse.status}: ${errorText}`)
-      }
-      
-      const directData = await directResponse.json()
-      console.log('[DEBUG] adminMfaStatus: Direct fetch success:', directData)
-      return directData as StatusResponse
-    } catch (directErr: any) {
-      console.error('[DEBUG] adminMfaStatus: Direct fetch failed:', directErr)
-      // Fall back to supabase.functions.invoke
-    }
-    
-    const promise = supabase.functions.invoke('admin-mfa-enroll/status', {
-      body: {},
+    // Direct fetch is required because supabase.functions.invoke() doesn't support path segments
+    // The invoke method only supports function names, not paths like 'admin-mfa-enroll/status'
+    const response = await fetch(`${supabaseUrl}/functions/v1/admin-mfa-enroll/status`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${accessToken}`,
+        'Content-Type': 'application/json',
+        'apikey': anonKey,
+      },
+      body: JSON.stringify({}),
     })
-
-    console.log('[DEBUG] adminMfaStatus: Waiting for response (20s timeout)')
-    const { data, error } = await withTimeout(promise, 20000) // 20 second timeout (Edge Function has retries)
     
     const elapsed = Date.now() - startTime
     console.log('[DEBUG] adminMfaStatus: Response received after', elapsed, 'ms', {
-      hasData: !!data,
-      hasError: !!error,
-      data: data,
-      error: error,
+      status: response.status,
+      statusText: response.statusText,
+      ok: response.ok,
     })
-
-    return parseFunctionResponse<StatusResponse>(data, error)
+    
+    if (!response.ok) {
+      const errorText = await response.text()
+      console.error('[DEBUG] adminMfaStatus: Error response:', errorText)
+      throw new Error(`Edge Function returned ${response.status}: ${errorText}`)
+    }
+    
+    const data = await response.json()
+    console.log('[DEBUG] adminMfaStatus: Success:', data)
+    return data as StatusResponse
   } catch (err: any) {
     const elapsed = Date.now() - startTime
     console.error('[DEBUG] adminMfaStatus: Error after', elapsed, 'ms:', {
@@ -120,18 +96,68 @@ export async function adminMfaStatus(): Promise<StatusResponse> {
 }
 
 export async function adminMfaStart(action?: 'enroll'): Promise<StartResponse> {
-  const { data, error } = await supabase.functions.invoke('admin-mfa-enroll/start', {
-    body: action ? { action } : { action: 'enroll' },
+  // Get current session token
+  const { data: { session } } = await supabase.auth.getSession()
+  const accessToken = session?.access_token
+  
+  if (!accessToken) {
+    throw new Error('No active session - please sign in again')
+  }
+  
+  const supabaseUrl = (supabase as any).supabaseUrl
+  const anonKey = (supabase as any).supabaseKey
+  
+  // Direct fetch is required because supabase.functions.invoke() doesn't support path segments
+  const response = await fetch(`${supabaseUrl}/functions/v1/admin-mfa-enroll/start`, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${accessToken}`,
+      'Content-Type': 'application/json',
+      'apikey': anonKey,
+    },
+    body: JSON.stringify(action ? { action } : { action: 'enroll' }),
   })
-
-  return parseFunctionResponse<StartResponse>(data, error)
+  
+  if (!response.ok) {
+    const errorText = await response.text()
+    throw new Error(`Edge Function returned ${response.status}: ${errorText}`)
+  }
+  
+  const data = await response.json()
+  return data as StartResponse
 }
 
 export async function adminMfaVerify(factorId: string, code: string): Promise<void> {
-  const { data, error } = await supabase.functions.invoke('admin-mfa-enroll/verify', {
-    body: { factorId, code },
+  // Get current session token
+  const { data: { session } } = await supabase.auth.getSession()
+  const accessToken = session?.access_token
+  
+  if (!accessToken) {
+    throw new Error('No active session - please sign in again')
+  }
+  
+  const supabaseUrl = (supabase as any).supabaseUrl
+  const anonKey = (supabase as any).supabaseKey
+  
+  // Direct fetch is required because supabase.functions.invoke() doesn't support path segments
+  const response = await fetch(`${supabaseUrl}/functions/v1/admin-mfa-enroll/verify`, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${accessToken}`,
+      'Content-Type': 'application/json',
+      'apikey': anonKey,
+    },
+    body: JSON.stringify({ factorId, code }),
   })
-
-  parseFunctionResponse<{ success: boolean }>(data, error)
+  
+  if (!response.ok) {
+    const errorText = await response.text()
+    throw new Error(`Edge Function returned ${response.status}: ${errorText}`)
+  }
+  
+  const data = await response.json()
+  if (!data.success) {
+    throw new Error('Verification failed')
+  }
 }
 
