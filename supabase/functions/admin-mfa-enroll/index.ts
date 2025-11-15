@@ -41,20 +41,33 @@ const runWithRetries = async <T>(
   delays = [500, 1000, 2000],
 ) => {
   for (let attempt = 0; attempt <= delays.length; attempt++) {
+    const attemptStart = Date.now()
+    console.log(`[DEBUG] runWithRetries: ${operation} - Attempt ${attempt + 1}/${delays.length + 1}`)
     try {
-      return await withTimeout(fn(), timeoutMs, operation)
+      const result = await withTimeout(fn(), timeoutMs, operation)
+      console.log(`[DEBUG] runWithRetries: ${operation} - Attempt ${attempt + 1} succeeded in ${Date.now() - attemptStart}ms`)
+      return result
     } catch (err: any) {
+      const elapsed = Date.now() - attemptStart
       const message = err?.message?.toLowerCase() ?? ""
       const isRetryable =
         message.includes("timed out") ||
         message.includes("fetch failed") ||
         message.includes("network")
 
+      console.log(`[DEBUG] runWithRetries: ${operation} - Attempt ${attempt + 1} failed after ${elapsed}ms:`, {
+        error: err?.message,
+        isRetryable,
+        willRetry: isRetryable && attempt < delays.length,
+      })
+
       if (!isRetryable || attempt === delays.length) {
         throw err
       }
 
-      await wait(delays[attempt] ?? delays[delays.length - 1])
+      const delay = delays[attempt] ?? delays[delays.length - 1]
+      console.log(`[DEBUG] runWithRetries: ${operation} - Waiting ${delay}ms before retry`)
+      await wait(delay)
     }
   }
 
@@ -121,33 +134,56 @@ const cleanupUnverified = async (userClient: ReturnType<typeof createClient>) =>
 }
 
 const handleStatus = async (accessToken: string) => {
-  await getUserAndProfile(accessToken)
-  const userClient = createUserClient(accessToken)
+  const startTime = Date.now()
+  console.log("[DEBUG] handleStatus: Starting at", new Date().toISOString())
+  
+  try {
+    console.log("[DEBUG] handleStatus: Calling getUserAndProfile")
+    const getUserStart = Date.now()
+    await getUserAndProfile(accessToken)
+    console.log("[DEBUG] handleStatus: getUserAndProfile completed in", Date.now() - getUserStart, "ms")
+    
+    console.log("[DEBUG] handleStatus: Creating userClient")
+    const userClient = createUserClient(accessToken)
 
-  // Use retry logic for listFactors as it can be slow
-  const listResult = await runWithRetries(
-    () => userClient.auth.mfa.listFactors(),
-    "List MFA factors",
-    15000, // 15 second timeout per attempt
-  )
+    // Use retry logic for listFactors as it can be slow
+    console.log("[DEBUG] handleStatus: Starting listFactors with retries")
+    const listStart = Date.now()
+    const listResult = await runWithRetries(
+      () => {
+        console.log("[DEBUG] handleStatus: listFactors attempt starting")
+        return userClient.auth.mfa.listFactors()
+      },
+      "List MFA factors",
+      15000, // 15 second timeout per attempt
+    )
+    console.log("[DEBUG] handleStatus: listFactors completed in", Date.now() - listStart, "ms")
 
-  const { data, error } = listResult
-  if (error) {
-    throw new Error(error.message ?? "Unable to list MFA factors")
-  }
+    const { data, error } = listResult
+    if (error) {
+      console.error("[DEBUG] handleStatus: listFactors error:", error)
+      throw new Error(error.message ?? "Unable to list MFA factors")
+    }
 
-  const verifiedFactor = data?.totp?.find((factor) => factor.status === "verified")
+    console.log("[DEBUG] handleStatus: Found", data?.totp?.length ?? 0, "TOTP factors")
+    const verifiedFactor = data?.totp?.find((factor) => factor.status === "verified")
 
-  if (verifiedFactor) {
+    if (verifiedFactor) {
+      console.log("[DEBUG] handleStatus: Found verified factor:", verifiedFactor.id, "Total time:", Date.now() - startTime, "ms")
+      return jsonResponse(200, {
+        hasVerifiedFactor: true,
+        factorId: verifiedFactor.id,
+      })
+    }
+
+    console.log("[DEBUG] handleStatus: No verified factor found. Total time:", Date.now() - startTime, "ms")
     return jsonResponse(200, {
-      hasVerifiedFactor: true,
-      factorId: verifiedFactor.id,
+      hasVerifiedFactor: false,
     })
+  } catch (err: any) {
+    console.error("[DEBUG] handleStatus: Error after", Date.now() - startTime, "ms:", err)
+    throw err
   }
-
-  return jsonResponse(200, {
-    hasVerifiedFactor: false,
-  })
 }
 
 const handleStart = async (accessToken: string, body: any) => {
@@ -241,43 +277,68 @@ const handleVerify = async (accessToken: string, body: any) => {
 }
 
 Deno.serve(async (req) => {
+  const requestStart = Date.now()
   const url = new URL(req.url)
   const segments = url.pathname.split("/")
   const action = segments.pop() ?? ""
+
+  console.log("[DEBUG] Request received:", {
+    method: req.method,
+    url: req.url,
+    pathname: url.pathname,
+    segments: segments,
+    action: action,
+    timestamp: new Date().toISOString(),
+  })
 
   const authHeader = req.headers.get("Authorization") ?? ""
   const accessToken = authHeader.replace("Bearer", "").trim()
 
   if (req.method === "OPTIONS") {
+    console.log("[DEBUG] OPTIONS request, returning CORS headers")
     return new Response(null, { status: 200, headers: corsHeaders })
   }
 
   if (!accessToken) {
+    console.error("[DEBUG] Missing access token")
     return jsonResponse(401, { error: "Missing Authorization header" })
   }
 
   if (req.method !== "POST") {
+    console.error("[DEBUG] Invalid method:", req.method)
     return jsonResponse(405, { error: "Method not allowed" })
   }
 
   try {
+    console.log("[DEBUG] Parsing request body")
     const body = await req.json().catch(() => ({}))
+    console.log("[DEBUG] Request body parsed, action:", action)
 
     if (action === "status") {
-      return await handleStatus(accessToken)
+      console.log("[DEBUG] Routing to handleStatus")
+      const result = await handleStatus(accessToken)
+      console.log("[DEBUG] handleStatus completed in", Date.now() - requestStart, "ms")
+      return result
     }
 
     if (action === "start") {
+      console.log("[DEBUG] Routing to handleStart")
       return await handleStart(accessToken, body)
     }
 
     if (action === "verify") {
+      console.log("[DEBUG] Routing to handleVerify")
       return await handleVerify(accessToken, body)
     }
 
+    console.error("[DEBUG] Unknown action:", action)
     return jsonResponse(404, { error: "Not found" })
   } catch (err: any) {
-    console.error("[admin-mfa-enroll] error:", err)
+    console.error("[DEBUG] Error after", Date.now() - requestStart, "ms:", {
+      message: err?.message,
+      stack: err?.stack,
+      name: err?.name,
+    })
     return jsonResponse(500, { error: err?.message ?? "Unexpected error" })
   }
 })

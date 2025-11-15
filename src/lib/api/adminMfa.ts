@@ -38,13 +38,32 @@ const withTimeout = <T>(promise: Promise<T>, timeoutMs: number): Promise<T> => {
 }
 
 export async function adminMfaStatus(): Promise<StatusResponse> {
-  const promise = supabase.functions.invoke('admin-mfa-enroll/status', {
-    body: {},
-  })
+  const startTime = Date.now()
+  console.log('[DEBUG] adminMfaStatus: Starting request at', new Date().toISOString())
+  
+  try {
+    console.log('[DEBUG] adminMfaStatus: Invoking Edge Function admin-mfa-enroll/status')
+    const promise = supabase.functions.invoke('admin-mfa-enroll/status', {
+      body: {},
+    })
 
-  const { data, error } = await withTimeout(promise, 20000) // 20 second timeout (Edge Function has retries)
+    console.log('[DEBUG] adminMfaStatus: Waiting for response (20s timeout)')
+    const { data, error } = await withTimeout(promise, 20000) // 20 second timeout (Edge Function has retries)
+    
+    const elapsed = Date.now() - startTime
+    console.log('[DEBUG] adminMfaStatus: Response received after', elapsed, 'ms', {
+      hasData: !!data,
+      hasError: !!error,
+      data: data,
+      error: error,
+    })
 
-  return parseFunctionResponse<StatusResponse>(data, error)
+    return parseFunctionResponse<StatusResponse>(data, error)
+  } catch (err: any) {
+    const elapsed = Date.now() - startTime
+    console.error('[DEBUG] adminMfaStatus: Error after', elapsed, 'ms:', err)
+    throw err
+  }
 }
 
 export async function adminMfaStart(action?: 'enroll'): Promise<StartResponse> {
