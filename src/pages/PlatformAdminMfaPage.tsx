@@ -29,6 +29,7 @@ export function PlatformAdminMfaPage() {
   const [loading, setLoading] = useState(false)
   const [challengeLoading, setChallengeLoading] = useState(false)
   const [enrollmentLoading, setEnrollmentLoading] = useState(false)
+  const [signOutLoading, setSignOutLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [info, setInfo] = useState<string>('Authenticator app verification required.')
 
@@ -254,8 +255,22 @@ export function PlatformAdminMfaPage() {
     }
   }
 
-  const handleSignOut = async () => {
-    await signOut()
+  const handleSignOut = async (e?: React.MouseEvent) => {
+    e?.preventDefault()
+    e?.stopPropagation()
+    
+    if (signOutLoading) return // Prevent double-clicks
+    
+    setSignOutLoading(true)
+    try {
+      await signOut()
+    } catch (err) {
+      console.error('Sign out error:', err)
+      // Even if signOut fails, still redirect
+    } finally {
+      setSignOutLoading(false)
+    }
+    // Always navigate to login, even if signOut had an error
     navigate('/login', { replace: true })
   }
 
@@ -351,8 +366,10 @@ export function PlatformAdminMfaPage() {
                   size="md"
                   className="w-full text-error"
                   onClick={handleSignOut}
+                  disabled={signOutLoading}
+                  isLoading={signOutLoading}
                 >
-                  Sign out
+                  {signOutLoading ? 'Signing out...' : 'Sign out'}
                 </Button>
               </form>
             </div>
