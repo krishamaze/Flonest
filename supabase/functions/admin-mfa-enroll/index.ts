@@ -120,11 +120,9 @@ const cleanupUnverified = async (userClient: ReturnType<typeof createClient>) =>
   }
 }
 
-const handleStart = async (accessToken: string, body: any) => {
-  const userId = await getUserAndProfile(accessToken)
+const handleStatus = async (accessToken: string) => {
+  await getUserAndProfile(accessToken)
   const userClient = createUserClient(accessToken)
-
-  const action = body?.action ?? "status"
 
   const { data, error } = await userClient.auth.mfa.listFactors()
   if (error) {
@@ -133,19 +131,26 @@ const handleStart = async (accessToken: string, body: any) => {
 
   const verifiedFactor = data?.totp?.find((factor) => factor.status === "verified")
 
-  if (action === "status") {
-    if (verifiedFactor) {
-      return jsonResponse(200, {
-        mode: "challenge",
-        factorId: verifiedFactor.id,
-      })
-    }
-
-    return jsonResponse(200, { mode: "none" })
+  if (verifiedFactor) {
+    return jsonResponse(200, {
+      hasVerifiedFactor: true,
+      factorId: verifiedFactor.id,
+    })
   }
 
+  return jsonResponse(200, {
+    hasVerifiedFactor: false,
+  })
+}
+
+const handleStart = async (accessToken: string, body: any) => {
+  const userId = await getUserAndProfile(accessToken)
+  const userClient = createUserClient(accessToken)
+
+  const action = body?.action ?? "enroll"
+
   if (action !== "enroll") {
-    return jsonResponse(400, { error: "Invalid action for /start" })
+    return jsonResponse(400, { error: "Invalid action for /start. Use /status for status checks." })
   }
 
   await cleanupUnverified(userClient)
@@ -250,6 +255,10 @@ Deno.serve(async (req) => {
 
   try {
     const body = await req.json().catch(() => ({}))
+
+    if (action === "status") {
+      return await handleStatus(accessToken)
+    }
 
     if (action === "start") {
       return await handleStart(accessToken, body)

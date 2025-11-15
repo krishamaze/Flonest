@@ -4,7 +4,7 @@ import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
 import { Button } from '../components/ui/Button'
 import { Input } from '../components/ui/Input'
-import { adminMfaStart, adminMfaVerify } from '../lib/api/adminMfa'
+import { adminMfaStatus, adminMfaStart, adminMfaVerify } from '../lib/api/adminMfa'
 
 interface EnrollmentState {
   factorId: string
@@ -27,6 +27,8 @@ export function PlatformAdminMfaPage() {
   const [info, setInfo] = useState<string>('Checking authenticator status...')
   const [flowMode, setFlowMode] = useState<FlowMode>('checking')
   const hasCheckedRef = useRef(false)
+  const loadingTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+  const isCheckingRef = useRef(false)
 
   useEffect(() => {
     if (!user) {
@@ -49,16 +51,43 @@ export function PlatformAdminMfaPage() {
       hasCheckedRef.current = true
       initializeFlow()
     }
+
+    // Cleanup timeout on unmount
+    return () => {
+      if (loadingTimeoutRef.current) {
+        clearTimeout(loadingTimeoutRef.current)
+      }
+    }
   }, [user, requiresAdminMfa, navigate])
 
   const initializeFlow = async () => {
     setChecking(true)
+    isCheckingRef.current = true
     setError(null)
+    setInfo('Checking authenticator status...')
+
+    // Set loading state timeout (15 seconds)
+    loadingTimeoutRef.current = setTimeout(() => {
+      if (isCheckingRef.current) {
+        setError('Unable to check MFA status. Please refresh or sign out and sign in again.')
+        setFlowMode('none')
+        setInfo('No authenticator enrolled. Click "Start Enrollment" to set up TOTP.')
+        setChecking(false)
+        isCheckingRef.current = false
+      }
+    }, 15000)
 
     try {
-      const response = await adminMfaStart()
+      const response = await adminMfaStatus()
 
-      if (response.mode === 'challenge' && response.factorId) {
+      // Clear timeout on success
+      if (loadingTimeoutRef.current) {
+        clearTimeout(loadingTimeoutRef.current)
+        loadingTimeoutRef.current = null
+      }
+      isCheckingRef.current = false
+
+      if (response.hasVerifiedFactor && response.factorId) {
         setFactorId(response.factorId)
         setEnrollmentState(null)
         setFlowMode('verification')
@@ -71,7 +100,16 @@ export function PlatformAdminMfaPage() {
       }
     } catch (err: any) {
       console.error('Failed to load MFA status:', err)
-      setError(err?.message || 'Unable to load authenticator status. Please try again.')
+      
+      // Clear timeout on error
+      if (loadingTimeoutRef.current) {
+        clearTimeout(loadingTimeoutRef.current)
+        loadingTimeoutRef.current = null
+      }
+      isCheckingRef.current = false
+
+      const errorMessage = err?.message || 'Unable to check MFA status. Please refresh or sign out and sign in again.'
+      setError(errorMessage)
       setFlowMode('none')
       setInfo('No authenticator enrolled. Click "Start Enrollment" to set up TOTP.')
     } finally {
@@ -84,7 +122,7 @@ export function PlatformAdminMfaPage() {
     setError(null)
 
     try {
-      const response = await adminMfaStart('enroll')
+      const response = await adminMfaStart()
 
       if (response.mode !== 'enrollment' || !response.factorId || !response.qrCode) {
         throw new Error('Failed to start enrollment. Please try again.')
