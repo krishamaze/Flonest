@@ -44,9 +44,53 @@ export async function adminMfaStatus(): Promise<StatusResponse> {
   try {
     // Log Supabase client config to verify URL
     const supabaseUrl = (supabase as any).supabaseUrl || 'unknown'
+    const anonKey = (supabase as any).supabaseKey || 'unknown'
     console.log('[DEBUG] adminMfaStatus: Supabase URL:', supabaseUrl)
     console.log('[DEBUG] adminMfaStatus: Invoking Edge Function admin-mfa-enroll/status')
     console.log('[DEBUG] adminMfaStatus: Expected URL:', `${supabaseUrl}/functions/v1/admin-mfa-enroll/status`)
+    
+    // Get current session token
+    const { data: { session } } = await supabase.auth.getSession()
+    const accessToken = session?.access_token
+    
+    if (!accessToken) {
+      throw new Error('No active session - please sign in again')
+    }
+    
+    console.log('[DEBUG] adminMfaStatus: Access token present:', !!accessToken)
+    
+    // Try direct fetch first to see if request reaches server
+    const directFetchStart = Date.now()
+    try {
+      const directResponse = await fetch(`${supabaseUrl}/functions/v1/admin-mfa-enroll/status`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+          'apikey': anonKey,
+        },
+        body: JSON.stringify({}),
+      })
+      const directElapsed = Date.now() - directFetchStart
+      console.log('[DEBUG] adminMfaStatus: Direct fetch completed in', directElapsed, 'ms', {
+        status: directResponse.status,
+        statusText: directResponse.statusText,
+        ok: directResponse.ok,
+      })
+      
+      if (!directResponse.ok) {
+        const errorText = await directResponse.text()
+        console.error('[DEBUG] adminMfaStatus: Direct fetch error:', errorText)
+        throw new Error(`Edge Function returned ${directResponse.status}: ${errorText}`)
+      }
+      
+      const directData = await directResponse.json()
+      console.log('[DEBUG] adminMfaStatus: Direct fetch success:', directData)
+      return directData as StatusResponse
+    } catch (directErr: any) {
+      console.error('[DEBUG] adminMfaStatus: Direct fetch failed:', directErr)
+      // Fall back to supabase.functions.invoke
+    }
     
     const promise = supabase.functions.invoke('admin-mfa-enroll/status', {
       body: {},
