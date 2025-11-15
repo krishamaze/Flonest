@@ -104,21 +104,24 @@ export function PlatformAdminMfaPage() {
       const factorStatus = totpFactor.status as string
       
       if (factorStatus === 'unverified') {
-        // State 2: Factor exists but not verified - continue enrollment
-        // For unverified factors, we need to re-enroll to get QR code
-        // Or we could try to verify the existing factor, but Supabase doesn't provide
-        // QR code for unverified factors, so we'll delete and re-enroll
+        // State 2: Factor exists but not verified - must delete before re-enrolling
+        // Supabase doesn't provide QR code for unverified factors, so we delete and re-enroll
         setMode('enrollment')
         setChallengeLoading(false)
         
-        // Delete unverified factor first
+        // Delete unverified factor first - this MUST succeed before we can enroll
         try {
-          await supabase.auth.mfa.unenroll({ factorId: totpFactor.id })
-        } catch (unenrollError) {
-          console.warn('Failed to delete unverified factor, continuing with new enrollment:', unenrollError)
+          const { error: unenrollError } = await supabase.auth.mfa.unenroll({ factorId: totpFactor.id })
+          if (unenrollError) {
+            throw unenrollError
+          }
+          // Successfully deleted - now start fresh enrollment
+          await startEnrollment()
+        } catch (unenrollError: any) {
+          console.error('Failed to delete unverified factor:', unenrollError)
+          setError(unenrollError?.message || 'Unable to clean up unverified authenticator. Please contact support or try signing out and back in.')
+          // Don't proceed with enrollment if cleanup failed
         }
-        
-        await startEnrollment()
         return
       }
 
