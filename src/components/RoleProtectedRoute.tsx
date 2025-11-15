@@ -1,5 +1,5 @@
 import { ReactNode } from 'react'
-import { Navigate } from 'react-router-dom'
+import { Navigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { AccessDenied } from './ui/AccessDenied'
 import { hasPermission, type Permission } from '../lib/permissions'
@@ -23,6 +23,7 @@ export function RoleProtectedRoute({
   fallback = 'denied',
 }: RoleProtectedRouteProps) {
   const { user, loading } = useAuth()
+  const location = useLocation()
 
   // Show loading while auth is loading
   if (loading) {
@@ -31,6 +32,9 @@ export function RoleProtectedRoute({
 
   // Must be authenticated
   if (!user) {
+    if (location.pathname.startsWith('/platform-admin')) {
+      return <>{children}</>
+    }
     return <Navigate to="/login" replace />
   }
 

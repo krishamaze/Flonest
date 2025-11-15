@@ -51,6 +51,9 @@ export function ProtectedRoute({ children }: { children: React.ReactNode }) {
   }
 
   if (!user) {
+    if (location.pathname.startsWith('/platform-admin')) {
+      return <>{children}</>
+    }
     return <Navigate to="/login" replace />
   }
 
@@ -134,7 +137,7 @@ export function PlatformAdminRoute({ children }: { children: React.ReactNode }) 
   }
 
   if (!user) {
-    return <Navigate to="/login" replace />
+    return <Navigate to="/platform-admin-login" replace />
   }
 
   if (requiresAdminMfa) {
