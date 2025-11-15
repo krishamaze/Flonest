@@ -89,6 +89,9 @@ const jsonResponse = (status: number, body: Record<string, unknown>) =>
     },
   })
 
+const errorResponse = (status: number, error: string, code: string) =>
+  jsonResponse(status, { error, code })
+
 const getUserAndProfile = async (accessToken: string) => {
   const {
     data: { user },
@@ -224,49 +227,91 @@ const handleStart = async (accessToken: string, body: any) => {
 }
 
 const handleVerify = async (accessToken: string, body: any) => {
-  await getUserAndProfile(accessToken)
-  const { factorId, code } = body ?? {}
+  try {
+    await getUserAndProfile(accessToken)
+    const { factorId, code } = body ?? {}
 
-  if (!factorId || !code) {
-    return jsonResponse(400, { error: "factorId and code are required" })
+    if (!factorId || !code) {
+      return errorResponse(400, "factorId and code are required", "invalid_request")
+    }
+
+    const userClient = createUserClient(accessToken)
+
+    const challengeResult = await runWithRetries(
+      () =>
+        userClient.auth.mfa.challenge({
+          factorId,
+        }),
+      "Create enrollment challenge",
+      10000,
+    )
+
+    const challengeError = challengeResult.error
+    const challenge = challengeResult.data
+
+    if (challengeError || !challenge?.id) {
+      return errorResponse(400, challengeError?.message ?? "Failed to create challenge", "challenge_failed")
+    }
+
+    const verifyResult = await runWithRetries(
+      () =>
+        userClient.auth.mfa.verify({
+          factorId,
+          challengeId: challenge.id,
+          code,
+        }),
+      "Verify MFA code",
+      10000,
+    )
+
+    const verifyError = verifyResult.error
+
+    if (verifyError) {
+      return errorResponse(400, verifyError.message ?? "Invalid verification code", "verification_failed")
+    }
+
+    return jsonResponse(200, { success: true })
+  } catch (err: any) {
+    console.error("[DEBUG] handleVerify error:", err)
+    return errorResponse(500, err?.message ?? "Unexpected verification error", "verification_error")
   }
+}
 
-  const userClient = createUserClient(accessToken)
+const handleReset = async (accessToken: string) => {
+  try {
+    const userId = await getUserAndProfile(accessToken)
+    const userClient = createUserClient(accessToken)
 
-  const challengeResult = await runWithRetries(
-    () =>
-      userClient.auth.mfa.challenge({
-        factorId,
-      }),
-    "Create enrollment challenge",
-    10000,
-  )
+    const factorsResult = await userClient.auth.mfa.listFactors()
+    const factorsError = factorsResult.error
 
-  const challengeError = challengeResult.error
-  const challenge = challengeResult.data
+    if (factorsError) {
+      return errorResponse(500, factorsError.message ?? "Failed to list MFA factors", "list_factors_failed")
+    }
 
-  if (challengeError || !challenge?.id) {
-    throw new Error(challengeError?.message ?? "Failed to create challenge")
+    const totpFactors = factorsResult.data?.totp ?? []
+    for (const factor of totpFactors) {
+      try {
+        await userClient.auth.mfa.unenroll({ factorId: factor.id })
+      } catch (err) {
+        console.error("[DEBUG] handleReset: Failed to unenroll factor", factor.id, err)
+      }
+    }
+
+    const { error: sessionError } = await adminClient
+      .from("admin_sessions")
+      .delete()
+      .eq("user_id", userId)
+
+    if (sessionError) {
+      return errorResponse(500, sessionError.message ?? "Failed to clear admin sessions", "session_cleanup_failed")
+    }
+
+    return jsonResponse(200, { success: true })
+  } catch (err: any) {
+    console.error("[DEBUG] handleReset error:", err)
+    return errorResponse(500, err?.message ?? "Failed to reset authenticator", "reset_failed")
   }
-
-  const verifyResult = await runWithRetries(
-    () =>
-      userClient.auth.mfa.verify({
-        factorId,
-        challengeId: challenge.id,
-        code,
-      }),
-    "Verify MFA code",
-    10000,
-  )
-
-  const verifyError = verifyResult.error
-
-  if (verifyError) {
-    throw new Error(verifyError.message ?? "Invalid verification code")
-  }
-
-  return jsonResponse(200, { success: true })
 }
 
 Deno.serve(async (req) => {
@@ -294,12 +339,12 @@ Deno.serve(async (req) => {
 
   if (!accessToken) {
     console.error("[DEBUG] Missing access token")
-    return jsonResponse(401, { error: "Missing Authorization header" })
+    return errorResponse(401, "Missing Authorization header", "missing_authorization")
   }
 
   if (req.method !== "POST") {
     console.error("[DEBUG] Invalid method:", req.method)
-    return jsonResponse(405, { error: "Method not allowed" })
+    return errorResponse(405, "Method not allowed", "method_not_allowed")
   }
 
   try {
@@ -324,15 +369,20 @@ Deno.serve(async (req) => {
       return await handleVerify(accessToken, body)
     }
 
+    if (action === "reset") {
+      console.log("[DEBUG] Routing to handleReset")
+      return await handleReset(accessToken)
+    }
+
     console.error("[DEBUG] Unknown action:", action)
-    return jsonResponse(404, { error: "Not found" })
+    return errorResponse(404, "Not found", "not_found")
   } catch (err: any) {
     console.error("[DEBUG] Error after", Date.now() - requestStart, "ms:", {
       message: err?.message,
       stack: err?.stack,
       name: err?.name,
     })
-    return jsonResponse(500, { error: err?.message ?? "Unexpected error" })
+    return errorResponse(500, err?.message ?? "Unexpected error", "internal_error")
   }
 })
 

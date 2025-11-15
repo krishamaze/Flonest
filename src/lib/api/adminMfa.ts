@@ -177,3 +177,37 @@ export async function adminMfaVerify(factorId: string, code: string): Promise<vo
   }
 }
 
+export async function adminMfaReset(): Promise<void> {
+  const {
+    data: { session },
+  } = await supabase.auth.getSession()
+  const accessToken = session?.access_token
+
+  if (!accessToken) {
+    throw new Error('No active session - please sign in again')
+  }
+
+  const supabaseUrl = (supabase as any).supabaseUrl
+  const anonKey = (supabase as any).supabaseKey
+
+  const response = await fetch(`${supabaseUrl}/functions/v1/admin-mfa-enroll/reset`, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${accessToken}`,
+      'Content-Type': 'application/json',
+      'apikey': anonKey,
+    },
+    body: JSON.stringify({}),
+  })
+
+  if (!response.ok) {
+    const errorText = await response.text()
+    throw new Error(`Edge Function returned ${response.status}: ${errorText}`)
+  }
+
+  const data = await response.json()
+  if (!data.success) {
+    throw new Error(data.error ?? 'Failed to reset authenticator')
+  }
+}
+

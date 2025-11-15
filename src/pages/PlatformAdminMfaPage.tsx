@@ -4,7 +4,7 @@ import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
 import { Button } from '../components/ui/Button'
 import { Input } from '../components/ui/Input'
-import { adminMfaStatus, adminMfaStart, adminMfaVerify } from '../lib/api/adminMfa'
+import { adminMfaStatus, adminMfaStart, adminMfaVerify, adminMfaReset } from '../lib/api/adminMfa'
 
 // Force rebuild v2: MFA status endpoint with timeout handling
 // Updated: 2025-11-15 - Force new chunk hash for Service Worker cache busting
@@ -23,19 +23,20 @@ export function PlatformAdminMfaPage() {
   const [enrollmentState, setEnrollmentState] = useState<EnrollmentState | null>(null)
   const [factorId, setFactorId] = useState<string | null>(null)
   const [code, setCode] = useState('')
-  const [loading, setLoading] = useState(false)
+  const [isSubmitting, setIsSubmitting] = useState(false)
   const [enrolling, setEnrolling] = useState(false)
   const [checking, setChecking] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [info, setInfo] = useState<string>('Loading MFA status...')
   const [flowMode, setFlowMode] = useState<FlowMode>('checking')
+  const [resetting, setResetting] = useState(false)
   const hasCheckedRef = useRef(false)
   const loadingTimeoutRef = useRef<NodeJS.Timeout | null>(null)
   const isCheckingRef = useRef(false)
 
   useEffect(() => {
     if (!user) {
-      navigate('/login', { replace: true })
+      navigate('/platform-admin-login', { replace: true })
       return
     }
 
@@ -169,7 +170,7 @@ export function PlatformAdminMfaPage() {
       return
     }
 
-    setLoading(true)
+    setIsSubmitting(true)
     setError(null)
 
     try {
@@ -185,7 +186,7 @@ export function PlatformAdminMfaPage() {
         initializeFlow()
       }
     } finally {
-      setLoading(false)
+      setIsSubmitting(false)
     }
   }
 
@@ -195,7 +196,24 @@ export function PlatformAdminMfaPage() {
     } catch (err) {
       console.error('Sign out error:', err)
     } finally {
-      window.location.href = '/login'
+      window.location.href = '/platform-admin-login'
+    }
+  }
+
+  const handleResetAuthenticator = async () => {
+    if (resetting) return
+    setResetting(true)
+    setError(null)
+
+    try {
+      await adminMfaReset()
+      await signOut().catch((err) => console.error('Sign out error during reset:', err))
+      window.location.href = '/platform-admin-login'
+    } catch (err: any) {
+      console.error('Reset authenticator failed:', err)
+      setError(err?.message || 'Failed to reset authenticator. Please try again.')
+    } finally {
+      setResetting(false)
     }
   }
 
@@ -255,10 +273,10 @@ export function PlatformAdminMfaPage() {
                   value={code}
                   onChange={(e) => setCode(e.target.value.replace(/\D/g, ''))}
                   required
-                  disabled={loading}
+                  disabled={isSubmitting}
                 />
 
-                <Button type="submit" variant="primary" size="lg" className="w-full" disabled={loading} isLoading={loading}>
+                <Button type="submit" variant="primary" size="lg" className="w-full" disabled={isSubmitting} isLoading={isSubmitting}>
                   Verify & Complete Enrollment
                 </Button>
 
@@ -294,12 +312,24 @@ export function PlatformAdminMfaPage() {
                 value={code}
                 onChange={(e) => setCode(e.target.value.replace(/\D/g, ''))}
                 required
-                disabled={loading}
+                disabled={isSubmitting}
               />
 
-              <Button type="submit" variant="primary" size="lg" className="w-full" disabled={loading} isLoading={loading}>
+              <Button type="submit" variant="primary" size="lg" className="w-full" disabled={isSubmitting} isLoading={isSubmitting}>
                 Verify Code
               </Button>
+
+              <p className="text-center text-sm text-secondary-text">
+                Lost access to your authenticator app?{' '}
+                <button
+                  type="button"
+                  className="text-primary font-semibold underline underline-offset-2 disabled:opacity-50"
+                  onClick={handleResetAuthenticator}
+                  disabled={resetting}
+                >
+                  {resetting ? 'Resetting...' : 'Reset authenticator.'}
+                </button>
+              </p>
 
               <Button type="button" variant="ghost" size="md" className="w-full text-error" onClick={handleSignOut}>
                 Sign out
