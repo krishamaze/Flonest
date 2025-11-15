@@ -68,7 +68,7 @@ export function PlatformAdminMfaPage() {
     isCheckingRef.current = true
     setError(null)
     setInfo('Checking authenticator status...')
-    // Cache bust: Force new chunk hash for Service Worker
+    // Cache bust v2: Force new chunk hash for Service Worker - 2025-11-15
 
     // Set loading state timeout (15 seconds)
     loadingTimeoutRef.current = setTimeout(() => {
