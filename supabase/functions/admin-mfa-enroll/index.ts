@@ -155,7 +155,8 @@ const handleStatus = async (accessToken: string) => {
         return userClient.auth.mfa.listFactors()
       },
       "List MFA factors",
-      15000, // 15 second timeout per attempt
+      5000, // 5 second timeout per attempt (frontend has 20s total timeout)
+      [500, 1000], // Only 2 retries to stay under 20s total
     )
     console.log("[DEBUG] handleStatus: listFactors completed in", Date.now() - listStart, "ms")
 
