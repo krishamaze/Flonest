@@ -7,7 +7,7 @@ import { Button } from '../components/ui/Button'
 import { Input } from '../components/ui/Input'
 import { PullToRefresh } from '../components/ui/PullToRefresh'
 import type { RefreshStatus } from '../contexts/RefreshContext'
-import { ADMIN_SSO_PROVIDER, ADMIN_SSO_REDIRECT_PATH, isPrivilegedAdminEmail } from '../config/security'
+import { ADMIN_SSO_PROVIDER, ADMIN_SSO_REDIRECT_PATH } from '../config/security'
 
 type AuthView = 'sign_in' | 'sign_up' | 'forgot_password'
 
@@ -92,11 +92,35 @@ export function LoginPage() {
 
     try {
       if (view === 'sign_in') {
-        if (isPrivilegedAdminEmail(email)) {
-          setError('Platform admin authentication is SSO-only. Use the "Admin SSO" button below.')
-          setLoading(false)
+        // Server-side check: Is this email a platform admin?
+        const { data: isAdmin, error: checkError } = await supabase.rpc('check_platform_admin_email' as any, {
+          p_email: email.trim().toLowerCase(),
+        })
+
+        if (checkError) {
+          console.error('Failed to check admin status:', checkError)
+          // Continue with password auth if check fails (fail open for availability)
+        }
+
+        if (isAdmin === true) {
+          // Platform admin detected - redirect to SSO
+          setMessage('Platform admin detected. Redirecting to SSO...')
+          // Use same SSO flow as Admin SSO button
+          const scopes = ADMIN_SSO_PROVIDER === 'google' 
+            ? 'openid profile email'
+            : 'openid profile email offline_access'
+          
+          await supabase.auth.signInWithOAuth({
+            provider: ADMIN_SSO_PROVIDER as any,
+            options: {
+              scopes,
+              redirectTo: `${window.location.origin}${ADMIN_SSO_REDIRECT_PATH}`,
+            },
+          })
           return
         }
+
+        // Regular user - proceed with password authentication
         const { error } = await supabase.auth.signInWithPassword({
           email,
           password: trimmedPassword,
@@ -129,11 +153,22 @@ export function LoginPage() {
         setEmail('')
         setPassword('')
       } else if (view === 'forgot_password') {
-        if (isPrivilegedAdminEmail(email)) {
+        // Server-side check: Is this email a platform admin?
+        const { data: isAdmin, error: checkError } = await supabase.rpc('check_platform_admin_email' as any, {
+          p_email: email.trim().toLowerCase(),
+        })
+
+        if (checkError) {
+          console.error('Failed to check admin status:', checkError)
+          // Continue with password reset if check fails (fail open for availability)
+        }
+
+        if (isAdmin === true) {
           setError('Platform admin password resets require dual approval. Contact security to initiate a manual reset.')
           setLoading(false)
           return
         }
+
         const { error } = await supabase.auth.resetPasswordForEmail(email, {
           redirectTo: `${window.location.origin}/reset-password`,
         })
