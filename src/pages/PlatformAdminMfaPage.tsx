@@ -30,8 +30,22 @@ export function PlatformAdminMfaPage() {
   const [challengeLoading, setChallengeLoading] = useState(false)
   const [enrollmentLoading, setEnrollmentLoading] = useState(false)
   const [signOutLoading, setSignOutLoading] = useState(false)
+  const [emergencyMode, setEmergencyMode] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [info, setInfo] = useState<string>('Authenticator app verification required.')
+
+  // Timeout wrapper for async operations
+  const withTimeout = <T,>(promise: Promise<T>, timeoutMs: number, operation: string): Promise<T> => {
+    return Promise.race([
+      promise,
+      new Promise<T>((_, reject) =>
+        setTimeout(() => {
+          console.error(`[MFA] ${operation} timed out after ${timeoutMs}ms`)
+          reject(new Error(`${operation} timed out after ${timeoutMs}ms. Please try again or sign out.`))
+        }, timeoutMs)
+      ),
+    ])
+  }
 
   useEffect(() => {
     if (!user) {
@@ -56,14 +70,29 @@ export function PlatformAdminMfaPage() {
     setError(null)
 
     try {
-      const { data, error } = await supabase.auth.mfa.enroll({
+      // Add timeout to enrollment request (10 seconds)
+      const enrollPromise = supabase.auth.mfa.enroll({
         factorType: 'totp',
         friendlyName: 'Platform Admin Authenticator',
       })
+      
+      const { data, error } = await withTimeout(
+        enrollPromise,
+        10000,
+        'TOTP enrollment'
+      ).catch((timeoutErr) => {
+        setEmergencyMode(true)
+        setError('Enrollment request timed out. You can sign out or try again.')
+        throw timeoutErr
+      })
 
-      if (error) throw error
+      if (error) {
+        setEmergencyMode(true)
+        throw error
+      }
 
       if (!data?.totp) {
+        setEmergencyMode(true)
         throw new Error('Failed to generate TOTP enrollment data')
       }
 
@@ -75,9 +104,11 @@ export function PlatformAdminMfaPage() {
       })
       setCode('')
       setInfo('Scan the QR code with your authenticator app (Google Authenticator, Authy, etc.), then enter the 6-digit code to verify enrollment.')
+      setEmergencyMode(false) // Clear emergency mode on success
     } catch (err: any) {
       console.error('Failed to start TOTP enrollment', err)
-      setError(err?.message || 'Unable to start enrollment. Please try again.')
+      setError(err?.message || 'Unable to start enrollment. You can sign out or try again.')
+      setEmergencyMode(true)
     } finally {
       setEnrollmentLoading(false)
     }
@@ -86,9 +117,21 @@ export function PlatformAdminMfaPage() {
   const checkFactorsAndPrepare = useCallback(async () => {
     setChallengeLoading(true)
     setError(null)
+    setEmergencyMode(false)
 
     try {
-      const { data, error } = await supabase.auth.mfa.listFactors()
+      // Add timeout to listFactors request (5 seconds)
+      const listFactorsPromise = supabase.auth.mfa.listFactors()
+      const { data, error } = await withTimeout(
+        listFactorsPromise,
+        5000,
+        'List MFA factors'
+      ).catch((timeoutErr) => {
+        setEmergencyMode(true)
+        setError('Unable to check authenticator status. You can sign out or try again.')
+        setChallengeLoading(false)
+        throw timeoutErr
+      })
       if (error) {
         // If we can't list factors, assume we need enrollment
         console.error('Failed to list MFA factors:', error)
@@ -139,13 +182,28 @@ export function PlatformAdminMfaPage() {
       if (factorStatus === 'verified') {
         // State 3: Factor is verified - proceed with normal verification flow
         setMode('verification')
-        const { data: challenge, error: challengeError } = await supabase.auth.mfa.challenge({
+        
+        // Add timeout to challenge request (10 seconds)
+        const challengePromise = supabase.auth.mfa.challenge({
           factorId: totpFactor.id,
+        })
+        
+        const { data: challenge, error: challengeError } = await withTimeout(
+          challengePromise,
+          10000,
+          'MFA challenge request'
+        ).catch((timeoutErr) => {
+          // Timeout occurred - enable emergency mode
+          setEmergencyMode(true)
+          setError('Challenge request timed out. You can still sign out or try again.')
+          setChallengeLoading(false)
+          throw timeoutErr
         })
 
         if (challengeError) {
           // If challenge fails, might be an issue - fall back to enrollment check
           console.error('Failed to create MFA challenge:', challengeError)
+          setEmergencyMode(true)
           throw challengeError
         }
 
@@ -155,6 +213,7 @@ export function PlatformAdminMfaPage() {
         })
         setCode('')
         setInfo('Enter the 6-digit code from your authenticator app. SMS is disabled for admins.')
+        setEmergencyMode(false) // Clear emergency mode on success
         return
       }
 
@@ -165,16 +224,19 @@ export function PlatformAdminMfaPage() {
       await startEnrollment()
     } catch (err: any) {
       console.error('Failed to start admin MFA challenge', err)
-      // On any error, default to enrollment mode to allow user to set up fresh
+      // On any error, enable emergency mode and allow sign out
+      setEmergencyMode(true)
       setMode('enrollment')
-      setError(err?.message || 'Unable to create MFA challenge. Starting enrollment...')
+      setError(err?.message || 'Unable to create MFA challenge. You can sign out or try again.')
       setChallengeLoading(false)
-      // Try to start enrollment even on error
+      // Try to start enrollment even on error (but don't block if it fails)
       try {
         await startEnrollment()
+        setEmergencyMode(false) // Clear emergency mode if enrollment succeeds
       } catch (enrollErr: any) {
         console.error('Failed to start enrollment after error:', enrollErr)
-        setError(enrollErr?.message || 'Unable to start enrollment. Please try again or contact support.')
+        setError(enrollErr?.message || 'Unable to start enrollment. You can sign out or contact support.')
+        // Keep emergency mode enabled
       }
     } finally {
       setChallengeLoading(false)
@@ -315,7 +377,12 @@ export function PlatformAdminMfaPage() {
                   style={{ borderColor: 'var(--color-error)' }}
                   role="alert"
                 >
-                  <p className="text-sm text-error">{error}</p>
+                  <p className="text-sm text-error font-semibold">{error}</p>
+                  {emergencyMode && (
+                    <p className="text-xs text-error mt-xs">
+                      ⚠️ Emergency mode active: Sign out is always available.
+                    </p>
+                  )}
                 </div>
               )}
 
@@ -396,7 +463,12 @@ export function PlatformAdminMfaPage() {
                   style={{ borderColor: 'var(--color-error)' }}
                   role="alert"
                 >
-                  <p className="text-sm text-error">{error}</p>
+                  <p className="text-sm text-error font-semibold">{error}</p>
+                  {emergencyMode && (
+                    <p className="text-xs text-error mt-xs">
+                      ⚠️ Emergency mode active: Sign out is always available.
+                    </p>
+                  )}
                 </div>
               )}
 
@@ -444,10 +516,10 @@ export function PlatformAdminMfaPage() {
                 size="md"
                 className="w-full text-error"
                 onClick={handleSignOut}
-                disabled={signOutLoading || challengeLoading}
+                disabled={signOutLoading}
                 isLoading={signOutLoading}
               >
-                {signOutLoading ? 'Signing out...' : 'Sign out'}
+                {signOutLoading ? 'Signing out...' : emergencyMode ? 'Sign out (Emergency)' : 'Sign out'}
               </Button>
             </form>
           )}
