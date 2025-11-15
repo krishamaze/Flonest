@@ -25,3 +25,8 @@ export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey, {
   },
 })
 
+// Temporary: expose for testing
+if (typeof window !== 'undefined') {
+  (window as any).supabase = supabase
+}
+
