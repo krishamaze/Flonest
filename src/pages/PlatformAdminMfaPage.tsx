@@ -324,13 +324,8 @@ export function PlatformAdminMfaPage() {
         setEnrollmentState(null)
         setCode('')
 
-        try {
-          await signOut()
-        } catch (signOutErr) {
-          console.error('[MFA] Sign out after enrollment failed:', signOutErr)
-        }
-
-        navigate('/login?mfa_enrolled=1', { replace: true })
+        await handleSignOut()
+        return
       } else if (mode === 'verification' && totpState) {
         // Verify challenge
         const { error: verifyError } = await supabase.auth.mfa.verify({
@@ -387,19 +382,20 @@ export function PlatformAdminMfaPage() {
     
     try {
       console.log('[SignOut] Calling signOut()')
-      await signOut()
+      await withTimeout(
+        signOut(),
+        5000,
+        'Sign out request'
+      )
       console.log('[SignOut] signOut() completed successfully')
     } catch (err) {
-      console.error('[SignOut] Sign out error:', err)
-      // Even if signOut fails, still redirect
+      console.error('[SignOut] Sign out error (will continue with redirect):', err)
     } finally {
       setSignOutLoading(false)
       console.log('[SignOut] Loading state cleared')
+      console.log('[SignOut] Redirecting to /login')
+      window.location.href = '/login'
     }
-    
-    // Always navigate to login page - use window.location for reliable redirect
-    console.log('[SignOut] Redirecting to /login')
-    window.location.href = '/login'
   }
 
   if (!user || !user.platformAdmin) {
