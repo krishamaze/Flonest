@@ -98,11 +98,11 @@ async function createInternalUser(email, password) {
     }
 
     if (existingProfile) {
-      // Update existing profile to set is_internal = true
-      console.log('   ℹ️  Profile exists, updating is_internal flag...')
+      // Update existing profile to set platform_admin = true
+      console.log('   ℹ️  Profile exists, updating platform_admin flag...')
       const { data: updatedProfile, error: updateError } = await supabase
         .from('profiles')
-        .update({ is_internal: true })
+        .update({ platform_admin: true })
         .eq('id', userId)
         .select()
         .single()
@@ -110,17 +110,17 @@ async function createInternalUser(email, password) {
       if (updateError) {
         throw updateError
       }
-      console.log('   ✅ Profile updated with is_internal = true')
+      console.log('   ✅ Profile updated with platform_admin = true')
     } else {
-      // Create new profile with is_internal = true
-      console.log('   ℹ️  Creating new profile with is_internal = true...')
+      // Create new profile with platform_admin = true
+      console.log('   ℹ️  Creating new profile with platform_admin = true...')
       const { data: newProfile, error: createError } = await supabase
         .from('profiles')
         .insert({
           id: userId,
           email,
           full_name: 'Internal Test User',
-          is_internal: true,
+          platform_admin: true,
         })
         .select()
         .single()
@@ -128,7 +128,7 @@ async function createInternalUser(email, password) {
       if (createError) {
         throw createError
       }
-      console.log('   ✅ Profile created with is_internal = true')
+      console.log('   ✅ Profile created with platform_admin = true')
     }
 
     // Step 3: Check/create membership (optional - internal users might not need org)
@@ -147,11 +147,11 @@ async function createInternalUser(email, password) {
       console.log('   ℹ️  No membership found (internal users may not need org membership)')
     }
 
-    // Step 4: Verify is_internal flag
-    console.log('\n4. Verifying is_internal flag...')
+    // Step 4: Verify platform_admin flag
+    console.log('\n4. Verifying platform_admin flag...')
     const { data: profile, error: verifyError } = await supabase
       .from('profiles')
-      .select('id, email, is_internal')
+      .select('id, email, platform_admin')
       .eq('id', userId)
       .single()
 
@@ -159,14 +159,14 @@ async function createInternalUser(email, password) {
       throw verifyError
     }
 
-    if (profile.is_internal) {
-      console.log('   ✅ is_internal flag verified: true')
+    if (profile.platform_admin) {
+      console.log('   ✅ platform_admin flag verified: true')
     } else {
-      console.log('   ❌ is_internal flag is false!')
-      throw new Error('Failed to set is_internal flag')
+      console.log('   ❌ platform_admin flag is false!')
+      throw new Error('Failed to set platform_admin flag')
     }
 
-    // Step 5: Test is_internal_user function
+    // Step 5: Test is_internal_user function (now uses platform_admin internally)
     console.log('\n5. Testing is_internal_user function...')
     const { data: isInternal, error: functionError } = await supabase
       .rpc('is_internal_user', { user_id: userId })
@@ -175,7 +175,7 @@ async function createInternalUser(email, password) {
       console.log('   ⚠️  Could not test function:', functionError.message)
     } else {
       if (isInternal) {
-        console.log('   ✅ is_internal_user() returns: true')
+        console.log('   ✅ is_internal_user() returns: true (uses platform_admin)')
       } else {
         console.log('   ❌ is_internal_user() returns: false')
       }
@@ -187,7 +187,7 @@ async function createInternalUser(email, password) {
     console.log(`  Email: ${email}`)
     console.log(`  Password: ${password || 'password'}`)
     console.log(`  User ID: ${userId}`)
-    console.log(`  is_internal: true`)
+    console.log(`  platform_admin: true`)
     console.log(`  Status: Active`)
     console.log('\nAccess:')
     console.log('  - Can access /reviewer dashboard')

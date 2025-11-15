@@ -92,41 +92,48 @@ export function LoginPage() {
 
     try {
       if (view === 'sign_in') {
-        // Server-side check: Is this email a platform admin?
-        const { data: isAdmin, error: checkError } = await supabase.rpc('check_platform_admin_email' as any, {
-          p_email: email.trim().toLowerCase(),
-        })
-
-        if (checkError) {
-          console.error('Failed to check admin status:', checkError)
-          // Continue with password auth if check fails (fail open for availability)
-        }
-
-        if (isAdmin === true) {
-          // Platform admin detected - redirect to SSO
-          setMessage('Platform admin detected. Redirecting to SSO...')
-          // Redirect to SSO for platform admins
-          const scopes = ADMIN_SSO_PROVIDER === 'google' 
-            ? 'openid profile email'
-            : 'openid profile email offline_access'
-          
-          await supabase.auth.signInWithOAuth({
-            provider: ADMIN_SSO_PROVIDER as any,
-            options: {
-              scopes,
-              redirectTo: `${window.location.origin}${ADMIN_SSO_REDIRECT_PATH}`,
-            },
-          })
-          return
-        }
-
-        // Regular user - proceed with password authentication
-        const { error } = await supabase.auth.signInWithPassword({
+        // Try password authentication first
+        // Note: We can't check admin status before sign-in (anon access removed for security)
+        const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
           email,
           password: trimmedPassword,
         })
-        if (error) throw error
-        // Navigation will happen automatically via AuthContext
+        
+        if (signInError) throw signInError
+        
+        // After successful sign-in, check if user is platform admin
+        // If yes, sign them out and redirect to SSO (platform admins must use SSO)
+        if (signInData?.user) {
+          try {
+            const { data: isAdmin, error: checkError } = await supabase.rpc('check_platform_admin_email' as any, {
+              p_email: email.trim().toLowerCase(),
+            })
+            
+            if (!checkError && isAdmin === true) {
+              // Platform admin attempted password login - sign out and redirect to SSO
+              await supabase.auth.signOut()
+              setMessage('Platform admin accounts must use SSO. Redirecting to Google sign-in...')
+              
+              const scopes = ADMIN_SSO_PROVIDER === 'google' 
+                ? 'openid profile email'
+                : 'openid profile email offline_access'
+              
+              await supabase.auth.signInWithOAuth({
+                provider: ADMIN_SSO_PROVIDER as any,
+                options: {
+                  scopes,
+                  redirectTo: `${window.location.origin}${ADMIN_SSO_REDIRECT_PATH}`,
+                },
+              })
+              return
+            }
+          } catch (checkErr) {
+            console.warn('Failed to check admin status after sign-in:', checkErr)
+            // Continue with regular flow if check fails
+          }
+        }
+        
+        // Regular user - navigation will happen automatically via AuthContext
         navigate('/')
       } else if (view === 'sign_up') {
         const { data, error } = await supabase.auth.signUp({
@@ -153,26 +160,14 @@ export function LoginPage() {
         setEmail('')
         setPassword('')
       } else if (view === 'forgot_password') {
-        // Server-side check: Is this email a platform admin?
-        const { data: isAdmin, error: checkError } = await supabase.rpc('check_platform_admin_email' as any, {
-          p_email: email.trim().toLowerCase(),
-        })
-
-        if (checkError) {
-          console.error('Failed to check admin status:', checkError)
-          // Continue with password reset if check fails (fail open for availability)
-        }
-
-        if (isAdmin === true) {
-          setError('Platform admin password resets require dual approval. Contact security to initiate a manual reset.')
-          setLoading(false)
-          return
-        }
-
+        // Note: We can't check admin status before authentication (anon access removed)
+        // Send reset email - if user is admin, they'll be blocked at reset-password page
+        // This prevents enumeration while still allowing legitimate resets
         const { error } = await supabase.auth.resetPasswordForEmail(email, {
           redirectTo: `${window.location.origin}/reset-password`,
         })
         if (error) throw error
+        // Generic message - doesn't reveal if email exists or if user is admin
         setMessage('If an account exists with this email, you will receive password reset instructions.')
         setEmail('')
       }

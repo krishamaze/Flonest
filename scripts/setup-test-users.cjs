@@ -111,7 +111,7 @@ async function setupTestUsers() {
           .update({
             email: user.email,
             full_name: user.fullName,
-            is_internal: user.isInternal,
+            platform_admin: user.isInternal, // Map isInternal param to platform_admin column
             updated_at: new Date().toISOString()
           })
           .eq('id', userId)
@@ -128,7 +128,7 @@ async function setupTestUsers() {
             id: userId,
             email: user.email,
             full_name: user.fullName,
-            is_internal: user.isInternal,
+            platform_admin: user.isInternal, // Map isInternal param to platform_admin column
           })
         
         if (createError) {
