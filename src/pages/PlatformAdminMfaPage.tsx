@@ -6,6 +6,8 @@ import { Button } from '../components/ui/Button'
 import { Input } from '../components/ui/Input'
 import { adminMfaStatus, adminMfaStart, adminMfaVerify } from '../lib/api/adminMfa'
 
+// Force rebuild: MFA status endpoint with timeout handling
+
 interface EnrollmentState {
   factorId: string
   qrCode: string
