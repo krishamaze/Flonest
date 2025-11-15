@@ -59,11 +59,11 @@ export async function approveMembership(membershipId: string): Promise<void> {
 }
 
 /**
- * Create staff membership (Owner or Branch Head)
- * Owner-created: active immediately
+ * Create advisor membership (OrgOwner or Branch Head)
+ * OrgOwner-created: active immediately
  * Branch Head-created: pending approval
  */
-export async function createStaffMembership(
+export async function createAdvisorMembership(
   profileId: string,
   branchId: string,
   email: string
@@ -75,12 +75,12 @@ export async function createStaffMembership(
   })
 
   if (error) {
-    throw new Error(`Failed to create staff membership: ${error.message}`)
+    throw new Error(`Failed to create advisor membership: ${error.message}`)
   }
 
   const result = data as any
   if (!result || !result.success) {
-    throw new Error('Failed to create staff membership')
+    throw new Error('Failed to create advisor membership')
   }
 
   return {
