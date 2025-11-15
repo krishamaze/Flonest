@@ -25,6 +25,19 @@ export function PlatformAdminMfaPage() {
   const [info, setInfo] = useState<string>('Checking authenticator status...')
   const hasCheckedRef = useRef(false)
 
+  // Timeout helper for async operations
+  const withTimeout = <T,>(promise: Promise<T>, timeoutMs: number, operation: string): Promise<T> => {
+    return Promise.race([
+      promise,
+      new Promise<T>((_, reject) =>
+        setTimeout(() => {
+          console.error(`[MFA] ${operation} timed out after ${timeoutMs}ms`)
+          reject(new Error(`${operation} timed out after ${timeoutMs}ms. Please try again.`))
+        }, timeoutMs)
+      ),
+    ])
+  }
+
   useEffect(() => {
     if (!user) {
       navigate('/login', { replace: true })
@@ -103,9 +116,15 @@ export function PlatformAdminMfaPage() {
     setError(null)
 
     try {
-      const { data: challenge, error: challengeError } = await supabase.auth.mfa.challenge({
+      const challengePromise = supabase.auth.mfa.challenge({
         factorId: fId,
       })
+
+      const { data: challenge, error: challengeError } = await withTimeout(
+        challengePromise,
+        10000,
+        'MFA challenge request'
+      )
 
       if (challengeError) throw challengeError
       if (!challenge?.id) throw new Error('Invalid challenge response')
@@ -171,18 +190,30 @@ export function PlatformAdminMfaPage() {
     try {
       if (enrollmentState) {
         // Enrollment verification: challenge → verify
-        const { data: challenge, error: challengeError } = await supabase.auth.mfa.challenge({
+        const challengePromise = supabase.auth.mfa.challenge({
           factorId: enrollmentState.factorId,
         })
+
+        const { data: challenge, error: challengeError } = await withTimeout(
+          challengePromise,
+          10000,
+          'Create enrollment challenge'
+        )
 
         if (challengeError) throw challengeError
         if (!challenge?.id) throw new Error('Invalid challenge response')
 
-        const { error: verifyError } = await supabase.auth.mfa.verify({
+        const verifyPromise = supabase.auth.mfa.verify({
           factorId: enrollmentState.factorId,
           challengeId: challenge.id,
           code: sanitizedCode,
         })
+
+        const { error: verifyError } = await withTimeout(
+          verifyPromise,
+          10000,
+          'Verify enrollment code'
+        )
 
         if (verifyError) throw verifyError
 
@@ -192,11 +223,17 @@ export function PlatformAdminMfaPage() {
         navigate('/platform-admin', { replace: true })
       } else if (challengeId && factorId) {
         // Regular verification
-        const { error: verifyError } = await supabase.auth.mfa.verify({
+        const verifyPromise = supabase.auth.mfa.verify({
           factorId,
           challengeId,
           code: sanitizedCode,
         })
+
+        const { error: verifyError } = await withTimeout(
+          verifyPromise,
+          10000,
+          'Verify MFA code'
+        )
 
         if (verifyError) throw verifyError
 
