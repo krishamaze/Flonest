@@ -47,16 +47,20 @@ function InternalUserRedirect({ children }: { children: React.ReactNode }) {
   const { user, requiresAdminMfa } = useAuth()
   const location = useLocation()
 
-  if (user?.platformAdmin && requiresAdminMfa && location.pathname !== '/admin-mfa') {
-    return <Navigate to="/admin-mfa" replace />
-  }
-
-  // If internal user tries to access org routes, redirect to platform-admin
-  if (user?.platformAdmin && location.pathname !== '/platform-admin' && !location.pathname.startsWith('/platform-admin/')) {
-    // Check if they're on an org route (not platform-admin route)
-    const orgRoutes = ['/', '/products', '/inventory', '/stock-ledger', '/customers', '/notifications', '/pending-products']
-    if (orgRoutes.includes(location.pathname)) {
-      return <Navigate to="/platform-admin" replace />
+  // CRITICAL: Platform admins MUST have AAL2 (requiresAdminMfa = false) to access any admin routes
+  if (user?.platformAdmin) {
+    // If MFA is required, redirect to MFA page (unless already there)
+    if (requiresAdminMfa && location.pathname !== '/admin-mfa') {
+      return <Navigate to="/admin-mfa" replace />
+    }
+    
+    // If MFA is satisfied (requiresAdminMfa = false), allow platform-admin routes
+    // But redirect org routes to platform-admin
+    if (!requiresAdminMfa) {
+      const orgRoutes = ['/', '/products', '/inventory', '/stock-ledger', '/customers', '/notifications', '/pending-products']
+      if (orgRoutes.includes(location.pathname)) {
+        return <Navigate to="/platform-admin" replace />
+      }
     }
   }
 

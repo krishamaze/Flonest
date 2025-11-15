@@ -252,35 +252,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     try {
-      // AAL is the source of truth: if the current session is aal2, MFA is satisfied
+      // AAL is the source of truth: ONLY aal2 allows access
+      // If AAL check fails or returns aal1, require MFA
       const { data: aalData, error: aalError } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel()
+      
       if (!aalError && aalData?.currentLevel === 'aal2') {
+        // Session has aal2 - MFA is satisfied
         setRequiresAdminMfa(false)
         return
       }
 
+      // AAL is not aal2 (or check failed) - ALWAYS require MFA
+      // This is the security gate: no aal2 = no access
       if (aalError) {
-        console.warn('[Auth] Unable to load admin MFA status:', aalError)
+        console.warn('[Auth] Unable to load AAL status, requiring MFA:', aalError)
+      } else {
+        console.log('[Auth] AAL level:', aalData?.currentLevel, '- requiring MFA for aal2')
       }
 
-      // Session is not aal2 yet - determine whether user needs enrollment or challenge
-      const { data: factorsData, error: factorsError } = await supabase.auth.mfa.listFactors()
-      if (factorsError) {
-        console.warn('[Auth] Unable to list MFA factors:', factorsError)
-        setRequiresAdminMfa(true)
-        return
-      }
-
-      const verifiedFactor = factorsData?.totp?.find((factor) => factor.status === 'verified')
-      // If a verified factor exists, user needs to complete challenge for aal2.
-      // If not, user must enroll.
       setRequiresAdminMfa(true)
-
-      if (!verifiedFactor) {
-        return
-      }
     } catch (err) {
-      console.warn('[Auth] Error evaluating admin MFA status:', err)
+      console.warn('[Auth] Error evaluating admin MFA status, requiring MFA:', err)
+      // On any error, require MFA (fail secure)
       setRequiresAdminMfa(true)
     }
   }
