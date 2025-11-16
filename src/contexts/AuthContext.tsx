@@ -113,17 +113,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return
       }
 
-      // Validate OAuth logins: SSO is currently disabled (password-only + MFA for admins)
-      if (event === 'SIGNED_IN' && session?.user) {
-        const isOAuthUser = session.user.app_metadata?.provider !== 'email'
-        if (isOAuthUser) {
-          console.warn('[Auth] OAuth / SSO logins are disabled. Signing user out.')
-          await supabase.auth.signOut()
-          window.location.href = '/login?error=oauth_disabled'
-          return
-        }
-      }
-
       setSession(session)
       if (session?.user) {
         loadUserProfile(session.user, false)

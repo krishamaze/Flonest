@@ -7,7 +7,7 @@ import { Button } from '../components/ui/Button'
 import { Input } from '../components/ui/Input'
 import { PullToRefresh } from '../components/ui/PullToRefresh'
 import type { RefreshStatus } from '../contexts/RefreshContext'
-// SSO for platform admins is currently disabled. Admins use email+password plus MFA.
+// Email+password is the primary path. Google OAuth is available as a secondary option.
 
 type AuthView = 'sign_in' | 'sign_up' | 'forgot_password'
 
@@ -23,11 +23,12 @@ export function LoginPage() {
   const [swRegistration, setSwRegistration] = useState<ServiceWorkerRegistration | undefined>()
   const [showPassword, setShowPassword] = useState(false)
 
-  // Check for error parameter from OAuth rejection
+  // Check for error parameter from OAuth rejection (reserved for future use)
   useEffect(() => {
     const errorParam = searchParams.get('error')
-    if (errorParam === 'oauth_disabled') {
-      setError('Single sign-on is disabled. Please sign in with your email and password.')
+    if (errorParam) {
+      // Keep message generic to avoid leaking details
+      setError('Sign-in via single sign-on was not completed. Please try again or use email and password.')
       setSearchParams({}, { replace: true }) // Clear the error param
     }
   }, [searchParams, setSearchParams])
@@ -79,6 +80,30 @@ export function LoginPage() {
   const handlePasswordBlur = () => {
     // Trim leading/trailing spaces on blur
     setPassword((prev) => prev.trim())
+  }
+
+  const handleGoogleSignIn = async () => {
+    setLoading(true)
+    setError(null)
+    setMessage(null)
+
+    try {
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: `${window.location.origin}/auth/callback`,
+          queryParams: {
+            prompt: 'select_account',
+          },
+        },
+      })
+
+      if (error) throw error
+    } catch (err: any) {
+      console.error('Google sign-in error:', err)
+      setError(err?.message || 'Failed to initiate Google sign-in. Please try again.')
+      setLoading(false)
+    }
   }
 
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
@@ -174,7 +199,7 @@ export function LoginPage() {
           </div>
 
           {/* Auth Form Card */}
-          <div className="rounded-lg bg-bg-card p-xl shadow-md border border-color">
+          <div className="rounded-lg bg-bg-card p-xl shadow-md border border-color space-y-md">
             <form onSubmit={handleSubmit} className="space-y-md">
               {/* Error Message */}
               {error && (
@@ -354,6 +379,26 @@ export function LoginPage() {
                 )}
               </div>
             </form>
+
+            {/* Divider */}
+            <div className="flex items-center my-md">
+              <div className="flex-1 h-px bg-border" />
+              <span className="px-sm text-xs text-muted-text">or</span>
+              <div className="flex-1 h-px bg-border" />
+            </div>
+
+            {/* Google Sign In Button */}
+            <Button
+              type="button"
+              variant="secondary"
+              size="md"
+              className="w-full"
+              onClick={handleGoogleSignIn}
+              isLoading={loading}
+              disabled={loading}
+            >
+              {loading ? 'Starting Google sign-in...' : 'Continue with Google'}
+            </Button>
           </div>
 
 

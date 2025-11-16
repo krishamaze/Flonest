@@ -35,10 +35,8 @@ export function Header() {
             size="sm"
             onClick={async () => {
               try {
-                const isPlatformAdmin = user?.platformAdmin
                 await signOut()
-                // Redirect platform admins to their login page
-                navigate(isPlatformAdmin ? '/platform-admin-login' : '/login', { replace: true })
+                navigate('/login', { replace: true })
               } catch (error) {
                 console.error('Error signing out:', error)
               }

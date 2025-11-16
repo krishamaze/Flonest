@@ -36,7 +36,7 @@ export function PlatformAdminMfaPage() {
 
   useEffect(() => {
     if (!user) {
-      navigate('/platform-admin-login', { replace: true })
+      navigate('/login', { replace: true })
       return
     }
 
@@ -196,7 +196,7 @@ export function PlatformAdminMfaPage() {
     } catch (err) {
       console.error('Sign out error:', err)
     } finally {
-      window.location.href = '/platform-admin-login'
+      window.location.href = '/login'
     }
   }
 
@@ -208,7 +208,7 @@ export function PlatformAdminMfaPage() {
     try {
       await adminMfaReset()
       await signOut().catch((err) => console.error('Sign out error during reset:', err))
-      window.location.href = '/platform-admin-login'
+      window.location.href = '/login'
     } catch (err: any) {
       console.error('Reset authenticator failed:', err)
       setError(err?.message || 'Failed to reset authenticator. Please try again.')
