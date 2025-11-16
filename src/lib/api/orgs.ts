@@ -144,10 +144,14 @@ export async function generateUniqueSlug(name: string, orgId?: string): Promise<
 }
 
 /**
- * Set GST number and verification status from gst-validate Edge Function response
- * This is the only way tenant code can set verification fields - they must come from gst-validate
+ * Set GST number and verification status from gst-validate Edge Function response.
+ *
+ * This is the only way tenant code can set verification fields – they must come from gst-validate.
+ * To clear GST, pass an empty string for `gstNumber` and `gstEnabled = false`; the RPC will reset
+ * all verification fields server-side and ignore `verificationStatus` / `verificationSource`.
+ *
  * @param orgId - Organization ID
- * @param gstNumber - GSTIN (15 characters)
+ * @param gstNumber - GSTIN (15 characters) or empty string to clear GST
  * @param gstEnabled - Whether GST is enabled
  * @param verificationStatus - Status from gst-validate ('unverified' | 'verified')
  * @param verificationSource - Source from gst-validate ('manual' | 'cashfree' | 'secureid')

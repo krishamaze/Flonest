@@ -12,6 +12,35 @@ alwaysApply: false
 
 # 🔴 CRITICAL PRIORITY
 
+## [P1] RLS Policy 403 Errors - Fixed
+- **Error**: 403 Forbidden on all database operations (inventory, orgs, notifications)
+- **Error Signature**: `new row violates row-level security policy` or `permission denied for table`
+- **Root Cause**: RLS policies on `inventory` and `orgs` were querying `memberships` table via EXISTS subqueries, but `memberships` table RLS was blocking those checks. Also, policies used inconsistent roles (`public` vs `authenticated`).
+- **Fix Applied**: 
+  - Created `is_org_member(org_id, user_id)` SECURITY DEFINER function to bypass RLS on memberships checks
+  - Updated all RLS policies to use `authenticated` role consistently
+  - Replaced EXISTS subqueries with `is_org_member()` function calls
+  - Applied migrations: `fix_rls_policies_memberships_access`, `add_membership_check_function`, `update_orgs_select_policy`
+- **Prevention**: Always use SECURITY DEFINER functions for cross-table RLS checks. Ensure consistent role usage (`authenticated` for user data, `public` only for truly public data).
+
+## [P1] Clock Skew Causing JWT Validation Failures
+- **Error**: Widespread 403 errors on all RLS-protected tables (inventory, orgs, notifications, etc.)
+- **Error Signature**: `Session as retrieved from URL was issued in the future? Check the device clock for skew <timestamp1> <timestamp2> <timestamp3>` or `JWT clock skew warning: Session timestamp is 3600 seconds (1 hour) in the future`
+- **Root Cause**: User's system clock is ahead of server time, making JWT tokens appear issued in the future. Supabase rejects them, causing `auth.uid()` to return null in RLS checks.
+- **Symptoms**: 
+  - All authenticated queries return 403
+  - Membership records exist and are active
+  - RLS policies are correctly configured
+  - `auth.uid()` returns null in SQL queries
+  - Console shows JWT clock skew warnings
+- **Fix**: User must sync their system clock:
+  - Windows: Settings → Time & Language → Sync now
+  - Mac: System Preferences → Date & Time → Set automatically  
+  - Linux: `sudo ntpdate -s time.nist.gov`
+  - Then hard refresh the app (Ctrl+Shift+R)
+- **Server-Side**: If clock skew persists, check Supabase project settings for JWT expiry configuration. Default is 3600 seconds (1 hour). Server time should be synchronized with NTP.
+- **Prevention**: Always check for clock skew warnings in browser console before debugging RLS/membership issues. This is NOT a code or database problem.
+
 ## [P1] Supabase Migrations & DDL
 - **Error**: `ERROR: 25006: cannot execute CREATE TABLE in a read-only transaction`
 - **Context**: The Supabase MCP connection is read-only for DDL.
