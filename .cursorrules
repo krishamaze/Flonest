@@ -9,7 +9,7 @@ This repository contains TWO separate applications with TWO separate Vercel proj
 - **Vercel Project:** `biz.finetune`
 - **Vercel Project ID:** `prj_aMdpWV1naJP2u5F3G2CXvBVAyYBk`
 - **Team ID:** `team_mIxsR4vIgFgkFZlEQWEDaN86`
-- **Production URL:** https://biz.finetune.store
+- **Production URL:** https://bill.finetune.store
 - **Type:** Next.js/Vite PWA inventory management system
 - **NEVER merge marketing changes to main**
 

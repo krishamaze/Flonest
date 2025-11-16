@@ -8,6 +8,7 @@ const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY") ?? ""
 // Cashfree config
 const CASHFREE_CLIENT_ID = Deno.env.get("CASHFREE_CLIENT_ID") ?? ""
 const CASHFREE_CLIENT_SECRET = Deno.env.get("CASHFREE_CLIENT_SECRET") ?? ""
+const CASHFREE_PUBLIC_KEY = Deno.env.get("CASHFREE_PUBLIC_KEY") ?? ""
 const CASHFREE_ENV = (Deno.env.get("CASHFREE_ENV") ?? "sandbox").toLowerCase()
 
 // Prefer explicit base URL so we can switch sandbox/production cleanly
@@ -19,6 +20,64 @@ const CASHFREE_API_BASE_URL =
 
 if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
   throw new Error("Missing Supabase environment variables")
+}
+
+// Cache imported Cashfree public key
+let cashfreePublicKey: CryptoKey | null = null
+
+const importCashfreePublicKey = async (): Promise<CryptoKey> => {
+  if (cashfreePublicKey) return cashfreePublicKey
+
+  if (!CASHFREE_PUBLIC_KEY) {
+    throw new Error("Missing CASHFREE_PUBLIC_KEY environment variable")
+  }
+
+  // Expect a PEM-encoded RSA public key
+  const pem = CASHFREE_PUBLIC_KEY.replace(/-----BEGIN PUBLIC KEY-----/g, "")
+    .replace(/-----END PUBLIC KEY-----/g, "")
+    .replace(/\s+/g, "")
+
+  const binary = atob(pem)
+  const buffer = new Uint8Array(binary.length)
+  for (let i = 0; i < binary.length; i++) {
+    buffer[i] = binary.charCodeAt(i)
+  }
+
+  cashfreePublicKey = await crypto.subtle.importKey("spki", buffer, {
+    name: "RSA-OAEP",
+    // Cashfree examples use OPENSSL_PKCS1_OAEP_PADDING which defaults to SHA-1
+    hash: "SHA-1",
+  }, false, ["encrypt"])
+
+  return cashfreePublicKey
+}
+
+const generateCashfreeSignature = async (): Promise<string> => {
+  const key = await importCashfreePublicKey()
+  const encoder = new TextEncoder()
+
+  const ts = Math.floor(Date.now() / 1000)
+  const payload = `${CASHFREE_CLIENT_ID}.${ts}`
+  const data = encoder.encode(payload)
+
+  // Log once to confirm payload shape; keep message generic to avoid leaking secrets
+  console.log("[gst-validate] Cashfree signature payload", { payload })
+
+  const encrypted = await crypto.subtle.encrypt(
+    {
+      name: "RSA-OAEP",
+    },
+    key,
+    data,
+  )
+
+  const bytes = new Uint8Array(encrypted)
+  let binary = ""
+  for (let i = 0; i < bytes.byteLength; i++) {
+    binary += String.fromCharCode(bytes[i])
+  }
+
+  return btoa(binary)
 }
 
 // Create a Supabase client that uses the incoming request's JWT for auth context
@@ -83,7 +142,7 @@ Deno.serve(async (req) => {
     return jsonResponse(405, { error: "Method not allowed" }, origin)
   }
 
-  if (!CASHFREE_CLIENT_ID || !CASHFREE_CLIENT_SECRET) {
+  if (!CASHFREE_CLIENT_ID || !CASHFREE_CLIENT_SECRET || !CASHFREE_PUBLIC_KEY) {
     console.error("[gst-validate] Cashfree configuration missing")
     return jsonResponse(
       500,
@@ -142,12 +201,15 @@ Deno.serve(async (req) => {
 
     const url = `${CASHFREE_API_BASE_URL}/verification/gstin`
 
+    const signature = await generateCashfreeSignature()
+
     const cfRes = await fetch(url, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         "x-client-id": CASHFREE_CLIENT_ID,
         "x-client-secret": CASHFREE_CLIENT_SECRET,
+        "x-cf-signature": signature,
       },
       body: JSON.stringify({ gstin }),
     })
