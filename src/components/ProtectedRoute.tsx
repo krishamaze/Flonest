@@ -137,7 +137,7 @@ export function PlatformAdminRoute({ children }: { children: React.ReactNode }) 
   }
 
   if (!user) {
-    return <Navigate to="/platform-admin-login" replace />
+    return <Navigate to="/login" replace />
   }
 
   if (requiresAdminMfa) {

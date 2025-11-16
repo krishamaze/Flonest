@@ -7,7 +7,7 @@ import { Button } from '../components/ui/Button'
 import { Input } from '../components/ui/Input'
 import { PullToRefresh } from '../components/ui/PullToRefresh'
 import type { RefreshStatus } from '../contexts/RefreshContext'
-import { ADMIN_SSO_PROVIDER, ADMIN_SSO_REDIRECT_PATH } from '../config/security'
+// SSO for platform admins is currently disabled. Admins use email+password plus MFA.
 
 type AuthView = 'sign_in' | 'sign_up' | 'forgot_password'
 
@@ -26,8 +26,8 @@ export function LoginPage() {
   // Check for error parameter from OAuth rejection
   useEffect(() => {
     const errorParam = searchParams.get('error')
-    if (errorParam === 'unauthorized_sso') {
-      setError('Google SSO is restricted to platform administrators only. Please use regular sign-in or contact support.')
+    if (errorParam === 'oauth_disabled') {
+      setError('Single sign-on is disabled. Please sign in with your email and password.')
       setSearchParams({}, { replace: true }) // Clear the error param
     }
   }, [searchParams, setSearchParams])
@@ -94,44 +94,12 @@ export function LoginPage() {
       if (view === 'sign_in') {
         // Try password authentication first
         // Note: We can't check admin status before sign-in (anon access removed for security)
-        const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
+        const { error: signInError } = await supabase.auth.signInWithPassword({
           email,
           password: trimmedPassword,
         })
         
         if (signInError) throw signInError
-        
-        // After successful sign-in, check if user is platform admin
-        // If yes, sign them out and redirect to SSO (platform admins must use SSO)
-        if (signInData?.user) {
-          try {
-            const { data: isAdmin, error: checkError } = await supabase.rpc('check_platform_admin_email' as any, {
-              p_email: email.trim().toLowerCase(),
-            })
-            
-            if (!checkError && isAdmin === true) {
-              // Platform admin attempted password login - sign out and redirect to SSO
-              await supabase.auth.signOut()
-              setMessage('Platform admin accounts must use SSO. Redirecting to Google sign-in...')
-              
-              const scopes = ADMIN_SSO_PROVIDER === 'google' 
-                ? 'openid profile email'
-                : 'openid profile email offline_access'
-              
-              await supabase.auth.signInWithOAuth({
-                provider: ADMIN_SSO_PROVIDER as any,
-                options: {
-                  scopes,
-                  redirectTo: `${window.location.origin}${ADMIN_SSO_REDIRECT_PATH}`,
-                },
-              })
-              return
-            }
-          } catch (checkErr) {
-            console.warn('Failed to check admin status after sign-in:', checkErr)
-            // Continue with regular flow if check fails
-          }
-        }
         
         // Regular user - navigation will happen automatically via AuthContext
         navigate('/')
@@ -308,9 +276,6 @@ export function LoginPage() {
               <div className="space-y-md text-center">
                 {view === 'sign_in' && (
                   <>
-                    <p className="text-xs text-muted-text">
-                      Platform admins will be automatically redirected to SSO.
-                    </p>
                     <button
                       type="button"
                       onClick={() => {

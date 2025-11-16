@@ -3,7 +3,6 @@ import { User, Session } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabase'
 import { syncUserProfile } from '../lib/userSync'
 import type { AuthUser, UserRole } from '../types'
-import { ADMIN_SSO_PROVIDER } from '../config/security'
 
 interface AuthContextType {
   user: AuthUser | null
@@ -114,32 +113,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return
       }
 
-      // Validate OAuth logins: Only platform admins can use SSO
+      // Validate OAuth logins: SSO is currently disabled (password-only + MFA for admins)
       if (event === 'SIGNED_IN' && session?.user) {
-        const userEmail = session.user.email?.toLowerCase() || ''
         const isOAuthUser = session.user.app_metadata?.provider !== 'email'
-        
-        // If user logged in via SSO (Google), check server-side if they're an admin
-        if (isOAuthUser && ADMIN_SSO_PROVIDER === 'google') {
-          try {
-            const { data: isAdmin, error: checkError } = await supabase.rpc('check_platform_admin_email' as any, {
-              p_email: userEmail,
-            })
-            
-            if (checkError) {
-              console.warn('[Auth] Failed to check admin status:', checkError)
-              // Fail open - allow if check fails
-            } else if (isAdmin !== true) {
-              // Non-admin user attempted SSO login - reject them
-              console.warn('[Auth] Non-admin user attempted SSO login:', userEmail)
-              await supabase.auth.signOut()
-              window.location.href = '/login?error=unauthorized_sso'
-              return
-            }
-          } catch (err) {
-            console.warn('[Auth] Error checking admin status:', err)
-            // Fail open - allow if check fails
-          }
+        if (isOAuthUser) {
+          console.warn('[Auth] OAuth / SSO logins are disabled. Signing user out.')
+          await supabase.auth.signOut()
+          window.location.href = '/login?error=oauth_disabled'
+          return
         }
       }
 
