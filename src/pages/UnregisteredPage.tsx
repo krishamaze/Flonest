@@ -14,18 +14,13 @@ export function UnregisteredPage() {
   }, [searchParams])
 
   const handleOnboardBusiness = async () => {
-    try {
-      // Clear any existing OAuth session so the new owner account is password-based.
-      await supabase.auth.signOut()
-    } catch (err) {
-      console.error('Error signing out before owner signup:', err)
-    } finally {
-      const params = new URLSearchParams()
-      if (email) {
-        params.set('email', email)
-      }
-      navigate(`/owner-signup${params.toString() ? `?${params.toString()}` : ''}`, { replace: true })
+    // Keep the current OAuth session so we can convert the account into an owner account
+    // without forcing a second email confirmation step.
+    const params = new URLSearchParams()
+    if (email) {
+      params.set('email', email)
     }
+    navigate(`/owner-signup${params.toString() ? `?${params.toString()}` : ''}`, { replace: true })
   }
 
   const handleJoinOrg = async () => {

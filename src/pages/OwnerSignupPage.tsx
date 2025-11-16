@@ -22,6 +22,8 @@ export function OwnerSignupPage() {
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
 
+  const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL
+
   // Prefill email from query param (read-only UX hint, but editable if needed)
   useEffect(() => {
     const emailParam = searchParams.get('email')
@@ -92,6 +94,66 @@ export function OwnerSignupPage() {
     setLoading(true)
 
     try {
+      // Check if there is an active session (e.g., Google OAuth) we can convert into an owner account.
+      const { data: userResult, error: userError } = await supabase.auth.getUser()
+
+      if (userError) {
+        console.error('Owner sign-up getUser error:', userError)
+      }
+
+      const currentUser = userResult?.user ?? null
+
+      if (currentUser) {
+        // Authenticated flow (e.g., Google OAuth user becoming an owner).
+        // 1) Auto-confirm the email via Edge Function using the current access token.
+        const { data: sessionResult, error: sessionError } = await supabase.auth.getSession()
+        if (sessionError) {
+          throw sessionError
+        }
+
+        const accessToken = sessionResult.session?.access_token
+
+        if (!accessToken) {
+          throw new Error('Missing access token for authenticated owner signup. Please sign in again.')
+        }
+
+        const edgeResponse = await fetch(`${SUPABASE_URL}/functions/v1/admin-auto-confirm-email`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${accessToken}`,
+          },
+          body: JSON.stringify({}),
+        })
+
+        if (!edgeResponse.ok) {
+          let errorMessage = 'Failed to confirm email for owner account.'
+          try {
+            const payload = await edgeResponse.json()
+            if (payload?.error) {
+              errorMessage = payload.error
+            }
+          } catch {
+            // ignore JSON parse issues and keep generic message
+          }
+          throw new Error(errorMessage)
+        }
+
+        // 2) Now that the email is confirmed server-side, set a local password.
+        const { error: updateError } = await supabase.auth.updateUser({
+          password: trimmedPassword,
+        })
+
+        if (updateError) {
+          throw updateError
+        }
+
+        setMessage('Account created successfully! Preparing your business...')
+        navigate('/setup', { replace: true })
+        return
+      }
+
+      // Anonymous flow (no active session): fall back to email+password sign-up.
       const { data, error: signUpError } = await supabase.auth.signUp({
         email,
         password: trimmedPassword,
