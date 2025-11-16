@@ -279,7 +279,7 @@ export function SettingsPage() {
           trimmedGstin,
           true,
           (gstData.gstin_status === 'verified' ? 'verified' : 'unverified') as 'unverified' | 'verified',
-          (gstData.verification_source ?? 'manual') as 'manual' | 'cashfree' | 'secureid' | null
+          (gstData.verification_source ?? 'manual') as 'manual' | 'cashfree' | 'secureid'
         )
       } else {
         // Clear GST if empty
@@ -288,7 +288,7 @@ export function SettingsPage() {
           '',
           false,
           'unverified',
-          null
+          'manual'
         )
       }
 

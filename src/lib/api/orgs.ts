@@ -157,7 +157,7 @@ export async function setGstFromValidation(
   gstNumber: string,
   gstEnabled: boolean,
   verificationStatus: 'unverified' | 'verified',
-  verificationSource: 'manual' | 'cashfree' | 'secureid' | null
+  verificationSource: 'manual' | 'cashfree' | 'secureid'
 ): Promise<void> {
   const { error } = await supabase.rpc('set_gst_from_validation', {
     p_org_id: orgId,

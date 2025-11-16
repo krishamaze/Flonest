@@ -192,7 +192,7 @@ export function SetupPage() {
         gstin.toUpperCase(),
         true,
         (gstBusinessData.gstin_status === 'verified' ? 'verified' : 'unverified') as 'unverified' | 'verified',
-        (gstBusinessData.verification_source ?? 'manual') as 'manual' | 'cashfree' | 'secureid' | null
+        (gstBusinessData.verification_source ?? 'manual') as 'manual' | 'cashfree' | 'secureid'
       )
 
       toast.success('Organization setup completed successfully!', { autoClose: 3000 })
