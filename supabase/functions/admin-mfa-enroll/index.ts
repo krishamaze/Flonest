@@ -97,6 +97,17 @@ interface UserProfileCheckResult {
   isPlatformAdmin: boolean
 }
 
+class HttpError extends Error {
+  status: number
+  code: string
+
+  constructor(status: number, code: string, message: string) {
+    super(message)
+    this.status = status
+    this.code = code
+  }
+}
+
 const getUserAndProfile = async (accessToken: string): Promise<UserProfileCheckResult> => {
   const {
     data: { user },
@@ -106,8 +117,10 @@ const getUserAndProfile = async (accessToken: string): Promise<UserProfileCheckR
   if (error || !user) {
     console.error("[DEBUG] getUserAndProfile: Failed to load user from access token", {
       error: error?.message,
+      code: error?.code,
+      name: error?.name,
     })
-    throw new Error("Unable to load user from access token")
+    throw new HttpError(401, "user_lookup_failed", "Unable to load user from access token")
   }
 
   const { data: profile, error: profileError } = await adminClient
@@ -122,8 +135,14 @@ const getUserAndProfile = async (accessToken: string): Promise<UserProfileCheckR
       email: user.email,
       error: profileError.message,
       code: profileError.code,
+      details: (profileError as any).details,
+      hint: (profileError as any).hint,
     })
-    throw new Error("Failed to load platform admin profile")
+    throw new HttpError(
+      500,
+      "profile_query_failed",
+      profileError.message ?? "Failed to load platform admin profile",
+    )
   }
 
   const isPlatformAdmin = !!profile?.platform_admin
@@ -433,7 +452,14 @@ Deno.serve(async (req) => {
       message: err?.message,
       stack: err?.stack,
       name: err?.name,
+      status: (err as any)?.status,
+      code: (err as any)?.code,
     })
+
+    if (err instanceof HttpError) {
+      return errorResponse(err.status, err.message ?? "Unexpected error", err.code)
+    }
+
     return errorResponse(500, err?.message ?? "Unexpected error", "internal_error")
   }
 })
