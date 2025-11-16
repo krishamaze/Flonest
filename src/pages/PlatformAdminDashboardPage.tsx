@@ -17,6 +17,7 @@ import { ReviewQueue } from '../components/platformAdmin/ReviewQueue'
 import { HSNManager } from '../components/platformAdmin/HSNManager'
 import { BlockedInvoices } from '../components/platformAdmin/BlockedInvoices'
 import { SubmissionMonitor } from '../components/platformAdmin/SubmissionMonitor'
+import { GstVerificationQueue } from '../components/platformAdmin/GstVerificationQueue'
 
 interface PlatformAdminStats {
   pendingCount: number
@@ -77,7 +78,7 @@ function PlatformAdminDashboardHome() {
       <div>
         <h1 className="text-xl font-semibold text-primary-text">Platform Admin Dashboard</h1>
         <p className="mt-xs text-sm text-secondary-text">
-          Manage product approvals and reviews
+          Manage product approvals, GST verification and reviews
         </p>
       </div>
 
@@ -148,6 +149,16 @@ function PlatformAdminDashboardHome() {
               </div>
             </Link>
             <Link
+              to="/platform-admin/gst-verification"
+              className="flex items-center gap-md rounded-md border border-neutral-200 p-md text-left min-h-[44px] transition-all duration-200 hover:bg-neutral-50 hover:border-neutral-300 active:scale-[0.98]"
+            >
+              <ClipboardDocumentCheckIcon className="h-5 w-5 text-primary shrink-0" />
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium text-primary-text">GSTIN Verification</p>
+                <p className="text-xs text-secondary-text">Review unverified GSTINs</p>
+              </div>
+            </Link>
+            <Link
               to="/platform-admin/blocked-invoices"
               className="flex items-center gap-md rounded-md border border-neutral-200 p-md text-left min-h-[44px] transition-all duration-200 hover:bg-neutral-50 hover:border-neutral-300 active:scale-[0.98]"
             >
@@ -215,6 +226,10 @@ export function PlatformAdminDashboardPage() {
   // If we're on a sub-route, render the appropriate component
   if (location.pathname === '/platform-admin/queue') {
     return <ReviewQueue />
+  }
+
+  if (location.pathname === '/platform-admin/gst-verification') {
+    return <GstVerificationQueue />
   }
 
   if (location.pathname === '/platform-admin/hsn') {

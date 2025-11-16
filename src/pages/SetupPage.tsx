@@ -6,7 +6,7 @@ import { Button } from '../components/ui/Button'
 import { Input } from '../components/ui/Input'
 import { StepIndicator } from '../components/ui/StepIndicator'
 import { supabase } from '../lib/supabase'
-import { updateOrg, generateUniqueSlug } from '../lib/api/orgs'
+import { updateOrg, generateUniqueSlug, setGstFromValidation } from '../lib/api/orgs'
 import { fetchGSTBusinessData, validateGSTIN } from '../lib/api/gst'
 import { fetchPincodeData, validatePincode } from '../lib/api/pincode'
 import { toast } from 'react-toastify'
@@ -16,16 +16,18 @@ import { ArrowRightOnRectangleIcon } from '@heroicons/react/24/outline'
 type SetupStep = 'gst_check' | 'gst_input' | 'gst_review' | 'non_gst_form'
 
 interface GSTBusinessData {
-  legal_name: string
-  trade_name?: string
+  legal_name: string | null
+  trade_name?: string | null
   address: {
-    building?: string
-    street?: string
-    city?: string
-    state: string
-    pincode: string
+    building?: string | null
+    street?: string | null
+    city?: string | null
+    state: string | null
+    pincode: string | null
   }
-  gstin_status: string
+  gstin_status: string | null
+  registration_type?: string | null
+  verification_source?: "cashfree" | "manual"
 }
 
 interface NonGSTFormData {
@@ -174,14 +176,23 @@ export function SetupPage() {
     try {
       const slug = await generateUniqueSlug(gstBusinessData.legal_name, user.orgId)
       
+      // Update org name/state/pincode/slug via updateOrg
       await updateOrg(user.orgId, {
-        name: gstBusinessData.legal_name,
-        state: gstBusinessData.address.state,
-        pincode: gstBusinessData.address.pincode || '',
-        gst_number: gstin.toUpperCase(),
-        gst_enabled: true,
+        name: gstBusinessData.legal_name || org.name,
+        state: gstBusinessData.address.state || org.state,
+        pincode: gstBusinessData.address.pincode || org.pincode || '',
         slug,
       })
+      
+      // Set GST number and verification status from gst-validate response via RPC
+      // This is the only way tenant code can set verification fields - they must come from gst-validate
+      await setGstFromValidation(
+        user.orgId,
+        gstin.toUpperCase(),
+        true,
+        (gstBusinessData.gstin_status === 'verified' ? 'verified' : 'unverified') as 'unverified' | 'verified',
+        (gstBusinessData.verification_source ?? 'manual') as 'manual' | 'cashfree' | 'secureid' | null
+      )
 
       toast.success('Organization setup completed successfully!', { autoClose: 3000 })
       navigate('/', { replace: true })
@@ -450,14 +461,27 @@ export function SetupPage() {
                   Review Your Business Details
                 </h2>
                 <p className="text-sm text-secondary-text">
-                  Please confirm the information fetched from GST database.
+                  Please confirm your business information.{" "}
+                  {gstBusinessData.verification_source === "cashfree"
+                    ? "Some details may be auto-filled from verification services."
+                    : "GSTIN is format-checked only and not yet verified against government records."}
                 </p>
               </div>
+
+              {gstBusinessData.gstin_status === "unverified" &&
+                gstBusinessData.verification_source === "manual" && (
+                  <div className="rounded-md border border-warning bg-neutral-50 px-md py-sm text-sm text-secondary-text">
+                    GSTIN not auto-verified yet; we may verify this against government records
+                    later.
+                  </div>
+                )}
 
               <div className="space-y-md bg-neutral-50 rounded-lg p-md">
                 <div>
                   <label className="text-sm font-medium text-secondary-text">Business Name</label>
-                  <p className="text-base text-primary-text mt-xs">{gstBusinessData.legal_name}</p>
+                  <p className="text-base text-primary-text mt-xs">
+                    {gstBusinessData.legal_name || "N/A"}
+                  </p>
                 </div>
 
                 {gstBusinessData.trade_name && (
@@ -480,17 +504,23 @@ export function SetupPage() {
 
                 <div>
                   <label className="text-sm font-medium text-secondary-text">State</label>
-                  <p className="text-base text-primary-text mt-xs">{gstBusinessData.address.state}</p>
+                  <p className="text-base text-primary-text mt-xs">
+                    {gstBusinessData.address.state || "N/A"}
+                  </p>
                 </div>
 
                 <div>
                   <label className="text-sm font-medium text-secondary-text">Pincode</label>
-                  <p className="text-base text-primary-text mt-xs">{gstBusinessData.address.pincode || 'N/A'}</p>
+                  <p className="text-base text-primary-text mt-xs">
+                    {gstBusinessData.address.pincode || "N/A"}
+                  </p>
                 </div>
 
                 <div>
                   <label className="text-sm font-medium text-secondary-text">GST Status</label>
-                  <p className="text-base text-primary-text mt-xs">{gstBusinessData.gstin_status}</p>
+                  <p className="text-base text-primary-text mt-xs">
+                    {gstBusinessData.gstin_status || "N/A"}
+                  </p>
                 </div>
               </div>
 

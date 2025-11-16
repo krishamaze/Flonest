@@ -26,6 +26,8 @@ import {
   resumeSubscription,
 } from '../lib/api/billing'
 import type { SubscriptionSummary } from '../lib/api/billing'
+import { fetchGSTBusinessData, validateGSTIN } from '../lib/api/gst'
+import { setGstFromValidation } from '../lib/api/orgs'
 import type { BillingPlan, SubscriptionEvent } from '../types'
 
 interface OrgSettings {
@@ -243,17 +245,52 @@ export function SettingsPage() {
 
     setSaving(true)
     try {
-      const { error } = await supabase
+      // Update non-GST fields via updateOrg
+      const { error: updateError } = await supabase
         .from('orgs')
         .update({
           name: formData.name,
           phone: formData.phone,
           address: formData.address,
-          gst_number: formData.gstin,
         })
         .eq('id', user.orgId)
 
-      if (error) throw error
+      if (updateError) throw updateError
+
+      // Handle GSTIN separately - must go through gst-validate Edge Function (single gate)
+      const trimmedGstin = formData.gstin.trim().toUpperCase()
+
+      if (trimmedGstin.length > 0) {
+        if (!validateGSTIN(trimmedGstin)) {
+          throw new Error('Invalid GSTIN structure. Please check the number and ensure it matches the official format.')
+        }
+
+        // Call gst-validate Edge Function - this is the single gate
+        const gstData = await fetchGSTBusinessData(trimmedGstin)
+
+        if (!gstData) {
+          throw new Error('GSTIN not found. Please verify the number and try again.')
+        }
+
+        // Set GST number and verification status from gst-validate response via RPC
+        // This is the only way tenant code can set verification fields - they must come from gst-validate
+        await setGstFromValidation(
+          user.orgId,
+          trimmedGstin,
+          true,
+          (gstData.gstin_status === 'verified' ? 'verified' : 'unverified') as 'unverified' | 'verified',
+          (gstData.verification_source ?? 'manual') as 'manual' | 'cashfree' | 'secureid' | null
+        )
+      } else {
+        // Clear GST if empty
+        await setGstFromValidation(
+          user.orgId,
+          '',
+          false,
+          'unverified',
+          null
+        )
+      }
 
       toast.success('Settings saved successfully')
       await loadOrgSettings()

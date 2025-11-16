@@ -12,7 +12,11 @@ import type { Org } from '../../types'
  */
 export function isOrgGstEnabled(org: Org | null | undefined): boolean {
   if (!org) return false
-  return !!(org.gst_number && org.gst_number.trim().length > 0)
+
+  const hasGstin = !!(org.gst_number && org.gst_number.trim().length > 0)
+  const isVerified = org.gst_verification_status === 'verified'
+
+  return hasGstin && isVerified
 }
 
 /**

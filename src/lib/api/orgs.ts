@@ -12,6 +12,7 @@ export interface UpdateOrgData {
   pincode?: string
   gst_number?: string
   gst_enabled?: boolean
+  // Verification fields are NOT allowed here - they can only be set via platform-admin RPC
   slug?: string
 }
 
@@ -35,6 +36,13 @@ export async function updateOrg(orgId: string, data: UpdateOrgData): Promise<Org
   if (updatePayload.pincode === undefined) {
     updatePayload.pincode = null
   }
+  
+  // Explicitly remove any verification fields that might have been passed (defense in depth)
+  delete updatePayload.gst_verification_status
+  delete updatePayload.gst_verification_source
+  delete updatePayload.gst_verified_at
+  delete updatePayload.gst_verified_by
+  delete updatePayload.gst_verification_notes
 
   const { data: updatedOrg, error } = await supabase
     .from('orgs')
@@ -133,5 +141,55 @@ export async function generateUniqueSlug(name: string, orgId?: string): Promise<
   }
 
   return slug
+}
+
+/**
+ * Set GST number and verification status from gst-validate Edge Function response
+ * This is the only way tenant code can set verification fields - they must come from gst-validate
+ * @param orgId - Organization ID
+ * @param gstNumber - GSTIN (15 characters)
+ * @param gstEnabled - Whether GST is enabled
+ * @param verificationStatus - Status from gst-validate ('unverified' | 'verified')
+ * @param verificationSource - Source from gst-validate ('manual' | 'cashfree' | 'secureid')
+ */
+export async function setGstFromValidation(
+  orgId: string,
+  gstNumber: string,
+  gstEnabled: boolean,
+  verificationStatus: 'unverified' | 'verified',
+  verificationSource: 'manual' | 'cashfree' | 'secureid' | null
+): Promise<void> {
+  const { error } = await supabase.rpc('set_gst_from_validation', {
+    p_org_id: orgId,
+    p_gst_number: gstNumber,
+    p_gst_enabled: gstEnabled,
+    p_verification_status: verificationStatus,
+    p_verification_source: verificationSource,
+  })
+
+  if (error) {
+    throw new Error(error.message || 'Failed to set GST from validation')
+  }
+}
+
+/**
+ * Mark org GSTIN as verified (platform admin only)
+ * This calls the RPC function that enforces platform admin access and requires evidence notes
+ * @param orgId - Organization ID
+ * @param verificationNotes - Required evidence/notes about the verification
+ */
+export async function markGstVerified(orgId: string, verificationNotes: string): Promise<void> {
+  if (!verificationNotes || !verificationNotes.trim()) {
+    throw new Error('Verification notes are required')
+  }
+
+  const { error } = await supabase.rpc('mark_gst_verified', {
+    p_org_id: orgId,
+    p_verification_notes: verificationNotes.trim(),
+  })
+
+  if (error) {
+    throw new Error(error.message || 'Failed to mark GSTIN as verified')
+  }
 }
 

@@ -1353,6 +1353,11 @@ export type Database = {
           custom_logo_url: string | null
           gst_enabled: boolean | null
           gst_number: string | null
+          gst_verification_status: string
+          gst_verification_source: string | null
+          gst_verified_at: string | null
+          gst_verified_by: string | null
+          gst_verification_notes: string | null
           id: string
           name: string
           phone: string | null
@@ -1367,6 +1372,10 @@ export type Database = {
           custom_logo_url?: string | null
           gst_enabled?: boolean | null
           gst_number?: string | null
+          gst_verification_status?: string
+          gst_verification_source?: string | null
+          gst_verified_at?: string | null
+          gst_verified_by?: string | null
           id?: string
           name: string
           phone?: string | null
@@ -1381,6 +1390,11 @@ export type Database = {
           custom_logo_url?: string | null
           gst_enabled?: boolean | null
           gst_number?: string | null
+          gst_verification_status?: string
+          gst_verification_source?: string | null
+          gst_verified_at?: string | null
+          gst_verified_by?: string | null
+          gst_verification_notes?: string | null
           id?: string
           name?: string
           phone?: string | null
