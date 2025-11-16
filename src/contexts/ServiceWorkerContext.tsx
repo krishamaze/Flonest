@@ -1,4 +1,4 @@
-import { createContext, useContext, useMemo, ReactNode } from 'react'
+import { createContext, useContext, useMemo, useState, ReactNode } from 'react'
 import { useRegisterSW } from 'virtual:pwa-register/react'
 
 interface ServiceWorkerContextType {
@@ -10,13 +10,15 @@ interface ServiceWorkerContextType {
 const ServiceWorkerContext = createContext<ServiceWorkerContextType | undefined>(undefined)
 
 export function ServiceWorkerProvider({ children }: { children: ReactNode }) {
+  const [registration, setRegistration] = useState<ServiceWorkerRegistration | undefined>()
+
   const {
     needRefresh: [needRefresh],
     updateServiceWorker,
-    registration,
   } = useRegisterSW({
     onRegistered(reg) {
       console.log('[SW] Registered:', reg)
+      setRegistration(reg)
     },
     onRegisterError(error) {
       console.error('[SW] Registration error:', error)
