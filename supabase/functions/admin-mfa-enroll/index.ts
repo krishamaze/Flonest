@@ -187,8 +187,14 @@ const handleStatus = async (accessToken: string) => {
 
     const { data, error } = listResult
     if (error) {
-      console.error("[DEBUG] handleStatus: listFactors error:", error)
-      throw new Error(error.message ?? "Unable to list MFA factors")
+      // Non-fatal: treat this as "no factors yet" so admins can still see Start Enrollment
+      console.error("[DEBUG] handleStatus: listFactors error (treating as no factors):", {
+        message: error.message,
+        name: error.name,
+      })
+      return jsonResponse(200, {
+        hasVerifiedFactor: false,
+      })
     }
 
     console.log("[DEBUG] handleStatus: Found", data?.totp?.length ?? 0, "TOTP factors")
@@ -242,7 +248,11 @@ const handleStart = async (accessToken: string, body: any) => {
   const enrollData = enrollResult.data
 
   if (enrollError || !enrollData?.id) {
-    throw new Error(enrollError?.message ?? "Failed to enroll TOTP factor")
+    console.error("[DEBUG] handleStart: enroll error", {
+      message: enrollError?.message,
+      name: enrollError?.name,
+    })
+    return errorResponse(400, enrollError?.message ?? "Failed to enroll TOTP factor", "enroll_failed")
   }
 
   const qrCode = (enrollData as any).qr_code ?? enrollData.totp?.qr_code

@@ -183,6 +183,8 @@ export function PlatformAdminMfaPage() {
         setError(
           'This account is not recognized as a platform admin. Please sign out and sign in with your admin account.',
         )
+      } else if (code === 'enroll_failed') {
+        setError(rawMessage || 'Could not start enrollment. Please try again.')
       } else if (status && status >= 500) {
         setError('Admin MFA service is temporarily unavailable. Please try again.')
       } else if (code === 'timeout') {
