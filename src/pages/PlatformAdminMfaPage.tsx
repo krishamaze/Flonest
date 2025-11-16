@@ -119,10 +119,20 @@ export function PlatformAdminMfaPage() {
       }
       isCheckingRef.current = false
 
-      const errorMessage = err?.message || 'Unable to check MFA status. Please refresh or sign out and sign in again.'
-      setError(errorMessage)
+      const rawMessage = err?.message || ''
+      const isNotAdmin =
+        rawMessage.includes('not_platform_admin') || rawMessage.includes('Platform admin access required')
+
+      if (isNotAdmin) {
+        setError(
+          'This account is not recognized as a platform admin. Please sign out and sign in with your admin account.',
+        )
+      } else {
+        setError(rawMessage || 'Unable to check MFA status. Please refresh or sign out and sign in again.')
+      }
+
       setFlowMode('none')
-      setInfo('No authenticator enrolled. Click "Start Enrollment" to set up TOTP.')
+      setInfo('No authenticator enrolled. Click \"Start Enrollment\" to set up TOTP.')
     } finally {
       setChecking(false)
     }
@@ -149,7 +159,17 @@ export function PlatformAdminMfaPage() {
       setInfo('Scan the QR code with your authenticator app, then enter the 6-digit code to verify.')
     } catch (err: any) {
       console.error('Enrollment failed:', err)
-      setError(err?.message || 'Failed to start enrollment. Please try again.')
+      const rawMessage = err?.message || ''
+      const isNotAdmin =
+        rawMessage.includes('not_platform_admin') || rawMessage.includes('Platform admin access required')
+
+      if (isNotAdmin) {
+        setError(
+          'This account is not recognized as a platform admin. Please sign out and sign in with your admin account.',
+        )
+      } else {
+        setError(rawMessage || 'Failed to start enrollment. Please try again.')
+      }
     } finally {
       setEnrolling(false)
     }
