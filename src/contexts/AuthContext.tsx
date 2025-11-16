@@ -86,6 +86,16 @@ function createTimeoutPromise(timeoutMs: number): Promise<never> {
   })
 }
 
+async function redirectUnregisteredUser(authUser: User) {
+  const email = authUser.email || ''
+  const params = new URLSearchParams()
+  if (email) {
+    params.set('unregistered', email)
+  }
+  // Do not sign out here; let the login page's switch-account button clear the session explicitly
+  window.location.href = `/login${params.toString() ? `?${params.toString()}` : ''}`
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null)
   const [session, setSession] = useState<Session | null>(null)
@@ -390,6 +400,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           return
         } else {
           console.error('Failed to sync user profile - no profile found')
+          await redirectUnregisteredUser(authUser)
           return
         }
       }

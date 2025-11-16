@@ -21,15 +21,25 @@ export function LoginPage() {
   const [error, setError] = useState<string | null>(null)
   const [message, setMessage] = useState<string | null>(null)
   const [swRegistration, setSwRegistration] = useState<ServiceWorkerRegistration | undefined>()
+  const [unregisteredEmail, setUnregisteredEmail] = useState<string | null>(null)
   const [showPassword, setShowPassword] = useState(false)
 
-  // Check for error parameter from OAuth rejection (reserved for future use)
+  // Check for error/unregistered parameters from redirects
   useEffect(() => {
     const errorParam = searchParams.get('error')
-    if (errorParam) {
+    const unregisteredParam = searchParams.get('unregistered')
+
+    if (unregisteredParam) {
+      setUnregisteredEmail(unregisteredParam)
+      setEmail(unregisteredParam)
+      setMessage('You are not registered. You can onboard your own business or join an organization you work for.')
+    } else if (errorParam) {
       // Keep message generic to avoid leaking details
       setError('Sign-in via single sign-on was not completed. Please try again or use email and password.')
-      setSearchParams({}, { replace: true }) // Clear the error param
+    }
+
+    if (errorParam || unregisteredParam) {
+      setSearchParams({}, { replace: true }) // Clear params
     }
   }, [searchParams, setSearchParams])
 
@@ -216,7 +226,7 @@ export function LoginPage() {
                 </div>
               )}
 
-              {/* Success Message */}
+              {/* Success / Info Message */}
               {message && (
                 <div 
                   className="rounded-md p-md break-words bg-success-light border border-solid"
@@ -224,9 +234,30 @@ export function LoginPage() {
                   role="status"
                   aria-live="polite"
                 >
-                  <p className="text-sm break-words text-success">
-                    {message}
-                  </p>
+                  <div className="space-y-xs">
+                    <p className="text-sm break-words text-success">
+                      {message}
+                    </p>
+                    {unregisteredEmail && (
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        size="sm"
+                        className="w-full"
+                        onClick={async () => {
+                          try {
+                            await supabase.auth.signOut()
+                          } catch (err) {
+                            console.error('Error signing out for account switch:', err)
+                          } finally {
+                            window.location.href = '/login'
+                          }
+                        }}
+                      >
+                        Switch account ({unregisteredEmail})
+                      </Button>
+                    )}
+                  </div>
                 </div>
               )}
 
