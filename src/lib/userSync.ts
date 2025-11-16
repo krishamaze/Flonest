@@ -5,7 +5,6 @@ import type { Database } from '../types/database'
 type Profile = Database['public']['Tables']['profiles']['Row']
 type Org = Database['public']['Tables']['orgs']['Row']
 type Membership = Database['public']['Tables']['memberships']['Row']
-type ProfileInsert = Database['public']['Tables']['profiles']['Insert']
 
 export interface UserProfileWithOrg {
   profile: Profile
@@ -13,14 +12,16 @@ export interface UserProfileWithOrg {
   org: Org
 }
 
-/**
- * Sync authenticated user to profiles table
- * Creates profile if it doesn't exist, but does NOT auto-create orgs
- * Users must be invited to an org or join via org code
- *
- * @param authUser - The authenticated user from Supabase Auth
- * @returns The user profile with org and membership if user has membership, or null if no membership exists
- */
+  /**
+   * Sync authenticated user with their profile and org membership.
+   * 
+   * NOTE: Profile rows are now auto-created by a database trigger on auth.users.
+   * This function should NEVER insert into public.profiles directly; it only
+   * reads the profile and associated membership/org data.
+   *
+   * @param authUser - The authenticated user from Supabase Auth
+   * @returns The user profile with org and membership if user has membership, or null if no membership exists
+   */
 export async function syncUserProfile(authUser: User): Promise<UserProfileWithOrg | null> {
   try {
     // Check if profile already exists
@@ -35,34 +36,13 @@ export async function syncUserProfile(authUser: User): Promise<UserProfileWithOr
       throw profileError
     }
 
-    let profile: Profile
+    const profile = existingProfile
 
-    // Create profile if it doesn't exist
-    if (!existingProfile) {
-      const profileData: ProfileInsert = {
-        id: authUser.id,
-        email: authUser.email || '',
-        full_name: authUser.user_metadata?.full_name || null,
-        avatar_url: authUser.user_metadata?.avatar_url || null,
-        platform_admin: false, // Default to false for new users
-      }
-
-      const { data: newProfile, error: createProfileError } = await supabase
-        .from('profiles')
-        .insert([profileData])
-        .select()
-        .single()
-
-      if (createProfileError || !newProfile) {
-        console.error('Error creating profile:', createProfileError)
-        throw createProfileError
-      }
-
-      profile = newProfile
-      console.log('Created new profile:', profile)
-    } else {
-      profile = existingProfile
-      console.log('Profile already exists:', profile)
+    if (!profile) {
+      // Profile should normally exist via auth.users trigger; if it doesn't,
+      // treat this as a soft failure and require manual investigation.
+      console.error('Profile not found for authenticated user:', authUser.id)
+      return null
     }
 
     // Skip membership check for platform admins - they don't need orgs
