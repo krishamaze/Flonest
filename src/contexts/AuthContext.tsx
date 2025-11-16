@@ -337,7 +337,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         error: any
       }
 
-      if (profileError) throw profileError
+      if (profileError) {
+        // Security-first handling: if the authenticated role cannot read profiles,
+        // treat this as an unregistered user at the app layer.
+        if (profileError.code === '42501') {
+          console.warn('[Auth] Permission denied for profiles; treating user as unregistered')
+          await redirectUnregisteredUser(authUser)
+          return
+        }
+
+        throw profileError
+      }
 
       // If profile doesn't exist, sync it first
       if (!profile) {
