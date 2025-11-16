@@ -2,7 +2,7 @@ import { createContext, useContext, useEffect, useState, ReactNode } from 'react
 import { User, Session } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabase'
 import { syncUserProfile } from '../lib/userSync'
-import type { AuthUser } from '../types'
+import type { AuthUser, UserRole } from '../types'
 import { ADMIN_SSO_PROVIDER } from '../config/security'
 
 interface AuthContextType {

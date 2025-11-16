@@ -72,6 +72,9 @@ const ROLE_PERMISSIONS: Record<UserRole, Permission[]> = {
     CREATE_DC_SALE,
     VIEW_AGENT_PORTAL,
   ],
+  agent: [
+    VIEW_AGENT_PORTAL,
+  ],
 }
 
 /**
