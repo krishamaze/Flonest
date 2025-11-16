@@ -14,6 +14,161 @@ export type Database = {
   }
   public: {
     Tables: {
+      agent_portal_permissions: {
+        Row: {
+          agent_relationship_id: string
+          created_at: string | null
+          granted_at: string | null
+          granted_by: string | null
+          helper_user_id: string
+          id: string
+        }
+        Insert: {
+          agent_relationship_id: string
+          created_at?: string | null
+          granted_at?: string | null
+          granted_by?: string | null
+          helper_user_id: string
+          id?: string
+        }
+        Update: {
+          agent_relationship_id?: string
+          created_at?: string | null
+          granted_at?: string | null
+          granted_by?: string | null
+          helper_user_id?: string
+          id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agent_portal_permissions_agent_relationship_id_fkey"
+            columns: ["agent_relationship_id"]
+            isOneToOne: false
+            referencedRelation: "agent_relationships"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agent_portal_permissions_granted_by_fkey"
+            columns: ["granted_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agent_portal_permissions_helper_user_id_fkey"
+            columns: ["helper_user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      agent_relationships: {
+        Row: {
+          accepted_at: string | null
+          agent_user_id: string
+          created_at: string | null
+          id: string
+          invited_at: string | null
+          invited_by: string | null
+          notes: string | null
+          sender_org_id: string
+          status: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          accepted_at?: string | null
+          agent_user_id: string
+          created_at?: string | null
+          id?: string
+          invited_at?: string | null
+          invited_by?: string | null
+          notes?: string | null
+          sender_org_id: string
+          status?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          accepted_at?: string | null
+          agent_user_id?: string
+          created_at?: string | null
+          id?: string
+          invited_at?: string | null
+          invited_by?: string | null
+          notes?: string | null
+          sender_org_id?: string
+          status?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agent_relationships_agent_user_id_fkey"
+            columns: ["agent_user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agent_relationships_invited_by_fkey"
+            columns: ["invited_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agent_relationships_sender_org_id_fkey"
+            columns: ["sender_org_id"]
+            isOneToOne: false
+            referencedRelation: "orgs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      billing_plans: {
+        Row: {
+          billing_interval: string
+          created_at: string
+          description: string | null
+          id: string
+          is_active: boolean
+          max_seats: number | null
+          metadata: Json
+          name: string
+          price_in_paise: number
+          slug: string
+          trial_period_days: number
+          updated_at: string
+        }
+        Insert: {
+          billing_interval: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          max_seats?: number | null
+          metadata?: Json
+          name: string
+          price_in_paise?: number
+          slug: string
+          trial_period_days?: number
+          updated_at?: string
+        }
+        Update: {
+          billing_interval?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          max_seats?: number | null
+          metadata?: Json
+          name?: string
+          price_in_paise?: number
+          slug?: string
+          trial_period_days?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       branches: {
         Row: {
           address: string | null
@@ -729,6 +884,79 @@ export type Database = {
           },
         ]
       }
+      org_subscriptions: {
+        Row: {
+          cancel_at_period_end: boolean
+          canceled_at: string | null
+          created_at: string
+          current_period_end: string
+          current_period_start: string
+          ended_at: string | null
+          id: string
+          metadata: Json
+          org_id: string
+          pending_plan_id: string | null
+          plan_id: string
+          quantity: number
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          cancel_at_period_end?: boolean
+          canceled_at?: string | null
+          created_at?: string
+          current_period_end: string
+          current_period_start: string
+          ended_at?: string | null
+          id?: string
+          metadata?: Json
+          org_id: string
+          pending_plan_id?: string | null
+          plan_id: string
+          quantity?: number
+          status: string
+          updated_at?: string
+        }
+        Update: {
+          cancel_at_period_end?: boolean
+          canceled_at?: string | null
+          created_at?: string
+          current_period_end?: string
+          current_period_start?: string
+          ended_at?: string | null
+          id?: string
+          metadata?: Json
+          org_id?: string
+          pending_plan_id?: string | null
+          plan_id?: string
+          quantity?: number
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "org_subscriptions_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: true
+            referencedRelation: "orgs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "org_subscriptions_pending_plan_id_fkey"
+            columns: ["pending_plan_id"]
+            isOneToOne: false
+            referencedRelation: "billing_plans"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "org_subscriptions_plan_id_fkey"
+            columns: ["plan_id"]
+            isOneToOne: false
+            referencedRelation: "billing_plans"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       orgs: {
         Row: {
           address: string | null
@@ -1029,6 +1257,10 @@ export type Database = {
       }
       create_default_org_for_user: { Args: never; Returns: Json }
       current_user_is_platform_admin: { Args: never; Returns: boolean }
+      is_org_member: {
+        Args: { p_org_id: string; p_user_id: string }
+        Returns: boolean
+      }
       mark_gst_verified: {
         Args: { p_org_id: string; p_verification_notes: string }
         Returns: undefined
