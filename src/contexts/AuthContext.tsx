@@ -90,10 +90,9 @@ async function redirectUnregisteredUser(authUser: User) {
   const email = authUser.email || ''
   const params = new URLSearchParams()
   if (email) {
-    params.set('unregistered', email)
+    params.set('email', email)
   }
-  // Do not sign out here; let the login page's switch-account button clear the session explicitly
-  window.location.href = `/login${params.toString() ? `?${params.toString()}` : ''}`
+  window.location.href = `/unregistered${params.toString() ? `?${params.toString()}` : ''}`
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -338,11 +337,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
 
       if (profileError) {
-        // Security-first handling: if the authenticated role cannot read profiles,
-        // treat this as an unregistered user at the app layer.
+        // Security-first handling: permission errors indicate misconfiguration, not unregistered status.
         if (profileError.code === '42501') {
-          console.warn('[Auth] Permission denied for profiles; treating user as unregistered')
-          await redirectUnregisteredUser(authUser)
+          console.error('[Auth] Permission denied when reading profiles. This is a configuration/security error.', profileError)
+          // Fail closed: clear any cached session and force re-auth on login page
+          clearCachedSession()
+          window.location.href = '/login?error=profile_access_denied'
           return
         }
 

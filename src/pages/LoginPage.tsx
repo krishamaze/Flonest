@@ -19,26 +19,20 @@ export function LoginPage() {
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [message, setMessage] = useState<string | null>(null)
+  const [, setMessage] = useState<string | null>(null)
   const [swRegistration, setSwRegistration] = useState<ServiceWorkerRegistration | undefined>()
-  const [unregisteredEmail, setUnregisteredEmail] = useState<string | null>(null)
   const [showPassword, setShowPassword] = useState(false)
 
-  // Check for error/unregistered parameters from redirects
+  // Check for error parameters from redirects
   useEffect(() => {
     const errorParam = searchParams.get('error')
-    const unregisteredParam = searchParams.get('unregistered')
 
-    if (unregisteredParam) {
-      setUnregisteredEmail(unregisteredParam)
-      setEmail(unregisteredParam)
-      setMessage('You are not registered. You can onboard your own business or join an organization you work for.')
-    } else if (errorParam) {
+    if (errorParam) {
       // Keep message generic to avoid leaking details
       setError('Sign-in via single sign-on was not completed. Please try again or use email and password.')
     }
 
-    if (errorParam || unregisteredParam) {
+    if (errorParam) {
       setSearchParams({}, { replace: true }) // Clear params
     }
   }, [searchParams, setSearchParams])
@@ -226,41 +220,6 @@ export function LoginPage() {
                 </div>
               )}
 
-              {/* Success / Info Message */}
-              {message && (
-                <div 
-                  className="rounded-md p-md break-words bg-success-light border border-solid"
-                  style={{ borderColor: 'var(--color-success)' }}
-                  role="status"
-                  aria-live="polite"
-                >
-                  <div className="space-y-xs">
-                    <p className="text-sm break-words text-success">
-                      {message}
-                    </p>
-                    {unregisteredEmail && (
-                      <Button
-                        type="button"
-                        variant="secondary"
-                        size="sm"
-                        className="w-full"
-                        onClick={async () => {
-                          try {
-                            await supabase.auth.signOut()
-                          } catch (err) {
-                            console.error('Error signing out for account switch:', err)
-                          } finally {
-                            window.location.href = '/login'
-                          }
-                        }}
-                      >
-                        Switch account ({unregisteredEmail})
-                      </Button>
-                    )}
-                  </div>
-                </div>
-              )}
-
               {/* Email Input */}
               <Input
                 type="email"
@@ -380,7 +339,7 @@ export function LoginPage() {
                       onClick={() => {
                         setView('sign_in')
                         setError(null)
-                        setMessage(null)
+                          setMessage(null)
                       }}
                     >
                       Sign in
