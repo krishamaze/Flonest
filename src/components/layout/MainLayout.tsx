@@ -1,24 +1,18 @@
 import { Outlet } from 'react-router-dom'
-import { useRegisterSW } from 'virtual:pwa-register/react'
 import { Header } from './Header'
 import { BottomNav } from './BottomNav'
 import { PullToRefresh } from '../ui/PullToRefresh'
 import { RefreshProvider, useRefresh } from '../../contexts/RefreshContext'
+import { useServiceWorker } from '../../contexts/ServiceWorkerContext'
 
 function MainLayoutContent() {
   const { refresh, registerServiceWorker } = useRefresh()
+  const { registration } = useServiceWorker()
 
-  // Register service worker with RefreshContext for pull-to-refresh
-  useRegisterSW({
-    onRegistered(registration) {
-      console.log('SW registered in MainLayout:', registration)
-      // Share SW registration with RefreshContext for pull-to-refresh
-      registerServiceWorker(registration)
-    },
-    onRegisterError(error) {
-      console.error('SW registration error:', error)
-    },
-  })
+  // Share SW registration with RefreshContext for pull-to-refresh
+  if (registration) {
+    registerServiceWorker(registration)
+  }
 
   const handleRefresh = async () => {
     // Call the refresh flow (SW update check + data refresh)

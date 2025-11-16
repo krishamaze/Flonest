@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { ArrowPathIcon } from '@heroicons/react/24/outline'
-import { useRegisterSW } from 'virtual:pwa-register/react'
 import { useVersionCheck } from '../../contexts/VersionCheckContext'
+import { useServiceWorker } from '../../contexts/ServiceWorkerContext'
 
 /**
  * UpdateNotification Component
@@ -25,20 +25,7 @@ export function UpdateNotification() {
   const { showUpdateNotification, triggerUpdateNotification } = useVersionCheck()
   const [isUpdating, setIsUpdating] = useState(false)
 
-  const {
-    needRefresh: [needRefresh],
-    updateServiceWorker,
-  } = useRegisterSW({
-    onRegistered(registration: ServiceWorkerRegistration | undefined) {
-      console.log('SW registered:', registration)
-      
-      // Service Worker will automatically check for updates
-      // We don't need manual periodic checks anymore
-    },
-    onRegisterError(error: Error) {
-      console.error('SW registration error:', error)
-    },
-  })
+  const { needRefresh, updateServiceWorker } = useServiceWorker()
 
   // Show update notification when Service Worker detects new bundle
   useEffect(() => {

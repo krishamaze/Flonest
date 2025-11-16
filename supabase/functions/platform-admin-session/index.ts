@@ -16,7 +16,6 @@ const adminClient = createClient(SUPABASE_URL, SERVICE_ROLE_KEY, {
 });
 
 const ALLOWED_ORIGINS = new Set([
-  "https://biz.finetune.store",
   "https://bill.finetune.store",
   "http://localhost:3000",
 ]);
@@ -35,7 +34,7 @@ const hashToken = async (token: string) => {
 };
 
 const getCorsHeaders = (origin: string | null) => {
-  const allowedOrigin = origin && ALLOWED_ORIGINS.has(origin) ? origin : "https://biz.finetune.store";
+  const allowedOrigin = origin && ALLOWED_ORIGINS.has(origin) ? origin : "https://bill.finetune.store";
   return {
     "Access-Control-Allow-Origin": allowedOrigin,
     "Access-Control-Allow-Credentials": "true",

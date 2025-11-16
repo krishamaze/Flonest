@@ -1,6 +1,5 @@
 import { useState, FormEvent, useEffect } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { useRegisterSW } from 'virtual:pwa-register/react'
 import { EyeIcon, EyeSlashIcon } from '@heroicons/react/24/outline'
 import { supabase } from '../lib/supabase'
 import { Button } from '../components/ui/Button'
@@ -20,7 +19,6 @@ export function LoginPage() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [, setMessage] = useState<string | null>(null)
-  const [swRegistration, setSwRegistration] = useState<ServiceWorkerRegistration | undefined>()
   const [showPassword, setShowPassword] = useState(false)
 
   // Check for error parameters from redirects
@@ -37,37 +35,13 @@ export function LoginPage() {
     }
   }, [searchParams, setSearchParams])
 
-  // Register Service Worker for update checks
-  useRegisterSW({
-    onRegistered(registration) {
-      console.log('SW registered on login page:', registration)
-      setSwRegistration(registration)
-    },
-  })
-
   const handleRefresh = async (onStatusChange?: (status: RefreshStatus) => void) => {
-    // Use Service Worker to check for updates (no version table needed!)
     onStatusChange?.({ 
       phase: 'checking-version', 
       message: 'Checking for updates...', 
       hasUpdate: false 
     })
 
-    if (swRegistration) {
-      try {
-        // Trigger SW to check for new bundle
-        console.log('Pull-to-refresh triggering Service Worker update check...')
-        await swRegistration.update()
-        console.log('Service Worker update check complete')
-        
-        // If new bundle found, SW will set needRefresh=true
-        // UpdateNotification will automatically show yellow button
-      } catch (error) {
-        console.error('Service Worker update check failed:', error)
-      }
-    }
-
-    // Complete
     onStatusChange?.({ 
       phase: 'complete', 
       message: 'Complete', 

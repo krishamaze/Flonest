@@ -39,7 +39,7 @@ const createSupabaseClient = (accessToken: string | null) =>
 
 // Restrict CORS to known app origins
 const ALLOWED_ORIGINS = [
-  "https://biz.finetune.store",
+  "https://bill.finetune.store",
   "https://billfinetune-finetunetechs-projects.vercel.app",
   "http://localhost:5173",
   "http://localhost:4173",
