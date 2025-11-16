@@ -8,11 +8,11 @@ import { CheckCircleIcon, XCircleIcon, PencilIcon } from '@heroicons/react/24/ou
 
 interface ReviewActionsProps {
   product: MasterProduct
-  reviewerId: string
+  platformAdminId: string
   onReviewComplete: () => void
 }
 
-export function ReviewActions({ product, reviewerId, onReviewComplete }: ReviewActionsProps) {
+export function ReviewActions({ product, platformAdminId, onReviewComplete }: ReviewActionsProps) {
   const [action, setAction] = useState<'approve' | 'reject' | 'edit_and_approve' | null>(null)
   const [note, setNote] = useState('')
   const [hsnCode, setHsnCode] = useState(product.hsn_code || '')
@@ -67,7 +67,7 @@ export function ReviewActions({ product, reviewerId, onReviewComplete }: ReviewA
       await reviewMasterProduct({
         master_product_id: product.id,
         action,
-        reviewerId,
+        platformAdminId,
         note: note.trim() || undefined,
         hsn_code: hsnCode.trim() || undefined,
         changes,

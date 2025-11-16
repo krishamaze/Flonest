@@ -119,7 +119,13 @@ export function RoleSelectorPage() {
                 </p>
                 <div className="mt-auto">
                   <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800">
-                    {user?.role === 'admin' ? 'Admin' : user?.role === 'branch_head' ? 'Branch Head' : 'Advisor'}
+                    {user?.role === 'org_owner'
+                      ? 'Org Owner'
+                      : user?.role === 'branch_head'
+                      ? 'Branch Head'
+                      : user?.role === 'advisor'
+                      ? 'Advisor'
+                      : user?.role}
                   </span>
                 </div>
               </div>

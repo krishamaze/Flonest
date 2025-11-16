@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
- * Create Internal User Account Script
- * Creates an internal user account for testing reviewer/internal user features
+ * Create Platform Admin Account Script
+ * Creates a platform admin account for testing internal tooling
  * 
  * Usage: node scripts/create-internal-user.cjs [email] [password]
  * 
@@ -51,7 +51,7 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY, {
 })
 
 async function createInternalUser(email, password) {
-  console.log('\n🔧 Creating Internal User Account...\n')
+  console.log('\n🔧 Creating Platform Admin Account...\n')
   console.log(`Email: ${email}`)
   console.log(`Password: ${password ? '***' : '(not provided)'}\n`)
 
@@ -131,7 +131,7 @@ async function createInternalUser(email, password) {
       console.log('   ✅ Profile created with platform_admin = true')
     }
 
-    // Step 3: Check/create membership (optional - internal users might not need org)
+    // Step 3: Check/create membership (optional - platform admins might not need org)
     console.log('\n3. Checking membership...')
     const { data: membership, error: membershipError } = await supabase
       .from('memberships')
@@ -144,7 +144,7 @@ async function createInternalUser(email, password) {
     } else if (membership) {
       console.log('   ✅ Membership exists:', membership.orgs?.name || 'N/A')
     } else {
-      console.log('   ℹ️  No membership found (internal users may not need org membership)')
+      console.log('   ℹ️  No membership found (platform admins may not need org membership)')
     }
 
     // Step 4: Verify platform_admin flag
@@ -175,14 +175,14 @@ async function createInternalUser(email, password) {
       console.log('   ⚠️  Could not test function:', functionError.message)
     } else {
       if (isInternal) {
-        console.log('   ✅ is_internal_user() returns: true (uses platform_admin)')
+    console.log('   ✅ is_internal_user() returns: true (uses platform_admin)')
       } else {
         console.log('   ❌ is_internal_user() returns: false')
       }
     }
 
     console.log('\n' + '='.repeat(60))
-    console.log('✅ Internal User Account Created Successfully!\n')
+    console.log('✅ Platform Admin Account Created Successfully!\n')
     console.log('Account Details:')
     console.log(`  Email: ${email}`)
     console.log(`  Password: ${password || 'password'}`)
@@ -190,7 +190,7 @@ async function createInternalUser(email, password) {
     console.log(`  platform_admin: true`)
     console.log(`  Status: Active`)
     console.log('\nAccess:')
-    console.log('  - Can access /reviewer dashboard')
+    console.log('  - Can access /platform-admin dashboard')
     console.log('  - Can review products')
     console.log('  - Can manage HSN codes')
     console.log('  - Can view blocked invoices')
@@ -198,7 +198,7 @@ async function createInternalUser(email, password) {
     console.log('\n' + '='.repeat(60) + '\n')
 
   } catch (error) {
-    console.error('\n❌ Error creating internal user:', error.message)
+    console.error('\n❌ Error creating platform admin:', error.message)
     if (error.details) {
       console.error('Details:', error.details)
     }

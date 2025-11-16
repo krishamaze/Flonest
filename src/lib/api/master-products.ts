@@ -46,7 +46,7 @@ export interface SubmitMasterProductSuggestionParams {
 
 /**
  * Search master products using the RPC function
- * Returns only approved products for org users, can include pending for internal users
+ * Returns only approved products for org users, can include pending for platform admins
  */
 export async function searchMasterProducts(
   params: SearchMasterProductsParams = {}

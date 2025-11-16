@@ -1704,7 +1704,7 @@ export type Database = {
         }
         Returns: string
       }
-      create_staff_membership: {
+      create_advisor_membership: {
         Args: { p_branch_id: string; p_email: string; p_profile_id: string }
         Returns: Json
       }

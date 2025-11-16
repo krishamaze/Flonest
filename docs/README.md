@@ -51,9 +51,9 @@ Complete documentation for the bill.finetune.store inventory management PWA.
   - Breaking changes
 
 ### User Management
-- **[Create Internal User](./CREATE_INTERNAL_USER.md)** - Set up internal reviewer accounts
-  - Internal user role
-  - Reviewer permissions
+- **[Create Internal User](./CREATE_INTERNAL_USER.md)** - Set up platform admin accounts
+  - Platform admin role
+  - Platform admin permissions
   - Setup instructions
 
 - **[Test Accounts](./TEST_ACCOUNTS.md)** - Test user credentials
@@ -107,8 +107,8 @@ Complete documentation for the bill.finetune.store inventory management PWA.
 - [Schema Migration Workflow](./SCHEMA_MIGRATION_WORKFLOW.md) - Database changes
 - [Vercel Configuration](../vercel.json) - Deployment config
 
-### For Internal Reviewers
-- [Create Internal User](./CREATE_INTERNAL_USER.md) - Reviewer account setup
+### For Platform Admins
+- [Create Internal User](./CREATE_INTERNAL_USER.md) - Platform admin account setup
 - [Implementation Status Report](./IMPLEMENTATION_STATUS_REPORT.md) - Governance system
 
 ## 📖 Additional Resources
@@ -140,7 +140,7 @@ bill.finetune.store/
 │   ├── SUPABASE_CLI_SETUP.md      # Supabase CLI
 │   ├── SCHEMA_MIGRATION_WORKFLOW.md # Database migrations
 │   ├── SCHEMA_MIGRATIONS.md       # Migration history
-│   ├── CREATE_INTERNAL_USER.md    # Internal user setup
+│   ├── CREATE_INTERNAL_USER.md    # Platform admin setup
 │   ├── TEST_ACCOUNTS.md           # Test credentials
 │   ├── PASSWORD_RESET_SETUP.md    # Email configuration
 │   ├── MCP_WORKFLOW.md            # MCP tools
@@ -164,7 +164,8 @@ bill.finetune.store/
 │   │   ├── layout/               # Layout (Header, BottomNav)
 │   │   ├── ui/                   # Reusable UI (Button, Card)
 │   │   ├── invoice/              # Invoice features
-│   │   ├── reviewer/             # Internal reviewer UI
+│   │   ├── platformAdmin/        # Platform admin UI
+│   │   ├── advisors/             # Advisor management components
 │   │   ├── customers/            # Customer management
 │   │   ├── notifications/        # Notifications
 │   │   └── pwa/                  # PWA components
@@ -219,7 +220,7 @@ npm run supabase:status                # Check project status
 
 ### User & Configuration
 ```bash
-npm run create:internal-user       # Create internal reviewer
+npm run create:internal-user       # Create platform admin account
 npm run configure:smtp             # Configure email SMTP
 npm run configure:redirect-urls    # Configure auth URLs
 ```

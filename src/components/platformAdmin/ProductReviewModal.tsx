@@ -130,7 +130,7 @@ export function ProductReviewModal({ isOpen, onClose, product }: ProductReviewMo
             <CardContent>
               <ReviewActions
                 product={product}
-                reviewerId={user.id}
+                platformAdminId={user.id}
                 onReviewComplete={handleReviewComplete}
               />
             </CardContent>

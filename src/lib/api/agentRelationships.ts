@@ -248,7 +248,7 @@ export async function searchPotentialAgents(email: string, currentOrgId: string)
       )
     `)
     .ilike('email', `%${email}%`)
-    .eq('memberships.role', 'admin')
+    .eq('memberships.role', 'org_owner')
     .eq('memberships.membership_status', 'active')
     .neq('memberships.org_id', currentOrgId) // Exclude same org
     .limit(10)

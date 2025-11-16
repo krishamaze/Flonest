@@ -592,7 +592,7 @@ export function InvoiceForm({
       const results = await validateScannerCodes(orgId, [code])
       
       if (results.length === 0) {
-        showToast('error', 'Product not found. Ask your manager to add this product.', { autoClose: 3000 })
+        showToast('error', 'Product not found. Ask your branch head to add this product.', { autoClose: 3000 })
         return
       }
 
@@ -610,9 +610,9 @@ export function InvoiceForm({
           showToast('error', 'Product not found in inventory.', { autoClose: 3000 })
         }
       } else if (result.status === 'invalid') {
-        showToast('error', 'This product isn\'t in stock yet. Ask your manager to add or stock it.', { autoClose: 3000 })
+        showToast('error', 'This product isn\'t in stock yet. Ask your branch head to add or stock it.', { autoClose: 3000 })
       } else if (result.status === 'not_found') {
-        showToast('error', 'Product not found. Ask your manager to add this product.', { autoClose: 3000 })
+        showToast('error', 'Product not found. Ask your branch head to add this product.', { autoClose: 3000 })
       }
     } catch (error) {
       console.error('Error processing scan:', error)
@@ -778,7 +778,7 @@ export function InvoiceForm({
         }
         item.invalid_serials.push(serial.trim())
         setToast({ 
-          message: 'Serial not found in stock. Saved as draft for manager review.', 
+          message: 'Serial not found in stock. Saved as draft for branch head review.', 
           type: 'error' 
         })
       } else if (serialStatus.product_id !== item.product_id) {
@@ -795,7 +795,7 @@ export function InvoiceForm({
         }
         item.invalid_serials.push(serial.trim())
         setToast({ 
-          message: 'Serial not available in stock. Saved as draft for manager review.', 
+          message: 'Serial not available in stock. Saved as draft for branch head review.', 
           type: 'error' 
         })
       }
@@ -821,7 +821,7 @@ export function InvoiceForm({
       }
       setItems(updated)
       setToast({ 
-        message: 'Error validating serial. Saved as draft for manager review.', 
+        message: 'Error validating serial. Saved as draft for branch head review.', 
         type: 'error' 
       })
     }
@@ -1481,7 +1481,7 @@ export function InvoiceForm({
                           )}
                           {hasInvalidSerials && (
                             <p className="text-xs text-error">
-                              Some serials not found in stock. Saved as draft for manager review.
+                              Some serials not found in stock. Saved as draft for branch head review.
                             </p>
                           )}
                           <Input
@@ -1675,7 +1675,7 @@ export function InvoiceForm({
               ) && (
                 <div className="mt-md p-md bg-warning-light border border-warning rounded-md">
                   <p className="text-sm font-medium text-warning-dark">
-                    ⚠️ This invoice contains items that need manager review
+                    ⚠️ This invoice contains items that need branch head review
                   </p>
                   <p className="text-xs text-warning-dark mt-xs">
                     Please fix validation errors before finalizing the invoice.

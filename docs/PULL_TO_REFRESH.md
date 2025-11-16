@@ -301,7 +301,7 @@ git push origin main
 | Customers | ✅ Yes | ✅ Customers list |
 | Stock Ledger | ✅ Yes | ✅ Stock transactions |
 | Notifications | ✅ Yes | ✅ Notifications |
-| Reviewer Pages | ✅ Yes | ✅ Reviewer data |
+| Platform Admin Pages | ✅ Yes | ✅ Platform admin data |
 
 ---
 

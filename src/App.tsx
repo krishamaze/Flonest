@@ -150,7 +150,7 @@ function AppRoutes() {
             <Route 
               path="stock-ledger" 
               element={
-                <RoleProtectedRoute requiredRole={['admin', 'branch_head']}>
+                <RoleProtectedRoute requiredRole={['org_owner', 'branch_head']}>
                   <StockLedgerPage />
                 </RoleProtectedRoute>
               } 
@@ -164,7 +164,7 @@ function AppRoutes() {
             <Route 
               path="agents" 
               element={
-                <RoleProtectedRoute requiredRole="admin">
+                <RoleProtectedRoute requiredRole="org_owner">
                   <AgentsPage />
                 </RoleProtectedRoute>
               } 
@@ -172,7 +172,7 @@ function AppRoutes() {
             <Route 
               path="agents/:relationshipId/issue-dc" 
               element={
-                <RoleProtectedRoute requiredRole="admin">
+                <RoleProtectedRoute requiredRole="org_owner">
                   <IssueDCPage />
                 </RoleProtectedRoute>
               } 
@@ -180,7 +180,7 @@ function AppRoutes() {
             <Route 
               path="agents/:relationshipId/report" 
               element={
-                <RoleProtectedRoute requiredRole="admin">
+                <RoleProtectedRoute requiredRole="org_owner">
                   <AgentStockReportPage />
                 </RoleProtectedRoute>
               } 
@@ -219,7 +219,7 @@ function AppRoutes() {
             path="/agent-cash-oversight"
             element={
               <ProtectedRoute>
-                <RoleProtectedRoute requiredRole="admin">
+                <RoleProtectedRoute requiredRole="org_owner">
                   <MainLayout />
                 </RoleProtectedRoute>
               </ProtectedRoute>

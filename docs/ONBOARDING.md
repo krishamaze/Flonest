@@ -12,18 +12,18 @@ Internal users and users with existing memberships are unaffected.
 ### Implementation Details
 
 **Auto-Org Creation:**
-- Triggered in `AuthContext.loadUserProfile()` when a non-internal user has no active memberships
+- Triggered in `AuthContext.loadUserProfile()` when a non-platform admin user has no active memberships
 - Calls RPC function `create_default_org_for_user()` which creates:
   - A new org with auto-generated name and slug
-  - A membership record with `role = 'owner'`
+- A membership record with `role = 'admin'` (OrgOwner)
 - On success, user context is updated with new `orgId` and `role`
 - Errors are logged but don't block login (user can create org manually later)
 
 **Trial Banner:**
 - Displayed on `DashboardPage` for users who:
-  - Are owners (`role === 'owner'`)
+- Are OrgOwners (`role === 'admin'`)
   - Have an org (`orgId` is set)
-  - Are not internal users
+  - Are not platform admins
   - Haven't dismissed the banner (localStorage key `ft_trial_banner_seen` not set)
 - Banner message: "Welcome to Finetune! You're on a 3-month free trial worth ₹1999/month — ₹1000 off launch offer."
 - Dismissal is stored in localStorage and persists across sessions
@@ -125,7 +125,7 @@ After auto-org creation, new owners are guided through a mandatory setup flow to
 3. **Internal user:**
    - Login as `internal@test.com`
    - Should bypass setup check entirely
-   - Should go to reviewer dashboard
+   - Should go to platform admin dashboard
 
 4. **Direct `/setup` access:**
    - After setup is complete, manually navigate to `/setup`

@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * Setup Test Users Script
- * Creates owner@test.com and resets passwords for internal@test.com and owner@test.com
+ * Creates owner@test.com (org owner) and resets passwords for internal@test.com and owner@test.com
  * 
  * Usage: node scripts/setup-test-users.cjs
  */
@@ -151,8 +151,8 @@ async function setupTestUsers() {
   console.log('\n' + '='.repeat(60))
   console.log('✅ Test Users Setup Complete!\n')
   console.log('Test Accounts:')
-  console.log('  1. internal@test.com / password (Internal Reviewer)')
-  console.log('  2. owner@test.com / password (Owner)')
+  console.log('  1. internal@test.com / password (Platform Admin)')
+  console.log('  2. owner@test.com / password (Org Owner)')
   console.log('\n' + '='.repeat(60) + '\n')
 }
 

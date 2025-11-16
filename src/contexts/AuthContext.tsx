@@ -397,7 +397,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               id: syncedProfile.id,
               email: syncedProfile.email,
               orgId: syncedData.org.id,
-              role: (syncedData.membership.role || 'advisor') as 'admin' | 'branch_head' | 'advisor',
+              role: (syncedData.membership.role || 'advisor') as UserRole,
               branchId: (syncedData.membership as any).branch_id || null,
               platformAdmin: false,
               contextMode: 'business' as const,
@@ -442,7 +442,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return
       }
 
-      // For non-internal users, load membership (including branch_id)
+      // For non-platform-admin users, load membership (including branch_id)
       // Only load active memberships - pending memberships cannot access the app
       let membershipsResult
       if (useTimeout) {
@@ -480,7 +480,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           id: membershipProfile.id,
           email: membershipProfile.email,
           orgId: org.id,
-          role: (membership.role || 'advisor') as 'admin' | 'branch_head' | 'advisor',
+          role: (membership.role || 'advisor') as UserRole,
           branchId: (membership as any).branch_id || null,
           platformAdmin: membershipProfile.platform_admin || false,
           contextMode: 'business' as const,
@@ -534,7 +534,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                   id: newMembershipProfile.id,
                   email: newMembershipProfile.email,
                   orgId: newOrg.id,
-                  role: (newMembership.role || 'admin') as 'admin' | 'branch_head' | 'advisor',
+                  role: (newMembership.role || 'org_owner') as UserRole,
                   branchId: newMembership.branch_id || null,
                   platformAdmin: newMembershipProfile.platform_admin || false,
                   contextMode: 'business' as const,

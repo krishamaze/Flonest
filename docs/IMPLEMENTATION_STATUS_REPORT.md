@@ -37,7 +37,7 @@ DROP POLICY IF EXISTS "Master products: All authenticated users can read active"
 
 -- Creates 3 new governance-aware policies
 1. master_products_read_approved (public read - approved + active only)
-2. master_products_read_internal (internal users see all)
+2. master_products_read_internal (platform admins see all)
 3. master_products_read_own_pending (org users see their pending submissions)
 ```
 
@@ -302,20 +302,20 @@ The governance implementation also includes these supporting migrations:
 
 ### Components Implemented
 
-1. **Reviewer Dashboard** (`src/pages/ReviewerDashboardPage.tsx`)
+1. **Platform Admin Dashboard** (`src/pages/PlatformAdminDashboardPage.tsx`)
    - ✅ Shows pending reviews count
    - ✅ Shows blocked invoices count
    - ✅ Recent submissions display
 
-2. **Review Queue** (`src/components/reviewer/ReviewQueue.tsx`)
+2. **Review Queue** (`src/components/platformAdmin/ReviewQueue.tsx`)
    - ✅ Lists pending master products
    - ✅ Approve/reject functionality
 
-3. **Blocked Invoices** (`src/components/reviewer/BlockedInvoices.tsx`)
+3. **Blocked Invoices** (`src/components/platformAdmin/BlockedInvoices.tsx`)
    - ✅ Lists invoices blocked by unapproved masters
    - ✅ Shows validation errors per invoice
 
-4. **HSN Manager** (`src/components/reviewer/HSNManager.tsx`)
+4. **HSN Manager** (`src/components/platformAdmin/HSNManager.tsx`)
    - ✅ Manage HSN master data
    - ✅ GST rate configuration
 
@@ -400,7 +400,7 @@ The governance implementation also includes these supporting migrations:
 | Invoice creation with auto-link works | ✅ Pass | Frontend passes `p_user_id` |
 | Draft save allows pending masters | ✅ Pass | Uses `p_allow_draft: true` |
 | Finalization blocks pending masters | ✅ Pass | Uses `p_allow_draft: false` |
-| Reviewer dashboard shows pending count | ✅ Pass | Component implemented |
+| Platform admin dashboard shows pending count | ✅ Pass | Component implemented |
 | Blocked invoices display correctly | ✅ Pass | Component implemented |
 | Approve/reject master products | ✅ Pass | API functions implemented |
 
@@ -462,7 +462,7 @@ The implementation is complete and correct. All edge cases from the plan have be
 ### 4. Documentation
 - ✅ This report documents implementation
 - Consider: User-facing documentation for org admins
-- Consider: Internal reviewer training guide
+- Consider: Platform admin training guide
 
 ---
 

@@ -14,7 +14,7 @@ A mobile-first Progressive Web App (PWA) for multi-tenant inventory & sales SaaS
 - 📊 **Inventory Tracking** - Monitor stock movements with detailed ledger
 - 🧾 **GST Invoicing** - Generate GST-compliant invoices with CGST/SGST/IGST
 - 📸 **Barcode Scanning** - Camera-based product and serial number scanning
-- 👥 **Team Management** - Role-based access (admin, manager, staff, reviewer)
+- 👥 **Team Management** - Role-based access (PlatformAdmin, OrgOwner, BranchHead, Advisor, Agent)
 - 🎨 **Modern UI** - Built with TailwindCSS and design tokens
 - 🔐 **Authentication** - Secure auth with Supabase and RLS policies
 - ⚡ **Fast** - Built with Vite for lightning-fast performance
@@ -73,7 +73,7 @@ Visit http://localhost:5173
 - **[Schema Migration Workflow](./docs/SCHEMA_MIGRATION_WORKFLOW.md)** - Database migration process
 
 ### User Guides
-- **[Create Internal User](./docs/CREATE_INTERNAL_USER.md)** - Set up internal reviewer accounts
+- **[Create Internal User](./docs/CREATE_INTERNAL_USER.md)** - Set up platform admin accounts
 - **[Test Accounts](./docs/TEST_ACCOUNTS.md)** - Test user credentials
 - **[Password Reset Setup](./docs/PASSWORD_RESET_SETUP.md)** - Configure password reset emails
 
@@ -113,7 +113,8 @@ src/
 │   ├── forms/           # Form components (Product, Invoice, Customer)
 │   ├── layout/          # Layout components (Header, BottomNav, MainLayout)
 │   ├── invoice/         # Invoice-specific (Scanner, ProductSearch)
-│   ├── reviewer/        # Internal reviewer components
+│   ├── platformAdmin/   # Platform admin components
+│   ├── advisors/        # Advisor management components
 │   ├── customers/       # Customer management components
 │   ├── notifications/   # Notification components
 │   └── pwa/            # PWA components (Install, Update)
@@ -160,7 +161,7 @@ The app uses a custom design token system in `src/styles/design-tokens.css`:
 - `npm run supabase:status` - Check Supabase project status
 
 ### Setup
-- `npm run create:internal-user` - Create internal reviewer account
+- `npm run create:internal-user` - Create platform admin account
 - `npm run configure:smtp` - Configure SMTP for emails
 - `npm run configure:redirect-urls` - Configure auth redirect URLs
 
@@ -194,10 +195,11 @@ See [docs/DEPLOYMENT.md](./docs/DEPLOYMENT.md) for complete deployment workflow.
 
 The app supports multiple user roles:
 
-- **Admin** - Full organization management
-- **Manager** - Product and invoice management
-- **Staff** - Limited product and invoice access
-- **Reviewer** - Internal role for master product approval
+- **PlatformAdmin** - Internal governance workspace (global access)
+- **OrgOwner** - Full organization management
+- **BranchHead** - Branch-level operations
+- **Advisor** - Day-to-day sales and inventory workflows
+- **Agent** - External agent portal access
 
 ## 🧪 Testing
 

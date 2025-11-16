@@ -15,7 +15,7 @@ export function StatusHelpText({ status, className = '' }: StatusHelpTextProps) 
       case 'pending':
         return {
           title: 'Pending Review',
-          description: 'This product is waiting for reviewer approval. It cannot be used in invoices until approved.',
+          description: 'This product is waiting for platform admin approval. It cannot be used in invoices until approved.',
           color: 'text-warning',
           bgColor: 'bg-warning-light',
         }

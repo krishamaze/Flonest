@@ -23,7 +23,7 @@ This document describes the test accounts created for testing the platform admin
 - **Access**: Can access `/platform-admin` dashboard, review products, manage HSN codes, view blocked invoices
 
 ### Org Owner Account
-- **Email**: `owner@test.com`
+- **Email**: `owner@test.com` (OrgOwner)
 - **Password**: Set via Supabase Auth (recommended: `Test123!@#`)
 - **Role**: Org Owner
 - **Org**: Test Org (slug: `test-org-owner`)
@@ -35,10 +35,10 @@ This document describes the test accounts created for testing the platform admin
 
 **Method 1: Using Script (Recommended)**
 
-The easiest way to create an internal user account is using the provided script:
+The easiest way to create a platform admin account is using the provided script:
 
 ```bash
-# Create internal user with default credentials (internal@test.com / InternalTest123!@#)
+# Create platform admin with default credentials (internal@test.com / InternalTest123!@#)
 npm run create:internal-user
 
 # Or with custom email and password
@@ -68,7 +68,7 @@ If you don't have `SUPABASE_SERVICE_KEY`, you can use SQL with your transaction 
 
 ### Manual Setup: Create Internal User via SQL
 
-Alternatively, you can create an internal user manually:
+Alternatively, you can create a platform admin manually:
 
 #### 1. Create Auth User
 
@@ -112,7 +112,7 @@ END $$;
 
 #### 3. Verify Setup
 
-Verify the internal user was created correctly:
+Verify the platform admin was created correctly:
 
 ```sql
 -- Check profile
@@ -140,7 +140,7 @@ Create the auth users via Supabase Dashboard or Auth API:
 
 The migration `20251110150002_create_test_accounts.sql` will:
 - Create profiles for the test users (if they exist in auth)
-- Create test org for owner
+- Create test org for OrgOwner
 - Create memberships
 - Create sample pending products
 - Create sample HSN codes
@@ -158,7 +158,7 @@ WHERE email = 'platform-admin@test.com';
 ### 4. Verify Setup
 
 1. Log in as `platform-admin@test.com` (or `internal@test.com`)
-   - Should see "Reviewer" link in navigation
+- Should see "Platform Admin" link in navigation
    - Can access `/platform-admin` dashboard
    - Should see pending products in review queue
    - Can manage HSN codes
@@ -210,7 +210,7 @@ WHERE email = 'platform-admin@test.com';
 - Verify user is logged in as `platform-admin@test.com`
 
 ### Owner can't see pending products
-- Verify products have `submitted_org_id` matching owner's org
+- Verify products have `submitted_org_id` matching the OrgOwner's org
 - Check that products have `approval_status IN ('pending', 'auto_pass', 'rejected')`
 
 ### Notifications not appearing

@@ -264,7 +264,7 @@ export async function getOrgAdmins(orgId: string): Promise<string[]> {
     .from('memberships')
     .select('profile_id')
     .eq('org_id', orgId)
-    .eq('role', 'admin')
+    .eq('role', 'org_owner')
     .eq('membership_status', 'active')
 
   if (error) {

@@ -68,7 +68,7 @@ export async function createAdvisorMembership(
   branchId: string,
   email: string
 ): Promise<{ membership_id: string; status: string }> {
-  const { data, error } = await (supabase.rpc as any)('create_staff_membership', {
+  const { data, error } = await (supabase.rpc as any)('create_advisor_membership', {
     p_profile_id: profileId,
     p_branch_id: branchId,
     p_email: email,

@@ -133,7 +133,7 @@ export function DashboardPage() {
     if (
       user &&
       !user.platformAdmin &&
-      user.role === 'admin' &&
+      user.role === 'org_owner' &&
       user.orgId &&
       !localStorage.getItem('ft_trial_banner_seen')
     ) {
@@ -332,7 +332,7 @@ export function DashboardPage() {
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium text-primary-text">Add Advisor</p>
                   <p className="text-xs text-secondary-text">
-                    {user?.role === 'admin' ? 'Add advisor' : 'Request advisor approval'}
+                    {user?.role === 'org_owner' ? 'Add advisor' : 'Request advisor approval'}
                   </p>
                 </div>
               </button>

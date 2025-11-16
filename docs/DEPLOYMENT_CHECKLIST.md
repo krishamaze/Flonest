@@ -289,9 +289,9 @@ vercel rollback
 
 - **Identity Provider:** Google Workspace. Configure Supabase Auth `google` provider with the corporate Google Cloud project OAuth credentials. Set `VITE_PLATFORM_ADMIN_SSO_PROVIDER=google` and `VITE_PLATFORM_ADMIN_SSO_REDIRECT=/platform-admin`.
 - **Flow:** Login page auto-detects platform admins server-side (no client-side email list exposure). User enters email + password → server checks `profiles.platform_admin` → if admin, automatically redirects to Google SSO. After the OAuth callback, the app enforces Supabase MFA (`aal2`) via the dedicated `/admin-mfa` route before unlocking platform-admin routes.
-- **Session Binding:** `PlatformAdminSessionWatcher` ties reviewer sessions to the issuing device fingerprint (UA + platform + language) and enforces 15m idle / 8h absolute lifetimes. Any mismatch forces sign-out and a new SSO + MFA cycle.
+- **Session Binding:** `PlatformAdminSessionWatcher` ties platform admin sessions to the issuing device fingerprint (UA + platform + language) and enforces 15m idle / 8h absolute lifetimes. Any mismatch forces sign-out and a new SSO + MFA cycle.
 - **Manual Reset Workflow:** `resetPasswordForEmail` short-circuits for privileged identities. Password resets require a ticket approved by two platform leads, after which the temporary credential is injected via the managed HSM and rotated immediately after use.
-- **Break-Glass Account:** A single emergency credential is stored in an HSM-backed vault (Google Cloud KMS or AWS CloudHSM). Access requires dual control, generates immutable audit logs, and demands on-device TOTP before reviewer access even when SSO is bypassed.
+- **Break-Glass Account:** A single emergency credential is stored in an HSM-backed vault (Google Cloud KMS or AWS CloudHSM). Access requires dual control, generates immutable audit logs, and demands on-device TOTP before platform admin access even when SSO is bypassed.
 - **Operational Tasks:** Review Google Workspace security logs + HSM access logs weekly, rotate Google OAuth client secrets quarterly, and verify the `/admin-mfa` flow in production after every deployment.
 - **Won't Do:** The product will never ship a home-grown MFA stack for admins; enforcement stays inside Google Workspace (SSO) + Supabase MFA APIs.
 

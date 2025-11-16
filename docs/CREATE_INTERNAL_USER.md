@@ -13,7 +13,7 @@ Platform admin users have `platform_admin = true` in their profile, which grants
 
 ## Method 1: Using Script (Recommended)
 
-The easiest way to create an internal user account is using the provided script.
+The easiest way to create a platform admin account is using the provided script.
 
 ### Prerequisites
 
@@ -38,7 +38,7 @@ SUPABASE_SERVICE_KEY=your-service-role-key-here
 
 2. **Run the script:**
    ```bash
-   # Default credentials (internal@test.com / InternalTest123!@#)
+  # Default credentials (internal@test.com / InternalTest123!@#)
    npm run create:internal-user
 
    # Or with custom credentials
@@ -101,7 +101,7 @@ If you prefer SQL or don't have `SUPABASE_SERVICE_KEY`, you can use SQL with you
 
 ## Method 3: Manual Setup via Supabase Dashboard
 
-You can also create an internal user manually via the Supabase Dashboard.
+You can also create a platform admin manually via the Supabase Dashboard.
 
 ### Steps
 
@@ -140,7 +140,7 @@ You can also create an internal user manually via the Supabase Dashboard.
 
 ## Verification
 
-After creating the internal user, verify the setup:
+After creating the platform admin, verify the setup:
 
 ### 1. Check Profile
 ```sql
@@ -158,7 +158,7 @@ WHERE email = 'internal@test.com';
 
 ### 3. Test Login
 - Log in with `internal@test.com` / `InternalTest123!@#`
-- Should see "Reviewer" link in navigation
+- Should see "Platform Admin" link in navigation
 - Can access `/platform-admin` dashboard
 - Can review products, manage HSN codes, view blocked invoices
 

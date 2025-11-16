@@ -44,7 +44,7 @@ export function BottomNav() {
   const location = useLocation()
   const { user } = useAuth()
 
-  // For internal users, show only reviewer route
+  // For platform admins, show only their workspace entry point
   if (user?.platformAdmin) {
     return (
       <nav 
@@ -61,14 +61,14 @@ export function BottomNav() {
                 isActive ? 'text-primary font-semibold' : 'text-muted-text'
               }`
             }
-            aria-label="Reviewer"
+            aria-label="Platform admin"
           >
             {({ isActive }) => {
               const Icon = isActive ? ClipboardDocumentCheckIconSolid : ClipboardDocumentCheckIcon
               return (
                 <>
                   <Icon className="h-5 w-5" aria-hidden="true" />
-                  <span className="text-xs font-medium">Reviewer</span>
+                  <span className="text-xs font-medium">Platform Admin</span>
                 </>
               )
             }}

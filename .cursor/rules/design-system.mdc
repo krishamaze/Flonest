@@ -1,0 +1,145 @@
+---
+description: Use this to apply tokens and patternized components so screens stay accessible, consistent, and fast to build across devices. It defines canonical variables and layouts, reducing one-off styles and ensuring predictable behavior for core UI blocks.
+alwaysApply: false
+---
+# Design System & UI Patterns
+
+## CRITICAL: Design Token Usage
+
+### Mandatory Rules
+- **NEVER** use hardcoded colors. ALWAYS use CSS variables.
+- **NEVER** use hardcoded spacing. ALWAYS use spacing variables.
+- **NEVER** use inline styles unless for dynamic, JS-driven values.
+- **NEVER** use `px` values directly. Use design token variables.
+
+## Design Tokens Reference
+
+#### Brand Colors
+\`\`\`css
+/* Primary: Gold/Yellow */
+--color-primary: #E2C33D;
+--color-primary-hover: #D4B635;
+--color-primary-light: #F5E9A8;
+--color-primary-dark: #C4A52E;
+
+/* Secondary: Dark Slate */
+--color-secondary: #1F2937;
+--color-secondary-hover: #374151;
+--color-secondary-light: #4B5563;
+
+/* Semantic Colors */
+--color-success: #10B981;
+--color-warning: #F59E0B;
+--color-error: #EF4444;
+
+/* Neutral Scale */
+--color-neutral-50: #F5F7FA;
+--color-neutral-100: #E5E7EB;
+--color-neutral-200: #D1D5DB;
+--color-neutral-300: #9CA3AF;
+--color-neutral-400: #6B7280;
+--color-neutral-500: #4B5563;
+--color-neutral-600: #374151;
+--color-neutral-700: #1F2937;
+--color-neutral-800: #111827;
+--color-neutral-900: #000000;
+
+/* Text & Background */
+--text-primary: var(--color-neutral-900);
+--text-secondary: var(--color-neutral-600);
+--text-on-primary: #000000;
+--bg-page: var(--color-neutral-50);
+--bg-card: #FFFFFF;
+\`\`\`
+
+#### Spacing & Sizing (8pt Grid)
+\`\`\`css
+--spacing-xs: 4px;
+--spacing-sm: 8px;
+--spacing-md: 16px;
+--spacing-lg: 24px;
+--spacing-xl: 32px;
+--spacing-2xl: 48px;
+--spacing-3xl: 64px;
+\`\`\`
+
+#### Typography
+\`\`\`css
+--font-primary: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+--font-mono: 'Courier New', monospace;
+--font-size-base: 16px;
+--font-weight-normal: 400;
+--font-weight-medium: 500;
+--font-weight-bold: 700;
+--line-height-normal: 1.5;
+\`\`\`
+
+#### Borders & Shadows
+\`\`\`css
+--radius-md: 8px;
+--radius-full: 9999px;
+--shadow-md: 0 4px 6px rgba(0, 0, 0, 0.1);
+--border-width: 1px;
+--border-color: var(--color-neutral-200);
+\`\`\`
+
+## UI Pattern Library
+
+### Design Philosophy
+- **Information-dense but scannable**: Pack features without clutter.
+- **Card-based layouts**: Group related content in elevated cards.
+- **Icon-driven navigation**: Visual icons with labels for clarity.
+- **Bold CTAs**: Primary actions are unmissable.
+
+### Dashboard: Metric Cards (3-column grid)
+\`\`\`css
+.dashboard-metrics {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--spacing-md);
+}
+.metric-card {
+  background: var(--bg-card);
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-lg);
+  box-shadow: var(--shadow-md);
+  border: 1px solid var(--border-color);
+}
+.metric-card-value {
+  font-size: var(--font-size-3xl);
+  font-weight: var(--font-weight-bold);
+}
+\`\`\`
+
+### Lists: Transaction Pattern
+\`\`\`css
+.transaction-list {
+  background: var(--bg-card);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-md);
+}
+.transaction-item {
+  padding: var(--spacing-md);
+  border-bottom: 1px solid var(--border-color);
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md);
+}
+\`\`\`
+
+### Navigation: Bottom Tab Bar
+\`\`\`css
+.bottom-nav {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: var(--bg-card);
+  border-top: 1px solid var(--border-color);
+  display: flex;
+  justify-content: space-around;
+}
+.bottom-nav-item.active {
+  color: var(--color-primary);
+}
+\`\`\`

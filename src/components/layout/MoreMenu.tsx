@@ -38,11 +38,11 @@ export function MoreMenu({ isOpen, onClose }: MoreMenuProps) {
   // Build menu items based on user role
   const moreMenuItems: typeof baseMenuItems = []
 
-  // Internal users only see reviewer menu (no org routes)
+  // Platform admins only see their workspace entry point (no org routes)
   if (user?.platformAdmin) {
     moreMenuItems.push({
       to: '/platform-admin',
-      label: 'Reviewer',
+      label: 'Platform Admin',
       icon: ClipboardDocumentCheckIcon,
       description: 'Review product submissions',
     })

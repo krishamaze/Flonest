@@ -20,7 +20,7 @@ export type BillingPlan = Database['public']['Tables']['billing_plans']['Row']
 export type OrgSubscription = Database['public']['Tables']['org_subscriptions']['Row']
 export type SubscriptionEvent = Database['public']['Tables']['subscription_events']['Row']
 
-export type UserRole = 'admin' | 'branch_head' | 'advisor'
+export type UserRole = 'org_owner' | 'branch_head' | 'advisor' | 'agent'
 export type ProductStatus = 'active' | 'inactive' | 'pending'
 export type ApprovalStatus = 'pending' | 'auto_pass' | 'approved' | 'rejected'
 export type InvoiceStatus = 'draft' | 'finalized' | 'cancelled'
@@ -30,7 +30,7 @@ export interface AuthUser {
   email: string
   orgId: string | null // null if user hasn't joined an org yet
   role: UserRole | null // null if user hasn't joined an org yet
-  branchId: string | null // null for admins (org-wide) or if user hasn't joined an org yet
+  branchId: string | null // null for org_owner (org-wide) or if user hasn't joined an org yet
   platformAdmin: boolean // Platform-level admin access (internal SaaS team)
   
   // Context mode for agent portal

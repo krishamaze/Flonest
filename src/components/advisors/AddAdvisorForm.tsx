@@ -50,7 +50,7 @@ export function AddAdvisorForm({ isOpen, onClose, onSuccess }: AddAdvisorFormPro
       if (user.role === 'branch_head' && user.branchId) {
         setBranchId(user.branchId)
       } else if (data && data.length > 0) {
-        // Admin: set first branch as default
+        // Org owner: set first branch as default
         setBranchId(data[0].id)
       }
     } catch (error) {
@@ -128,7 +128,7 @@ export function AddAdvisorForm({ isOpen, onClose, onSuccess }: AddAdvisorFormPro
     try {
       await createAdvisorMembership(userFound.id, branchId, userFound.email || '')
       toast.success(
-        user?.role === 'admin'
+        user?.role === 'org_owner'
           ? 'Advisor added successfully'
           : 'Advisor added and pending approval'
       )
@@ -180,7 +180,7 @@ export function AddAdvisorForm({ isOpen, onClose, onSuccess }: AddAdvisorFormPro
         )}
       </div>
 
-      {user?.role === 'admin' && (
+      {user?.role === 'org_owner' && (
         <div>
           <label htmlFor="branch" className="block text-sm font-medium text-primary-text mb-xs">
             Branch
@@ -237,7 +237,7 @@ export function AddAdvisorForm({ isOpen, onClose, onSuccess }: AddAdvisorFormPro
           isLoading={loading}
           className="flex-1"
         >
-          {user?.role === 'admin' ? 'Add Advisor' : 'Request Approval'}
+          {user?.role === 'org_owner' ? 'Add Advisor' : 'Request Approval'}
         </Button>
       </div>
     </form>

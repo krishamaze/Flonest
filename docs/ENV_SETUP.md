@@ -144,7 +144,7 @@ SELECT update_app_version(
 - `SUPABASE_SERVICE_KEY` - Service role key (for scripts like `create-internal-user.cjs`)
   - Get from: Supabase Dashboard → Project Settings → API → Service Role Key
   - ⚠️  Keep this secret! Has admin access (bypasses RLS)
-  - Required for creating internal user accounts locally
+  - Required for creating platform admin accounts locally
 
 ### ✅ GitHub Secrets (for automated app version updates):
 - `SUPABASE_URL` - Supabase project URL

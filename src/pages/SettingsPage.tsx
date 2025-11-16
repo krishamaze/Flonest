@@ -408,7 +408,7 @@ export function SettingsPage() {
             </label>
             <Input
               type="text"
-              value={user?.role === 'admin' ? 'Owner/Admin' : user?.role || ''}
+              value={user?.role === 'org_owner' ? 'Org Owner' : user?.role || ''}
               disabled
               className="bg-neutral-100 capitalize"
             />

@@ -1,5 +1,5 @@
 -- SQL Script to Create Internal User Account
--- This script creates an internal user account using SQL
+-- This script creates a platform admin account using SQL
 -- Requires: Database connection (transaction pooler or direct connection)
 -- 
 -- Usage:
@@ -87,14 +87,14 @@ BEGIN
   IF v_user_id IS NOT NULL THEN
     RAISE NOTICE '';
     RAISE NOTICE '============================================================';
-    RAISE NOTICE '✅ Internal User Account Setup Complete!';
+    RAISE NOTICE '✅ Platform Admin Account Setup Complete!';
     RAISE NOTICE '============================================================';
     RAISE NOTICE 'Email: %', v_email;
     RAISE NOTICE 'User ID: %', v_user_id;
     RAISE NOTICE 'is_internal: true';
     RAISE NOTICE '';
     RAISE NOTICE 'Access:';
-    RAISE NOTICE '  - Can access /reviewer dashboard';
+    RAISE NOTICE '  - Can access /platform-admin dashboard';
     RAISE NOTICE '  - Can review products';
     RAISE NOTICE '  - Can manage HSN codes';
     RAISE NOTICE '  - Can view blocked invoices';

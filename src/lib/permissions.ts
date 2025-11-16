@@ -36,7 +36,7 @@ export type Permission =
 
 // Role-based permissions map
 const ROLE_PERMISSIONS: Record<UserRole, Permission[]> = {
-  admin: [
+  org_owner: [
     MANAGE_ORG_SETTINGS,
     MANAGE_BRANCH_USERS,
     CREATE_INVOICE,
@@ -107,7 +107,7 @@ export function getRolePermissions(role: UserRole): Permission[] {
  */
 export function canManageUsers(user: AuthUser | null): boolean {
   if (!user || user.platformAdmin) return false
-  return user.role === 'admin' || user.role === 'branch_head'
+  return user.role === 'org_owner' || user.role === 'branch_head'
 }
 
 /**
@@ -115,7 +115,7 @@ export function canManageUsers(user: AuthUser | null): boolean {
  */
 export function canApproveActions(user: AuthUser | null): boolean {
   if (!user || user.platformAdmin) return false
-  return user.role === 'admin'
+  return user.role === 'org_owner'
 }
 
 /**
@@ -123,7 +123,7 @@ export function canApproveActions(user: AuthUser | null): boolean {
  */
 export function canManageOrgSettings(user: AuthUser | null): boolean {
   if (!user || user.platformAdmin) return false
-  return user.role === 'admin'
+  return user.role === 'org_owner'
 }
 
 /**
@@ -133,8 +133,8 @@ export function canViewBlockedInvoices(user: AuthUser | null): boolean {
   if (!user) return false
   // Platform admins can view all blocked invoices (platform-level)
   if (user.platformAdmin) return true
-  // Admin and branch_head can view blocked invoices in their org
-  return user.role === 'admin' || user.role === 'branch_head'
+  // OrgOwner and branch_head can view blocked invoices in their org
+  return user.role === 'org_owner' || user.role === 'branch_head'
 }
 
 /**
@@ -143,7 +143,7 @@ export function canViewBlockedInvoices(user: AuthUser | null): boolean {
 export function canManageAgents(user: AuthUser | null): boolean {
   if (!user || user.platformAdmin) return false
   if (user.contextMode === 'agent') return false // Not in agent context
-  return user.role === 'admin'
+  return user.role === 'org_owner'
 }
 
 /**

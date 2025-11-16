@@ -111,7 +111,7 @@ CREATE TABLE users (
   id UUID PRIMARY KEY REFERENCES auth.users(id),
   email TEXT NOT NULL,
   tenant_id UUID REFERENCES tenants(id),
-  role TEXT CHECK (role IN ('admin', 'manager', 'staff')),
+  role TEXT CHECK (role IN ('admin', 'branch_head', 'advisor')),
   full_name TEXT,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );

@@ -1,0 +1,74 @@
+---
+description: Use this when you need a reliable path for deployment and verification, database changes, and resolving recurring errors without quick fixes. It captures priorities, concrete error signatures, and step-by-step remedies to prevent regressions during delivery.​
+alwaysApply: false
+---
+# Engineering Playbook
+
+## Primary Rule: No Temporary Patches
+- "Temporary patches become permanent debt."
+- Never ship quick fixes. Every change must be a durable, production-grade solution.
+
+---
+
+# 🔴 CRITICAL PRIORITY
+
+## [P1] Supabase Migrations & DDL
+- **Error**: `ERROR: 25006: cannot execute CREATE TABLE in a read-only transaction`
+- **Context**: The Supabase MCP connection is read-only for DDL.
+- **Fix**: Use the Supabase CLI for migrations.
+  - Create migration: `npm run supabase:migration:new <migration_name>`
+  - Apply migration: `npx supabase db push --linked`
+- **Prevention**: ALWAYS use the CLI for DDL changes. MCP is for data queries.
+
+## [P1] Vercel Deployment Verification
+- **Issue**: Pushed code is not live; Vercel shows "BUILDING" or an old version.
+- **Fix**: After `git push`, verify the deployment status.
+  1.  Use Vercel MCP `list_deployments` to get the latest deployment.
+  2.  Use `get_deployment` to check its state.
+  3.  Wait until the state is `READY`. If it's `ERROR`, check logs with `get_deployment_build_logs`.
+- **Prevention**: Deployment is not complete until the state is `READY`.
+
+## [P1] Security over Convenience
+- **Principle**: Never compromise security for UX.
+- **Examples**:
+  - Use generic messages for password resets to prevent email enumeration.
+  - Use generic signup success messages to avoid revealing email configuration status.
+- **Rule**: If a security decision feels inconvenient, it's likely the correct one.
+
+---
+
+# 🟡 MEDIUM PRIORITY
+
+## [P2] Empty `database.ts`
+- **Error**: `File '.../database.ts' is not a module`, causing widespread TypeScript errors.
+- **Context**: `database.ts` is empty after a migration.
+- **Fix**: Regenerate types: `mcp_supabase_generate_typescript_types()`. Ensure the output file is not empty.
+- **Prevention**: Regenerate types after every migration.
+
+## [P2] UI Not Scrolling
+- **Error**: Content is cut off and the page doesn't scroll.
+- **Context**: A parent container has `overflow: hidden` or a fixed height.
+- **Fix**: Remove `overflow: hidden` and fixed heights from parent containers. Use `overflow-y: auto`.
+
+## [P2] Stale State in React
+- **Error**: UI doesn't update after an async `setState`.
+- **Fix**: Use functional updates for dependent state: `setState(prev => ...)`. Use `useEffect` to react to state changes.
+
+---
+
+# General Guidelines
+
+## Update Detection System
+- A Service Worker automatically detects new builds by comparing bundle hashes.
+- No manual versioning is needed (`package.json`, `version.ts`, etc.).
+- A pull-to-refresh gesture triggers an update check.
+
+## Development
+- Design mobile-first (390px width).
+- Use React functional components with hooks and TypeScript.
+- Ensure all async operations have loading and error states.
+- Prioritize performance: code splitting, lazy loading, and WebP images.
+
+## Documentation
+- NEVER create `.md` documentation files unless explicitly requested.
+- Communicate information via chat instead.
