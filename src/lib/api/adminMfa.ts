@@ -14,6 +14,29 @@ interface StatusResponse {
   factorId?: string
 }
 
+interface AdminMfaError extends Error {
+  code?: string
+  status?: number
+  rawBody?: string
+}
+
+function buildAdminMfaError(response: Response, rawBody: string): AdminMfaError {
+  let parsed: any = null
+  try {
+    parsed = JSON.parse(rawBody)
+  } catch {
+    // Non-JSON error body - keep as text
+  }
+
+  const error: AdminMfaError = new Error(
+    parsed?.error || `Edge Function returned ${response.status}`,
+  )
+  error.code = parsed?.code
+  error.status = response.status
+  error.rawBody = rawBody
+  return error
+}
+
 export async function adminMfaStatus(): Promise<StatusResponse> {
   const startTime = Date.now()
   console.log('[DEBUG] adminMfaStatus: Starting request at', new Date().toISOString())
@@ -84,7 +107,7 @@ export async function adminMfaStatus(): Promise<StatusResponse> {
         statusText: response.statusText,
         body: errorText,
       })
-      throw new Error(`Edge Function returned ${response.status}: ${errorText}`)
+      throw buildAdminMfaError(response, errorText)
     }
 
     const responseText = await response.text()
@@ -105,7 +128,11 @@ export async function adminMfaStatus(): Promise<StatusResponse> {
     })
 
     if (isAbortError) {
-      throw new Error('Request timed out after 20 seconds. Edge Function may be slow or unavailable.')
+      const timeoutError: AdminMfaError = new Error(
+        'Request timed out after 20 seconds. Edge Function may be slow or unavailable.',
+      )
+      timeoutError.code = 'timeout'
+      throw timeoutError
     }
     throw err
   }
@@ -136,7 +163,7 @@ export async function adminMfaStart(action?: 'enroll'): Promise<StartResponse> {
   
   if (!response.ok) {
     const errorText = await response.text()
-    throw new Error(`Edge Function returned ${response.status}: ${errorText}`)
+    throw buildAdminMfaError(response, errorText)
   }
   
   const data = await response.json()
@@ -168,12 +195,14 @@ export async function adminMfaVerify(factorId: string, code: string): Promise<vo
   
   if (!response.ok) {
     const errorText = await response.text()
-    throw new Error(`Edge Function returned ${response.status}: ${errorText}`)
+    throw buildAdminMfaError(response, errorText)
   }
   
   const data = await response.json()
   if (!data.success) {
-    throw new Error('Verification failed')
+    const err: AdminMfaError = new Error('Verification failed')
+    err.code = 'verification_failed'
+    throw err
   }
 }
 
@@ -202,12 +231,14 @@ export async function adminMfaReset(): Promise<void> {
 
   if (!response.ok) {
     const errorText = await response.text()
-    throw new Error(`Edge Function returned ${response.status}: ${errorText}`)
+    throw buildAdminMfaError(response, errorText)
   }
-
+  
   const data = await response.json()
   if (!data.success) {
-    throw new Error(data.error ?? 'Failed to reset authenticator')
+    const err: AdminMfaError = new Error(data.error ?? 'Failed to reset authenticator')
+    err.code = data.code
+    throw err
   }
 }
 

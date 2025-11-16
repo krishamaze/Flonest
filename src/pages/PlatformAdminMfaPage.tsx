@@ -111,6 +111,8 @@ export function PlatformAdminMfaPage() {
       console.error('Error type:', err?.constructor?.name)
       console.error('Error message:', err?.message)
       console.error('Error stack:', err?.stack)
+      console.error('Error code:', err?.code)
+      console.error('Error status:', err?.status)
 
       // Clear timeout on error
       if (loadingTimeoutRef.current) {
@@ -120,13 +122,21 @@ export function PlatformAdminMfaPage() {
       isCheckingRef.current = false
 
       const rawMessage = err?.message || ''
+      const code = err?.code as string | undefined
+      const status = typeof err?.status === 'number' ? err.status : undefined
       const isNotAdmin =
-        rawMessage.includes('not_platform_admin') || rawMessage.includes('Platform admin access required')
+        code === 'not_platform_admin' ||
+        rawMessage.includes('not_platform_admin') ||
+        rawMessage.includes('Platform admin access required')
 
       if (isNotAdmin) {
         setError(
           'This account is not recognized as a platform admin. Please sign out and sign in with your admin account.',
         )
+      } else if (status && status >= 500) {
+        setError('Admin MFA service is temporarily unavailable. Please try again.')
+      } else if (code === 'timeout') {
+        setError('Admin MFA service took too long to respond. Please try again.')
       } else {
         setError(rawMessage || 'Unable to check MFA status. Please refresh or sign out and sign in again.')
       }
@@ -159,14 +169,24 @@ export function PlatformAdminMfaPage() {
       setInfo('Scan the QR code with your authenticator app, then enter the 6-digit code to verify.')
     } catch (err: any) {
       console.error('Enrollment failed:', err)
+      console.error('Enrollment error code:', err?.code)
+      console.error('Enrollment error status:', err?.status)
       const rawMessage = err?.message || ''
+      const code = err?.code as string | undefined
+      const status = typeof err?.status === 'number' ? err.status : undefined
       const isNotAdmin =
-        rawMessage.includes('not_platform_admin') || rawMessage.includes('Platform admin access required')
+        code === 'not_platform_admin' ||
+        rawMessage.includes('not_platform_admin') ||
+        rawMessage.includes('Platform admin access required')
 
       if (isNotAdmin) {
         setError(
           'This account is not recognized as a platform admin. Please sign out and sign in with your admin account.',
         )
+      } else if (status && status >= 500) {
+        setError('Admin MFA service is temporarily unavailable. Please try again.')
+      } else if (code === 'timeout') {
+        setError('Admin MFA service took too long to respond. Please try again.')
       } else {
         setError(rawMessage || 'Failed to start enrollment. Please try again.')
       }

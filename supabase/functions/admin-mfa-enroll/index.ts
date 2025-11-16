@@ -92,13 +92,21 @@ const jsonResponse = (status: number, body: Record<string, unknown>) =>
 const errorResponse = (status: number, error: string, code: string) =>
   jsonResponse(status, { error, code })
 
-const getUserAndProfile = async (accessToken: string) => {
+interface UserProfileCheckResult {
+  userId: string
+  isPlatformAdmin: boolean
+}
+
+const getUserAndProfile = async (accessToken: string): Promise<UserProfileCheckResult> => {
   const {
     data: { user },
     error,
   } = await adminClient.auth.getUser(accessToken)
 
   if (error || !user) {
+    console.error("[DEBUG] getUserAndProfile: Failed to load user from access token", {
+      error: error?.message,
+    })
     throw new Error("Unable to load user from access token")
   }
 
@@ -106,13 +114,30 @@ const getUserAndProfile = async (accessToken: string) => {
     .from("profiles")
     .select("platform_admin")
     .eq("id", user.id)
-    .single()
+    .maybeSingle()
 
-  if (profileError || !profile?.platform_admin) {
-    throw new Error("Platform admin access required")
+  if (profileError) {
+    console.error("[DEBUG] getUserAndProfile: Error loading profile for user", {
+      userId: user.id,
+      email: user.email,
+      error: profileError.message,
+      code: profileError.code,
+    })
+    throw new Error("Failed to load platform admin profile")
   }
 
-  return user.id
+  const isPlatformAdmin = !!profile?.platform_admin
+
+  console.log("[DEBUG] getUserAndProfile: Profile check result", {
+    userId: user.id,
+    email: user.email,
+    isPlatformAdmin,
+  })
+
+  return {
+    userId: user.id,
+    isPlatformAdmin,
+  }
 }
 
 const createUserClient = (accessToken: string) =>
@@ -143,9 +168,14 @@ const handleStatus = async (accessToken: string) => {
   try {
     console.log("[DEBUG] handleStatus: Calling getUserAndProfile")
     const getUserStart = Date.now()
-    await getUserAndProfile(accessToken)
+    const { isPlatformAdmin } = await getUserAndProfile(accessToken)
     console.log("[DEBUG] handleStatus: getUserAndProfile completed in", Date.now() - getUserStart, "ms")
-    
+
+    if (!isPlatformAdmin) {
+      console.warn("[DEBUG] handleStatus: User is not a platform admin - returning 403")
+      return errorResponse(403, "Platform admin access required", "not_platform_admin")
+    }
+
     console.log("[DEBUG] handleStatus: Creating userClient")
     const userClient = createUserClient(accessToken)
 
@@ -183,7 +213,11 @@ const handleStatus = async (accessToken: string) => {
 }
 
 const handleStart = async (accessToken: string, body: any) => {
-  const userId = await getUserAndProfile(accessToken)
+  const { isPlatformAdmin } = await getUserAndProfile(accessToken)
+  if (!isPlatformAdmin) {
+    console.warn("[DEBUG] handleStart: User is not a platform admin - returning 403")
+    return errorResponse(403, "Platform admin access required", "not_platform_admin")
+  }
   const userClient = createUserClient(accessToken)
 
   const action = body?.action ?? "enroll"
@@ -228,7 +262,11 @@ const handleStart = async (accessToken: string, body: any) => {
 
 const handleVerify = async (accessToken: string, body: any) => {
   try {
-    await getUserAndProfile(accessToken)
+    const { isPlatformAdmin } = await getUserAndProfile(accessToken)
+    if (!isPlatformAdmin) {
+      console.warn("[DEBUG] handleVerify: User is not a platform admin - returning 403")
+      return errorResponse(403, "Platform admin access required", "not_platform_admin")
+    }
     const { factorId, code } = body ?? {}
 
     if (!factorId || !code) {
@@ -279,7 +317,11 @@ const handleVerify = async (accessToken: string, body: any) => {
 
 const handleReset = async (accessToken: string) => {
   try {
-    const userId = await getUserAndProfile(accessToken)
+    const { userId, isPlatformAdmin } = await getUserAndProfile(accessToken)
+    if (!isPlatformAdmin) {
+      console.warn("[DEBUG] handleReset: User is not a platform admin - returning 403")
+      return errorResponse(403, "Platform admin access required", "not_platform_admin")
+    }
     const userClient = createUserClient(accessToken)
 
     const factorsResult = await userClient.auth.mfa.listFactors()
