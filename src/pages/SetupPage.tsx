@@ -174,7 +174,8 @@ export function SetupPage() {
 
     setIsSubmitting(true)
     try {
-      const slug = await generateUniqueSlug(gstBusinessData.legal_name, user.orgId)
+      const baseName = gstBusinessData.legal_name || org.name
+      const slug = await generateUniqueSlug(baseName, user.orgId)
       
       // Update org name/state/pincode/slug via updateOrg
       await updateOrg(user.orgId, {

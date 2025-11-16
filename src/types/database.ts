@@ -1748,6 +1748,10 @@ export type Database = {
         Args: { p_agent_user_id: string; p_sender_org_id: string }
         Returns: boolean
       }
+      mark_gst_verified: {
+        Args: { p_org_id: string; p_verification_notes: string }
+        Returns: void
+      }
       get_agent_cash_on_hand: {
         Args: { p_agent_user_id: string; p_sender_org_id: string }
         Returns: number
@@ -1788,6 +1792,16 @@ export type Database = {
       has_overdue_cash: {
         Args: { p_agent_user_id: string; p_sender_org_id: string }
         Returns: boolean
+      }
+      set_gst_from_validation: {
+        Args: {
+          p_gst_enabled: boolean
+          p_gst_number: string
+          p_org_id: string
+          p_verification_source: string
+          p_verification_status: string
+        }
+        Returns: void
       }
       is_agent_for_org: {
         Args: { p_sender_org_id: string; p_user_id: string }
