@@ -92,7 +92,16 @@ async function redirectUnregisteredUser(authUser: User) {
   if (email) {
     params.set('email', email)
   }
-  window.location.href = `/unregistered${params.toString() ? `?${params.toString()}` : ''}`
+  const target = `/unregistered${params.toString() ? `?${params.toString()}` : ''}`
+
+  // Avoid full reload loops: if we're already on /unregistered, just update the URL
+  // without reloading so the component can pick up the latest email.
+  if (window.location.pathname.startsWith('/unregistered')) {
+    window.history.replaceState(null, '', target)
+    return
+  }
+
+  window.location.href = target
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -342,7 +351,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           console.error('[Auth] Permission denied when reading profiles. This is a configuration/security error.', profileError)
           // Fail closed: clear any cached session and force re-auth on login page
           clearCachedSession()
-          window.location.href = '/login?error=profile_access_denied'
+          const target = '/login?error=profile_access_denied'
+
+          // If we're already on /login, just replace the URL so the login page
+          // can pick up the error param without triggering another full reload.
+          if (window.location.pathname === '/login') {
+            window.history.replaceState(null, '', target)
+          } else {
+            window.location.href = target
+          }
           return
         }
 
