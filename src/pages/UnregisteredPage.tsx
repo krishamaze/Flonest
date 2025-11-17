@@ -88,7 +88,8 @@ export function UnregisteredPage() {
 
   // If user doesn't have password, they should be redirected (handled in useEffect)
   // This is a fallback in case redirect didn't happen
-  if (!hasPassword) {
+  // CRITICAL: Only check password if user exists (hasPassword is null when logged out)
+  if (user && !user.platformAdmin && hasPassword === false) {
     return (
       <div className="viewport-height-safe bg-bg-page safe-top safe-bottom flex items-center justify-center">
         <div className="text-center">

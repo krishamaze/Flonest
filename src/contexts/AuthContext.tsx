@@ -227,7 +227,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   )
   
   // Derive hasPassword and checkingPassword from React Query state
-  const hasPassword = user?.platformAdmin ? true : passwordQuery.data ?? null
+  // CRITICAL: Return null when user is logged out to prevent stale data
+  const hasPassword = !user ? null : (user.platformAdmin ? true : passwordQuery.data ?? null)
   const checkingPassword = passwordQuery.isLoading
 
   useEffect(() => {

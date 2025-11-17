@@ -85,6 +85,9 @@ export function SetupPage() {
 
   // Fetch org data and check if setup is needed
   useEffect(() => {
+    // Wait for password check to complete before proceeding
+    if (checkingPassword) return
+    
     if (!authLoading && user?.orgId && !user.platformAdmin && hasPassword === true) {
       supabase
         .from('orgs')
@@ -114,10 +117,11 @@ export function SetupPage() {
           setOrg(data)
           setOrgLoading(false)
         })
-    } else if (!authLoading) {
+    } else if (!authLoading && !checkingPassword && hasPassword !== null) {
+      // Only navigate away if password check is complete and user doesn't meet conditions
       navigate('/')
     }
-  }, [user?.orgId, user?.platformAdmin, authLoading, navigate])
+  }, [user?.orgId, user?.platformAdmin, authLoading, hasPassword, checkingPassword, navigate])
 
   // Auto-fetch pincode data for non-GST flow
   useEffect(() => {
