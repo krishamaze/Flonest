@@ -39,7 +39,7 @@ interface AuthContextType {
   refreshAdminMfaRequirement: () => Promise<void>
   memberships: OrgMembershipSummary[]
   currentOrg: OrgContextSummary
-  switchToOrg: (orgId: string) => Promise<void>
+  switchToOrg: (orgId: string, membershipOverride?: OrgMembershipSummary) => Promise<void>
   refreshMemberships: () => Promise<OrgMembershipSummary[]>
   agentRelationships: AgentContextInfo[]
   currentAgentContext: AgentContextInfo | null
@@ -909,7 +909,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             }
           : prev
       )
-      return
+      return summaries
     }
 
     const existingOrgId = currentOrg?.orgId ?? loadPersistedOrgId()
