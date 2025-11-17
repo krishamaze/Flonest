@@ -98,6 +98,13 @@ function loadCachedSession(): CachedSession | null {
 }
 
 function clearCachedSession() {
+  try {
+    localStorage.removeItem(CACHE_KEY)
+  } catch (error) {
+    // Ignore localStorage errors
+  }
+}
+
 function loadPersistedOrgId(): string | null {
   try {
     return localStorage.getItem(ORG_CONTEXT_STORAGE_KEY)
@@ -133,13 +140,6 @@ const persistServerOrgContext = async (orgId: string | null) => {
     }
   } catch (error) {
     console.error('[Auth] Error persisting org context server-side:', error)
-  }
-}
-
-  try {
-    localStorage.removeItem(CACHE_KEY)
-  } catch (error) {
-    // Ignore localStorage errors
   }
 }
 

@@ -61,8 +61,12 @@ export async function createDCSale(
 
   if (customerError) throw customerError
 
-  const customerState = (customer as any).master_customers?.state_code
-  const isInterstate = customerState && customerState !== senderOrg.state.substring(0, 2)
+  const customerState = (customer as any).master_customers?.state_code as string | undefined
+  const senderStatePrefix = senderOrg.state ? senderOrg.state.substring(0, 2) : null
+  const isInterstate =
+    Boolean(customerState) &&
+    Boolean(senderStatePrefix) &&
+    customerState!.substring(0, 2) !== senderStatePrefix
 
   // Calculate totals
   const subtotal = saleData.items.reduce((sum, item) => sum + item.line_total, 0)
