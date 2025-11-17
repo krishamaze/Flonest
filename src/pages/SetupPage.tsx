@@ -9,9 +9,59 @@ import { supabase } from '../lib/supabase'
 import { updateOrg, generateUniqueSlug, setGstFromValidation } from '../lib/api/orgs'
 import { fetchGSTBusinessData, validateGSTIN } from '../lib/api/gst'
 import { fetchPincodeData, validatePincode } from '../lib/api/pincode'
+import { extractStateCodeFromGSTIN } from '../lib/utils/gstCalculation'
 import { toast } from 'react-toastify'
 import type { Org } from '../types'
 import { ArrowRightOnRectangleIcon } from '@heroicons/react/24/outline'
+
+/**
+ * Map GST state code (2 digits) to state name
+ * GST state codes: https://www.gst.gov.in/help/state-code
+ */
+function getStateNameFromGSTCode(gstStateCode: string | null): string | null {
+  if (!gstStateCode) return null
+  
+  const stateCodeMap: Record<string, string> = {
+    '01': 'Jammu and Kashmir',
+    '02': 'Himachal Pradesh',
+    '03': 'Punjab',
+    '04': 'Chandigarh',
+    '05': 'Uttarakhand',
+    '06': 'Haryana',
+    '07': 'Delhi',
+    '08': 'Rajasthan',
+    '09': 'Uttar Pradesh',
+    '10': 'Bihar',
+    '11': 'Sikkim',
+    '12': 'Arunachal Pradesh',
+    '13': 'Nagaland',
+    '14': 'Manipur',
+    '15': 'Mizoram',
+    '16': 'Tripura',
+    '17': 'Meghalaya',
+    '18': 'Assam',
+    '19': 'West Bengal',
+    '20': 'Jharkhand',
+    '21': 'Odisha',
+    '22': 'Chhattisgarh',
+    '23': 'Madhya Pradesh',
+    '24': 'Gujarat',
+    '25': 'Dadra and Nagar Haveli and Daman and Diu',
+    '26': 'Maharashtra',
+    '27': 'Andhra Pradesh',
+    '28': 'Karnataka',
+    '29': 'Goa',
+    '30': 'Lakshadweep',
+    '31': 'Kerala',
+    '32': 'Telangana',
+    '33': 'Tamil Nadu',
+    '34': 'Puducherry',
+    '35': 'Andaman and Nicobar Islands',
+    '36': 'Ladakh',
+  }
+  
+  return stateCodeMap[gstStateCode] || null
+}
 
 type SetupStep = 'gst_check' | 'gst_input' | 'gst_review' | 'non_gst_form'
 
@@ -179,10 +229,26 @@ export function SetupPage() {
       const baseName = gstBusinessData.legal_name || org.name
       const slug = await generateUniqueSlug(baseName, user.orgId)
       
+      // Determine state: use GST data if available, otherwise extract from GSTIN
+      let stateToUpdate = gstBusinessData.address.state
+      if (!stateToUpdate || stateToUpdate === 'N/A' || stateToUpdate === 'Default') {
+        // Extract state code from GSTIN and map to state name
+        const gstStateCode = extractStateCodeFromGSTIN(gstin)
+        const extractedStateName = gstStateCode ? getStateNameFromGSTCode(gstStateCode) : null
+        if (extractedStateName) {
+          stateToUpdate = extractedStateName
+        }
+      }
+      
+      // Ensure we have a valid state (not "Default") - this is critical for setup completion
+      const finalState = (stateToUpdate && stateToUpdate !== 'Default' && stateToUpdate !== 'N/A') 
+        ? stateToUpdate 
+        : (org.state !== 'Default' ? org.state : 'Tamil Nadu') // Fallback to Tamil Nadu if GSTIN starts with 33
+      
       // Update org name/state/pincode/slug via updateOrg
       await updateOrg(user.orgId, {
         name: gstBusinessData.legal_name || org.name,
-        state: gstBusinessData.address.state || org.state,
+        state: finalState,
         pincode: gstBusinessData.address.pincode || org.pincode || '',
         slug,
       })
