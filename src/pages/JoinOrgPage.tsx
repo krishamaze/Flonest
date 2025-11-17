@@ -61,3 +61,4 @@ export function JoinOrgPage() {
       </div>
     </div>
   )
+}
