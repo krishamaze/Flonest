@@ -853,6 +853,7 @@ export function InvoiceForm({
   const totals = useMemo(() => {
     const subtotal = items.reduce((sum, item) => sum + (item.line_total || 0), 0)
     
+    // Determine org GST mode (centralized check)
     const gstEnabled = isOrgGstEnabled(org)
     if (!gstEnabled || !selectedCustomer) {
       return {
@@ -865,6 +866,7 @@ export function InvoiceForm({
     }
 
     // Get seller state code from org GSTIN or state field
+    // Note: Only use gst_number directly for state extraction, not for GST enabled check
     const sellerStateCode = org.gst_number 
       ? extractStateCodeFromGSTIN(org.gst_number) 
       : (org.state ? org.state.slice(0, 2) : null)

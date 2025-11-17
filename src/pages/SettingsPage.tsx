@@ -17,6 +17,9 @@ import { supabase } from '../lib/supabase'
 import { toast } from 'react-toastify'
 import { canManageOrgSettings } from '../lib/permissions'
 import { Modal } from '../components/ui/Modal'
+import { setGstFromValidation } from '../lib/api/orgs'
+import { fetchGSTBusinessData, validateGSTIN } from '../lib/api/gst'
+import { extractStateCodeFromGSTIN, getStateNameFromGSTCode } from '../lib/constants/gstStateCodes'
 import {
   fetchSubscriptionSummary,
   listActivePlans,
@@ -58,6 +61,10 @@ export function SettingsPage() {
   const [planAction, setPlanAction] = useState<'upgrade' | 'downgrade'>('upgrade')
   const [selectedPlanSlug, setSelectedPlanSlug] = useState<string | null>(null)
   const [billingAction, setBillingAction] = useState<null | 'upgrade' | 'downgrade' | 'cancel' | 'resume'>(null)
+  const [gstinInput, setGstinInput] = useState('')
+  const [gstinLoading, setGstinLoading] = useState(false)
+  const [gstinError, setGstinError] = useState<string | null>(null)
+  const [gstBusinessData, setGstBusinessData] = useState<any>(null)
 
   const isAdmin = canManageOrgSettings(user)
   const planOptions = useMemo(() => {
@@ -89,7 +96,7 @@ export function SettingsPage() {
     try {
       const { data, error } = await supabase
         .from('orgs')
-        .select('id, name, custom_logo_url, phone, address, gst_number, gst_verification_status')
+        .select('id, name, legal_name, custom_logo_url, phone, address, gst_number, gst_verification_status')
         .eq('id', user.orgId)
         .single()
 
@@ -282,6 +289,81 @@ export function SettingsPage() {
   }, [formData, orgSettings])
 
   const gstVerified = orgSettings?.gst_verification_status === 'verified'
+  const isUnregistered = !orgSettings?.gst_number || orgSettings.gst_number.trim() === ''
+
+  // Auto-fetch GST data when GSTIN is complete and valid
+  useEffect(() => {
+    if (isUnregistered && gstinInput && validateGSTIN(gstinInput)) {
+      setGstinLoading(true)
+      setGstinError(null)
+      fetchGSTBusinessData(gstinInput)
+        .then((data) => {
+          if (data) {
+            setGstBusinessData(data)
+          } else {
+            setGstinError('GSTIN not found. Please verify and try again.')
+          }
+        })
+        .catch((error: any) => {
+          setGstinError(error.message || 'Failed to fetch GST data. Please try again.')
+          setGstBusinessData(null)
+        })
+        .finally(() => {
+          setGstinLoading(false)
+        })
+    } else {
+      setGstBusinessData(null)
+    }
+  }, [gstinInput, isUnregistered])
+
+  const handleAddGSTIN = async () => {
+    if (!user?.orgId || !gstinInput || !validateGSTIN(gstinInput)) {
+      setGstinError('Please enter a valid 15-character GSTIN')
+      return
+    }
+
+    if (!gstBusinessData) {
+      setGstinError('Please wait for GST data to load')
+      return
+    }
+
+    setGstinLoading(true)
+    setGstinError(null)
+
+    try {
+      // Update org state/pincode if needed from GST data
+      const gstStateCode = extractStateCodeFromGSTIN(gstinInput)
+      const stateName = gstStateCode ? getStateNameFromGSTCode(gstStateCode) : null
+      
+      if (stateName && orgSettings) {
+        await supabase
+          .from('orgs')
+          .update({
+            state: stateName,
+            pincode: gstBusinessData.address.pincode || orgSettings.address || null,
+          })
+          .eq('id', user.orgId)
+      }
+
+      // Set GST number - always unverified until platform admin manually verifies
+      await setGstFromValidation(
+        user.orgId,
+        gstinInput.toUpperCase(),
+        true,
+        'unverified',
+        'manual'
+      )
+
+      toast.success('GSTIN added successfully. Awaiting platform admin verification.')
+      setGstinInput('')
+      setGstBusinessData(null)
+      await loadOrgSettings()
+    } catch (error: any) {
+      setGstinError(error.message || 'Failed to add GSTIN. Please try again.')
+    } finally {
+      setGstinLoading(false)
+    }
+  }
 
   const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!user?.orgId || !isAdmin) return
@@ -593,12 +675,17 @@ export function SettingsPage() {
                 className="bg-neutral-100"
               />
               <p className="text-xs text-muted-text mt-xs">
-                From GST verification - cannot be changed
+                From GST verification - immutable. Used on GST invoices and tax documents.
               </p>
             </div>
           )}
 
           {/* Display/Brand Name - Always editable */}
+          {/* 
+            IMPORTANT: For GST-registered orgs:
+            - legal_name: Immutable, from GST portal, used on invoices/tax docs
+            - name (display name): Editable, used in app UI only, not on legal documents
+          */}
           <div>
             <Input
               label={gstVerified ? "Display Name (Brand Name)" : "Organization Name"}
@@ -611,7 +698,7 @@ export function SettingsPage() {
             />
             {gstVerified && (
               <p className="text-xs text-muted-text mt-xs">
-                Used in app interface, not on invoices or tax documents
+                Used in app interface only. Legal name from GST verification is used on invoices and tax documents.
               </p>
             )}
           </div>
@@ -626,8 +713,8 @@ export function SettingsPage() {
             disabled={!isEditing}
           />
 
-          {/* GSTIN - Read-only after verification */}
-          {orgSettings?.gst_number && (
+          {/* GSTIN - Read-only after verification, or input for unregistered */}
+          {orgSettings?.gst_number ? (
             <div>
               <label className="block text-sm font-medium text-secondary-text mb-xs">
                 GSTIN {gstVerified ? '(Verified)' : '(Pending Verification)'}
@@ -651,7 +738,53 @@ export function SettingsPage() {
                   : 'Awaiting platform admin verification'}
               </p>
             </div>
-          )}
+          ) : isAdmin && isUnregistered ? (
+            <div className="space-y-sm">
+              <label className="block text-sm font-medium text-secondary-text">
+                Add GST Registration
+              </label>
+              <div className="space-y-xs">
+                <Input
+                  type="text"
+                  value={gstinInput}
+                  onChange={(e) => {
+                    setGstinInput(e.target.value.toUpperCase().replace(/\s/g, ''))
+                    setGstinError(null)
+                  }}
+                  placeholder="15-character GSTIN"
+                  maxLength={15}
+                  className="font-mono"
+                  disabled={gstinLoading}
+                />
+                {gstinInput.length > 0 && gstinInput.length < 15 && (
+                  <p className="text-xs text-warning">GSTIN must be exactly 15 characters</p>
+                )}
+                {gstinError && (
+                  <p className="text-xs text-error">{gstinError}</p>
+                )}
+                {gstBusinessData && (
+                  <div className="rounded-md border border-success bg-success-light/20 p-sm text-xs space-y-xs">
+                    <p className="font-semibold text-success-dark">GST Data Found:</p>
+                    <p><strong>Legal Name:</strong> {gstBusinessData.legal_name || 'N/A'}</p>
+                    <p><strong>State:</strong> {gstBusinessData.address.state || 'N/A'}</p>
+                    <p className="text-muted-text">GSTIN will be marked unverified until platform admin verifies.</p>
+                  </div>
+                )}
+                <Button
+                  variant="primary"
+                  size="sm"
+                  onClick={handleAddGSTIN}
+                  disabled={!validateGSTIN(gstinInput) || !gstBusinessData || gstinLoading}
+                  isLoading={gstinLoading}
+                >
+                  Add GSTIN
+                </Button>
+              </div>
+              <p className="text-xs text-muted-text">
+                After adding GSTIN, it will be reviewed by platform admin before activation.
+              </p>
+            </div>
+          ) : null}
 
           {/* Address - Read-only after verification */}
           {orgSettings?.address && (

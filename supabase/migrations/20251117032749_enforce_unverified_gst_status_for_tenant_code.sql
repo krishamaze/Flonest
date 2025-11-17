@@ -14,12 +14,29 @@ LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = public
 AS $$
+DECLARE
+  v_current_status text;
 BEGIN
   -- Verify org exists and user has access (via RLS)
   -- This function can be called by tenant code, but verification fields are set from gst-validate response only
   
-  -- If clearing GST (empty gst_number), allow it
+  -- Get current verification status
+  SELECT gst_verification_status INTO v_current_status
+  FROM public.orgs
+  WHERE id = p_org_id;
+  
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'Organization not found or access denied';
+  END IF;
+  
+  -- If clearing GST (empty gst_number), block if currently verified
   IF p_gst_number IS NULL OR trim(p_gst_number) = '' THEN
+    -- CRITICAL: Prevent clearing GSTIN if org is verified
+    -- Only platform admins (via future unverify/suspend RPC) can change verified GSTINs
+    IF v_current_status = 'verified' THEN
+      RAISE EXCEPTION 'Cannot clear GSTIN for verified organization. Contact platform admin to suspend or cancel GST registration.';
+    END IF;
+    
     UPDATE public.orgs
     SET
       gst_number = NULL,
@@ -31,10 +48,6 @@ BEGIN
       gst_verification_notes = NULL,
       updated_at = now()
     WHERE id = p_org_id;
-    
-    IF NOT FOUND THEN
-      RAISE EXCEPTION 'Organization not found or access denied';
-    END IF;
     
     RETURN;
   END IF;

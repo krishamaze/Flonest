@@ -64,10 +64,11 @@ export async function createInvoice(
   org: Org,
   customer: CustomerWithMaster
 ): Promise<Invoice> {
-  // Determine org GST mode
+  // Determine org GST mode (centralized check)
   const gstEnabled = isOrgGstEnabled(org)
   
   // Get seller state code from org GSTIN or state field
+  // Note: Only use gst_number directly for state extraction, not for GST enabled check
   const sellerStateCode = org.gst_number 
     ? extractStateCodeFromGSTIN(org.gst_number) 
     : (org.state ? org.state.slice(0, 2) : null)
