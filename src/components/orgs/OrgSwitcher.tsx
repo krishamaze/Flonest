@@ -85,10 +85,11 @@ function OrgSwitcherModal({
         throw error
       }
 
-      await refreshMemberships()
+      const updatedMemberships = await refreshMemberships()
       const newOrgId = (data as { org_id?: string } | null)?.org_id
       if (newOrgId) {
-        await switchToOrg(newOrgId)
+        const newMembership = updatedMemberships.find(m => m.orgId === newOrgId)
+        await switchToOrg(newOrgId, newMembership)
       }
       closeSheet()
       navigate('/setup', { replace: true })

@@ -40,7 +40,7 @@ interface AuthContextType {
   memberships: OrgMembershipSummary[]
   currentOrg: OrgContextSummary
   switchToOrg: (orgId: string) => Promise<void>
-  refreshMemberships: () => Promise<void>
+  refreshMemberships: () => Promise<OrgMembershipSummary[]>
   agentRelationships: AgentContextInfo[]
   currentAgentContext: AgentContextInfo | null
   switchToAgentContext: (relationshipId: string) => Promise<void>
@@ -795,8 +795,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }
 
-  const switchToOrg = async (orgId: string) => {
-    const membership = memberships.find(m => m.orgId === orgId)
+  const switchToOrg = async (orgId: string, membershipOverride?: OrgMembershipSummary) => {
+    const membership = membershipOverride ?? memberships.find(m => m.orgId === orgId)
     if (!membership) {
       console.warn('[Auth] Attempted to switch to unknown org:', orgId)
       return
@@ -869,7 +869,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   const refreshMemberships = async () => {
-    if (!user) return
+    if (!user) return []
     const { data, error } = await supabase
       .from('memberships')
       .select('id, role, branch_id, orgs!inner(id, name, slug, state, lifecycle_state)')
@@ -879,7 +879,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     if (error) {
       console.error('[Auth] Failed to refresh memberships:', error)
-      return
+      return []
     }
 
     const summaries =
@@ -928,6 +928,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           }
         : prev
     )
+    return summaries
   }
 
   const refreshAdminMfaRequirement = async () => {
