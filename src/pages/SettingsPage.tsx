@@ -89,7 +89,7 @@ export function SettingsPage() {
     try {
       const { data, error } = await supabase
         .from('orgs')
-        .select('id, name, legal_name, custom_logo_url, phone, address, gst_number, gst_verification_status')
+        .select('id, name, custom_logo_url, phone, address, gst_number, gst_verification_status')
         .eq('id', user.orgId)
         .single()
 

@@ -3,6 +3,8 @@
  * Handles CGST, SGST, and IGST calculations based on seller and buyer states
  */
 
+import { extractStateCodeFromGSTIN } from '../constants/gstStateCodes'
+
 export interface GSTCalculationResult {
   subtotal: number
   cgst_rate: number
@@ -78,7 +80,7 @@ export function getGSTRate(orgGstEnabled: boolean, defaultRate: number = 18): nu
 }
 
 // Re-export from constants for backward compatibility
-export { extractStateCodeFromGSTIN } from '../constants/gstStateCodes'
+export { extractStateCodeFromGSTIN }
 
 /**
  * Calculate GST for a single line item (per-item calculation)
