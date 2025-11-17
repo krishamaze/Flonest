@@ -89,6 +89,27 @@ alwaysApply: false
   - Use generic signup success messages to avoid revealing email configuration status.
 - **Rule**: If a security decision feels inconvenient, it's likely the correct one.
 
+## [P1] MFA Reset Security Vulnerability - Fixed
+- **Vulnerability**: Self-service MFA reset without additional verification
+- **Error Signature**: `adminMfaReset()` function allowed MFA bypass with only session token
+- **Root Cause**: Backend Edge Function `/admin-mfa-enroll/reset` only checked platform admin status, no email/SMS/backup code verification
+- **Impact**: Attacker with compromised session could disable MFA and gain permanent access
+- **Fix Applied**:
+  - Removed self-service reset link from `PlatformAdminMfaPage`
+  - Disabled `adminMfaReset()` function (throws error if called)
+  - Added security warning message directing users to contact support
+  - Added comprehensive security documentation
+- **Prevention**:
+  - **NEVER** allow MFA reset without additional verification:
+    - Email-based reset (send verification link to registered email)
+    - SMS-based reset (send code to registered phone)
+    - Backup recovery codes verification
+    - Manual admin approval workflow
+  - **ALWAYS** require out-of-band proof of identity for MFA reset
+  - **NEVER** allow single-click MFA bypass - defeats entire purpose of MFA
+  - If implementing reset flow: require email token verification before allowing reset
+- **Status**: UI access removed. Backend endpoint still exists but is not accessible from UI. TODO: Implement secure email-based reset flow or remove endpoint entirely.
+
 ---
 
 # 🟡 MEDIUM PRIORITY
