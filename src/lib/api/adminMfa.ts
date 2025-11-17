@@ -206,39 +206,28 @@ export async function adminMfaVerify(factorId: string, code: string): Promise<vo
   }
 }
 
+/**
+ * SECURITY WARNING: This function allows MFA reset without additional verification.
+ * 
+ * CRITICAL VULNERABILITY: The backend endpoint only checks platform admin status
+ * and does not require email verification, SMS, backup codes, or any other proof of identity.
+ * 
+ * An attacker with a compromised session could disable MFA and gain permanent access.
+ * 
+ * DO NOT USE THIS FUNCTION without implementing proper security:
+ * - Email-based reset flow (send verification link to registered email)
+ * - SMS-based reset flow (send code to registered phone)
+ * - Backup recovery codes verification
+ * - Manual admin approval workflow
+ * 
+ * This function is kept for reference but should not be called from the UI.
+ * The UI has been updated to remove self-service reset.
+ * 
+ * TODO: Implement secure MFA reset flow with email verification or remove this endpoint entirely.
+ */
 export async function adminMfaReset(): Promise<void> {
-  const {
-    data: { session },
-  } = await supabase.auth.getSession()
-  const accessToken = session?.access_token
-
-  if (!accessToken) {
-    throw new Error('No active session - please sign in again')
-  }
-
-  const supabaseUrl = (supabase as any).supabaseUrl
-  const anonKey = (supabase as any).supabaseKey
-
-  const response = await fetch(`${supabaseUrl}/functions/v1/admin-mfa-enroll/reset`, {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${accessToken}`,
-      'Content-Type': 'application/json',
-      'apikey': anonKey,
-    },
-    body: JSON.stringify({}),
-  })
-
-  if (!response.ok) {
-    const errorText = await response.text()
-    throw buildAdminMfaError(response, errorText)
-  }
-  
-  const data = await response.json()
-  if (!data.success) {
-    const err: AdminMfaError = new Error(data.error ?? 'Failed to reset authenticator')
-    err.code = data.code
-    throw err
-  }
+  throw new Error(
+    'MFA reset is disabled for security. Please contact platform support or use backup recovery codes.'
+  )
 }
 

@@ -4,7 +4,7 @@ import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
 import { Button } from '../components/ui/Button'
 import { Input } from '../components/ui/Input'
-import { adminMfaStatus, adminMfaStart, adminMfaVerify, adminMfaReset } from '../lib/api/adminMfa'
+import { adminMfaStatus, adminMfaStart, adminMfaVerify } from '../lib/api/adminMfa'
 
 // Force rebuild v2: MFA status endpoint with timeout handling
 // Updated: 2025-11-15 - Force new chunk hash for Service Worker cache busting
@@ -29,7 +29,6 @@ export function PlatformAdminMfaPage() {
   const [error, setError] = useState<string | null>(null)
   const [info, setInfo] = useState<string>('Loading MFA status...')
   const [flowMode, setFlowMode] = useState<FlowMode>('checking')
-  const [resetting, setResetting] = useState(false)
   const hasCheckedRef = useRef(false)
   const loadingTimeoutRef = useRef<NodeJS.Timeout | null>(null)
   const isCheckingRef = useRef(false)
@@ -242,22 +241,9 @@ export function PlatformAdminMfaPage() {
     }
   }
 
-  const handleResetAuthenticator = async () => {
-    if (resetting) return
-    setResetting(true)
-    setError(null)
-
-    try {
-      await adminMfaReset()
-      await signOut().catch((err) => console.error('Sign out error during reset:', err))
-      window.location.href = '/login'
-    } catch (err: any) {
-      console.error('Reset authenticator failed:', err)
-      setError(err?.message || 'Failed to reset authenticator. Please try again.')
-    } finally {
-      setResetting(false)
-    }
-  }
+  // SECURITY: MFA reset removed - requires email verification or manual admin intervention
+  // Self-service reset without additional verification is a critical security vulnerability
+  // If reset is needed, implement email-based reset flow or require manual admin approval
 
   if (!user || !user.platformAdmin) {
     return null
@@ -361,17 +347,13 @@ export function PlatformAdminMfaPage() {
                 Verify Code
               </Button>
 
-              <p className="text-center text-sm text-secondary-text">
-                Lost access to your authenticator app?{' '}
-                <button
-                  type="button"
-                  className="text-primary font-semibold underline underline-offset-2 disabled:opacity-50"
-                  onClick={handleResetAuthenticator}
-                  disabled={resetting}
-                >
-                  {resetting ? 'Resetting...' : 'Reset authenticator.'}
-                </button>
-              </p>
+              <div className="rounded-md p-md bg-warning-light border border-warning">
+                <p className="text-sm text-secondary-text text-center">
+                  <strong>Lost access to your authenticator app?</strong>
+                  <br />
+                  MFA reset requires email verification for security. Please contact platform support or use your backup recovery codes if you have them saved.
+                </p>
+              </div>
 
               <Button type="button" variant="ghost" size="md" className="w-full text-error" onClick={handleSignOut}>
                 Sign out
