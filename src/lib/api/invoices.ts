@@ -165,7 +165,6 @@ export async function createInvoice(
     igst_amount,
     total_amount,
     status: 'draft',
-    created_by: userId,
   }
 
   // Create invoice and items in a transaction
@@ -263,8 +262,9 @@ export async function createInvoice(
         invoice_id: invoice.id,
         product_id: masterProductId, // Use master_product_id, not products.id
         quantity: item.quantity,
+        unit: 'pcs', // Default unit, should come from product
         unit_price: item.unit_price,
-        line_total: item.line_total,
+        total_amount: item.line_total, // Map line_total to total_amount
       }
     })
 
@@ -763,7 +763,7 @@ function wrapDraftData(data: any): any {
  */
 export async function autoSaveInvoiceDraft(
   orgId: string,
-  userId: string,
+  _userId: string,
   draftSessionId: string,
   draftData: {
     customer_id?: string
@@ -848,7 +848,6 @@ export async function autoSaveInvoiceDraft(
           igst_amount: 0,
           total_amount: subtotal,
           status: 'draft',
-          created_by: userId,
           draft_data: wrappedDraftData,
         } as any)
         .select('id, draft_session_id')

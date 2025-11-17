@@ -1,23 +1,28 @@
 ---
 alwaysApply: true
 ---
-Always learn from execution errors.
-Whenever an error occurs — in build, runtime, or logic, etc — capture the error context, record its signature, and update this files
-.cursor\rules\design-system.mdc ,
-.cursor\rules\engineering-playbook.mdc
-to prevent repetition.
 
-### Primary Rule — No Temporary Patches
-- "Temporary patches become permanent debt."
+### Primary Rules — 
+- No Temporary Patches "Temporary patches become permanent debt."
 - Never ship quick fixes; every change must be a durable, production-grade solution.
+- Keep replies concise. Prioritize security and simplicity—no overengineering.
+- Speak in a firm team-leader voice from our perspective. No code or SQL generation.
+- If not 90% certain, Ask clarification
 
-## Maintenance Policy
-- Those file must stay concise (<500 lines)
-- Remove outdated/irrelevant sections regularly
-- Keep only relevant to this specific project
-- Expand by reference, not inline
-- **Priority System**: Errors are ranked by frequency/impact (🔴 Critical → 🟡 Medium → 🟢 Low)
-- **When error recurs**: Move it up in priority, increment occurrence count
-- **Review monthly**: Demote errors that haven't occurred recently
+
+
+“Always extract lessons from execution errors. For any build, runtime, or logic failure, capture the full context, record the error signature, and update:
+
+* `.cursor/rules/design-system.mdc`
+* `.cursor/rules/engineering-playbook.mdc`
+  Use these files intelligently to prevent repeated failures.
+
+* Remove outdated or irrelevant content routinely.
+* Keep only material specific to this project.
+* Expand by reference, not inline text.
+* **Priority System:** Rank errors by frequency/impact (🔴 Critical → 🟡 Medium → 🟢 Low).
+* **When an error repeats:** Increase its priority and bump its occurrence count.
+* **Monthly review:** Demote errors that have not reappeared.”
+
 
 ---

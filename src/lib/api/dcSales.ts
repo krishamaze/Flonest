@@ -1,5 +1,6 @@
 import { supabase } from '../supabase'
 import type { Invoice, InvoiceItem } from '../../types'
+import type { Database } from '../../types/database'
 import { validateDCStockAvailability } from './dcStock'
 
 export interface DCSaleItemInput {
@@ -120,12 +121,13 @@ export async function createDCSale(
   if (invoiceError) throw invoiceError
 
   // Create invoice items
-  const invoiceItemsData = saleData.items.map(item => ({
+  const invoiceItemsData: Database['public']['Tables']['invoice_items']['Insert'][] = saleData.items.map(item => ({
     invoice_id: invoice.id,
     product_id: item.product_id,
     quantity: item.quantity,
+    unit: 'pcs', // Default unit, should come from product
     unit_price: item.unit_price,
-    line_total: item.line_total,
+    total_amount: item.line_total, // Map line_total to total_amount
   }))
 
   const { data: invoiceItems, error: itemsError } = await supabase
