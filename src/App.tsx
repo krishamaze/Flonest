@@ -292,11 +292,11 @@ function App() {
   }, [])
 
   return (
-    <VersionCheckProvider>
-      <ServiceWorkerProvider>
-        <AuthProvider>
-          <OrgSwitcherProvider>
-            <BrowserRouter>
+    <BrowserRouter>
+      <VersionCheckProvider>
+        <ServiceWorkerProvider>
+          <AuthProvider>
+            <OrgSwitcherProvider>
               <AppRoutes />
               <PlatformAdminSessionWatcher />
               <InstallPrompt />
@@ -315,11 +315,11 @@ function App() {
                 stacked={true}
                 style={{ zIndex: 9999 }}
               />
-            </BrowserRouter>
-          </OrgSwitcherProvider>
-        </AuthProvider>
-      </ServiceWorkerProvider>
-    </VersionCheckProvider>
+            </OrgSwitcherProvider>
+          </AuthProvider>
+        </ServiceWorkerProvider>
+      </VersionCheckProvider>
+    </BrowserRouter>
   )
 }
 

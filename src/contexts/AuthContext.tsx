@@ -51,6 +51,38 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined)
 const CONNECTION_TIMEOUT = 5000 // 5 seconds
 const CACHE_KEY = 'lastGoodSession'
 const ORG_CONTEXT_STORAGE_KEY = 'currentOrgId'
+const CLOCK_SKEW_THRESHOLD_MS = 2000
+const SUPABASE_AUTH_HASH_KEYS = ['access_token', 'refresh_token', 'provider_token', 'expires_at', 'token_type', 'type']
+const AUTH_HASH_EXCLUSION_PATHS = ['/reset-password']
+
+function logSessionClockSkew(session: Session | null, source: string) {
+  if (!session?.expires_at || typeof session.expires_in !== 'number') return
+  const issuedAtMs = (session.expires_at - session.expires_in) * 1000
+  const skewMs = issuedAtMs - Date.now()
+  if (Math.abs(skewMs) >= CLOCK_SKEW_THRESHOLD_MS) {
+    console.warn('[Auth Clock Skew]', {
+      source,
+      skewMs,
+      issuedAt: new Date(issuedAtMs).toISOString(),
+      now: new Date().toISOString(),
+    })
+  }
+}
+
+function stripSupabaseAuthHash() {
+  if (typeof window === 'undefined') return
+  if (AUTH_HASH_EXCLUSION_PATHS.some(path => window.location.pathname.startsWith(path))) {
+    return
+  }
+  const hash = window.location.hash
+  if (!hash || hash.length <= 1) return
+  const params = new URLSearchParams(hash.slice(1))
+  const hasAuthParams = SUPABASE_AUTH_HASH_KEYS.some(key => params.has(key))
+  if (!hasAuthParams) return
+  const cleanUrl = `${window.location.origin}${window.location.pathname}${window.location.search}`
+  window.history.replaceState(null, '', cleanUrl)
+  console.info('[Auth] Cleared Supabase auth hash from URL to prevent reprocessing')
+}
 
 interface CachedSession {
   session: Session | null
@@ -188,6 +220,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (event, session) => {
+      logSessionClockSkew(session, `auth-event:${event}`)
+
       // Skip profile loading during password recovery flow
       // The recovery token creates a temporary session, but we don't want to redirect
       const isRecoveryFlow = window.location.pathname === '/reset-password' && 
@@ -197,10 +231,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         // During recovery, just set the session but don't load profile
         // This prevents auto-redirect away from reset password page
         setSession(session)
+        if (session?.user) {
+          stripSupabaseAuthHash()
+        }
         return
       }
 
       setSession(session)
+      if (session?.user) {
+        stripSupabaseAuthHash()
+      }
       if (session?.user) {
         loadUserProfile(session.user, false)
       } else {
@@ -225,6 +265,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const { data: { session } } = result as Awaited<typeof sessionPromise>
 
       setSession(session)
+      logSessionClockSkew(session, 'initializeAuth')
+      if (session?.user) {
+        stripSupabaseAuthHash()
+      }
       if (session?.user) {
         try {
           await loadUserProfile(session.user, true)
@@ -266,6 +310,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           console.warn('[Auth Timeout] Using cached session')
         }
         setSession(cached.session)
+        logSessionClockSkew(cached.session, 'initializeAuth-cache')
         setUser(cached.user)
         if (cached.user.platformAdmin) {
           setRequiresAdminMfa(true)
@@ -290,6 +335,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const { data: { session } } = result as Awaited<typeof sessionPromise>
 
       if (session?.user) {
+        logSessionClockSkew(session, 'background-reconnect')
+        stripSupabaseAuthHash()
         await loadUserProfile(session.user, false)
         setConnectionError(false)
         if (import.meta.env.DEV) {
@@ -407,6 +454,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const { data: { session } } = result as Awaited<typeof sessionPromise>
 
       setSession(session)
+      logSessionClockSkew(session, 'retryConnection')
+      if (session?.user) {
+        stripSupabaseAuthHash()
+      }
       if (session?.user) {
         await loadUserProfile(session.user, true)
         setConnectionError(false)
@@ -424,6 +475,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const cached = loadCachedSession()
       if (cached && cached.user) {
         setSession(cached.session)
+        logSessionClockSkew(cached.session, 'retryConnection-cache')
         setUser(cached.user)
         if (cached.user.platformAdmin) {
           setRequiresAdminMfa(true)

@@ -79,3 +79,4 @@ CREATE POLICY IF NOT EXISTS "Users delete own notifications"
   USING (auth.uid() = user_id);
 
 
+
