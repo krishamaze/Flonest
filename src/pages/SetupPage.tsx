@@ -11,7 +11,6 @@ import { fetchGSTBusinessData, validateGSTIN } from '../lib/api/gst'
 import { fetchPincodeData, validatePincode } from '../lib/api/pincode'
 import { extractStateCodeFromGSTIN, getStateNameFromGSTCode } from '../lib/constants/gstStateCodes'
 import { needsOrgSetup } from '../lib/utils/orgLifecycle'
-import { checkUserHasPassword } from '../lib/api/auth'
 import { toast } from 'react-toastify'
 import type { Org } from '../types'
 import { ArrowRightOnRectangleIcon } from '@heroicons/react/24/outline'
@@ -45,12 +44,10 @@ interface NonGSTFormData {
 }
 
 export function SetupPage() {
-  const { user, loading: authLoading, signOut } = useAuth()
+  const { user, loading: authLoading, signOut, hasPassword, checkingPassword } = useAuth()
   const navigate = useNavigate()
   const [org, setOrg] = useState<Org | null>(null)
   const [orgLoading, setOrgLoading] = useState(true)
-  const [checkingPassword, setCheckingPassword] = useState(true)
-  const [hasPassword, setHasPassword] = useState<boolean | null>(null)
   
   // Step management
   const [currentStep, setCurrentStep] = useState<SetupStep>('gst_check')
@@ -77,37 +74,14 @@ export function SetupPage() {
   
   const [isSubmitting, setIsSubmitting] = useState(false)
 
-  // CRITICAL: Check password requirement before allowing setup
+  // Redirect to set-password if user doesn't have password
   useEffect(() => {
-    if (!authLoading && user && !user.platformAdmin) {
-      setCheckingPassword(true)
-      checkUserHasPassword()
-        .then((hasPwd) => {
-          setHasPassword(hasPwd)
-          if (!hasPwd) {
-            // Redirect to set-password page with redirect back to setup
-            const params = new URLSearchParams()
-            params.set('redirect', '/setup')
-            navigate(`/set-password?${params.toString()}`, { replace: true })
-            return
-          }
-        })
-        .catch((err) => {
-          console.error('Error checking password:', err)
-          // Assume no password for safety - redirect to set password
-          setHasPassword(false)
-          const params = new URLSearchParams()
-          params.set('redirect', '/setup')
-          navigate(`/set-password?${params.toString()}`, { replace: true })
-          return
-        })
-        .finally(() => {
-          setCheckingPassword(false)
-        })
-    } else if (!authLoading) {
-      setCheckingPassword(false)
+    if (!authLoading && user && !user.platformAdmin && hasPassword === false) {
+      const params = new URLSearchParams()
+      params.set('redirect', '/setup')
+      navigate(`/set-password?${params.toString()}`, { replace: true })
     }
-  }, [user, authLoading, navigate])
+  }, [user, authLoading, hasPassword, navigate])
 
   // Fetch org data and check if setup is needed
   useEffect(() => {

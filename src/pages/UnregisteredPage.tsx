@@ -2,17 +2,14 @@ import { useEffect, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { supabase } from '../lib/supabase'
-import { checkUserHasPassword } from '../lib/api/auth'
 import { Button } from '../components/ui/Button'
 import { LoadingSpinner } from '../components/ui/LoadingSpinner'
 
 export function UnregisteredPage() {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
-  const { user, loading: authLoading, retryConnection } = useAuth()
+  const { user, loading: authLoading, retryConnection, hasPassword, checkingPassword } = useAuth()
   const [email, setEmail] = useState<string>('')
-  const [checkingPassword, setCheckingPassword] = useState(true)
-  const [hasPassword, setHasPassword] = useState<boolean | null>(null)
   const [creatingOrg, setCreatingOrg] = useState(false)
   const [creationError, setCreationError] = useState<string | null>(null)
 
@@ -21,45 +18,17 @@ export function UnregisteredPage() {
     setEmail(emailParam)
   }, [searchParams])
 
-  // Check if user has password on mount
+  // Redirect to set-password if user doesn't have password
   useEffect(() => {
-    const checkPassword = async () => {
-      if (authLoading || !user) {
-        setCheckingPassword(false)
-        return
+    if (!authLoading && user && !user.platformAdmin && hasPassword === false) {
+      const params = new URLSearchParams()
+      params.set('redirect', '/unregistered')
+      if (email) {
+        params.set('email', email)
       }
-
-      try {
-        const hasPwd = await checkUserHasPassword()
-        setHasPassword(hasPwd)
-        
-        // If user doesn't have password, redirect to set-password page
-        if (!hasPwd) {
-          const params = new URLSearchParams()
-          params.set('redirect', '/unregistered')
-          if (email) {
-            params.set('email', email)
-          }
-          navigate(`/set-password?${params.toString()}`, { replace: true })
-          return
-        }
-      } catch (err) {
-        console.error('Error checking password:', err)
-        // Assume no password for safety - redirect to set password
-        const params = new URLSearchParams()
-        params.set('redirect', '/unregistered')
-        if (email) {
-          params.set('email', email)
-        }
-        navigate(`/set-password?${params.toString()}`, { replace: true })
-        return
-      } finally {
-        setCheckingPassword(false)
-      }
+      navigate(`/set-password?${params.toString()}`, { replace: true })
     }
-
-    checkPassword()
-  }, [user, authLoading, email, navigate])
+  }, [user, authLoading, hasPassword, email, navigate])
 
   const handleOnboardBusiness = async () => {
     if (!user) return

@@ -1,10 +1,9 @@
 import { Navigate, useLocation, useNavigate } from 'react-router-dom'
-import { useEffect, useState } from 'react'
+import { useEffect } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { LoadingSpinner } from './ui/LoadingSpinner'
 import { Button } from './ui/Button'
 import { supabase } from '../lib/supabase'
-import { checkUserHasPassword } from '../lib/api/auth'
 
 /**
  * Protected route that requires authentication and org membership
@@ -18,48 +17,21 @@ export function ProtectedRoute({ children }: { children: React.ReactNode }) {
     memberships,
     agentRelationships,
     currentAgentContext,
+    hasPassword,
+    checkingPassword,
   } = useAuth()
-  const [hasPassword, setHasPassword] = useState<boolean | null>(null)
-  const [checkingPassword, setCheckingPassword] = useState(false)
   const location = useLocation()
   const isSetupRoute = location.pathname === '/setup'
   const navigate = useNavigate()
 
-  // CRITICAL: Check password requirement for ALL non-platform-admin users
-  // This ensures OAuth users without password are caught BEFORE they can access any org routes
+  // Redirect to set-password if user doesn't have password and is on /setup
   useEffect(() => {
-    if (!loading && user && !user.platformAdmin) {
-      // Always check password for non-platform-admin users
-      // This catches OAuth users even if they have an org
-      setCheckingPassword(true)
-      checkUserHasPassword()
-        .then((hasPwd) => {
-          setHasPassword(hasPwd)
-          // If no password and on /setup, redirect to set-password
-          if (!hasPwd && location.pathname === '/setup') {
-            const params = new URLSearchParams()
-            params.set('redirect', '/setup')
-            navigate(`/set-password?${params.toString()}`, { replace: true })
-          }
-        })
-        .catch((err) => {
-          console.error('Error checking password:', err)
-          // Assume no password for safety
-          setHasPassword(false)
-          if (location.pathname === '/setup') {
-            const params = new URLSearchParams()
-            params.set('redirect', '/setup')
-            navigate(`/set-password?${params.toString()}`, { replace: true })
-          }
-        })
-        .finally(() => {
-          setCheckingPassword(false)
-        })
-    } else if (!loading && user) {
-      // Platform admins don't need password check
-      setHasPassword(true)
+    if (!loading && user && !user.platformAdmin && hasPassword === false && isSetupRoute) {
+      const params = new URLSearchParams()
+      params.set('redirect', '/setup')
+      navigate(`/set-password?${params.toString()}`, { replace: true })
     }
-  }, [user, loading, location.pathname, navigate])
+  }, [user, loading, hasPassword, isSetupRoute, navigate])
 
   if (loading || checkingPassword) {
     return (
