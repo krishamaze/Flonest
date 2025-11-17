@@ -129,6 +129,22 @@ alwaysApply: false
 - **Error**: UI doesn't update after an async `setState`.
 - **Fix**: Use functional updates for dependent state: `setState(prev => ...)`. Use `useEffect` to react to state changes.
 
+## [P2] Event Listener Thrashing in Touch Gestures - Fixed
+- **Error**: Touch gestures stutter or lag during drag interactions (pull-to-refresh, swipe, etc.)
+- **Error Signature**: Event listeners being removed/re-added repeatedly during gesture, causing frame drops
+- **Root Cause**: `useEffect` dependency array includes frequently-changing state values (`state`, `pullDistance`, `isRefreshing`), causing effect to re-run and re-attach listeners on every state update
+- **Fix Applied**: 
+  - Store frequently-changing state values in `useRef` (e.g., `stateRef`, `pullDistanceRef`, `isRefreshingRef`)
+  - Add separate `useEffect` to sync refs with state: `stateRef.current = state`
+  - Remove state values from main effect dependency array
+  - Event handlers read from refs instead of closures: `if (isRefreshingRef.current) return`
+- **Prevention**: 
+  - **NEVER** include frequently-changing state in `useEffect` dependency arrays for event listeners
+  - **ALWAYS** use `useRef` for values that event handlers need but shouldn't trigger re-renders
+  - **ALWAYS** add `overscroll-behavior-y: contain` to scrollable containers to prevent iOS Safari native gesture conflicts
+  - Pattern: `const valueRef = useRef(value)` + sync effect + handlers read `valueRef.current`
+- **Fixed Component**: `PullToRefresh.tsx` - Now achieves 60fps smooth gestures
+
 ---
 
 # General Guidelines

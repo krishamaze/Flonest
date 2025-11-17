@@ -26,12 +26,23 @@ export function PullToRefresh({
   const touchStartY = useRef(0)
   const scrollableElement = useRef<HTMLDivElement>(null)
   const isDragging = useRef(false)
+  // Performance: Store latest state values in refs to avoid event listener thrashing
+  const stateRef = useRef<RefreshState>('idle')
+  const pullDistanceRef = useRef(0)
+  const isRefreshingRef = useRef(false)
+
+  // Sync refs with state (for event handlers to read latest values)
+  useEffect(() => {
+    stateRef.current = state
+    pullDistanceRef.current = pullDistance
+    isRefreshingRef.current = isRefreshing
+  }, [state, pullDistance, isRefreshing])
 
   useEffect(() => {
     if (disabled) return
 
     const handleTouchStart = (e: TouchEvent) => {
-      if (isRefreshing) return
+      if (isRefreshingRef.current) return
       
       const scrollable = scrollableElement.current
       if (!scrollable) return
@@ -45,7 +56,7 @@ export function PullToRefresh({
     }
 
     const handleTouchMove = (e: TouchEvent) => {
-      if (isRefreshing) return
+      if (isRefreshingRef.current) return
       
       const scrollable = scrollableElement.current
       if (!scrollable) return
@@ -79,11 +90,15 @@ export function PullToRefresh({
     }
 
     const handleTouchEnd = async () => {
-      if (isRefreshing) return
+      if (isRefreshingRef.current) return
 
       isDragging.current = false
 
-      if (state === 'ready' && pullDistance >= threshold) {
+      // Read from refs to get latest values without causing re-renders
+      const currentState = stateRef.current
+      const currentPullDistance = pullDistanceRef.current
+
+      if (currentState === 'ready' && currentPullDistance >= threshold) {
         setState('refreshing')
         setIsRefreshing(true)
 
@@ -136,7 +151,7 @@ export function PullToRefresh({
       element.removeEventListener('touchmove', handleTouchMove)
       element.removeEventListener('touchend', handleTouchEnd)
     }
-  }, [disabled, state, pullDistance, threshold, maxPull, onRefresh, isRefreshing])
+  }, [disabled, threshold, maxPull, onRefresh])
 
   // Calculate indicator opacity and scale based on pull distance
   const progress = Math.min(pullDistance / threshold, 1)
@@ -228,6 +243,7 @@ export function PullToRefresh({
         style={{
           transform: `translateY(${pullDistance}px)`,
           transition: state === 'idle' ? 'transform 0.3s ease-out' : 'none',
+          overscrollBehaviorY: 'contain', // Prevent iOS Safari native pull-to-refresh conflict
         }}
       >
         {children}
