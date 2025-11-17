@@ -126,6 +126,7 @@ export async function getDeliveryChallansForSender(
  */
 export async function getDeliveryChallansForAgent(
   agentUserId: string,
+  senderOrgId: string,
   status?: 'pending' | 'accepted' | 'rejected'
 ): Promise<DeliveryChallanWithDetails[]> {
   let query = supabase
@@ -140,6 +141,7 @@ export async function getDeliveryChallansForAgent(
       profiles:agent_user_id(id, email, full_name)
     `)
     .eq('agent_user_id', agentUserId)
+    .eq('sender_org_id', senderOrgId)
     .order('created_at', { ascending: false })
 
   if (status) {

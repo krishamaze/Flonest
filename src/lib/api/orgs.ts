@@ -14,6 +14,7 @@ export interface UpdateOrgData {
   gst_enabled?: boolean
   // Verification fields are NOT allowed here - they can only be set via platform-admin RPC
   slug?: string
+  lifecycle_state?: 'onboarding_pending' | 'active' | 'suspended' | 'archived'
 }
 
 /**

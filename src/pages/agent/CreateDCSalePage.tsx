@@ -26,7 +26,7 @@ interface SaleItem {
 }
 
 export function CreateDCSalePage() {
-  const { user } = useAuth()
+  const { user, currentAgentContext } = useAuth()
   const navigate = useNavigate()
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
@@ -41,14 +41,15 @@ export function CreateDCSalePage() {
   const [cashSettings, setCashSettings] = useState<OrgCashSettings | null>(null)
 
   useEffect(() => {
+    if (!user || !currentAgentContext) return
     loadDCStock()
     loadCashSettings()
-  }, [user?.agentContext])
+  }, [user?.id, currentAgentContext?.relationshipId])
 
   const loadCashSettings = async () => {
-    if (!user?.agentContext) return
+    if (!currentAgentContext) return
     try {
-      const settings = await getCashSettings(user.agentContext.senderOrgId)
+      const settings = await getCashSettings(currentAgentContext.senderOrgId)
       setCashSettings(settings)
     } catch (error) {
       console.error('Error loading cash settings:', error)
@@ -56,14 +57,14 @@ export function CreateDCSalePage() {
   }
 
   const loadDCStock = async () => {
-    if (!user?.agentContext) {
-      navigate('/role-selector')
+    if (!user || !currentAgentContext) {
+      navigate('/')
       return
     }
 
     try {
       setLoading(true)
-      const data = await getDCStock(user.agentContext.senderOrgId, user.id)
+      const data = await getDCStock(currentAgentContext.senderOrgId, user.id)
       setDcStock(data)
     } catch (error) {
       console.error('Error loading DC stock:', error)
@@ -74,13 +75,13 @@ export function CreateDCSalePage() {
   }
 
   const handleCustomerSearch = async () => {
-    if (!customerInput.trim() || !user?.agentContext) return
+    if (!customerInput.trim() || !currentAgentContext || !user) return
 
     try {
       setSearchingCustomer(true)
       const result = await lookupOrCreateCustomer(
         customerInput,
-        user.agentContext.senderOrgId, // Customer belongs to SENDER org
+        currentAgentContext.senderOrgId,
         user.id
       )
       setCustomer(result.customer as CustomerWithMaster)
@@ -147,7 +148,7 @@ export function CreateDCSalePage() {
   }
 
   const handleSubmit = async () => {
-    if (!user?.agentContext || !customer) {
+    if (!currentAgentContext || !user || !customer) {
       toast.error('Please select a customer')
       return
     }
@@ -176,7 +177,7 @@ export function CreateDCSalePage() {
 
       // Create sale
       const result = await createDCSale(
-        user.agentContext.senderOrgId,
+        currentAgentContext.senderOrgId,
         user.id,
         null,
         {
@@ -205,7 +206,7 @@ export function CreateDCSalePage() {
       // If cash payment, record in cash ledger
       if (paymentMethod === 'cash') {
         await recordCashReceived(
-          user.agentContext.senderOrgId,
+          currentAgentContext.senderOrgId,
           user.id,
           result.invoice.id,
           subtotal,
@@ -475,7 +476,7 @@ export function CreateDCSalePage() {
                     <div>
                       <p className="text-sm font-semibold text-text-primary mb-xs">Important Legal Notice:</p>
                       <ul className="text-xs text-text-secondary space-y-xs list-disc pl-md">
-                        <li>This cash legally belongs to {user?.agentContext?.senderOrgName}</li>
+                        <li>This cash legally belongs to {currentAgentContext?.senderOrgName}</li>
                         <li>You are custodian only (Indian Contract Act - Agency)</li>
                         <li>Must deposit within {cashSettings?.max_cash_holding_days || 3} days</li>
                         <li>UTR/proof required for verification</li>

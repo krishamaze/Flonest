@@ -21,7 +21,7 @@ const agentNavItems = [
  * Provides contextual banner and quick nav while reusing global chrome.
  */
 export function AgentPortalLayout({ children, title }: AgentPortalLayoutProps) {
-  const { user, switchToBusinessMode } = useAuth()
+  const { user, switchToBusinessMode, currentAgentContext } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
 
@@ -40,9 +40,9 @@ export function AgentPortalLayout({ children, title }: AgentPortalLayoutProps) {
               <span>Agent Portal</span>
             </div>
             <h1 className="text-2xl font-bold leading-tight">{title}</h1>
-            {user?.agentContext && (
+            {currentAgentContext && (
               <p className="text-sm text-text-on-dark/80 mt-xs">
-                Working for {user.agentContext.senderOrgName}
+                Working for {currentAgentContext.senderOrgName}
               </p>
             )}
           </div>

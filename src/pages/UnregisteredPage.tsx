@@ -9,10 +9,12 @@ import { LoadingSpinner } from '../components/ui/LoadingSpinner'
 export function UnregisteredPage() {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
-  const { user, loading: authLoading } = useAuth()
+  const { user, loading: authLoading, retryConnection } = useAuth()
   const [email, setEmail] = useState<string>('')
   const [checkingPassword, setCheckingPassword] = useState(true)
   const [hasPassword, setHasPassword] = useState<boolean | null>(null)
+  const [creatingOrg, setCreatingOrg] = useState(false)
+  const [creationError, setCreationError] = useState<string | null>(null)
 
   useEffect(() => {
     const emailParam = searchParams.get('email') || ''
@@ -60,25 +62,37 @@ export function UnregisteredPage() {
   }, [user, authLoading, email, navigate])
 
   const handleOnboardBusiness = async () => {
-    // Password check is already done - user has password at this point
-    // Keep the current OAuth session so we can convert the account into an owner account
-    // without forcing a second email confirmation step.
-    const params = new URLSearchParams()
-    if (email) {
-      params.set('email', email)
+    if (!user) return
+    setCreationError(null)
+    setCreatingOrg(true)
+
+    try {
+      // If user already has an org (legacy auto-created), just continue to setup
+      if (user.orgId) {
+        navigate('/setup', { replace: true })
+        return
+      }
+
+      const { error } = await supabase.rpc('create_default_org_for_user' as any)
+      if (error) {
+        throw error
+      }
+
+      if (retryConnection) {
+        await retryConnection()
+      }
+
+      navigate('/setup', { replace: true })
+    } catch (err: any) {
+      console.error('Failed to create default org:', err)
+      setCreationError(err?.message || 'Failed to create organization. Please try again.')
+    } finally {
+      setCreatingOrg(false)
     }
-    navigate(`/owner-signup${params.toString() ? `?${params.toString()}` : ''}`, { replace: true })
   }
 
   const handleJoinOrg = async () => {
-    try {
-      // For joining an existing org, user should log in with an invited account.
-      await supabase.auth.signOut()
-    } catch (err) {
-      console.error('Error signing out before join-org flow:', err)
-    } finally {
-      navigate('/login', { replace: true })
-    }
+    navigate('/join-org', { replace: false })
   }
 
   const handleSwitchAccount = async () => {
@@ -139,8 +153,9 @@ export function UnregisteredPage() {
               size="lg"
               className="w-full"
               onClick={handleOnboardBusiness}
+              disabled={creatingOrg}
             >
-              Onboard my own business
+              {creatingOrg ? 'Preparing setup...' : 'Onboard my own business'}
             </Button>
 
             <Button
@@ -167,6 +182,12 @@ export function UnregisteredPage() {
           <p className="text-xs text-center text-muted-text">
             To join an existing business, ask the owner or admin to invite you, then sign in with that account.
           </p>
+
+          {creationError && (
+            <p className="text-sm text-error text-center break-words">
+              {creationError}
+            </p>
+          )}
         </div>
       </div>
     </div>

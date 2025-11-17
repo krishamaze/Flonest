@@ -1329,7 +1329,8 @@ export type Database = {
           phone: string | null
           pincode: string | null
           slug: string
-          state: string
+          state: string | null
+          lifecycle_state: "onboarding_pending" | "active" | "suspended" | "archived"
           updated_at: string
         }
         Insert: {
@@ -1349,7 +1350,8 @@ export type Database = {
           phone?: string | null
           pincode?: string | null
           slug: string
-          state: string
+          state: string | null
+          lifecycle_state?: "onboarding_pending" | "active" | "suspended" | "archived"
           updated_at?: string
         }
         Update: {
@@ -1369,7 +1371,8 @@ export type Database = {
           phone?: string | null
           pincode?: string | null
           slug?: string
-          state?: string
+          state?: string | null
+          lifecycle_state?: "onboarding_pending" | "active" | "suspended" | "archived"
           updated_at?: string
         }
         Relationships: [
@@ -1377,6 +1380,39 @@ export type Database = {
             foreignKeyName: "orgs_gst_verified_by_fkey"
             columns: ["gst_verified_by"]
             isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_org_contexts: {
+        Row: {
+          org_id: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          org_id?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          org_id?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_org_contexts_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "orgs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_org_contexts_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
@@ -1686,6 +1722,10 @@ export type Database = {
           p_verification_source: string
           p_verification_status: string
         }
+        Returns: undefined
+      }
+      set_current_org_context: {
+        Args: { p_org_id?: string | null }
         Returns: undefined
       }
       show_limit: { Args: never; Returns: number }

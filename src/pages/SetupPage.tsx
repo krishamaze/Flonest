@@ -10,6 +10,7 @@ import { updateOrg, generateUniqueSlug, setGstFromValidation } from '../lib/api/
 import { fetchGSTBusinessData, validateGSTIN } from '../lib/api/gst'
 import { fetchPincodeData, validatePincode } from '../lib/api/pincode'
 import { extractStateCodeFromGSTIN, getStateNameFromGSTCode } from '../lib/constants/gstStateCodes'
+import { needsOrgSetup } from '../lib/utils/orgLifecycle'
 import { checkUserHasPassword } from '../lib/api/auth'
 import { toast } from 'react-toastify'
 import type { Org } from '../types'
@@ -129,7 +130,7 @@ export function SetupPage() {
             return
           }
 
-          if (data.state !== 'Default') {
+          if (!needsOrgSetup(data)) {
             // Setup completed - show loading during navigation
             setOrgLoading(true)
             navigate('/', { replace: true })
@@ -214,43 +215,38 @@ export function SetupPage() {
     try {
       const baseName = gstBusinessData.legal_name || org.name
       const slug = await generateUniqueSlug(baseName, user.orgId)
-      
-      // Determine state: use GST data if available, otherwise extract from GSTIN
-      let stateToUpdate = gstBusinessData.address.state
-      if (!stateToUpdate || stateToUpdate === 'N/A' || stateToUpdate === 'Default') {
-        // Extract state code from GSTIN and map to state name
+
+      let stateToUpdate = gstBusinessData.address.state?.trim()
+      if (!stateToUpdate || stateToUpdate === 'N/A') {
         const gstStateCode = extractStateCodeFromGSTIN(gstin)
         const extractedStateName = gstStateCode ? getStateNameFromGSTCode(gstStateCode) : null
         if (extractedStateName) {
           stateToUpdate = extractedStateName
         }
       }
-      
-      // Ensure we have a valid state (not "Default") - this is critical for setup completion
-      const finalState = (stateToUpdate && stateToUpdate !== 'Default' && stateToUpdate !== 'N/A') 
-        ? stateToUpdate 
-        : (org.state !== 'Default' ? org.state : 'Tamil Nadu') // Fallback to Tamil Nadu if GSTIN starts with 33
-      
-      // Update org name/state/pincode/slug via updateOrg
+
+      const finalState =
+        stateToUpdate && stateToUpdate !== 'Default'
+          ? stateToUpdate
+          : org.state || 'Tamil Nadu'
+
       await updateOrg(user.orgId, {
         name: gstBusinessData.legal_name || org.name,
         state: finalState,
         pincode: gstBusinessData.address.pincode || org.pincode || '',
         slug,
+        lifecycle_state: 'active',
       })
-      
-      // Set GST number - always unverified until platform admin manually verifies
-      // Never trust external API verification status - admin must verify manually
+
       await setGstFromValidation(
         user.orgId,
         gstin.toUpperCase(),
         true,
-        'unverified', // Always unverified - admin must verify manually
-        'manual' // Source is always manual for tenant-entered GSTINs
+        'unverified',
+        'manual'
       )
 
       toast.success('Organization setup completed successfully!', { autoClose: 3000 })
-      // Set loading state before navigation to prevent blank screen
       setOrgLoading(true)
       navigate('/', { replace: true })
     } catch (error: any) {
@@ -297,6 +293,7 @@ export function SetupPage() {
         gst_number: undefined,
         gst_enabled: false,
         slug,
+        lifecycle_state: 'active',
       })
 
       toast.success('Organization setup completed successfully!', { autoClose: 3000 })
@@ -329,7 +326,7 @@ export function SetupPage() {
   }
 
   // If org doesn't exist or setup already completed, show loading (will redirect)
-  if (!org || org.state !== 'Default') {
+  if (!org || !needsOrgSetup(org)) {
     return (
       <div className="viewport-height flex items-center justify-center bg-bg-page">
         <LoadingSpinner size="lg" />

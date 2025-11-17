@@ -2,7 +2,26 @@ import { createContext, useContext, useEffect, useState, ReactNode } from 'react
 import { User, Session } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabase'
 import { syncUserProfile } from '../lib/userSync'
-import type { AuthUser, UserRole } from '../types'
+import type { AuthUser, Org, UserRole } from '../types'
+import {
+  getAgentRelationships,
+  loadAgentContextMode,
+  saveAgentContextMode,
+  type AgentContextInfo,
+} from '../lib/agentContext'
+
+interface OrgMembershipSummary {
+  membershipId: string
+  orgId: string
+  orgName: string
+  slug: string
+  stateName: Org['state']
+  lifecycleState: Org['lifecycle_state']
+  role: UserRole
+  branchId: string | null
+}
+
+type OrgContextSummary = OrgMembershipSummary | null
 
 interface AuthContextType {
   user: AuthUser | null
@@ -18,12 +37,20 @@ interface AuthContextType {
   switchToAgentMode: (senderOrgId: string) => Promise<void>
   requiresAdminMfa: boolean
   refreshAdminMfaRequirement: () => Promise<void>
+  memberships: OrgMembershipSummary[]
+  currentOrg: OrgContextSummary
+  switchToOrg: (orgId: string) => Promise<void>
+  refreshMemberships: () => Promise<void>
+  agentRelationships: AgentContextInfo[]
+  currentAgentContext: AgentContextInfo | null
+  switchToAgentContext: (relationshipId: string) => Promise<void>
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
 const CONNECTION_TIMEOUT = 5000 // 5 seconds
 const CACHE_KEY = 'lastGoodSession'
+const ORG_CONTEXT_STORAGE_KEY = 'currentOrgId'
 
 interface CachedSession {
   session: Session | null
@@ -71,6 +98,44 @@ function loadCachedSession(): CachedSession | null {
 }
 
 function clearCachedSession() {
+function loadPersistedOrgId(): string | null {
+  try {
+    return localStorage.getItem(ORG_CONTEXT_STORAGE_KEY)
+  } catch (error) {
+    if (import.meta.env.DEV) {
+      console.warn('[Auth] Failed to load persisted org context:', error)
+    }
+    return null
+  }
+}
+
+function persistOrgId(orgId: string | null) {
+  try {
+    if (orgId) {
+      localStorage.setItem(ORG_CONTEXT_STORAGE_KEY, orgId)
+    } else {
+      localStorage.removeItem(ORG_CONTEXT_STORAGE_KEY)
+    }
+  } catch (error) {
+    if (import.meta.env.DEV) {
+      console.warn('[Auth] Failed to persist org context:', error)
+    }
+  }
+}
+
+const persistServerOrgContext = async (orgId: string | null) => {
+  try {
+    const { error } = await supabase.rpc('set_current_org_context', {
+      p_org_id: orgId,
+    })
+    if (error) {
+      console.error('[Auth] Failed to persist org context server-side:', error)
+    }
+  } catch (error) {
+    console.error('[Auth] Error persisting org context server-side:', error)
+  }
+}
+
   try {
     localStorage.removeItem(CACHE_KEY)
   } catch (error) {
@@ -111,6 +176,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [connectionError, setConnectionError] = useState(false)
   const [retrying, setRetrying] = useState(false)
   const [requiresAdminMfa, setRequiresAdminMfa] = useState(false)
+  const [memberships, setMemberships] = useState<OrgMembershipSummary[]>([])
+  const [currentOrg, setCurrentOrg] = useState<OrgContextSummary>(null)
+  const [agentRelationships, setAgentRelationships] = useState<AgentContextInfo[]>([])
+  const [currentAgentContext, setCurrentAgentContext] = useState<AgentContextInfo | null>(null)
 
   useEffect(() => {
     initializeAuth()
@@ -268,9 +337,57 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }
 
-  const finalizeUser = async (userData: AuthUser) => {
+  const finalizeUser = async (
+    userData: AuthUser,
+    options?: {
+      orgMemberships?: OrgMembershipSummary[]
+      selectedOrg?: OrgMembershipSummary | null
+      agentCtxList?: AgentContextInfo[]
+      selectedAgentCtx?: AgentContextInfo | null
+    }
+  ) => {
     setUser(userData)
     setConnectionError(false)
+
+    if (options) {
+      if (options.orgMemberships) {
+        setMemberships(options.orgMemberships)
+      } else {
+        setMemberships([])
+      }
+
+      if (options.selectedOrg) {
+        setCurrentOrg(options.selectedOrg)
+        persistOrgId(options.selectedOrg.orgId)
+      } else {
+        setCurrentOrg(null)
+        persistOrgId(null)
+      }
+
+      if (options.agentCtxList) {
+        setAgentRelationships(options.agentCtxList)
+      } else {
+        setAgentRelationships([])
+      }
+
+      if (options.selectedAgentCtx) {
+        setCurrentAgentContext(options.selectedAgentCtx)
+        saveAgentContextMode('agent', options.selectedAgentCtx.senderOrgId)
+      } else {
+        setCurrentAgentContext(null)
+        saveAgentContextMode('business')
+      }
+    } else {
+      setMemberships([])
+      setCurrentOrg(null)
+      persistOrgId(null)
+      setAgentRelationships([])
+      setCurrentAgentContext(null)
+      saveAgentContextMode('business')
+    }
+
+    await persistServerOrgContext(options?.selectedOrg?.orgId ?? null)
+
     const currentSession = await supabase.auth.getSession().then(({ data }) => data.session)
     saveCachedSession(currentSession, userData)
     await evaluatePlatformAdminMfa(userData.platformAdmin)
@@ -402,16 +519,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
           // For non-platform-admin users, check if they have org/membership
           if (syncedData.membership && syncedData.org) {
+            const membershipSummary: OrgMembershipSummary = {
+              membershipId: syncedData.membership.id,
+              orgId: syncedData.org.id,
+              orgName: syncedData.org.name,
+              slug: syncedData.org.slug,
+              stateName: syncedData.org.state,
+              lifecycleState: syncedData.org.lifecycle_state,
+              role: (syncedData.membership.role || 'advisor') as UserRole,
+              branchId: (syncedData.membership as any).branch_id || null,
+            }
             const userData = {
               id: syncedProfile.id,
               email: syncedProfile.email,
-              orgId: syncedData.org.id,
-              role: (syncedData.membership.role || 'advisor') as UserRole,
-              branchId: (syncedData.membership as any).branch_id || null,
+              orgId: membershipSummary.orgId,
+              role: membershipSummary.role,
+              branchId: membershipSummary.branchId,
               platformAdmin: false,
               contextMode: 'business' as const,
             }
-            await finalizeUser(userData)
+            await finalizeUser(userData, {
+              orgMemberships: [membershipSummary],
+              selectedOrg: membershipSummary,
+              agentCtxList: [],
+              selectedAgentCtx: null,
+            })
             return
           }
 
@@ -425,7 +557,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             platformAdmin: false,
             contextMode: 'business' as const,
           }
-          await finalizeUser(userData)
+          await finalizeUser(userData, {
+            orgMemberships: [],
+            selectedOrg: null,
+            agentCtxList: [],
+            selectedAgentCtx: null,
+          })
           return
         } else {
           console.error('Failed to sync user profile - no profile found')
@@ -452,119 +589,85 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return
       }
 
-      // For non-platform-admin users, load membership (including branch_id)
-      // Only load active memberships - pending memberships cannot access the app
+      // For non-platform-admin users, load memberships (including branch_id)
       let membershipsResult
       if (useTimeout) {
         const queryPromise = supabase
           .from('memberships')
-          .select('*, profiles(*), orgs(*)')
+          .select('id, role, branch_id, orgs!inner(id, name, slug, state, lifecycle_state)')
           .eq('profile_id', authUser.id)
           .eq('membership_status', 'active')
-          .limit(1)
+          .order('created_at', { ascending: true })
         const timeoutPromise = createTimeoutPromise(CONNECTION_TIMEOUT)
         membershipsResult = await Promise.race([queryPromise, timeoutPromise])
       } else {
         membershipsResult = await supabase
           .from('memberships')
-          .select('*, profiles(*), orgs(*)')
+          .select('id, role, branch_id, orgs!inner(id, name, slug, state, lifecycle_state)')
           .eq('profile_id', authUser.id)
           .eq('membership_status', 'active')
-          .limit(1)
+          .order('created_at', { ascending: true })
       }
 
-      const { data: memberships, error } = membershipsResult as {
+      const { data: membershipsData, error } = membershipsResult as {
         data: any[] | null
         error: any
       }
 
       if (error) throw error
 
-      const membership = memberships && memberships.length > 0 ? memberships[0] : null
-
-      if (membership && membership.profiles && membership.orgs) {
-        // Membership exists, use it
-        const membershipProfile = membership.profiles as any
-        const org = membership.orgs as any
-        const userData = {
-          id: membershipProfile.id,
-          email: membershipProfile.email,
-          orgId: org.id,
-          role: (membership.role || 'advisor') as UserRole,
-          branchId: (membership as any).branch_id || null,
-          platformAdmin: membershipProfile.platform_admin || false,
-          contextMode: 'business' as const,
-        }
-        await finalizeUser(userData)
-      } else {
-        // Non-platform-admin user with no membership - try auto-creating org
-        let finalUserData: AuthUser = {
-          id: profile.id,
-          email: profile.email,
-          orgId: null,
-          role: null,
-          branchId: null,
-          platformAdmin: false,
-          contextMode: 'business' as const,
-        }
-
-        // Auto-create org for new users (non-platform-admin only)
-        if (!profile.platform_admin) {
-          try {
-            if (import.meta.env.DEV) {
-              console.log('[Auth] No membership found, attempting auto-org creation...')
-            }
-
-            const { data: orgResult, error: orgError } = await supabase.rpc('create_default_org_for_user' as any)
-
-            if (orgError) {
-              if (import.meta.env.DEV) {
-                console.warn('[Auth] Auto-org creation failed:', orgError)
-              }
-              // Continue with null orgId - user can create manually later
-            } else if (orgResult) {
-              if (import.meta.env.DEV) {
-                console.log('[Auth] Auto-org created successfully:', orgResult)
-              }
-
-              // Reload membership to get fresh data with org and role
-              const { data: newMembershipResult, error: membershipReloadError } = await supabase
-                .from('memberships')
-                .select('*, profiles(*), orgs(*)')
-                .eq('profile_id', authUser.id)
-                .eq('membership_status', 'active')
-                .maybeSingle()
-
-              if (!membershipReloadError && newMembershipResult) {
-                const newMembership = newMembershipResult as any
-                const newMembershipProfile = newMembership.profiles as any
-                const newOrg = newMembership.orgs as any
-
-                finalUserData = {
-                  id: newMembershipProfile.id,
-                  email: newMembershipProfile.email,
-                  orgId: newOrg.id,
-                  role: (newMembership.role || 'org_owner') as UserRole,
-                  branchId: newMembership.branch_id || null,
-                  platformAdmin: newMembershipProfile.platform_admin || false,
-                  contextMode: 'business' as const,
-                }
-
-                if (import.meta.env.DEV) {
-                  console.log('[Auth] User profile updated with new org:', finalUserData)
-                }
-              }
-            }
-          } catch (error) {
-            if (import.meta.env.DEV) {
-              console.warn('[Auth] Auto-org creation error:', error)
-            }
-            // Continue with null orgId - user can create manually later
+      const membershipSummaries: OrgMembershipSummary[] =
+        membershipsData?.map(member => {
+          const orgRecord = member.orgs as Org
+          return {
+            membershipId: member.id,
+            orgId: orgRecord.id,
+            orgName: orgRecord.name,
+            slug: orgRecord.slug,
+            stateName: orgRecord.state,
+            lifecycleState: orgRecord.lifecycle_state,
+            role: (member.role || 'advisor') as UserRole,
+            branchId: member.branch_id,
           }
-        }
+        }) ?? []
 
-        await finalizeUser(finalUserData)
+      const persistedOrgId = loadPersistedOrgId()
+      let selectedOrgSummary: OrgMembershipSummary | null =
+        (persistedOrgId ? membershipSummaries.find(m => m.orgId === persistedOrgId) : null) ??
+        membershipSummaries[0] ??
+        null
+
+      const agentMode = loadAgentContextMode()
+      const agentRelationshipResults = await getAgentRelationships(authUser.id)
+      const agentContextList: AgentContextInfo[] = agentRelationshipResults.map(rel => ({
+        senderOrgId: rel.senderOrg.id,
+        senderOrgName: rel.senderOrg.name,
+        relationshipId: rel.relationship.id,
+        canManage: rel.canManage,
+      }))
+      let selectedAgentCtx: AgentContextInfo | null = null
+      if (agentMode.mode === 'agent' && agentMode.senderOrgId) {
+        selectedAgentCtx =
+          agentContextList.find(ctx => ctx.senderOrgId === agentMode.senderOrgId) ?? null
       }
+
+      const userData: AuthUser = {
+        id: profile.id,
+        email: profile.email,
+        orgId: selectedOrgSummary?.orgId ?? null,
+        role: selectedOrgSummary?.role ?? null,
+        branchId: selectedOrgSummary?.branchId ?? null,
+        platformAdmin: false,
+        contextMode: selectedAgentCtx ? 'agent' : 'business',
+        agentContext: selectedAgentCtx ?? undefined,
+      }
+
+      await finalizeUser(userData, {
+        orgMemberships: membershipSummaries,
+        selectedOrg: selectedOrgSummary,
+        agentCtxList: agentContextList,
+        selectedAgentCtx,
+      })
     } catch (error) {
       if (import.meta.env.DEV) {
         console.warn('[Auth Timeout] Error loading user profile:', error)
@@ -613,9 +716,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       console.warn('[Auth] Local sign out failed (continuing):', localError)
     } finally {
       clearCachedSession()
-      setUser(null)
-      setSession(null)
-      setRequiresAdminMfa(false)
+        setUser(null)
+        setSession(null)
+        setRequiresAdminMfa(false)
+        setMemberships([])
+        setCurrentOrg(null)
+        persistOrgId(null)
+        setAgentRelationships([])
+        setCurrentAgentContext(null)
+        saveAgentContextMode('business')
     }
 
     // Step 2: Attempt global sign out with timeout (best-effort)
@@ -634,37 +743,139 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }
 
+  const switchToOrg = async (orgId: string) => {
+    const membership = memberships.find(m => m.orgId === orgId)
+    if (!membership) {
+      console.warn('[Auth] Attempted to switch to unknown org:', orgId)
+      return
+    }
+
+    persistOrgId(membership.orgId)
+    setCurrentOrg(membership)
+    saveAgentContextMode('business')
+    setCurrentAgentContext(null)
+    await persistServerOrgContext(membership.orgId)
+
+    setUser(prev =>
+      prev
+        ? {
+            ...prev,
+            orgId: membership.orgId,
+            role: membership.role,
+            contextMode: 'business',
+            agentContext: undefined,
+          }
+        : prev
+    )
+  }
+
+  const switchToAgentContext = async (relationshipId: string) => {
+    const relationship = agentRelationships.find(r => r.relationshipId === relationshipId)
+    if (!relationship) {
+      console.warn('[Auth] Attempted to switch to unknown agent relationship:', relationshipId)
+      return
+    }
+
+    saveAgentContextMode('agent', relationship.senderOrgId)
+    setCurrentAgentContext(relationship)
+
+    setUser(prev =>
+      prev
+        ? {
+            ...prev,
+            contextMode: 'agent',
+            agentContext: relationship,
+          }
+        : prev
+    )
+  }
+
   const switchToBusinessMode = async () => {
     if (!user) return
-
-    const { saveAgentContextMode } = await import('../lib/agentContext')
-    saveAgentContextMode('business')
-
-    setUser({
-      ...user,
-      contextMode: 'business',
-      agentContext: undefined,
-    })
+    const targetOrg = currentOrg ?? memberships[0] ?? null
+    if (targetOrg) {
+      await switchToOrg(targetOrg.orgId)
+    } else {
+      saveAgentContextMode('business')
+      setCurrentAgentContext(null)
+      setUser({
+        ...user,
+        contextMode: 'business',
+        agentContext: undefined,
+      })
+    }
   }
 
   const switchToAgentMode = async (senderOrgId: string) => {
     if (!user) return
-
-    const { getAgentContextForOrg, saveAgentContextMode } = await import('../lib/agentContext')
-    const agentContext = await getAgentContextForOrg(user.id, senderOrgId)
-
-    if (!agentContext) {
+    const relationship = agentRelationships.find(r => r.senderOrgId === senderOrgId)
+    if (!relationship) {
       console.error('User does not have access to this sender org')
       return
     }
+    await switchToAgentContext(relationship.relationshipId)
+  }
 
-    saveAgentContextMode('agent', senderOrgId)
+  const refreshMemberships = async () => {
+    if (!user) return
+    const { data, error } = await supabase
+      .from('memberships')
+      .select('id, role, branch_id, orgs!inner(id, name, slug, state, lifecycle_state)')
+      .eq('profile_id', user.id)
+      .eq('membership_status', 'active')
+      .order('created_at', { ascending: true })
 
-    setUser({
-      ...user,
-      contextMode: 'agent',
-      agentContext,
-    })
+    if (error) {
+      console.error('[Auth] Failed to refresh memberships:', error)
+      return
+    }
+
+    const summaries =
+      data?.map(member => ({
+        membershipId: member.id,
+        orgId: (member.orgs as Org).id,
+        orgName: (member.orgs as Org).name,
+        slug: (member.orgs as Org).slug,
+        stateName: (member.orgs as Org).state,
+        lifecycleState: (member.orgs as Org).lifecycle_state,
+        role: (member.role || 'advisor') as UserRole,
+        branchId: member.branch_id,
+      })) ?? []
+
+    setMemberships(summaries)
+
+    if (summaries.length === 0) {
+      setCurrentOrg(null)
+      persistOrgId(null)
+      await persistServerOrgContext(null)
+      setUser(prev =>
+        prev
+          ? {
+              ...prev,
+              orgId: null,
+              role: null,
+            }
+          : prev
+      )
+      return
+    }
+
+    const existingOrgId = currentOrg?.orgId ?? loadPersistedOrgId()
+    const nextOrg =
+      (existingOrgId ? summaries.find(m => m.orgId === existingOrgId) : null) ?? summaries[0]
+
+    persistOrgId(nextOrg.orgId)
+    setCurrentOrg(nextOrg)
+    await persistServerOrgContext(nextOrg.orgId)
+    setUser(prev =>
+      prev
+        ? {
+            ...prev,
+            orgId: nextOrg.orgId,
+            role: nextOrg.role,
+          }
+        : prev
+    )
   }
 
   const refreshAdminMfaRequirement = async () => {
@@ -675,7 +886,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await evaluatePlatformAdminMfa(user.platformAdmin)
   }
 
-  const value = {
+  const value: AuthContextType = {
     user,
     session,
     loading,
@@ -689,6 +900,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     switchToAgentMode,
     requiresAdminMfa,
     refreshAdminMfaRequirement,
+    memberships,
+    currentOrg,
+    switchToOrg,
+    refreshMemberships,
+    agentRelationships,
+    currentAgentContext,
+    switchToAgentContext,
   }
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

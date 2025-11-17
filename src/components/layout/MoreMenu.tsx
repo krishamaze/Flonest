@@ -31,7 +31,7 @@ const baseMenuItems = [
 ]
 
 export function MoreMenu({ isOpen, onClose }: MoreMenuProps) {
-  const { user } = useAuth()
+  const { user, agentRelationships, currentAgentContext } = useAuth()
 
   if (!isOpen) return null
 
@@ -103,12 +103,15 @@ export function MoreMenu({ isOpen, onClose }: MoreMenuProps) {
     }
 
     // Add context switcher if user has agent relationships
-    if (user && user.agentContext) {
+    if (agentRelationships.length > 0) {
+      const isBusiness = user?.contextMode !== 'agent'
       moreMenuItems.push({
-        to: '/role-selector',
-        label: 'Switch Mode',
+        to: isBusiness ? '/agent/dashboard' : '/',
+        label: isBusiness ? 'Go to Agent Portal' : 'Back to My Business',
         icon: ArrowPathIcon,
-        description: user.contextMode === 'business' ? 'Switch to Agent Portal' : 'Switch to My Business',
+        description: isBusiness
+          ? 'Work for your client organizations'
+          : `Return to ${currentAgentContext?.senderOrgName || 'dashboard'}`,
       })
     }
   }

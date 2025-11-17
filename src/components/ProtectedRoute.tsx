@@ -5,22 +5,20 @@ import { LoadingSpinner } from './ui/LoadingSpinner'
 import { Button } from './ui/Button'
 import { supabase } from '../lib/supabase'
 import { checkUserHasPassword } from '../lib/api/auth'
-import type { Org } from '../types'
-
-/**
- * Check if organization needs setup (state is "Default")
- */
-function needsOrgSetup(org: Org | null): boolean {
-  return org?.state === 'Default'
-}
 
 /**
  * Protected route that requires authentication and org membership
  */
 export function ProtectedRoute({ children }: { children: React.ReactNode }) {
-  const { user, loading, requiresAdminMfa } = useAuth()
-  const [org, setOrg] = useState<Org | null>(null)
-  const [orgLoading, setOrgLoading] = useState(false)
+  const {
+    user,
+    loading,
+    requiresAdminMfa,
+    currentOrg,
+    memberships,
+    agentRelationships,
+    currentAgentContext,
+  } = useAuth()
   const [hasPassword, setHasPassword] = useState<boolean | null>(null)
   const [checkingPassword, setCheckingPassword] = useState(false)
   const location = useLocation()
@@ -62,27 +60,7 @@ export function ProtectedRoute({ children }: { children: React.ReactNode }) {
     }
   }, [user, loading, location.pathname, navigate])
 
-  // Fetch org data when user has orgId
-  useEffect(() => {
-    if (!loading && user?.orgId && !user.platformAdmin) {
-      setOrgLoading(true)
-      supabase
-        .from('orgs')
-        .select('*')
-        .eq('id', user.orgId)
-        .maybeSingle()
-        .then(({ data, error }) => {
-          if (error) {
-            console.error('Error fetching org:', error)
-          } else {
-            setOrg(data)
-          }
-          setOrgLoading(false)
-        })
-    }
-  }, [user?.orgId, user?.platformAdmin, loading])
-
-  if (loading || orgLoading || checkingPassword) {
+  if (loading || checkingPassword) {
     return (
       <div className="viewport-height flex items-center justify-center">
         <LoadingSpinner size="lg" />
@@ -118,26 +96,51 @@ export function ProtectedRoute({ children }: { children: React.ReactNode }) {
 
   // CRITICAL: OAuth users without password MUST go to unregistered page first
   // This applies even if they have an org (they need to set password before onboarding)
-  if (!user.orgId || (hasPassword === false && !user.platformAdmin)) {
-    // If user has no org, show organization required page
-    if (!user.orgId) {
-      return <OrganizationRequiredPage />
-    }
-    
-    // If user has org but no password, redirect to unregistered page
-    // (which will then redirect to set-password)
-    if (hasPassword === false) {
-      const params = new URLSearchParams()
-      if (user.email) {
-        params.set('email', user.email)
+  const hasOrgMembership = memberships.length > 0
+  const hasAgentAccess = agentRelationships.length > 0
+  const isAgentRoute = location.pathname.startsWith('/agent')
+
+  if (!hasOrgMembership) {
+    if (hasAgentAccess) {
+      if (!isAgentRoute) {
+        return <Navigate to="/agent/dashboard" replace />
       }
-      return <Navigate to={`/unregistered?${params.toString()}`} replace />
+      if (!currentAgentContext) {
+        return <AgentContextRequiredPage />
+      }
+      // Agent routes with context can continue
+      if (hasPassword === false && !user.platformAdmin) {
+        const params = new URLSearchParams()
+        if (user.email) {
+          params.set('email', user.email)
+        }
+        return <Navigate to={`/unregistered?${params.toString()}`} replace />
+      }
+      return <>{children}</>
     }
+    return <OrganizationRequiredPage />
   }
 
-  // Check if org needs setup (state === "Default")
+  if (!currentOrg) {
+    return (
+      <div className="viewport-height flex items-center justify-center">
+        <LoadingSpinner size="lg" />
+      </div>
+    )
+  }
+
+  if (hasPassword === false && !user.platformAdmin) {
+    const params = new URLSearchParams()
+    if (user.email) {
+      params.set('email', user.email)
+    }
+    return <Navigate to={`/unregistered?${params.toString()}`} replace />
+  }
+
+  // Check if org needs setup based on lifecycle state
   // BUT: Only redirect if user has password (checked above)
-  if (needsOrgSetup(org) && hasPassword !== false) {
+  const orgNeedsSetup = currentOrg.lifecycleState === 'onboarding_pending'
+  if (orgNeedsSetup && hasPassword !== false) {
     // If password check is still in progress, wait
     if (checkingPassword) {
       return (
@@ -190,6 +193,26 @@ function OrganizationRequiredPage() {
             Sign out
           </Button>
         )}
+      </div>
+    </div>
+  )
+}
+
+function AgentContextRequiredPage() {
+  const navigate = useNavigate()
+  return (
+    <div className="viewport-height flex items-center justify-center bg-bg-page safe-top safe-bottom p-spacing-lg">
+      <div className="max-w-md w-full text-center space-y-md">
+        <div>
+          <h1 className="text-2xl font-bold text-text-primary">Select an agent context</h1>
+          <p className="mt-sm text-text-secondary">
+            Use the org switcher at the top of the app to pick which sender organization you&apos;re
+            working for.
+          </p>
+        </div>
+        <Button variant="primary" size="md" onClick={() => navigate('/')}>
+          Open dashboard
+        </Button>
       </div>
     </div>
   )

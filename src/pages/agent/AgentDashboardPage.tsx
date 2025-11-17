@@ -15,7 +15,7 @@ import {
 } from '@heroicons/react/24/outline'
 
 export function AgentDashboardPage() {
-  const { user } = useAuth()
+  const { user, currentAgentContext } = useAuth()
   const navigate = useNavigate()
   const [loading, setLoading] = useState(true)
   const [pendingDCsCount, setPendingDCsCount] = useState(0)
@@ -27,24 +27,28 @@ export function AgentDashboardPage() {
   })
 
   useEffect(() => {
+    if (!user || !currentAgentContext) return
     loadDashboardData()
-  }, [user?.agentContext])
+  }, [user?.id, currentAgentContext?.relationshipId])
 
   const loadDashboardData = async () => {
-    if (!user?.agentContext) {
-      navigate('/role-selector')
+    if (!user || !currentAgentContext) {
+      navigate('/')
       return
     }
-
     try {
       setLoading(true)
 
       // Load pending DCs
-      const pendingDCs = await getDeliveryChallansForAgent(user.id, 'pending')
+      const pendingDCs = await getDeliveryChallansForAgent(
+        user.id,
+        currentAgentContext.senderOrgId,
+        'pending'
+      )
       setPendingDCsCount(pendingDCs.length)
 
       // Load DC stock
-      const dcStock = await getDCStock(user.agentContext.senderOrgId, user.id)
+      const dcStock = await getDCStock(currentAgentContext.senderOrgId, user.id)
       const totalStock = dcStock.reduce((sum, item) => sum + item.current_stock, 0)
       setDCStockCount(totalStock)
 
@@ -52,7 +56,7 @@ export function AgentDashboardPage() {
       const thirtyDaysAgo = new Date()
       thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
       const summary = await getDCSalesSummary(
-        user.agentContext.senderOrgId,
+        currentAgentContext.senderOrgId,
         user.id,
         thirtyDaysAgo
       )

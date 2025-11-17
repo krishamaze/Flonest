@@ -20,7 +20,7 @@ import {
 } from '@heroicons/react/24/outline'
 
 export function DeliveryChallansPage() {
-  const { user } = useAuth()
+  const { user, currentAgentContext } = useAuth()
   const navigate = useNavigate()
   const [loading, setLoading] = useState(true)
   const [dcs, setDcs] = useState<DeliveryChallanWithDetails[]>([])
@@ -28,19 +28,19 @@ export function DeliveryChallansPage() {
   const [processingId, setProcessingId] = useState<string | null>(null)
 
   useEffect(() => {
+    if (!user || !currentAgentContext) return
     loadDCs()
-  }, [filter, user?.agentContext])
+  }, [filter, user?.id, currentAgentContext?.relationshipId])
 
   const loadDCs = async () => {
-    if (!user?.agentContext) {
-      navigate('/role-selector')
+    if (!user || !currentAgentContext) {
+      navigate('/')
       return
     }
-
     try {
       setLoading(true)
       const status = filter === 'all' ? undefined : filter
-      const data = await getDeliveryChallansForAgent(user.id, status)
+      const data = await getDeliveryChallansForAgent(user.id, currentAgentContext.senderOrgId, status)
       setDcs(data)
     } catch (error) {
       console.error('Error loading DCs:', error)

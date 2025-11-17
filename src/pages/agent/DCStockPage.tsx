@@ -9,24 +9,24 @@ import { getDCStock, type DCStockSummary } from '../../lib/api/dcStock'
 import { CubeIcon } from '@heroicons/react/24/outline'
 
 export function DCStockPage() {
-  const { user } = useAuth()
+  const { user, currentAgentContext } = useAuth()
   const navigate = useNavigate()
   const [loading, setLoading] = useState(true)
   const [stock, setStock] = useState<DCStockSummary[]>([])
 
   useEffect(() => {
+    if (!user || !currentAgentContext) return
     loadStock()
-  }, [user?.agentContext])
+  }, [user?.id, currentAgentContext?.relationshipId])
 
   const loadStock = async () => {
-    if (!user?.agentContext) {
-      navigate('/role-selector')
+    if (!user || !currentAgentContext) {
+      navigate('/')
       return
     }
-
     try {
       setLoading(true)
-      const data = await getDCStock(user.agentContext.senderOrgId, user.id)
+      const data = await getDCStock(currentAgentContext.senderOrgId, user.id)
       setStock(data)
     } catch (error) {
       console.error('Error loading DC stock:', error)

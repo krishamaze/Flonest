@@ -43,6 +43,7 @@ const CreateDCSalePage = lazy(() => import('./pages/agent/CreateDCSalePage').the
 const AgentCashPage = lazy(() => import('./pages/agent/AgentCashPage').then(m => ({ default: m.AgentCashPage })))
 const AgentCashOversightPage = lazy(() => import('./pages/AgentCashOversightPage').then(m => ({ default: m.AgentCashOversightPage })))
 const PlatformAdminMfaPage = lazy(() => import('./pages/PlatformAdminMfaPage').then(m => ({ default: m.PlatformAdminMfaPage })))
+const JoinOrgPage = lazy(() => import('./pages/JoinOrgPage').then(m => ({ default: m.JoinOrgPage })))
 
 /**
  * Redirect platform admins away from org routes to /platform-admin
@@ -142,6 +143,14 @@ function AppRoutes() {
               path="/set-password"
               element={
                 user ? <SetPasswordPage /> : <Navigate to="/login" replace />
+              }
+            />
+            <Route
+              path="/join-org"
+              element={
+                <ProtectedRoute>
+                  <JoinOrgPage />
+                </ProtectedRoute>
               }
             />
             <Route

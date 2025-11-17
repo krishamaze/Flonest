@@ -28,7 +28,7 @@ import {
 } from '@heroicons/react/24/outline'
 
 export function AgentCashPage() {
-  const { user } = useAuth()
+  const { user, currentAgentContext } = useAuth()
   const navigate = useNavigate()
   const [loading, setLoading] = useState(true)
   const [cashOnHand, setCashOnHand] = useState(0)
@@ -39,24 +39,24 @@ export function AgentCashPage() {
   const [showDepositModal, setShowDepositModal] = useState(false)
 
   useEffect(() => {
+    if (!user || !currentAgentContext) return
     loadCashData()
-  }, [user?.agentContext])
+  }, [user?.id, currentAgentContext?.relationshipId])
 
   const loadCashData = async () => {
-    if (!user?.agentContext) {
-      navigate('/role-selector')
+    if (!user || !currentAgentContext) {
+      navigate('/')
       return
     }
-
     try {
       setLoading(true)
 
       const [balance, entries, pending, cashSettings, overdue] = await Promise.all([
-        getAgentCashOnHand(user.agentContext.senderOrgId, user.id),
-        getAgentCashLedger(user.agentContext.senderOrgId, user.id),
-        getPendingDeposits(user.agentContext.senderOrgId, user.id),
-        getCashSettings(user.agentContext.senderOrgId),
-        hasOverdueCash(user.agentContext.senderOrgId, user.id),
+        getAgentCashOnHand(currentAgentContext.senderOrgId, user.id),
+        getAgentCashLedger(currentAgentContext.senderOrgId, user.id),
+        getPendingDeposits(currentAgentContext.senderOrgId, user.id),
+        getCashSettings(currentAgentContext.senderOrgId),
+        hasOverdueCash(currentAgentContext.senderOrgId, user.id),
       ])
 
       setCashOnHand(balance)
@@ -155,7 +155,7 @@ export function AgentCashPage() {
                 <li>Cash limit per transaction: ₹{settings.section_269st_limit.toLocaleString('en-IN')} (Section 269ST)</li>
                 <li>Maximum holding period: {settings.max_cash_holding_days} days</li>
                 <li>Maximum cash balance: ₹{settings.max_cash_balance.toLocaleString('en-IN')}</li>
-                <li>All cash legally belongs to {user?.agentContext?.senderOrgName}</li>
+                <li>All cash legally belongs to {currentAgentContext?.senderOrgName}</li>
               </ul>
             </CardContent>
           </Card>
@@ -234,7 +234,7 @@ export function AgentCashPage() {
             setShowDepositModal(false)
             loadCashData()
           }}
-          senderOrgId={user?.agentContext?.senderOrgId || ''}
+          senderOrgId={currentAgentContext?.senderOrgId || ''}
           agentUserId={user?.id || ''}
           currentBalance={cashOnHand}
           settings={settings}

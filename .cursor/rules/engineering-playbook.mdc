@@ -147,3 +147,10 @@ alwaysApply: false
 ## Documentation
 - NEVER create `.md` documentation files unless explicitly requested.
 - Communicate information via chat instead.
+
+## Org Lifecycle & Context Invariants
+- **Lifecycle states**: `onboarding_pending`, `active`, `suspended`, `archived`. Only org owners with `onboarding_pending` hit `/setup`; completion must flip the state to `active`.
+- **Single owner per org**: enforced via partial unique index on `(org_id, role)` for `org_owner`. Ownership transfers must go through a dedicated RPC for auditing.
+- **Org context storage**: `user_org_contexts` table + `set_current_org_context(uuid)` keep Postgres helpers (`current_user_org_id`, `current_user_role`, branch helpers) in sync with the client’s `currentOrgContext`. Always call the RPC when switching orgs.
+- **Multi-org switcher**: The header switcher is the only supported way to pick an org/agent context. All UI/RPC code must consume `currentOrgContext`/`currentAgentContext`, never raw `user.orgId`.
+- **Start vs join flows**: “Start a new business” calls `create_default_org_for_user` (owner-only) from the switcher or settings. “Join existing organization” lives at `/join-org` and requires an invite—no auto-org creation on login. Legacy `test-*` orgs must stay `archived`.

@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { ArrowRightOnRectangleIcon } from '@heroicons/react/24/outline'
 import { Button } from '../ui/Button'
 import { NotificationBell } from '../notifications/NotificationBell'
+import { OrgSwitcher } from '../orgs/OrgSwitcher'
 
 export function Header() {
   const { user, signOut } = useAuth()
@@ -12,18 +13,17 @@ export function Header() {
     <header className="sticky top-0 z-40 border-b border-neutral-200 bg-bg-card safe-top">
       <div className="mx-auto flex h-14 items-center justify-between px-md">
         <div className="flex items-center gap-md">
-          {/* Logo: 32px × 32px */}
           <div className="flex h-8 w-8 items-center justify-center rounded-md bg-white shadow-sm p-1">
-            <img 
-              src="/pwa-192x192.png" 
-              alt="finetune" 
-              className="w-full h-full object-contain"
+            <img
+              src="/pwa-192x192.png"
+              alt="finetune"
+              className="h-full w-full object-contain"
             />
           </div>
-          <div>
-            <h1 className="text-base font-semibold text-primary-text">finetune</h1>
-            {user && (
-              <p className="text-xs text-muted-text truncate max-w-[150px]">{user.email}</p>
+          <div className="flex flex-col gap-1">
+            <OrgSwitcher />
+            {user?.email && (
+              <p className="text-[11px] text-muted-text truncate max-w-[160px]">{user.email}</p>
             )}
           </div>
         </div>
