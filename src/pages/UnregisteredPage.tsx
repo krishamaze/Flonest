@@ -1,19 +1,66 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
+import { useAuth } from '../contexts/AuthContext'
 import { supabase } from '../lib/supabase'
+import { checkUserHasPassword } from '../lib/api/auth'
 import { Button } from '../components/ui/Button'
+import { LoadingSpinner } from '../components/ui/LoadingSpinner'
 
 export function UnregisteredPage() {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
+  const { user, loading: authLoading } = useAuth()
   const [email, setEmail] = useState<string>('')
+  const [checkingPassword, setCheckingPassword] = useState(true)
+  const [hasPassword, setHasPassword] = useState<boolean | null>(null)
 
   useEffect(() => {
     const emailParam = searchParams.get('email') || ''
     setEmail(emailParam)
   }, [searchParams])
 
+  // Check if user has password on mount
+  useEffect(() => {
+    const checkPassword = async () => {
+      if (authLoading || !user) {
+        setCheckingPassword(false)
+        return
+      }
+
+      try {
+        const hasPwd = await checkUserHasPassword()
+        setHasPassword(hasPwd)
+        
+        // If user doesn't have password, redirect to set-password page
+        if (!hasPwd) {
+          const params = new URLSearchParams()
+          params.set('redirect', '/unregistered')
+          if (email) {
+            params.set('email', email)
+          }
+          navigate(`/set-password?${params.toString()}`, { replace: true })
+          return
+        }
+      } catch (err) {
+        console.error('Error checking password:', err)
+        // Assume no password for safety - redirect to set password
+        const params = new URLSearchParams()
+        params.set('redirect', '/unregistered')
+        if (email) {
+          params.set('email', email)
+        }
+        navigate(`/set-password?${params.toString()}`, { replace: true })
+        return
+      } finally {
+        setCheckingPassword(false)
+      }
+    }
+
+    checkPassword()
+  }, [user, authLoading, email, navigate])
+
   const handleOnboardBusiness = async () => {
+    // Password check is already done - user has password at this point
     // Keep the current OAuth session so we can convert the account into an owner account
     // without forcing a second email confirmation step.
     const params = new URLSearchParams()
@@ -42,6 +89,31 @@ export function UnregisteredPage() {
     } finally {
       navigate('/login', { replace: true })
     }
+  }
+
+  // Show loading while checking password
+  if (checkingPassword || authLoading || hasPassword === null) {
+    return (
+      <div className="viewport-height-safe bg-bg-page safe-top safe-bottom flex items-center justify-center">
+        <div className="text-center">
+          <LoadingSpinner size="lg" />
+          <p className="text-secondary-text mt-md">Checking account...</p>
+        </div>
+      </div>
+    )
+  }
+
+  // If user doesn't have password, they should be redirected (handled in useEffect)
+  // This is a fallback in case redirect didn't happen
+  if (!hasPassword) {
+    return (
+      <div className="viewport-height-safe bg-bg-page safe-top safe-bottom flex items-center justify-center">
+        <div className="text-center">
+          <LoadingSpinner size="lg" />
+          <p className="text-secondary-text mt-md">Redirecting...</p>
+        </div>
+      </div>
+    )
   }
 
   return (

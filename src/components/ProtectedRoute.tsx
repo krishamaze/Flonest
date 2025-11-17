@@ -4,6 +4,7 @@ import { useAuth } from '../contexts/AuthContext'
 import { LoadingSpinner } from './ui/LoadingSpinner'
 import { Button } from './ui/Button'
 import { supabase } from '../lib/supabase'
+import { checkUserHasPassword } from '../lib/api/auth'
 import type { Org } from '../types'
 
 /**
@@ -20,7 +21,40 @@ export function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { user, loading, requiresAdminMfa } = useAuth()
   const [org, setOrg] = useState<Org | null>(null)
   const [orgLoading, setOrgLoading] = useState(false)
+  const [hasPassword, setHasPassword] = useState<boolean | null>(null)
+  const [checkingPassword, setCheckingPassword] = useState(false)
   const location = useLocation()
+
+  // Check password requirement for setup page
+  useEffect(() => {
+    if (!loading && user && !user.platformAdmin && location.pathname === '/setup') {
+      setCheckingPassword(true)
+      checkUserHasPassword()
+        .then((hasPwd) => {
+          setHasPassword(hasPwd)
+          if (!hasPwd) {
+            // Redirect to set-password page with redirect back to setup
+            const params = new URLSearchParams()
+            params.set('redirect', '/setup')
+            window.location.href = `/set-password?${params.toString()}`
+          }
+        })
+        .catch((err) => {
+          console.error('Error checking password:', err)
+          // Assume no password for safety
+          setHasPassword(false)
+          const params = new URLSearchParams()
+          params.set('redirect', '/setup')
+          window.location.href = `/set-password?${params.toString()}`
+        })
+        .finally(() => {
+          setCheckingPassword(false)
+        })
+    } else if (!loading && user) {
+      // For non-setup pages, set hasPassword to true (don't block)
+      setHasPassword(true)
+    }
+  }, [user, loading, location.pathname])
 
   // Fetch org data when user has orgId
   useEffect(() => {
@@ -42,7 +76,16 @@ export function ProtectedRoute({ children }: { children: React.ReactNode }) {
     }
   }, [user?.orgId, user?.platformAdmin, loading])
 
-  if (loading || orgLoading) {
+  if (loading || orgLoading || checkingPassword) {
+    return (
+      <div className="viewport-height flex items-center justify-center">
+        <LoadingSpinner size="lg" />
+      </div>
+    )
+  }
+
+  // Block setup page if user doesn't have password
+  if (location.pathname === '/setup' && user && hasPassword === false) {
     return (
       <div className="viewport-height flex items-center justify-center">
         <LoadingSpinner size="lg" />

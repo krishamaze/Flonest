@@ -21,6 +21,7 @@ const LoginPage = lazy(() => import('./pages/LoginPage').then(m => ({ default: m
 const UnregisteredPage = lazy(() => import('./pages/UnregisteredPage').then(m => ({ default: m.UnregisteredPage })))
 const OwnerSignupPage = lazy(() => import('./pages/OwnerSignupPage').then(m => ({ default: m.OwnerSignupPage })))
 const ResetPasswordPage = lazy(() => import('./pages/ResetPasswordPage').then(m => ({ default: m.ResetPasswordPage })))
+const SetPasswordPage = lazy(() => import('./pages/SetPasswordPage').then(m => ({ default: m.SetPasswordPage })))
 const SetupPage = lazy(() => import('./pages/SetupPage').then(m => ({ default: m.SetupPage })))
 const DashboardPage = lazy(() => import('./pages/DashboardPage').then(m => ({ default: m.DashboardPage })))
 const ProductsPage = lazy(() => import('./pages/ProductsPage').then(m => ({ default: m.ProductsPage })))
@@ -136,6 +137,12 @@ function AppRoutes() {
             <Route
               path="/reset-password"
               element={<ResetPasswordPage />}
+            />
+            <Route
+              path="/set-password"
+              element={
+                user ? <SetPasswordPage /> : <Navigate to="/login" replace />
+              }
             />
             <Route
               path="/setup"
