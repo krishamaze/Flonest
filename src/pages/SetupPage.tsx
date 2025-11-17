@@ -311,7 +311,16 @@ export function SetupPage() {
   }
 
   // Show loading while fetching org or during navigation after completion
-  if (authLoading || orgLoading) {
+  if (authLoading || orgLoading || checkingPassword) {
+    return (
+      <div className="viewport-height flex items-center justify-center bg-bg-page">
+        <LoadingSpinner size="lg" />
+      </div>
+    )
+  }
+
+  // CRITICAL: Block if user doesn't have password (should redirect, but block render as safeguard)
+  if (hasPassword === false) {
     return (
       <div className="viewport-height flex items-center justify-center bg-bg-page">
         <LoadingSpinner size="lg" />
