@@ -94,6 +94,8 @@ export function SetupPage() {
           }
 
           if (data.state !== 'Default') {
+            // Setup completed - show loading during navigation
+            setOrgLoading(true)
             navigate('/', { replace: true })
             return
           }
@@ -196,6 +198,8 @@ export function SetupPage() {
       )
 
       toast.success('Organization setup completed successfully!', { autoClose: 3000 })
+      // Set loading state before navigation to prevent blank screen
+      setOrgLoading(true)
       navigate('/', { replace: true })
     } catch (error: any) {
       console.error('Error updating org:', error)
@@ -244,6 +248,8 @@ export function SetupPage() {
       })
 
       toast.success('Organization setup completed successfully!', { autoClose: 3000 })
+      // Set loading state before navigation to prevent blank screen
+      setOrgLoading(true)
       navigate('/', { replace: true })
     } catch (error: any) {
       console.error('Error updating org:', error)
@@ -252,7 +258,7 @@ export function SetupPage() {
     }
   }
 
-  // Show loading while fetching org
+  // Show loading while fetching org or during navigation after completion
   if (authLoading || orgLoading) {
     return (
       <div className="viewport-height flex items-center justify-center bg-bg-page">
@@ -261,8 +267,13 @@ export function SetupPage() {
     )
   }
 
+  // If org doesn't exist or setup already completed, show loading (will redirect)
   if (!org || org.state !== 'Default') {
-    return null
+    return (
+      <div className="viewport-height flex items-center justify-center bg-bg-page">
+        <LoadingSpinner size="lg" />
+      </div>
+    )
   }
 
   // Determine step labels based on flow

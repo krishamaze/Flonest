@@ -14,14 +14,41 @@ alwaysApply: false
 
 ## [P1] RLS Policy 403 Errors - Fixed
 - **Error**: 403 Forbidden on all database operations (inventory, orgs, notifications)
-- **Error Signature**: `new row violates row-level security policy` or `permission denied for table`
-- **Root Cause**: RLS policies on `inventory` and `orgs` were querying `memberships` table via EXISTS subqueries, but `memberships` table RLS was blocking those checks. Also, policies used inconsistent roles (`public` vs `authenticated`).
+- **Error Signature**: `new row violates row-level security policy` or `permission denied for table` or `Authorization header present, but table access denied before RLS evaluation`
+- **Root Cause**: Two distinct issues:
+  1. RLS policies on `inventory` and `orgs` were querying `memberships` table via EXISTS subqueries, but `memberships` table RLS was blocking those checks. Also, policies used inconsistent roles (`public` vs `authenticated`).
+  2. **Missing GRANT permissions**: Tables have RLS policies but missing `GRANT SELECT/INSERT/UPDATE/DELETE ON table TO authenticated` statements, causing 403 before RLS evaluation.
 - **Fix Applied**: 
   - Created `is_org_member(org_id, user_id)` SECURITY DEFINER function to bypass RLS on memberships checks
   - Updated all RLS policies to use `authenticated` role consistently
   - Replaced EXISTS subqueries with `is_org_member()` function calls
-  - Applied migrations: `fix_rls_policies_memberships_access`, `add_membership_check_function`, `update_orgs_select_policy`
-- **Prevention**: Always use SECURITY DEFINER functions for cross-table RLS checks. Ensure consistent role usage (`authenticated` for user data, `public` only for truly public data).
+  - **Added GRANT permissions**: 
+    - `GRANT SELECT, INSERT, UPDATE, DELETE ON public.inventory TO authenticated;`
+    - `GRANT UPDATE ON public.orgs TO authenticated;`
+    - `GRANT UPDATE ON public.master_products TO authenticated;`
+    - `GRANT INSERT, UPDATE, DELETE ON public.notifications TO authenticated;`
+  - Applied migrations: `fix_rls_policies_memberships_access`, `add_membership_check_function`, `update_orgs_select_policy`, `grant_inventory_permissions_to_authenticated`, `grant_orgs_update_permission_to_authenticated`, `grant_missing_permissions_master_products_notifications`
+- **Prevention**: 
+  - Always use SECURITY DEFINER functions for cross-table RLS checks
+  - Ensure consistent role usage (`authenticated` for user data, `public` only for truly public data)
+  - **When creating RLS policies, ALWAYS include corresponding GRANT statements**: `GRANT SELECT, INSERT, UPDATE, DELETE ON table_name TO authenticated;`
+  - **Checklist for new RLS policies**: For each operation (SELECT/INSERT/UPDATE/DELETE) in the policy, ensure matching GRANT exists
+  - **Verification query** to find missing grants:
+    ```sql
+    SELECT p.tablename, p.cmd as operation
+    FROM pg_policies p
+    WHERE p.schemaname = 'public'
+      AND p.cmd IN ('INSERT', 'UPDATE', 'DELETE')
+      AND p.roles::text LIKE '%authenticated%'
+      AND NOT EXISTS (
+        SELECT 1 FROM information_schema.role_table_grants rtg
+        WHERE rtg.table_name = p.tablename
+        AND rtg.grantee = 'authenticated'
+        AND rtg.privilege_type = p.cmd
+      )
+    GROUP BY p.tablename, p.cmd;
+    ```
+  - **Fixed tables**: inventory (SELECT/INSERT/UPDATE/DELETE), orgs (UPDATE), master_products (UPDATE), notifications (INSERT/UPDATE/DELETE)
 
 ## [P1] Clock Skew Warnings - Harmless SDK Noise
 - **Warning**: `Session as retrieved from URL was issued in the future? Check the device clock for skew` or `JWT clock skew warning: Session timestamp is X seconds in the future`

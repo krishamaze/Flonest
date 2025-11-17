@@ -69,22 +69,5 @@ export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey, {
 // Temporary: expose for testing
 if (typeof window !== 'undefined') {
   (window as any).supabase = supabase
-  
-  // Add diagnostic function to test auth.uid() resolution
-  ;(window as any).testAuthUid = async () => {
-    const { data, error } = await supabase.rpc('test_auth_uid_resolution' as any)
-    if (error) {
-      console.error('[Auth UID Test] Error:', error)
-      return null
-    }
-    console.log('[Auth UID Test] Result:', data)
-    
-    // Also check session
-    const { data: { session } } = await supabase.auth.getSession()
-    console.log('[Auth UID Test] Session user ID:', session?.user?.id)
-    console.log('[Auth UID Test] Session access token (first 50 chars):', session?.access_token?.substring(0, 50))
-    
-    return data
-  }
 }
 
