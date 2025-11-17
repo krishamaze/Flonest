@@ -51,7 +51,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined)
 const CONNECTION_TIMEOUT = 5000 // 5 seconds
 const CACHE_KEY = 'lastGoodSession'
 const ORG_CONTEXT_STORAGE_KEY = 'currentOrgId'
-const CLOCK_SKEW_THRESHOLD_MS = 2000
+const CLOCK_SKEW_THRESHOLD_MS = 5000
 const SUPABASE_AUTH_HASH_KEYS = ['access_token', 'refresh_token', 'provider_token', 'expires_at', 'token_type', 'type']
 const AUTH_HASH_EXCLUSION_PATHS = ['/reset-password']
 
