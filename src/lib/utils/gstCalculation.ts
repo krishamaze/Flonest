@@ -77,17 +77,8 @@ export function getGSTRate(orgGstEnabled: boolean, defaultRate: number = 18): nu
   return defaultRate
 }
 
-/**
- * Extract state code from GSTIN
- * @param gstin - GSTIN string
- * @returns State code (first 2 digits) or null
- */
-export function extractStateCodeFromGSTIN(gstin: string | null | undefined): string | null {
-  if (!gstin || gstin.length < 2) {
-    return null
-  }
-  return gstin.substring(0, 2)
-}
+// Re-export from constants for backward compatibility
+export { extractStateCodeFromGSTIN } from '../constants/gstStateCodes'
 
 /**
  * Calculate GST for a single line item (per-item calculation)
