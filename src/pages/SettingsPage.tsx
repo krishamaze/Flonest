@@ -426,6 +426,36 @@ export function SettingsPage() {
         <CardContent className="p-4 pt-0 space-y-md">
           <div>
             <label className="block text-sm font-medium text-secondary-text mb-xs">
+              User ID
+            </label>
+            <Input
+              type="text"
+              value={user?.id || ''}
+              disabled
+              className="bg-neutral-100 font-mono text-xs"
+            />
+            <p className="text-xs text-muted-text mt-xs">
+              Permanent identifier - cannot be changed
+            </p>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-secondary-text mb-xs">
+              Organization ID
+            </label>
+            <Input
+              type="text"
+              value={user?.orgId || ''}
+              disabled
+              className="bg-neutral-100 font-mono text-xs"
+            />
+            <p className="text-xs text-muted-text mt-xs">
+              Permanent identifier - cannot be changed
+            </p>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-secondary-text mb-xs">
               Email
             </label>
             <Input
