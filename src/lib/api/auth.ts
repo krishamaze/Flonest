@@ -9,7 +9,7 @@ import { supabase } from '../supabase'
  * Returns true if user has encrypted_password, false for OAuth-only users
  */
 export async function checkUserHasPassword(): Promise<boolean> {
-  const { data, error } = await supabase.rpc('check_user_has_password')
+  const { data, error } = await supabase.rpc('check_user_has_password' as any)
   
   if (error) {
     console.error('Error checking user password:', error)
@@ -17,7 +17,7 @@ export async function checkUserHasPassword(): Promise<boolean> {
     return false
   }
   
-  return data ?? false
+  return Boolean(data ?? false)
 }
 
 /**
