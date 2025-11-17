@@ -253,6 +253,7 @@ function AppRoutes() {
           >
             <Route index element={<PlatformAdminDashboardPage />} />
             <Route path="queue" element={<PlatformAdminDashboardPage />} />
+            <Route path="gst-verification" element={<PlatformAdminDashboardPage />} />
             <Route path="hsn" element={<PlatformAdminDashboardPage />} />
             <Route path="blocked-invoices" element={<PlatformAdminDashboardPage />} />
             <Route path="monitor" element={<PlatformAdminDashboardPage />} />
