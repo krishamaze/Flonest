@@ -22,6 +22,7 @@ export function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const [hasPassword, setHasPassword] = useState<boolean | null>(null)
   const [checkingPassword, setCheckingPassword] = useState(false)
   const location = useLocation()
+  const isSetupRoute = location.pathname === '/setup'
   const navigate = useNavigate()
 
   // CRITICAL: Check password requirement for ALL non-platform-admin users
@@ -150,7 +151,7 @@ export function ProtectedRoute({ children }: { children: React.ReactNode }) {
       )
     }
     // Only redirect if password check completed and user has password
-    if (hasPassword === true) {
+    if (hasPassword === true && !isSetupRoute) {
       return <Navigate to="/setup" replace />
     }
     // If hasPassword === false, redirect already happened above

@@ -17,7 +17,9 @@ DECLARE
   v_org_slug text;
   v_org_record public.orgs%ROWTYPE;
   v_membership_record public.memberships%ROWTYPE;
+  v_branch_id uuid;
   v_attempts integer := 0;
+  v_trial_plan_id uuid;
 BEGIN
   v_user_id := auth.uid();
   IF v_user_id IS NULL THEN
@@ -59,6 +61,56 @@ BEGIN
   RETURNING * INTO v_membership_record;
 
   v_membership_id := v_membership_record.id;
+
+  -- Create default branch
+  INSERT INTO public.branches (org_id, name, address)
+  VALUES (v_org_id, 'Main Branch', NULL)
+  RETURNING id INTO v_branch_id;
+
+  -- Link membership to default branch
+  UPDATE public.memberships
+  SET branch_id = v_branch_id
+  WHERE id = v_membership_id;
+
+  -- Get trial plan id (fallback to first plan)
+  SELECT id INTO v_trial_plan_id
+  FROM public.billing_plans
+  WHERE slug = 'trial'
+  LIMIT 1;
+
+  IF v_trial_plan_id IS NULL THEN
+    SELECT id INTO v_trial_plan_id
+    FROM public.billing_plans
+    ORDER BY created_at ASC
+    LIMIT 1;
+  END IF;
+
+  -- Create trial subscription if plan exists
+  IF v_trial_plan_id IS NOT NULL THEN
+    INSERT INTO public.org_subscriptions (
+      org_id,
+      plan_id,
+      status,
+      quantity,
+      current_period_start,
+      current_period_end,
+      cancel_at_period_end,
+      metadata,
+      created_at,
+      updated_at
+    ) VALUES (
+      v_org_id,
+      v_trial_plan_id,
+      'trialing',
+      1,
+      now(),
+      now() + interval '90 days',
+      false,
+      '{}'::jsonb,
+      now(),
+      now()
+    );
+  END IF;
 
   RETURN json_build_object(
     'org_id', v_org_id,
