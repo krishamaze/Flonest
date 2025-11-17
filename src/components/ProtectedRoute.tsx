@@ -24,6 +24,7 @@ export function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const [hasPassword, setHasPassword] = useState<boolean | null>(null)
   const [checkingPassword, setCheckingPassword] = useState(false)
   const location = useLocation()
+  const navigate = useNavigate()
 
   // CRITICAL: Check password requirement for ALL non-platform-admin users
   // This ensures OAuth users without password are caught BEFORE they can access any org routes
