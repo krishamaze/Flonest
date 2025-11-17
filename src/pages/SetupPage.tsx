@@ -88,6 +88,9 @@ export function SetupPage() {
     // Wait for password check to complete before proceeding
     if (checkingPassword) return
     
+    // CRITICAL: Don't proceed if user doesn't have password (first useEffect handles redirect)
+    if (hasPassword === false) return
+    
     if (!authLoading && user?.orgId && !user.platformAdmin && hasPassword === true) {
       supabase
         .from('orgs')
@@ -117,8 +120,8 @@ export function SetupPage() {
           setOrg(data)
           setOrgLoading(false)
         })
-    } else if (!authLoading && !checkingPassword && hasPassword !== null) {
-      // Only navigate away if password check is complete and user doesn't meet conditions
+    } else if (!authLoading && !checkingPassword && hasPassword === true && (!user?.orgId || user.platformAdmin)) {
+      // Only navigate away if password check is complete, user has password, but doesn't meet org setup conditions
       navigate('/')
     }
   }, [user?.orgId, user?.platformAdmin, authLoading, hasPassword, checkingPassword, navigate])
