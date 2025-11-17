@@ -22,45 +22,45 @@ export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey, {
     autoRefreshToken: true,
     detectSessionInUrl: true,
     storage: window.localStorage,
-    flowType: 'pkce', // Use PKCE flow for better security and OAuth handling
+    // Don't use PKCE - it requires additional Supabase configuration
+    // Default flow handles OAuth callbacks automatically
   },
   global: {
     headers: {
       'X-Client-Info': 'perbook-web',
     },
-    // Intercept fetch to log actual request headers
-    fetch: async (url, options = {}) => {
-      const headers = options.headers as HeadersInit
-      const headerMap = headers instanceof Headers 
-        ? Object.fromEntries(headers.entries())
-        : Array.isArray(headers)
-        ? Object.fromEntries(headers as [string, string][])
-        : headers || {}
-      
-      // Check current session state
-      const { data: { session } } = await supabase.auth.getSession()
-      
-      // Log request details for debugging
+    // Intercept fetch to log actual request headers (non-blocking)
+    fetch: (url, options = {}) => {
+      // Don't await - just log synchronously to avoid blocking
       const urlStr = typeof url === 'string' ? url : url.toString()
       const isPostgREST = urlStr.includes('/rest/v1/')
       
       if (isPostgREST) {
-        // Only log PostgREST requests (database queries)
+        // Log headers synchronously (don't await getSession to avoid blocking)
+        const headers = options.headers as HeadersInit
+        let headerMap: Record<string, string> = {}
+        
+        if (headers instanceof Headers) {
+          headerMap = Object.fromEntries(headers.entries())
+        } else if (Array.isArray(headers)) {
+          headerMap = Object.fromEntries(headers as [string, string][])
+        } else if (headers) {
+          headerMap = headers as Record<string, string>
+        }
+        
+        // Log request details (non-blocking)
         console.log('[Supabase PostgREST Request]', {
           url: urlStr,
           method: options.method || 'GET',
           hasAuthorization: !!headerMap['Authorization'] || !!headerMap['authorization'],
           authorizationPrefix: headerMap['Authorization'] || headerMap['authorization'] 
-            ? (headerMap['Authorization'] || headerMap['authorization'])?.toString().substring(0, 30) + '...'
+            ? (headerMap['Authorization'] || headerMap['authorization'])?.substring(0, 30) + '...'
             : 'MISSING',
-          sessionExists: !!session,
-          sessionUserId: session?.user?.id,
-          sessionTokenPrefix: session?.access_token?.substring(0, 20) + '...' || 'NO_TOKEN',
           allHeaders: Object.keys(headerMap),
         })
       }
       
-      // Call original fetch
+      // Call original fetch immediately (don't block)
       return fetch(url, options)
     },
   },

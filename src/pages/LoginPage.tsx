@@ -69,7 +69,9 @@ export function LoginPage() {
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: `${window.location.origin}/auth/callback`,
+          // Redirect back to current page - Supabase will append hash fragments
+          // detectSessionInUrl: true will process them automatically
+          redirectTo: window.location.origin + window.location.pathname,
           queryParams: {
             prompt: 'select_account',
           },
