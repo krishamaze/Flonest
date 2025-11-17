@@ -103,7 +103,7 @@ export function SettingsPage() {
       if (error) throw error
 
       if (data) {
-        setOrgSettings(data as any)
+        setOrgSettings(data as OrgSettings)
         setFormData({
           name: data.name || '',
           phone: data.phone || '',

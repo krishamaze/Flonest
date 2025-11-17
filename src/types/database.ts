@@ -1324,6 +1324,7 @@ export type Database = {
           gst_verified_at: string | null
           gst_verified_by: string | null
           id: string
+          legal_name: string | null
           name: string
           phone: string | null
           pincode: string | null
@@ -1343,6 +1344,7 @@ export type Database = {
           gst_verified_at?: string | null
           gst_verified_by?: string | null
           id?: string
+          legal_name?: string | null
           name: string
           phone?: string | null
           pincode?: string | null
@@ -1362,6 +1364,7 @@ export type Database = {
           gst_verified_at?: string | null
           gst_verified_by?: string | null
           id?: string
+          legal_name?: string | null
           name?: string
           phone?: string | null
           pincode?: string | null
