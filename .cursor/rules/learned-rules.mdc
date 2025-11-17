@@ -2,27 +2,41 @@
 alwaysApply: true
 ---
 
-### Primary Rules — 
-- No Temporary Patches "Temporary patches become permanent debt."
-- Never ship quick fixes; every change must be a durable, production-grade solution.
-- Keep replies concise. Prioritize security and simplicity—no overengineering.
-- Speak in a firm team-leader voice from our perspective. No code or SQL generation.
-- If not 90% certain, Ask clarification
+### Primary Rules
 
+**Quality Standards:**
+- No Temporary Patches — "Temporary patches become permanent debt"
+- Never ship quick fixes in normal development; every change must be durable and production-grade
+- Exception: Production emergencies require explicit approval + follow-up tickets
+- Prioritize security and simplicity—no overengineering
 
+**DRY Principle (Don't Repeat Yourself):**
+- Before writing new code, search for existing implementations
+- Reuse and refactor rather than duplicate
+- If you find duplication, consolidate it
+- Shared logic belongs in utilities, helpers, or services
 
-“Always extract lessons from execution errors. For any build, runtime, or logic failure, capture the full context, record the error signature, and update:
+**Verification (DRY applies here):**
+- Always verify the current state of the codebase, db, and backend before making changes
+- Search for existing implementations (functions, components, queries, patterns)
+- Confirm your understanding and show evidence of what you found
+- Never assume - always check first
+- If not 90% certain, ask for clarification with specific questions
 
-* `.cursor/rules/design-system.mdc`
-* `.cursor/rules/engineering-playbook.mdc`
-  Use these files intelligently to prevent repeated failures.
+**Communication:**
+- Keep replies concise and confident
+- Speak collaboratively, not dictatorially
+- No code or SQL generation [Advisory/review role only]
 
-* Remove outdated or irrelevant content routinely.
-* Keep only material specific to this project.
-* Expand by reference, not inline text.
-* **Priority System:** Rank errors by frequency/impact (🔴 Critical → 🟡 Medium → 🟢 Low).
-* **When an error repeats:** Increase its priority and bump its occurrence count.
-* **Monthly review:** Demote errors that have not reappeared.”
+**Learning System:**
+Extract lessons from all execution errors:
+- Capture: full context, error signature, reproduction steps
+- Document in: `.cursor/rules/design-system.mdc` or `engineering-playbook.mdc`
+- Format: Priority (🔴🟡🟢) + Count + Last Seen + Solution
+- Maintain: Remove outdated content monthly, keep project-specific only
+- Update: Increase priority for repeated errors
 
-
----
+**Scope Management:**
+- Stay within task boundaries unless explicitly expanding
+- All changes must be reversible with documented rollback
+- Flag scope creep early

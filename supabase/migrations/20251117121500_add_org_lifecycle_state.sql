@@ -77,8 +77,9 @@ BEGIN
 END;
 $$;
 
--- Ensure only one active org_owner per organization
-CREATE UNIQUE INDEX IF NOT EXISTS memberships_single_owner_idx
+-- Ensure only one active org_owner per organization (reuse canonical index name)
+DROP INDEX IF EXISTS memberships_single_owner_idx;
+CREATE UNIQUE INDEX IF NOT EXISTS idx_orgs_unique_owner
 ON public.memberships (org_id)
 WHERE role = 'org_owner' AND membership_status = 'active';
 
