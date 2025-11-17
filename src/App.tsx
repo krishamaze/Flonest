@@ -4,6 +4,7 @@ import { ToastContainer } from 'react-toastify'
 import { AuthProvider, useAuth } from './contexts/AuthContext'
 import { VersionCheckProvider } from './contexts/VersionCheckContext'
 import { ServiceWorkerProvider } from './contexts/ServiceWorkerContext'
+import { OrgSwitcherProvider } from './components/orgs/OrgSwitcher'
 import { MainLayout } from './components/layout/MainLayout'
 import { LoadingSpinner } from './components/ui/LoadingSpinner'
 import { ConnectionError } from './components/ui/ConnectionError'
@@ -294,26 +295,28 @@ function App() {
     <VersionCheckProvider>
       <ServiceWorkerProvider>
         <AuthProvider>
-          <BrowserRouter>
-            <AppRoutes />
-            <PlatformAdminSessionWatcher />
-            <InstallPrompt />
-            <UpdateNotification />
-            <ToastContainer
-              position="top-center"
-              autoClose={3000}
-              hideProgressBar={false}
-              closeOnClick
-              pauseOnHover={false}
-              draggable={false}
-              rtl={false}
-              theme="light"
-              limit={5}
-              newestOnTop={true}
-              stacked={true}
-              style={{ zIndex: 9999 }}
-            />
-          </BrowserRouter>
+          <OrgSwitcherProvider>
+            <BrowserRouter>
+              <AppRoutes />
+              <PlatformAdminSessionWatcher />
+              <InstallPrompt />
+              <UpdateNotification />
+              <ToastContainer
+                position="top-center"
+                autoClose={3000}
+                hideProgressBar={false}
+                closeOnClick
+                pauseOnHover={false}
+                draggable={false}
+                rtl={false}
+                theme="light"
+                limit={5}
+                newestOnTop={true}
+                stacked={true}
+                style={{ zIndex: 9999 }}
+              />
+            </BrowserRouter>
+          </OrgSwitcherProvider>
         </AuthProvider>
       </ServiceWorkerProvider>
     </VersionCheckProvider>

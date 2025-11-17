@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, createContext, useContext, type ReactNode } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   BuildingOffice2Icon,
@@ -22,7 +22,28 @@ function formatRole(role: string | null | undefined) {
   return map[role] || role
 }
 
-export function OrgSwitcher() {
+interface OrgSwitcherContextType {
+  openSwitcher: () => void
+  getOrgDisplayInfo: () => { label: string; subtitle: string }
+}
+
+const OrgSwitcherContext = createContext<OrgSwitcherContextType | null>(null)
+
+export function useOrgSwitcher() {
+  const context = useContext(OrgSwitcherContext)
+  if (!context) {
+    throw new Error('useOrgSwitcher must be used within OrgSwitcherProvider')
+  }
+  return context
+}
+
+function OrgSwitcherModal({
+  isOpen,
+  onClose,
+}: {
+  isOpen: boolean
+  onClose: () => void
+}) {
   const navigate = useNavigate()
   const {
     user,
@@ -34,19 +55,12 @@ export function OrgSwitcher() {
     switchToAgentContext,
     refreshMemberships,
   } = useAuth()
-  const [isOpen, setIsOpen] = useState(false)
   const [switchingId, setSwitchingId] = useState<string | null>(null)
   const [isCreating, setIsCreating] = useState(false)
   const [creationError, setCreationError] = useState<string | null>(null)
 
-  const inAgentMode = user?.contextMode === 'agent' && currentAgentContext
-  const triggerLabel = inAgentMode
-    ? currentAgentContext?.senderOrgName ?? 'Agent portal'
-    : currentOrg?.orgName ?? 'Select organization'
-  const triggerSubtitle = inAgentMode ? 'Agent mode' : formatRole(currentOrg?.role)
-
   const closeSheet = () => {
-    setIsOpen(false)
+    onClose()
     setSwitchingId(null)
   }
 
@@ -92,39 +106,21 @@ export function OrgSwitcher() {
     navigate('/join-org', { replace: false })
   }
 
+  if (!isOpen) return null
+
   return (
     <>
-      <button
-        type="button"
-        aria-haspopup="dialog"
-        aria-label="Switch organization"
-        onClick={() => setIsOpen(true)}
-        className="flex items-center gap-sm rounded-lg border border-neutral-200 bg-white/60 px-sm py-xs text-left shadow-sm focus:outline-none focus-visible:outline focus-visible:outline-offset-2 focus-visible:outline-primary"
+      <div
+        className="fixed inset-0 z-[120] bg-black/40"
+        onClick={closeSheet}
+        aria-hidden="true"
+      />
+      <div
+        className="fixed bottom-0 left-0 right-0 z-[121] safe-bottom"
+        role="dialog"
+        aria-modal="true"
+        aria-label="Organization switcher"
       >
-        <div className="flex flex-col">
-          <span className="text-sm font-semibold text-primary-text leading-tight truncate max-w-[160px]">
-            {triggerLabel}
-          </span>
-          <span className="text-xs text-muted-text leading-tight truncate max-w-[160px]">
-            {triggerSubtitle}
-          </span>
-        </div>
-        <ChevronDownIcon className="h-4 w-4 text-muted-text flex-shrink-0" aria-hidden="true" />
-      </button>
-
-      {isOpen && (
-        <>
-          <div
-            className="fixed inset-0 z-[120] bg-black/40"
-            onClick={closeSheet}
-            aria-hidden="true"
-          />
-          <div
-            className="fixed bottom-0 left-0 right-0 z-[121] safe-bottom"
-            role="dialog"
-            aria-modal="true"
-            aria-label="Organization switcher"
-          >
             <div className="mx-auto max-h-[70vh] w-full max-w-lg rounded-t-2xl bg-bg-card shadow-2xl overflow-hidden">
               <div className="flex items-center justify-between border-b border-neutral-200 px-lg py-md">
                 <div>
@@ -266,9 +262,62 @@ export function OrgSwitcher() {
               </div>
             </div>
           </div>
-        </>
-      )}
     </>
+  )
+}
+
+export function OrgSwitcherProvider({ children }: { children: ReactNode }) {
+  const {
+    user,
+    currentOrg,
+    currentAgentContext,
+  } = useAuth()
+  const [isOpen, setIsOpen] = useState(false)
+
+  const inAgentMode = user?.contextMode === 'agent' && currentAgentContext
+  const triggerLabel = inAgentMode
+    ? currentAgentContext?.senderOrgName ?? 'Agent portal'
+    : currentOrg?.orgName ?? 'Select organization'
+  const triggerSubtitle = inAgentMode ? 'Agent mode' : formatRole(currentOrg?.role)
+
+  const openSwitcher = () => setIsOpen(true)
+  const closeSwitcher = () => setIsOpen(false)
+
+  const getOrgDisplayInfo = () => ({
+    label: triggerLabel,
+    subtitle: triggerSubtitle,
+  })
+
+  return (
+    <OrgSwitcherContext.Provider value={{ openSwitcher, getOrgDisplayInfo }}>
+      {children}
+      <OrgSwitcherModal isOpen={isOpen} onClose={closeSwitcher} />
+    </OrgSwitcherContext.Provider>
+  )
+}
+
+export function OrgSwitcher() {
+  const { openSwitcher, getOrgDisplayInfo } = useOrgSwitcher()
+  const { label, subtitle } = getOrgDisplayInfo()
+
+  return (
+    <button
+      type="button"
+      aria-haspopup="dialog"
+      aria-label="Switch organization"
+      onClick={openSwitcher}
+      className="flex items-center gap-sm rounded-lg border border-neutral-200 bg-white/60 px-sm py-xs text-left shadow-sm focus:outline-none focus-visible:outline focus-visible:outline-offset-2 focus-visible:outline-primary"
+    >
+      <div className="flex flex-col">
+        <span className="text-sm font-semibold text-primary-text leading-tight truncate max-w-[160px]">
+          {label}
+        </span>
+        <span className="text-xs text-muted-text leading-tight truncate max-w-[160px]">
+          {subtitle}
+        </span>
+      </div>
+      <ChevronDownIcon className="h-4 w-4 text-muted-text flex-shrink-0" aria-hidden="true" />
+    </button>
   )
 }
 

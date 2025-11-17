@@ -84,4 +84,3 @@ ON public.memberships (org_id)
 WHERE role = 'org_owner' AND membership_status = 'active';
 
 COMMIT;
-
