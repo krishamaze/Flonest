@@ -147,7 +147,9 @@ function AppRoutes() {
             <Route
               path="/setup"
               element={
-                user ? <SetupPage /> : <Navigate to="/login" replace />
+                <ProtectedRoute>
+                  <SetupPage />
+                </ProtectedRoute>
               }
             />
             <Route
