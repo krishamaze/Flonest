@@ -1,4 +1,4 @@
-﻿export type Json =
+export type Json =
   | string
   | number
   | boolean
@@ -14,6 +14,99 @@ export type Database = {
   }
   public: {
     Tables: {
+      agent_cash_ledger: {
+        Row: {
+          agent_user_id: string
+          amount: number
+          created_at: string | null
+          created_by: string | null
+          deposited_to: string | null
+          id: string
+          invoice_id: string | null
+          notes: string | null
+          proof_url: string | null
+          reference_number: string | null
+          rejection_reason: string | null
+          sender_org_id: string
+          status: string | null
+          transaction_type: string
+          verified_at: string | null
+          verified_by: string | null
+        }
+        Insert: {
+          agent_user_id: string
+          amount: number
+          created_at?: string | null
+          created_by?: string | null
+          deposited_to?: string | null
+          id?: string
+          invoice_id?: string | null
+          notes?: string | null
+          proof_url?: string | null
+          reference_number?: string | null
+          rejection_reason?: string | null
+          sender_org_id: string
+          status?: string | null
+          transaction_type: string
+          verified_at?: string | null
+          verified_by?: string | null
+        }
+        Update: {
+          agent_user_id?: string
+          amount?: number
+          created_at?: string | null
+          created_by?: string | null
+          deposited_to?: string | null
+          id?: string
+          invoice_id?: string | null
+          notes?: string | null
+          proof_url?: string | null
+          reference_number?: string | null
+          rejection_reason?: string | null
+          sender_org_id?: string
+          status?: string | null
+          transaction_type?: string
+          verified_at?: string | null
+          verified_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agent_cash_ledger_agent_user_id_fkey"
+            columns: ["agent_user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agent_cash_ledger_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agent_cash_ledger_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "invoices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agent_cash_ledger_sender_org_id_fkey"
+            columns: ["sender_org_id"]
+            isOneToOne: false
+            referencedRelation: "orgs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agent_cash_ledger_verified_by_fkey"
+            columns: ["verified_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       agent_portal_permissions: {
         Row: {
           agent_relationship_id: string
@@ -123,6 +216,36 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      app_versions: {
+        Row: {
+          created_at: string | null
+          id: string
+          is_current: boolean | null
+          release_notes: string | null
+          released_at: string | null
+          updated_at: string | null
+          version: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          is_current?: boolean | null
+          release_notes?: string | null
+          released_at?: string | null
+          updated_at?: string | null
+          version: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          is_current?: boolean | null
+          release_notes?: string | null
+          released_at?: string | null
+          updated_at?: string | null
+          version?: string
+        }
+        Relationships: []
       }
       billing_plans: {
         Row: {
@@ -301,6 +424,196 @@ export type Database = {
           {
             foreignKeyName: "customers_org_id_fkey"
             columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "orgs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      dc_items: {
+        Row: {
+          created_at: string | null
+          dc_id: string
+          id: string
+          notes: string | null
+          product_id: string
+          quantity: number
+          unit_price: number | null
+        }
+        Insert: {
+          created_at?: string | null
+          dc_id: string
+          id?: string
+          notes?: string | null
+          product_id: string
+          quantity: number
+          unit_price?: number | null
+        }
+        Update: {
+          created_at?: string | null
+          dc_id?: string
+          id?: string
+          notes?: string | null
+          product_id?: string
+          quantity?: number
+          unit_price?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dc_items_dc_id_fkey"
+            columns: ["dc_id"]
+            isOneToOne: false
+            referencedRelation: "delivery_challans"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "dc_items_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      dc_stock_ledger: {
+        Row: {
+          agent_user_id: string
+          created_at: string | null
+          created_by: string | null
+          dc_id: string | null
+          id: string
+          notes: string | null
+          product_id: string
+          quantity: number
+          sender_org_id: string
+          transaction_type: string | null
+        }
+        Insert: {
+          agent_user_id: string
+          created_at?: string | null
+          created_by?: string | null
+          dc_id?: string | null
+          id?: string
+          notes?: string | null
+          product_id: string
+          quantity: number
+          sender_org_id: string
+          transaction_type?: string | null
+        }
+        Update: {
+          agent_user_id?: string
+          created_at?: string | null
+          created_by?: string | null
+          dc_id?: string | null
+          id?: string
+          notes?: string | null
+          product_id?: string
+          quantity?: number
+          sender_org_id?: string
+          transaction_type?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dc_stock_ledger_agent_user_id_fkey"
+            columns: ["agent_user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "dc_stock_ledger_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "dc_stock_ledger_dc_id_fkey"
+            columns: ["dc_id"]
+            isOneToOne: false
+            referencedRelation: "delivery_challans"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "dc_stock_ledger_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "dc_stock_ledger_sender_org_id_fkey"
+            columns: ["sender_org_id"]
+            isOneToOne: false
+            referencedRelation: "orgs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      delivery_challans: {
+        Row: {
+          accepted_date: string | null
+          agent_user_id: string
+          created_at: string | null
+          created_by: string | null
+          dc_number: string
+          id: string
+          issued_date: string | null
+          notes: string | null
+          rejected_date: string | null
+          rejection_reason: string | null
+          sender_org_id: string
+          status: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          accepted_date?: string | null
+          agent_user_id: string
+          created_at?: string | null
+          created_by?: string | null
+          dc_number: string
+          id?: string
+          issued_date?: string | null
+          notes?: string | null
+          rejected_date?: string | null
+          rejection_reason?: string | null
+          sender_org_id: string
+          status?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          accepted_date?: string | null
+          agent_user_id?: string
+          created_at?: string | null
+          created_by?: string | null
+          dc_number?: string
+          id?: string
+          issued_date?: string | null
+          notes?: string | null
+          rejected_date?: string | null
+          rejection_reason?: string | null
+          sender_org_id?: string
+          status?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "delivery_challans_agent_user_id_fkey"
+            columns: ["agent_user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "delivery_challans_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "delivery_challans_sender_org_id_fkey"
+            columns: ["sender_org_id"]
             isOneToOne: false
             referencedRelation: "orgs"
             referencedColumns: ["id"]
@@ -884,6 +1197,47 @@ export type Database = {
           },
         ]
       }
+      org_cash_settings: {
+        Row: {
+          created_at: string | null
+          max_cash_balance: number | null
+          max_cash_holding_days: number | null
+          org_id: string
+          require_deposit_proof: boolean | null
+          require_gps_on_collection: boolean | null
+          section_269st_limit: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          max_cash_balance?: number | null
+          max_cash_holding_days?: number | null
+          org_id: string
+          require_deposit_proof?: boolean | null
+          require_gps_on_collection?: boolean | null
+          section_269st_limit?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          max_cash_balance?: number | null
+          max_cash_holding_days?: number | null
+          org_id?: string
+          require_deposit_proof?: boolean | null
+          require_gps_on_collection?: boolean | null
+          section_269st_limit?: number | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "org_cash_settings_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: true
+            referencedRelation: "orgs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       org_subscriptions: {
         Row: {
           cancel_at_period_end: boolean
@@ -1246,6 +1600,41 @@ export type Database = {
           },
         ]
       }
+      subscription_events: {
+        Row: {
+          actor_user_id: string | null
+          event_time: string
+          event_type: string
+          id: string
+          org_subscription_id: string
+          payload: Json
+        }
+        Insert: {
+          actor_user_id?: string | null
+          event_time?: string
+          event_type: string
+          id?: string
+          org_subscription_id: string
+          payload?: Json
+        }
+        Update: {
+          actor_user_id?: string | null
+          event_time?: string
+          event_type?: string
+          id?: string
+          org_subscription_id?: string
+          payload?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "subscription_events_org_subscription_id_fkey"
+            columns: ["org_subscription_id"]
+            isOneToOne: false
+            referencedRelation: "org_subscriptions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
@@ -1257,6 +1646,27 @@ export type Database = {
       }
       create_default_org_for_user: { Args: never; Returns: Json }
       current_user_is_platform_admin: { Args: never; Returns: boolean }
+      exceeds_cash_limit: {
+        Args: { p_agent_user_id: string; p_sender_org_id: string }
+        Returns: boolean
+      }
+      get_agent_cash_on_hand: {
+        Args: { p_agent_user_id: string; p_sender_org_id: string }
+        Returns: number
+      }
+      get_dc_stock_summary: {
+        Args: { p_agent_user_id: string; p_sender_org_id: string }
+        Returns: {
+          current_stock: number
+          product_id: string
+          product_name: string
+          product_sku: string
+        }[]
+      }
+      has_overdue_cash: {
+        Args: { p_agent_user_id: string; p_sender_org_id: string }
+        Returns: boolean
+      }
       is_org_member: {
         Args: { p_org_id: string; p_user_id: string }
         Returns: boolean
@@ -1409,4 +1819,3 @@ export const Constants = {
     Enums: {},
   },
 } as const
-

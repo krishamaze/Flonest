@@ -156,7 +156,7 @@ export async function getAgentCashOnHand(
     })
 
   if (error) throw error
-  return data || 0
+  return (data as number) || 0
 }
 
 /**
@@ -176,7 +176,7 @@ export async function hasOverdueCash(
     console.error('Error checking overdue cash:', error)
     return false
   }
-  return data || false
+  return (data as boolean) || false
 }
 
 /**
@@ -196,7 +196,7 @@ export async function exceedsCashLimit(
     console.error('Error checking cash limit:', error)
     return false
   }
-  return data || false
+  return (data as boolean) || false
 }
 
 /**
