@@ -253,14 +253,14 @@ export function SetupPage() {
         slug,
       })
       
-      // Set GST number and verification status from gst-validate response via RPC
-      // This is the only way tenant code can set verification fields - they must come from gst-validate
+      // Set GST number - always unverified until platform admin manually verifies
+      // Never trust external API verification status - admin must verify manually
       await setGstFromValidation(
         user.orgId,
         gstin.toUpperCase(),
         true,
-        (gstBusinessData.gstin_status === 'verified' ? 'verified' : 'unverified') as 'unverified' | 'verified',
-        (gstBusinessData.verification_source ?? 'manual') as 'manual' | 'cashfree' | 'secureid'
+        'unverified', // Always unverified - admin must verify manually
+        'manual' // Source is always manual for tenant-entered GSTINs
       )
 
       toast.success('Organization setup completed successfully!', { autoClose: 3000 })

@@ -272,14 +272,14 @@ export function SettingsPage() {
           throw new Error('GSTIN not found. Please verify the number and try again.')
         }
 
-        // Set GST number and verification status from gst-validate response via RPC
-        // This is the only way tenant code can set verification fields - they must come from gst-validate
+        // Set GST number - always unverified until platform admin manually verifies
+        // Never trust external API verification status - admin must verify manually
         await setGstFromValidation(
           user.orgId,
           trimmedGstin,
           true,
-          (gstData.gstin_status === 'verified' ? 'verified' : 'unverified') as 'unverified' | 'verified',
-          (gstData.verification_source ?? 'manual') as 'manual' | 'cashfree' | 'secureid'
+          'unverified', // Always unverified - admin must verify manually
+          'manual' // Source is always manual for tenant-entered GSTINs
         )
       } else {
         // Clear GST if empty
@@ -428,12 +428,28 @@ export function SettingsPage() {
             <label className="block text-sm font-medium text-secondary-text mb-xs">
               User ID
             </label>
-            <Input
-              type="text"
-              value={user?.id || ''}
-              disabled
-              className="bg-neutral-100 font-mono text-xs"
-            />
+            <div className="flex gap-sm items-center">
+              <Input
+                type="text"
+                value={user?.id || ''}
+                disabled
+                className="bg-neutral-100 font-mono text-xs flex-1"
+                readOnly
+              />
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => {
+                  if (user?.id) {
+                    navigator.clipboard.writeText(user.id)
+                    toast.success('User ID copied to clipboard')
+                  }
+                }}
+                className="min-w-[80px]"
+              >
+                Copy
+              </Button>
+            </div>
             <p className="text-xs text-muted-text mt-xs">
               Permanent identifier - cannot be changed
             </p>
@@ -443,12 +459,28 @@ export function SettingsPage() {
             <label className="block text-sm font-medium text-secondary-text mb-xs">
               Organization ID
             </label>
-            <Input
-              type="text"
-              value={user?.orgId || ''}
-              disabled
-              className="bg-neutral-100 font-mono text-xs"
-            />
+            <div className="flex gap-sm items-center">
+              <Input
+                type="text"
+                value={user?.orgId || ''}
+                disabled
+                className="bg-neutral-100 font-mono text-xs flex-1"
+                readOnly
+              />
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => {
+                  if (user?.orgId) {
+                    navigator.clipboard.writeText(user.orgId)
+                    toast.success('Organization ID copied to clipboard')
+                  }
+                }}
+                className="min-w-[80px]"
+              >
+                Copy
+              </Button>
+            </div>
             <p className="text-xs text-muted-text mt-xs">
               Permanent identifier - cannot be changed
             </p>
