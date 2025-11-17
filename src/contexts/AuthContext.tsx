@@ -146,7 +146,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const initializeAuth = async () => {
     try {
-      // Try to get session with timeout
+      // CRITICAL: getSession() automatically processes OAuth callbacks from URL hash
+      // when detectSessionInUrl: true is set. This must be called to trigger processing.
+      // The client processes the URL hash and stores the session automatically.
       const sessionPromise = supabase.auth.getSession()
       const timeoutPromise = createTimeoutPromise(CONNECTION_TIMEOUT)
 
