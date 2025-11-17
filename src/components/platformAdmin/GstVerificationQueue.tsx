@@ -73,7 +73,7 @@ export function GstVerificationQueue() {
   const [verifyingOrgId, setVerifyingOrgId] = useState<string | null>(null)
   const [verificationNotes, setVerificationNotes] = useState('')
   const [notesError, setNotesError] = useState<string | null>(null)
-  const [gstDetails, setGstDetails] = useState('')
+  const [gstDetailsError, setGstDetailsError] = useState<string | null>(null)
   const [parsedDetails, setParsedDetails] = useState<{
     gstin?: string
     legalName?: string
@@ -118,9 +118,9 @@ export function GstVerificationQueue() {
     const org = orgs.find(o => o.id === orgId)
     setVerifyingOrgId(orgId)
     setVerificationNotes('')
-    setGstDetails('')
     setParsedDetails({})
     setNotesError(null)
+    setGstDetailsError(null)
     
     // Auto-fill GSTIN and state if available
     if (org?.gst_number) {
@@ -278,52 +278,79 @@ export function GstVerificationQueue() {
     return notesParts.join('\n')
   }
 
-  // Auto-parse GST details from pasted text
-  const handleGstDetailsChange = (value: string) => {
-    setGstDetails(value)
-    setNotesError(null)
-    
+  // Handle clipboard paste and parse GST details
+  const handlePasteFromClipboard = async () => {
     if (!verifyingOrgId) return
     
     const org = orgs.find(o => o.id === verifyingOrgId)
     if (!org?.gst_number) return
     
-    // Parse with strict validation
-    const { parsed, errors, warnings } = parseGstPortalResult(value, org.gst_number)
-    
-    // Show errors
-    if (errors.length > 0) {
-      setNotesError(errors.join('. '))
+    try {
+      // Read clipboard
+      const clipboardText = await navigator.clipboard.readText()
+      
+      if (!clipboardText.trim()) {
+        setGstDetailsError('Clipboard is empty. Copy GST portal results first.')
+        toast.error('Clipboard is empty. Copy GST portal results first.')
+        return
+      }
+      
+      // Parse with strict validation
+      const { parsed, errors, warnings } = parseGstPortalResult(clipboardText, org.gst_number)
+      
+      // Show errors
+      if (errors.length > 0) {
+        setGstDetailsError(errors.join('. '))
+        setParsedDetails({})
+        setVerificationNotes('')
+        setNotesError(null)
+        return
+      }
+      
+      // Clear any previous errors
+      setGstDetailsError(null)
+      setNotesError(null)
+      
+      // Show warnings
+      if (warnings.length > 0) {
+        warnings.forEach(warning => toast.warning(warning, { autoClose: 5000 }))
+      }
+      
+      // Check if legal name matches org name (warning only)
+      if (parsed.legalName && org.name && parsed.legalName.toLowerCase() !== org.name.toLowerCase()) {
+        toast.warning(`Legal name "${parsed.legalName}" differs from org name "${org.name}"`, { autoClose: 5000 })
+      }
+      
+      setParsedDetails(parsed)
+      
+      // Auto-generate verification notes from parsed data
+      if (Object.keys(parsed).length > 0) {
+        const notes = generateVerificationNotes(parsed)
+        setVerificationNotes(notes)
+      }
+      
+      toast.success('GST details parsed successfully')
+    } catch (error: any) {
+      // Handle clipboard permission errors
+      if (error.name === 'NotAllowedError' || error.name === 'SecurityError') {
+        setGstDetailsError('Clipboard access denied. Please grant clipboard permission or paste manually.')
+        toast.error('Clipboard access denied. Please grant clipboard permission.')
+      } else {
+        setGstDetailsError('Failed to read clipboard. Please ensure you have copied GST portal results.')
+        toast.error('Failed to read clipboard. Please try again.')
+      }
+      console.error('Clipboard error:', error)
       setParsedDetails({})
       setVerificationNotes('')
-      return
-    }
-    
-    // Show warnings
-    if (warnings.length > 0) {
-      warnings.forEach(warning => toast.warning(warning, { autoClose: 5000 }))
-    }
-    
-    // Check if legal name matches org name (warning only)
-    if (parsed.legalName && org.name && parsed.legalName.toLowerCase() !== org.name.toLowerCase()) {
-      toast.warning(`Legal name "${parsed.legalName}" differs from org name "${org.name}"`, { autoClose: 5000 })
-    }
-    
-    setParsedDetails(parsed)
-    
-    // Auto-generate verification notes from parsed data
-    if (Object.keys(parsed).length > 0) {
-      const notes = generateVerificationNotes(parsed)
-      setVerificationNotes(notes)
     }
   }
 
   const handleCloseModal = () => {
     setVerifyingOrgId(null)
     setVerificationNotes('')
-    setGstDetails('')
     setParsedDetails({})
     setNotesError(null)
+    setGstDetailsError(null)
   }
 
   const handleMarkVerified = async () => {
@@ -345,25 +372,22 @@ export function GstVerificationQueue() {
       return
     }
 
-    // Validate GSTIN match if details were pasted
-    if (gstDetails.trim()) {
-      const { parsed, errors } = parseGstPortalResult(gstDetails, org.gst_number)
-      if (errors.length > 0) {
-        setNotesError(errors.join('. '))
-        return
-      }
-      
-      // Ensure parsed GSTIN matches
-      if (parsed.gstin && parsed.gstin.toUpperCase() !== org.gst_number.toUpperCase()) {
-        setNotesError(`Parsed GSTIN (${parsed.gstin}) does not match the GSTIN being verified (${org.gst_number})`)
-        return
-      }
-      
-      // Warn if status is not Active
-      if (parsed.status && parsed.status.toLowerCase() !== 'active') {
-        const proceed = window.confirm(`GSTIN status is "${parsed.status}" (not Active). Do you want to proceed with verification?`)
-        if (!proceed) return
-      }
+    // Validate parsed details exist
+    if (!parsedDetails.gstin) {
+      setNotesError('Please paste GST portal results first using the "Paste from Clipboard" button')
+      return
+    }
+    
+    // Ensure parsed GSTIN matches
+    if (parsedDetails.gstin.toUpperCase() !== org.gst_number.toUpperCase()) {
+      setNotesError(`Parsed GSTIN (${parsedDetails.gstin}) does not match the GSTIN being verified (${org.gst_number})`)
+      return
+    }
+    
+    // Warn if status is not Active
+    if (parsedDetails.status && parsedDetails.status.toLowerCase() !== 'active') {
+      const proceed = window.confirm(`GSTIN status is "${parsedDetails.status}" (not Active). Do you want to proceed with verification?`)
+      if (!proceed) return
     }
 
     setNotesError(null)
@@ -486,6 +510,7 @@ export function GstVerificationQueue() {
         
         return (
           <Modal
+            key={verifyingOrgId}
             isOpen={verifyingOrgId !== null}
             onClose={handleCloseModal}
             title="Verify GSTIN"
@@ -493,176 +518,157 @@ export function GstVerificationQueue() {
             <div className="space-y-md">
               <div>
                 <p className="text-sm text-secondary-text mb-md">
-                  Paste GST verification details below. Fields will be auto-mapped. State name is auto-filled from GSTIN.
+                  Copy GST portal results to clipboard, then click the button below. Fields will be auto-mapped. State name is auto-filled from GSTIN.
                 </p>
                 
-                <div>
-                    <label className="block text-sm font-medium text-secondary-text mb-xs">
-                      Paste GST Portal Results <span className="text-error">*</span>
-                    </label>
-                    <textarea
-                      value={gstDetails}
-                      onChange={(e) => handleGstDetailsChange(e.target.value)}
-                      placeholder={`Paste complete GST portal search results. Example format:
-
-Search Result based on GSTIN/UIN : 33CPXPK3822A2ZZ
-Legal Name of Business
-S KRISHNAKUMAR
-Trade Name
-[Trade Name]
-Effective Date of registration
-12/03/2020
-Constitution of Business
-Proprietorship
-GSTIN / UIN Status
-Active
-Taxpayer Type
-Regular
-Principal Place of Business
-[Address lines]
-Administrative Office - JURISDICTION - STATE
-[State Jurisdiction details]
-Nature Of Core Business Activity
-[Business activity]`}
-                      rows={12}
-                      className={`w-full rounded-md border px-md py-sm text-sm text-primary-text placeholder-muted-text focus:outline-2 focus:outline-primary focus:outline-offset-2 transition-base font-mono ${
-                        notesError ? 'border-error focus:outline-error' : 'border-neutral-200 bg-bg-card focus:border-primary'
-                      }`}
-                    />
-                    {notesError && (
-                      <p className="mt-xs text-xs text-error">{notesError}</p>
-                    )}
-                    <p className="mt-xs text-xs text-muted-text">
-                      Paste complete GST portal results. System will validate GSTIN match and auto-parse all fields.
-                    </p>
-                  </div>
-
-                  {/* Auto-filled fields preview */}
-                  {Object.keys(parsedDetails).length > 0 && (
-                    <div className="rounded-md border border-primary/20 bg-primary-light/10 p-md space-y-xs">
-                      <p className="text-xs font-medium text-primary-text mb-sm">Parsed from GST Portal:</p>
-                      {parsedDetails.gstin && (
-                        <p className="text-xs text-secondary-text">
-                          <span className="font-medium">GSTIN:</span> {parsedDetails.gstin}
-                        </p>
-                      )}
-                      {parsedDetails.legalName && (
-                        <p className="text-xs text-secondary-text">
-                          <span className="font-medium">Legal Name:</span> {parsedDetails.legalName}
-                          {org && parsedDetails.legalName.toLowerCase() !== org.name.toLowerCase() && (
-                            <span className="text-warning ml-xs">⚠ Name mismatch with org</span>
-                          )}
-                        </p>
-                      )}
-                      {parsedDetails.tradeName && (
-                        <p className="text-xs text-secondary-text">
-                          <span className="font-medium">Trade Name:</span> {parsedDetails.tradeName}
-                        </p>
-                      )}
-                      {parsedDetails.status && (
-                        <p className="text-xs text-secondary-text">
-                          <span className="font-medium">Status:</span> {parsedDetails.status}
-                          {parsedDetails.status.toLowerCase() !== 'active' && (
-                            <span className="text-warning ml-xs">⚠ Not Active</span>
-                          )}
-                        </p>
-                      )}
-                      {parsedDetails.constitution && (
-                        <p className="text-xs text-secondary-text">
-                          <span className="font-medium">Constitution:</span> {parsedDetails.constitution}
-                        </p>
-                      )}
-                      {parsedDetails.taxpayerType && (
-                        <p className="text-xs text-secondary-text">
-                          <span className="font-medium">Taxpayer Type:</span> {parsedDetails.taxpayerType}
-                        </p>
-                      )}
-                      {parsedDetails.registrationDate && (
-                        <p className="text-xs text-secondary-text">
-                          <span className="font-medium">Registration Date:</span> {parsedDetails.registrationDate}
-                        </p>
-                      )}
-                      {parsedDetails.principalAddress && (
-                        <p className="text-xs text-secondary-text">
-                          <span className="font-medium">Principal Address:</span> {parsedDetails.principalAddress}
-                        </p>
-                      )}
-                      {parsedDetails.stateJurisdiction && (
-                        <p className="text-xs text-secondary-text">
-                          <span className="font-medium">State Jurisdiction:</span> {parsedDetails.stateJurisdiction}
-                        </p>
-                      )}
-                      {parsedDetails.centreJurisdiction && (
-                        <p className="text-xs text-secondary-text">
-                          <span className="font-medium">Centre Jurisdiction:</span> {parsedDetails.centreJurisdiction}
-                        </p>
-                      )}
-                      {parsedDetails.coreBusinessActivity && (
-                        <p className="text-xs text-secondary-text">
-                          <span className="font-medium">Core Business Activity:</span> {parsedDetails.coreBusinessActivity}
-                        </p>
-                      )}
+                <div className="space-y-sm">
+                  <Button
+                    variant="primary"
+                    onClick={handlePasteFromClipboard}
+                    disabled={!org}
+                    className="w-full"
+                  >
+                    📋 Paste from Clipboard
+                  </Button>
+                  
+                  <p className="text-xs text-muted-text">
+                    Copy complete GST portal results, then click button above
+                  </p>
+                  
+                  {/* Show error if validation failed */}
+                  {gstDetailsError && (
+                    <div className="rounded-lg border border-error bg-error-light px-md py-sm text-sm text-error-dark">
+                      {gstDetailsError}
                     </div>
                   )}
-
-                  <div>
-                    <label className="block text-sm font-medium text-secondary-text mb-xs">
-                      Verification Notes <span className="text-error">*</span>
-                    </label>
-                    <textarea
-                      value={verificationNotes}
-                      onChange={(e) => {
-                        setVerificationNotes(e.target.value)
-                        if (notesError) setNotesError(null)
-                      }}
-                      placeholder="Auto-generated from parsed details. Edit as needed."
-                      rows={4}
-                      className="w-full rounded-md border border-neutral-200 bg-bg-card px-md py-sm text-sm text-primary-text placeholder-muted-text focus:border-primary focus:outline-2 focus:outline-primary focus:outline-offset-2 transition-base"
-                    />
-                    {notesError && (
-                      <p className="mt-xs text-xs text-error">{notesError}</p>
-                    )}
-                    <p className="mt-xs text-xs text-muted-text">
-                      Minimum 50 characters required to ensure complete data capture. This will be stored for audit purposes.
-                    </p>
-                  </div>
-
-                  <div className="flex gap-sm justify-between items-center pt-sm border-t border-neutral-200">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => {
-                        // Future: API bulk verify button (disabled for now)
-                        toast.info('Bulk API verification coming soon')
-                      }}
-                      className="text-xs"
-                      disabled
-                    >
-                      API Verify (Coming Soon)
-                    </Button>
-                    <div className="flex gap-sm">
-                      <Button
-                        variant="secondary"
-                        size="sm"
-                        onClick={handleCloseModal}
-                      >
-                        Cancel
-                      </Button>
-                      <Button
-                        variant="primary"
-                        size="sm"
-                        onClick={handleMarkVerified}
-                        disabled={!verificationNotes.trim() || verificationNotes.trim().length < 50 || !!notesError}
-                      >
-                        Verify GSTIN
-                      </Button>
-                    </div>
-                  </div>
                 </div>
               </div>
-            </Modal>
-          )
-        })()}
+
+              {/* Auto-filled fields preview */}
+              {Object.keys(parsedDetails).length > 0 && (
+                <div className="rounded-md border border-primary/20 bg-primary-light/10 p-md space-y-xs">
+                  <p className="text-xs font-medium text-primary-text mb-sm">Parsed from GST Portal:</p>
+                  {parsedDetails.gstin && (
+                    <p className="text-xs text-secondary-text">
+                      <span className="font-medium">GSTIN:</span> {parsedDetails.gstin}
+                    </p>
+                  )}
+                  {parsedDetails.legalName && (
+                    <p className="text-xs text-secondary-text">
+                      <span className="font-medium">Legal Name:</span> {parsedDetails.legalName}
+                      {org && parsedDetails.legalName.toLowerCase() !== org.name.toLowerCase() && (
+                        <span className="text-warning ml-xs">⚠ Name mismatch with org</span>
+                      )}
+                    </p>
+                  )}
+                  {parsedDetails.tradeName && (
+                    <p className="text-xs text-secondary-text">
+                      <span className="font-medium">Trade Name:</span> {parsedDetails.tradeName}
+                    </p>
+                  )}
+                  {parsedDetails.status && (
+                    <p className="text-xs text-secondary-text">
+                      <span className="font-medium">Status:</span> {parsedDetails.status}
+                      {parsedDetails.status.toLowerCase() !== 'active' && (
+                        <span className="text-warning ml-xs">⚠ Not Active</span>
+                      )}
+                    </p>
+                  )}
+                  {parsedDetails.constitution && (
+                    <p className="text-xs text-secondary-text">
+                      <span className="font-medium">Constitution:</span> {parsedDetails.constitution}
+                    </p>
+                  )}
+                  {parsedDetails.taxpayerType && (
+                    <p className="text-xs text-secondary-text">
+                      <span className="font-medium">Taxpayer Type:</span> {parsedDetails.taxpayerType}
+                    </p>
+                  )}
+                  {parsedDetails.registrationDate && (
+                    <p className="text-xs text-secondary-text">
+                      <span className="font-medium">Registration Date:</span> {parsedDetails.registrationDate}
+                    </p>
+                  )}
+                  {parsedDetails.principalAddress && (
+                    <p className="text-xs text-secondary-text">
+                      <span className="font-medium">Principal Address:</span> {parsedDetails.principalAddress}
+                    </p>
+                  )}
+                  {parsedDetails.stateJurisdiction && (
+                    <p className="text-xs text-secondary-text">
+                      <span className="font-medium">State Jurisdiction:</span> {parsedDetails.stateJurisdiction}
+                    </p>
+                  )}
+                  {parsedDetails.centreJurisdiction && (
+                    <p className="text-xs text-secondary-text">
+                      <span className="font-medium">Centre Jurisdiction:</span> {parsedDetails.centreJurisdiction}
+                    </p>
+                  )}
+                  {parsedDetails.coreBusinessActivity && (
+                    <p className="text-xs text-secondary-text">
+                      <span className="font-medium">Core Business Activity:</span> {parsedDetails.coreBusinessActivity}
+                    </p>
+                  )}
+                </div>
+              )}
+
+              <div>
+                <label className="block text-sm font-medium text-secondary-text mb-xs">
+                  Verification Notes <span className="text-error">*</span>
+                </label>
+                <textarea
+                  value={verificationNotes}
+                  onChange={(e) => {
+                    setVerificationNotes(e.target.value)
+                    if (notesError) setNotesError(null)
+                  }}
+                  placeholder="Auto-generated from parsed details. Edit as needed."
+                  rows={4}
+                  className="w-full rounded-md border border-neutral-200 bg-bg-card px-md py-sm text-sm text-primary-text placeholder-muted-text focus:border-primary focus:outline-2 focus:outline-primary focus:outline-offset-2 transition-base"
+                />
+                {notesError && (
+                  <p className="mt-xs text-xs text-error">{notesError}</p>
+                )}
+                <p className="mt-xs text-xs text-muted-text">
+                  Minimum 50 characters required to ensure complete data capture. This will be stored for audit purposes.
+                </p>
+              </div>
+
+              <div className="flex gap-sm justify-between items-center pt-sm border-t border-neutral-200">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    // Future: API bulk verify button (disabled for now)
+                    toast.info('Bulk API verification coming soon')
+                  }}
+                  className="text-xs"
+                  disabled
+                >
+                  API Verify (Coming Soon)
+                </Button>
+                <div className="flex gap-sm">
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    onClick={handleCloseModal}
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    onClick={handleMarkVerified}
+                    disabled={!verificationNotes.trim() || verificationNotes.trim().length < 50 || !!notesError}
+                  >
+                    Verify GSTIN
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </Modal>
+        )
+      })()}
     </div>
   )
 }
