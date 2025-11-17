@@ -2,7 +2,7 @@ import { createContext, useContext, useEffect, useState, useRef, ReactNode } fro
 import { User, Session } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabase'
 import { syncUserProfile } from '../lib/userSync'
-import { checkUserHasPassword } from '../lib/api/auth'
+import { useUserPasswordCheck } from '../hooks/useUserSecurity'
 import type { AuthUser, Org, UserRole } from '../types'
 import {
   getAgentRelationships,
@@ -220,10 +220,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [profileLoading, setProfileLoading] = useState(false)
   const profileLoadPromiseRef = useRef<Promise<void> | null>(null)
   
-  // Password check: done once per session, stored in context
-  const [hasPassword, setHasPassword] = useState<boolean | null>(null)
-  const [checkingPassword, setCheckingPassword] = useState(false)
-  const passwordCheckPromiseRef = useRef<Promise<boolean> | null>(null)
+  // Password check: using React Query for automatic caching and deduplication
+  const passwordQuery = useUserPasswordCheck(
+    user?.id,
+    !user?.platformAdmin && !!user // Only check for non-platform-admin users
+  )
+  
+  // Derive hasPassword and checkingPassword from React Query state
+  const hasPassword = user?.platformAdmin ? true : passwordQuery.data ?? null
+  const checkingPassword = passwordQuery.isLoading
 
   useEffect(() => {
     initializeAuth()
@@ -267,7 +272,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       } else {
         setUser(null)
         setLoading(false)
-        setHasPassword(null)
         clearCachedSession()
       }
     })
@@ -595,8 +599,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               contextMode: 'business' as const,
             }
             await finalizeUser(userData)
-            // Platform admins don't need password check
-            setHasPassword(true)
             return
           }
 
@@ -627,23 +629,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               agentCtxList: [],
               selectedAgentCtx: null,
             })
-            // Check password for non-platform-admin users with org
-            if (!passwordCheckPromiseRef.current) {
-              setCheckingPassword(true)
-              passwordCheckPromiseRef.current = checkUserHasPassword()
-              passwordCheckPromiseRef.current
-                .then((hasPwd) => {
-                  setHasPassword(hasPwd)
-                })
-                .catch((err) => {
-                  console.error('[Auth] Error checking password:', err)
-                  setHasPassword(false)
-                })
-                .finally(() => {
-                  setCheckingPassword(false)
-                  passwordCheckPromiseRef.current = null
-                })
-            }
             return
           }
 
@@ -663,23 +648,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             agentCtxList: [],
             selectedAgentCtx: null,
           })
-          // Check password for non-platform-admin users without org
-          if (!passwordCheckPromiseRef.current) {
-            setCheckingPassword(true)
-            passwordCheckPromiseRef.current = checkUserHasPassword()
-            passwordCheckPromiseRef.current
-              .then((hasPwd) => {
-                setHasPassword(hasPwd)
-              })
-              .catch((err) => {
-                console.error('[Auth] Error checking password:', err)
-                setHasPassword(false)
-              })
-              .finally(() => {
-                setCheckingPassword(false)
-                passwordCheckPromiseRef.current = null
-              })
-          }
           return
         } else {
           console.error('Failed to sync user profile - no profile found')
@@ -703,8 +671,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           contextMode: 'business' as const,
         }
         await finalizeUser(userData)
-        // Platform admins don't need password check
-        setHasPassword(true)
         return
       }
 
@@ -787,25 +753,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         agentCtxList: agentContextList,
         selectedAgentCtx,
       })
-      
-      // Check password once per user session (only for non-platform-admin users)
-      // Deduplicate: if already checking, don't start another check
-      if (!passwordCheckPromiseRef.current) {
-        setCheckingPassword(true)
-        passwordCheckPromiseRef.current = checkUserHasPassword()
-        passwordCheckPromiseRef.current
-          .then((hasPwd) => {
-            setHasPassword(hasPwd)
-          })
-          .catch((err) => {
-            console.error('[Auth] Error checking password:', err)
-            setHasPassword(false)
-          })
-          .finally(() => {
-            setCheckingPassword(false)
-            passwordCheckPromiseRef.current = null
-          })
-      }
     } catch (error) {
       if (import.meta.env.DEV) {
         console.warn('[Auth Timeout] Error loading user profile:', error)

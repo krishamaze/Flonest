@@ -1,5 +1,6 @@
 import { lazy, Suspense, useEffect } from 'react'
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { ToastContainer } from 'react-toastify'
 import { AuthProvider, useAuth } from './contexts/AuthContext'
 import { VersionCheckProvider } from './contexts/VersionCheckContext'
@@ -285,6 +286,17 @@ function AppRoutes() {
   )
 }
 
+// Create QueryClient instance with sensible defaults
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 5 * 60 * 1000, // 5 minutes default stale time
+      retry: 1, // Retry once on failure
+      refetchOnWindowFocus: false, // Don't refetch on window focus
+    },
+  },
+})
+
 function App() {
   // Log version on mount for debugging
   useEffect(() => {
@@ -292,34 +304,36 @@ function App() {
   }, [])
 
   return (
-    <BrowserRouter>
-      <VersionCheckProvider>
-        <ServiceWorkerProvider>
-          <AuthProvider>
-            <OrgSwitcherProvider>
-              <AppRoutes />
-              <PlatformAdminSessionWatcher />
-              <InstallPrompt />
-              <UpdateNotification />
-              <ToastContainer
-                position="top-center"
-                autoClose={3000}
-                hideProgressBar={false}
-                closeOnClick
-                pauseOnHover={false}
-                draggable={false}
-                rtl={false}
-                theme="light"
-                limit={5}
-                newestOnTop={true}
-                stacked={true}
-                style={{ zIndex: 9999 }}
-              />
-            </OrgSwitcherProvider>
-          </AuthProvider>
-        </ServiceWorkerProvider>
-      </VersionCheckProvider>
-    </BrowserRouter>
+    <QueryClientProvider client={queryClient}>
+      <BrowserRouter>
+        <VersionCheckProvider>
+          <ServiceWorkerProvider>
+            <AuthProvider>
+              <OrgSwitcherProvider>
+                <AppRoutes />
+                <PlatformAdminSessionWatcher />
+                <InstallPrompt />
+                <UpdateNotification />
+                <ToastContainer
+                  position="top-center"
+                  autoClose={3000}
+                  hideProgressBar={false}
+                  closeOnClick
+                  pauseOnHover={false}
+                  draggable={false}
+                  rtl={false}
+                  theme="light"
+                  limit={5}
+                  newestOnTop={true}
+                  stacked={true}
+                  style={{ zIndex: 9999 }}
+                />
+              </OrgSwitcherProvider>
+            </AuthProvider>
+          </ServiceWorkerProvider>
+        </VersionCheckProvider>
+      </BrowserRouter>
+    </QueryClientProvider>
   )
 }
 
