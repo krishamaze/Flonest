@@ -25,36 +25,41 @@ export function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const [checkingPassword, setCheckingPassword] = useState(false)
   const location = useLocation()
 
-  // Check password requirement for setup page
+  // CRITICAL: Check password requirement for ALL non-platform-admin users
+  // This ensures OAuth users without password are caught BEFORE they can access any org routes
   useEffect(() => {
-    if (!loading && user && !user.platformAdmin && location.pathname === '/setup') {
+    if (!loading && user && !user.platformAdmin) {
+      // Always check password for non-platform-admin users
+      // This catches OAuth users even if they have an org
       setCheckingPassword(true)
       checkUserHasPassword()
         .then((hasPwd) => {
           setHasPassword(hasPwd)
-          if (!hasPwd) {
-            // Redirect to set-password page with redirect back to setup
+          // If no password and on /setup, redirect to set-password
+          if (!hasPwd && location.pathname === '/setup') {
             const params = new URLSearchParams()
             params.set('redirect', '/setup')
-            window.location.href = `/set-password?${params.toString()}`
+            navigate(`/set-password?${params.toString()}`, { replace: true })
           }
         })
         .catch((err) => {
           console.error('Error checking password:', err)
           // Assume no password for safety
           setHasPassword(false)
-          const params = new URLSearchParams()
-          params.set('redirect', '/setup')
-          window.location.href = `/set-password?${params.toString()}`
+          if (location.pathname === '/setup') {
+            const params = new URLSearchParams()
+            params.set('redirect', '/setup')
+            navigate(`/set-password?${params.toString()}`, { replace: true })
+          }
         })
         .finally(() => {
           setCheckingPassword(false)
         })
     } else if (!loading && user) {
-      // For non-setup pages, set hasPassword to true (don't block)
+      // Platform admins don't need password check
       setHasPassword(true)
     }
-  }, [user, loading, location.pathname])
+  }, [user, loading, location.pathname, navigate])
 
   // Fetch org data when user has orgId
   useEffect(() => {
@@ -110,17 +115,41 @@ export function ProtectedRoute({ children }: { children: React.ReactNode }) {
     return <>{children}</>
   }
 
-  // Non-platform-admin users must have an org
-  // User is authenticated but hasn't joined an org yet
-  // Redirect to onboarding (org join/invite flow) when implemented
-  // For now, show a message that they need to be invited
-  if (!user.orgId) {
-    return <OrganizationRequiredPage />
+  // CRITICAL: OAuth users without password MUST go to unregistered page first
+  // This applies even if they have an org (they need to set password before onboarding)
+  if (!user.orgId || (hasPassword === false && !user.platformAdmin)) {
+    // If user has no org, show organization required page
+    if (!user.orgId) {
+      return <OrganizationRequiredPage />
+    }
+    
+    // If user has org but no password, redirect to unregistered page
+    // (which will then redirect to set-password)
+    if (hasPassword === false) {
+      const params = new URLSearchParams()
+      if (user.email) {
+        params.set('email', user.email)
+      }
+      return <Navigate to={`/unregistered?${params.toString()}`} replace />
+    }
   }
 
   // Check if org needs setup (state === "Default")
-  if (needsOrgSetup(org)) {
-    return <Navigate to="/setup" replace />
+  // BUT: Only redirect if user has password (checked above)
+  if (needsOrgSetup(org) && hasPassword !== false) {
+    // If password check is still in progress, wait
+    if (checkingPassword) {
+      return (
+        <div className="viewport-height flex items-center justify-center">
+          <LoadingSpinner size="lg" />
+        </div>
+      )
+    }
+    // Only redirect if password check completed and user has password
+    if (hasPassword === true) {
+      return <Navigate to="/setup" replace />
+    }
+    // If hasPassword === false, redirect already happened above
   }
 
   return <>{children}</>
