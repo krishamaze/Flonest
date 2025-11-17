@@ -46,7 +46,6 @@ function OrgSwitcherModal({
 }) {
   const navigate = useNavigate()
   const {
-    user,
     memberships,
     currentOrg,
     switchToOrg,
