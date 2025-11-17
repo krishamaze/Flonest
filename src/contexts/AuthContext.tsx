@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState, ReactNode } from 'react'
+import { createContext, useContext, useEffect, useState, useRef, ReactNode } from 'react'
 import { User, Session } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabase'
 import { syncUserProfile } from '../lib/userSync'
@@ -212,6 +212,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [currentOrg, setCurrentOrg] = useState<OrgContextSummary>(null)
   const [agentRelationships, setAgentRelationships] = useState<AgentContextInfo[]>([])
   const [currentAgentContext, setCurrentAgentContext] = useState<AgentContextInfo | null>(null)
+  
+  // Request deduplication: prevent concurrent profile/membership loads
+  const [profileLoading, setProfileLoading] = useState(false)
+  const profileLoadPromiseRef = useRef<Promise<void> | null>(null)
 
   useEffect(() => {
     initializeAuth()
@@ -242,7 +246,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         stripSupabaseAuthHash()
       }
       if (session?.user) {
-        loadUserProfile(session.user, false)
+        // Deduplicate: if already loading, wait for existing promise
+        if (profileLoadPromiseRef.current) {
+          // Profile already loading, wait for it
+          profileLoadPromiseRef.current.catch(() => {
+            // If previous load failed, try again
+            loadUserProfile(session.user, false)
+          })
+        } else {
+          loadUserProfile(session.user, false)
+        }
       } else {
         setUser(null)
         setLoading(false)
@@ -492,7 +505,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   const loadUserProfile = async (authUser: User, useTimeout = true) => {
-    try {
+    // Deduplication: if already loading, return existing promise
+    if (profileLoading && profileLoadPromiseRef.current) {
+      return profileLoadPromiseRef.current
+    }
+    
+    setProfileLoading(true)
+    const loadPromise = (async () => {
+      try {
       // First, check if user is internal - short-circuit if so
       let profileQuery
       if (useTimeout) {
@@ -739,7 +759,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       throw error
     } finally {
       setLoading(false)
+      setProfileLoading(false)
+      profileLoadPromiseRef.current = null
     }
+    })()
+    
+    profileLoadPromiseRef.current = loadPromise
+    return loadPromise
   }
 
   const signIn = async (email: string, password: string) => {

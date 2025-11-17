@@ -141,6 +141,24 @@ export function ProtectedRoute({ children }: { children: React.ReactNode }) {
   // Check if org needs setup based on lifecycle state
   // BUT: Only redirect if user has password (checked above)
   const orgNeedsSetup = currentOrg.lifecycleState === 'onboarding_pending'
+  const orgSetupCompleted = currentOrg.lifecycleState === 'active' || 
+                            currentOrg.lifecycleState === 'suspended' || 
+                            currentOrg.lifecycleState === 'archived'
+  
+  // Inverse logic: If setup is completed, prevent access to /setup route
+  if (orgSetupCompleted && isSetupRoute && hasPassword !== false) {
+    if (checkingPassword) {
+      return (
+        <div className="viewport-height flex items-center justify-center">
+          <LoadingSpinner size="lg" />
+        </div>
+      )
+    }
+    if (hasPassword === true) {
+      return <Navigate to="/" replace />
+    }
+  }
+  
   if (orgNeedsSetup && hasPassword !== false) {
     // If password check is still in progress, wait
     if (checkingPassword) {
