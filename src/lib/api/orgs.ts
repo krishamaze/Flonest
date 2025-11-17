@@ -182,7 +182,12 @@ export async function setGstFromValidation(
  * @param orgId - Organization ID
  * @param verificationNotes - Required evidence/notes about the verification
  */
-export async function markGstVerified(orgId: string, verificationNotes: string): Promise<void> {
+export async function markGstVerified(
+  orgId: string,
+  verificationNotes: string,
+  legalName?: string | null,
+  address?: string | null
+): Promise<void> {
   if (!verificationNotes || !verificationNotes.trim()) {
     throw new Error('Verification notes are required')
   }
@@ -190,6 +195,8 @@ export async function markGstVerified(orgId: string, verificationNotes: string):
   const { error } = await supabase.rpc('mark_gst_verified', {
     p_org_id: orgId,
     p_verification_notes: verificationNotes.trim(),
+    p_legal_name: legalName || null,
+    p_address: address || null,
   })
 
   if (error) {

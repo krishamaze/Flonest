@@ -370,7 +370,13 @@ export function GstVerificationQueue() {
 
     try {
       // Use RPC function that enforces platform admin access and requires notes
-      await markGstVerified(verifyingOrgId, trimmedNotes)
+      // Pass legal_name and address from parsed GST portal data
+      await markGstVerified(
+        verifyingOrgId,
+        trimmedNotes,
+        parsedDetails.legalName || null,
+        parsedDetails.principalAddress || null
+      )
 
       toast.success('GSTIN marked as verified')
       setOrgs((prev) => prev.filter((org) => org.id !== verifyingOrgId))

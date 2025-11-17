@@ -26,17 +26,17 @@ import {
   resumeSubscription,
 } from '../lib/api/billing'
 import type { SubscriptionSummary } from '../lib/api/billing'
-import { fetchGSTBusinessData, validateGSTIN } from '../lib/api/gst'
-import { setGstFromValidation } from '../lib/api/orgs'
 import type { BillingPlan, SubscriptionEvent } from '../types'
 
 interface OrgSettings {
   id: string
   name: string
+  legal_name: string | null
   custom_logo_url: string | null
   phone: string | null
   address: string | null
-  gstin: string | null
+  gst_number: string | null
+  gst_verification_status: string
 }
 
 export function SettingsPage() {
@@ -45,11 +45,10 @@ export function SettingsPage() {
   const [saving, setSaving] = useState(false)
   const [uploading, setUploading] = useState(false)
   const [orgSettings, setOrgSettings] = useState<OrgSettings | null>(null)
+  const [isEditing, setIsEditing] = useState(false)
   const [formData, setFormData] = useState({
     name: '',
     phone: '',
-    address: '',
-    gstin: '',
   })
   const [billingSummary, setBillingSummary] = useState<SubscriptionSummary | null>(null)
   const [billingPlans, setBillingPlans] = useState<BillingPlan[]>([])
@@ -90,7 +89,7 @@ export function SettingsPage() {
     try {
       const { data, error } = await supabase
         .from('orgs')
-        .select('id, name, custom_logo_url, phone, address, gst_number')
+        .select('id, name, legal_name, custom_logo_url, phone, address, gst_number, gst_verification_status')
         .eq('id', user.orgId)
         .single()
 
@@ -101,9 +100,8 @@ export function SettingsPage() {
         setFormData({
           name: data.name || '',
           phone: data.phone || '',
-          address: data.address || '',
-          gstin: data.gst_number || '',
         })
+        setIsEditing(false)
       }
     } catch (error: any) {
       console.error('Error loading org settings:', error)
@@ -245,55 +243,21 @@ export function SettingsPage() {
 
     setSaving(true)
     try {
-      // Update non-GST fields via updateOrg
+      // Only update editable fields: display name and phone
+      // Legal name, GSTIN, and address are immutable after GST verification
       const { error: updateError } = await supabase
         .from('orgs')
         .update({
           name: formData.name,
           phone: formData.phone,
-          address: formData.address,
         })
         .eq('id', user.orgId)
 
       if (updateError) throw updateError
 
-      // Handle GSTIN separately - must go through gst-validate Edge Function (single gate)
-      const trimmedGstin = formData.gstin.trim().toUpperCase()
-
-      if (trimmedGstin.length > 0) {
-        if (!validateGSTIN(trimmedGstin)) {
-          throw new Error('Invalid GSTIN structure. Please check the number and ensure it matches the official format.')
-        }
-
-        // Call gst-validate Edge Function - this is the single gate
-        const gstData = await fetchGSTBusinessData(trimmedGstin)
-
-        if (!gstData) {
-          throw new Error('GSTIN not found. Please verify the number and try again.')
-        }
-
-        // Set GST number - always unverified until platform admin manually verifies
-        // Never trust external API verification status - admin must verify manually
-        await setGstFromValidation(
-          user.orgId,
-          trimmedGstin,
-          true,
-          'unverified', // Always unverified - admin must verify manually
-          'manual' // Source is always manual for tenant-entered GSTINs
-        )
-      } else {
-        // Clear GST if empty
-        await setGstFromValidation(
-          user.orgId,
-          '',
-          false,
-          'unverified',
-          'manual'
-        )
-      }
-
       toast.success('Settings saved successfully')
       await loadOrgSettings()
+      setIsEditing(false)
     } catch (error: any) {
       console.error('Error saving settings:', error)
       toast.error(error.message || 'Failed to save settings')
@@ -301,6 +265,23 @@ export function SettingsPage() {
       setSaving(false)
     }
   }
+
+  const handleCancelEdit = () => {
+    if (orgSettings) {
+      setFormData({
+        name: orgSettings.name || '',
+        phone: orgSettings.phone || '',
+      })
+    }
+    setIsEditing(false)
+  }
+
+  const hasChanges = useMemo(() => {
+    if (!orgSettings) return false
+    return formData.name !== orgSettings.name || formData.phone !== orgSettings.phone
+  }, [formData, orgSettings])
+
+  const gstVerified = orgSettings?.gst_verification_status === 'verified'
 
   const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!user?.orgId || !isAdmin) return
@@ -599,55 +580,131 @@ export function SettingsPage() {
           </CardTitle>
         </CardHeader>
         <CardContent className="p-4 pt-0 space-y-md">
-          <Input
-            label="Organization Name"
-            type="text"
-            value={formData.name}
-            onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-            placeholder="Enter organization name"
-            required
-          />
+          {/* Legal Name - Read-only after verification */}
+          {gstVerified && orgSettings?.legal_name && (
+            <div>
+              <label className="block text-sm font-medium text-secondary-text mb-xs">
+                Legal Name (GST Registered)
+              </label>
+              <Input
+                type="text"
+                value={orgSettings.legal_name}
+                disabled
+                className="bg-neutral-100"
+              />
+              <p className="text-xs text-muted-text mt-xs">
+                From GST verification - cannot be changed
+              </p>
+            </div>
+          )}
 
+          {/* Display/Brand Name - Always editable */}
+          <div>
+            <Input
+              label={gstVerified ? "Display Name (Brand Name)" : "Organization Name"}
+              type="text"
+              value={formData.name}
+              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+              placeholder="How you want your business displayed in the app"
+              disabled={!isEditing}
+              required
+            />
+            {gstVerified && (
+              <p className="text-xs text-muted-text mt-xs">
+                Used in app interface, not on invoices or tax documents
+              </p>
+            )}
+          </div>
+
+          {/* Phone Number - Always editable */}
           <Input
             label="Phone Number"
             type="tel"
             value={formData.phone}
             onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
             placeholder="+91 98765 43210"
+            disabled={!isEditing}
           />
 
-          <div>
-            <label className="block text-sm font-medium text-secondary-text mb-xs">
-              Address
-            </label>
-            <textarea
-              value={formData.address}
-              onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-              placeholder="Enter business address"
-              rows={3}
-              className="w-full rounded-md border border-neutral-200 bg-bg-card px-md py-sm text-sm text-primary-text placeholder-muted-text focus:border-primary focus:outline-2 focus:outline-primary focus:outline-offset-2 transition-base"
-            />
-          </div>
+          {/* GSTIN - Read-only after verification */}
+          {orgSettings?.gst_number && (
+            <div>
+              <label className="block text-sm font-medium text-secondary-text mb-xs">
+                GSTIN {gstVerified ? '(Verified)' : '(Pending Verification)'}
+              </label>
+              <div className="flex gap-sm items-center">
+                <Input
+                  type="text"
+                  value={orgSettings.gst_number}
+                  disabled
+                  className="bg-neutral-100 flex-1 font-mono"
+                />
+                {gstVerified && (
+                  <span className="inline-flex items-center px-sm py-xs rounded-full bg-success-light text-success-dark text-xs font-semibold">
+                    ✓ Verified
+                  </span>
+                )}
+              </div>
+              <p className="text-xs text-muted-text mt-xs">
+                {gstVerified 
+                  ? 'Verified by platform admin - cannot be changed' 
+                  : 'Awaiting platform admin verification'}
+              </p>
+            </div>
+          )}
 
-          <Input
-            label="GSTIN (Optional)"
-            type="text"
-            value={formData.gstin}
-            onChange={(e) => setFormData({ ...formData, gstin: e.target.value.toUpperCase() })}
-            placeholder="22AAAAA0000A1Z5"
-            maxLength={15}
-          />
+          {/* Address - Read-only after verification */}
+          {orgSettings?.address && (
+            <div>
+              <label className="block text-sm font-medium text-secondary-text mb-xs">
+                Principal Place of Business {gstVerified ? '(GST Registered)' : ''}
+              </label>
+              <textarea
+                value={orgSettings.address}
+                disabled
+                className="w-full rounded-md border bg-neutral-100 px-md py-sm text-sm"
+                rows={3}
+              />
+              <p className="text-xs text-muted-text mt-xs">
+                {gstVerified 
+                  ? 'From GST verification - cannot be changed' 
+                  : 'Will be updated from GST verification'}
+              </p>
+            </div>
+          )}
 
-          <Button
-            variant="primary"
-            size="lg"
-            className="w-full"
-            onClick={handleSaveSettings}
-            isLoading={saving}
-            disabled={saving}
-          >
-            Save Settings
-          </Button>
+          {/* Edit/Save buttons */}
+          {!isEditing ? (
+            <Button
+              variant="secondary"
+              size="lg"
+              className="w-full"
+              onClick={() => setIsEditing(true)}
+            >
+              Edit Details
+            </Button>
+          ) : (
+            <div className="flex gap-sm">
+              <Button
+                variant="primary"
+                size="lg"
+                className="flex-1"
+                onClick={handleSaveSettings}
+                isLoading={saving}
+                disabled={!hasChanges || saving}
+              >
+                Save Changes
+              </Button>
+              <Button
+                variant="ghost"
+                size="lg"
+                onClick={handleCancelEdit}
+                disabled={saving}
+              >
+                Cancel
+              </Button>
+            </div>
+          )}
         </CardContent>
       </Card>
 
