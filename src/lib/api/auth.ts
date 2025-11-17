@@ -8,16 +8,34 @@ import { supabase } from '../supabase'
  * Check if current user has a password set
  * Returns true if user has encrypted_password, false for OAuth-only users
  */
-export async function checkUserHasPassword(): Promise<boolean> {
-  const { data, error } = await supabase.rpc('check_user_has_password' as any)
-  
-  if (error) {
-    console.error('Error checking user password:', error)
-    // Default to false (assume no password) for safety
-    return false
+let lastCheckTimestamp = 0
+let lastCheckPromise: Promise<boolean> | null = null
+
+export function checkUserHasPassword(): Promise<boolean> {
+  const now = Date.now()
+  if (lastCheckPromise && now - lastCheckTimestamp < 1000) {
+    return lastCheckPromise
   }
-  
-  return Boolean(data ?? false)
+
+  lastCheckTimestamp = now
+  lastCheckPromise = (async () => {
+    const { data, error } = await supabase.rpc('check_user_has_password' as any)
+    if (error) {
+      console.error('Error checking user password:', error)
+      return false
+    }
+    return Boolean(data ?? false)
+  })()
+
+  lastCheckPromise.finally(() => {
+    if (lastCheckPromise && lastCheckTimestamp !== now) {
+      // Another caller updated the timestamp - keep promise cached
+      return
+    }
+    lastCheckPromise = null
+  })
+
+  return lastCheckPromise
 }
 
 /**
