@@ -174,112 +174,113 @@ export function LoginPage() {
     <div className="viewport-height-safe bg-bg-page safe-top safe-bottom flex flex-col overflow-hidden">
       <PullToRefresh onRefresh={handleRefresh}>
         <div className="flex-1 flex items-center justify-center px-md py-lg min-h-screen">
-        <div className="w-full max-w-md page-enter">
-          {/* Header */}
-          <div className="mb-xl text-center">
-            <div className="mx-auto mb-lg flex h-24 w-24 items-center justify-center rounded-lg bg-white shadow-primary p-md">
-              <img 
-                src="/pwa-192x192.png" 
-                alt="finetune logo" 
-                className="w-full h-full object-contain"
-              />
+          <div className="w-full max-w-md page-enter">
+            {/* Header */}
+            <div className="mb-xl text-center">
+              <div className="mx-auto mb-lg flex h-24 w-24 items-center justify-center rounded-lg bg-white shadow-primary p-md">
+                <img 
+                  src="/pwa-192x192.png" 
+                  alt="finetune logo" 
+                  className="w-full h-full object-contain"
+                />
+              </div>
+              <h1 className="text-3xl font-bold text-primary-text mb-xs">FineTune WorkHub</h1>
+              <p className="text-base text-secondary-text">
+                {view === 'sign_up' 
+                  ? 'Sign up to start managing your operations' 
+                  : view === 'forgot_password' 
+                  ? 'Enter your email to reset your password'
+                  : 'Sign in to your account'}
+              </p>
             </div>
-            <h1 className="text-3xl font-bold text-primary-text mb-xs">FineTune WorkHub</h1>
-            <p className="text-base text-secondary-text">
-              {view === 'sign_up' 
-                ? 'Sign up to start managing your operations' 
-                : view === 'forgot_password' 
-                ? 'Enter your email to reset your password'
-                : 'Sign in to your account'}
-            </p>
 
-          {/* Auth Form Card */}
-          <div className="rounded-lg bg-bg-card p-xl shadow-md border border-color space-y-md">
-            <form onSubmit={handleSubmit} className="space-y-md">
-              {/* Error Message */}
-              {error && (
-                <div 
-                  className="rounded-md p-md break-words bg-error-light border border-solid"
-                  style={{ borderColor: 'var(--color-error)' }}
-                  role="alert"
-                  id="login-error"
-                  aria-live="polite"
-                >
-                  <p className="text-sm break-words text-error">
-                    {error}
-                  </p>
-                </div>
-              )}
-
-              {/* Email Input */}
-              <Input
-                type="email"
-                label="Email"
-                placeholder="you@example.com"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-                disabled={loading}
-                autoComplete="email"
-                aria-describedby={error && view !== 'forgot_password' ? 'login-error' : undefined}
-              />
-
-              {/* Password Input - only show for sign_in and sign_up */}
-              {(view === 'sign_in' || view === 'sign_up') && (
-                <div className="relative">
-                  <Input
-                    type={showPassword ? 'text' : 'password'}
-                    label="Password"
-                    placeholder="••••••••"
-                    value={password}
-                    onChange={handlePasswordChange}
-                    onBlur={handlePasswordBlur}
-                    required
-                    disabled={loading}
-                    minLength={6}
-                    autoComplete={view === 'sign_in' ? 'current-password' : 'new-password'}
-                    aria-describedby={error ? 'login-error' : undefined}
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-md top-[38px] p-xs rounded-md text-muted-text hover:text-primary-text transition-colors focus:outline-2 focus:outline-primary focus:outline-offset-2"
-                    aria-label={showPassword ? 'Hide password' : 'Show password'}
-                    tabIndex={0}
+            {/* Auth Form Card */}
+            <div className="rounded-lg bg-bg-card p-xl shadow-md border border-color space-y-md">
+              <form onSubmit={handleSubmit} className="space-y-md">
+                {/* Error Message */}
+                {error && (
+                  <div 
+                    className="rounded-md p-md break-words bg-error-light border border-solid"
+                    style={{ borderColor: 'var(--color-error)' }}
+                    role="alert"
+                    id="login-error"
+                    aria-live="polite"
                   >
-                    {showPassword ? (
-                      <EyeSlashIcon className="h-5 w-5" />
-                    ) : (
-                      <EyeIcon className="h-5 w-5" />
-                    )}
-                  </button>
-                </div>
-              )}
+                    <p className="text-sm break-words text-error">
+                      {error}
+                    </p>
+                  </div>
+                )}
 
-              {/* Submit Button */}
-              <Button
-                type="submit"
-                variant="primary"
-                size="lg"
-                className="w-full"
-                isLoading={loading}
-                disabled={loading}
-              >
-                {loading
-                  ? view === 'sign_in'
-                    ? 'Signing in...'
+                {/* Email Input */}
+                <Input
+                  type="email"
+                  label="Email"
+                  placeholder="you@example.com"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  required
+                  disabled={loading}
+                  autoComplete="email"
+                  aria-describedby={error && view !== 'forgot_password' ? 'login-error' : undefined}
+                />
+
+                {/* Password Input - only show for sign_in and sign_up */}
+                {(view === 'sign_in' || view === 'sign_up') && (
+                  <div className="relative">
+                    <Input
+                      type={showPassword ? 'text' : 'password'}
+                      label="Password"
+                      placeholder="••••••••"
+                      value={password}
+                      onChange={handlePasswordChange}
+                      onBlur={handlePasswordBlur}
+                      required
+                      disabled={loading}
+                      minLength={6}
+                      autoComplete={view === 'sign_in' ? 'current-password' : 'new-password'}
+                      aria-describedby={error ? 'login-error' : undefined}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-md top-[38px] p-xs rounded-md text-muted-text hover:text-primary-text transition-colors focus:outline-2 focus:outline-primary focus:outline-offset-2"
+                      aria-label={showPassword ? 'Hide password' : 'Show password'}
+                      tabIndex={0}
+                    >
+                      {showPassword ? (
+                        <EyeSlashIcon className="h-5 w-5" />
+                      ) : (
+                        <EyeIcon className="h-5 w-5" />
+                      )}
+                    </button>
+                  </div>
+                )}
+
+                {/* Submit Button */}
+                <Button
+                  type="submit"
+                  variant="primary"
+                  size="lg"
+                  className="w-full"
+                  isLoading={loading}
+                  disabled={loading}
+                >
+                  {loading
+                    ? view === 'sign_in'
+                      ? 'Signing in...'
+                      : view === 'sign_up'
+                      ? 'Signing up...'
+                      : 'Sending...'
+                    : view === 'sign_in'
+                    ? 'Sign In'
                     : view === 'sign_up'
-                    ? 'Signing up...'
-                    : 'Sending...'
-                  : view === 'sign_in'
-                  ? 'Sign In'
-                  : view === 'sign_up'
-                  ? 'Sign Up'
-                  : 'Send reset instructions'}
-              </Button>
+                    ? 'Sign Up'
+                    : 'Send reset instructions'}
+                </Button>
 
-              {/* View Switch Links */}
-              <div className="space-y-md text-center">
+                {/* View Switch Links */}
+                <div className="space-y-md text-center">
                 {view === 'sign_in' && (
                   <>
                     <button
@@ -358,36 +359,35 @@ export function LoginPage() {
                     </Button>
                   </div>
                 )}
-              </div>
-            </form>
+                </div>
+              </form>
 
-            {/* Divider */}
-            <div className="flex items-center my-md">
-              <div className="flex-1 h-px bg-border" />
-              <span className="px-sm text-xs text-muted-text">or</span>
-              <div className="flex-1 h-px bg-border" />
+              {/* Divider */}
+              <div className="flex items-center my-md">
+                <div className="flex-1 h-px bg-border" />
+                <span className="px-sm text-xs text-muted-text">or</span>
+                <div className="flex-1 h-px bg-border" />
+              </div>
+
+              {/* Google Sign In Button */}
+              <Button
+                type="button"
+                variant="secondary"
+                size="md"
+                className="w-full"
+                onClick={handleGoogleSignIn}
+                isLoading={loading}
+                disabled={loading}
+              >
+                {loading ? 'Starting Google sign-in...' : 'Continue with Google'}
+              </Button>
             </div>
 
-            {/* Google Sign In Button */}
-            <Button
-              type="button"
-              variant="secondary"
-              size="md"
-              className="w-full"
-              onClick={handleGoogleSignIn}
-              isLoading={loading}
-              disabled={loading}
-            >
-              {loading ? 'Starting Google sign-in...' : 'Continue with Google'}
-            </Button>
+            {/* Footer */}
+            <p className="mt-lg text-center text-xs text-muted-text">
+              Powered by Supabase Auth • Secure & Reliable
+            </p>
           </div>
-
-
-          {/* Footer */}
-          <p className="mt-lg text-center text-xs text-muted-text">
-            Powered by Supabase Auth • Secure & Reliable
-          </p>
-        </div>
         </div>
       </PullToRefresh>
     </div>
