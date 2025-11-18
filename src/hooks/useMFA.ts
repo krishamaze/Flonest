@@ -50,7 +50,7 @@ export const useEnrollMFA = () => {
   return useMutation<StartResponse, Error>({
     mutationFn: () => adminMfaStart(),
     retry: false, // SECURITY: Don't retry on failure
-    onSuccess: (data) => {
+    onSuccess: (_data) => {
       // Invalidate status query to refetch after enrollment starts
       queryClient.invalidateQueries({ queryKey: ['mfa-status'] })
     },

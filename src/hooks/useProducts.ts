@@ -8,7 +8,7 @@
 import { useQuery, useMutation, useQueryClient, useInfiniteQuery } from '@tanstack/react-query'
 import { getProducts, createProduct, updateProduct, deleteProduct } from '../lib/api/products'
 import { getCurrentStockForProducts } from '../lib/api/stockCalculations'
-import type { Product, ProductWithStock, ProductFormData } from '../types'
+import type { Product, ProductWithStock } from '../types'
 
 export interface GetProductsParams {
   status?: 'active' | 'inactive'
@@ -120,7 +120,7 @@ export const useCreateProduct = () => {
         unit: data.unit || 'pcs',
         cost_price: data.cost_price || null,
         selling_price: data.selling_price || null,
-        min_stock_level: data.min_stock_level || null,
+        min_stock_level: data.min_stock_level ?? 0,
         hsn_sac_code: data.hsn_sac_code || null,
         tax_rate: data.tax_rate || null,
         status: 'active',

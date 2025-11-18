@@ -57,7 +57,8 @@ export const useUpdateOrgSettings = () => {
   return useMutation<
     OrgSettings,
     Error,
-    { orgId: string; name: string; phone: string | null }
+    { orgId: string; name: string; phone: string | null },
+    { previousSettings?: OrgSettings }
   >({
     mutationFn: async ({ orgId, name, phone }) => {
       const { data, error } = await supabase
@@ -93,7 +94,7 @@ export const useUpdateOrgSettings = () => {
       return { previousSettings }
     },
     // On error, rollback to previous value
-    onError: (error, variables, context) => {
+    onError: (_error, variables, context) => {
       if (context?.previousSettings) {
         queryClient.setQueryData(['org-settings', variables.orgId], context.previousSettings)
       }
@@ -103,7 +104,7 @@ export const useUpdateOrgSettings = () => {
       queryClient.setQueryData(['org-settings', variables.orgId], data)
     },
     // Always refetch after mutation to ensure consistency
-    onSettled: (data, error, variables) => {
+    onSettled: (_data, _error, variables) => {
       queryClient.invalidateQueries({ queryKey: ['org-settings', variables.orgId] })
     },
   })
@@ -190,7 +191,7 @@ export const useUploadOrgLogo = () => {
 export const useRemoveOrgLogo = () => {
   const queryClient = useQueryClient()
 
-  return useMutation<void, Error, { orgId: string }>({
+  return useMutation<void, Error, { orgId: string }, { previousSettings?: OrgSettings }>({
     mutationFn: async ({ orgId }) => {
       const { error } = await supabase
         .from('orgs')
@@ -215,13 +216,13 @@ export const useRemoveOrgLogo = () => {
       return { previousSettings }
     },
     // Rollback on error
-    onError: (error, variables, context) => {
+    onError: (_error, variables, context) => {
       if (context?.previousSettings) {
         queryClient.setQueryData(['org-settings', variables.orgId], context.previousSettings)
       }
     },
     // Invalidate on success
-    onSettled: (data, error, variables) => {
+    onSettled: (_data, _error, variables) => {
       queryClient.invalidateQueries({ queryKey: ['org-settings', variables.orgId] })
     },
   })
