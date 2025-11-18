@@ -20,8 +20,36 @@ import { resolveEntry, type EntryResolution } from '@/lib/api/reactive-entry'
 export type EntryState = 
   | { type: 'IDLE' }
   | { type: 'SEARCHING'; query: string }
-  | { type: 'SERIAL_FOUND'; data: EntryResolution['type'] extends 'SERIAL_FOUND' ? EntryResolution['data'] : never }
-  | { type: 'PRODUCT_FOUND'; data: EntryResolution['type'] extends 'PRODUCT_FOUND' ? EntryResolution['data'] : never; source: 'master' | 'org' }
+  | { 
+      type: 'SERIAL_FOUND'
+      data: {
+        found: boolean
+        lookup_type: 'serial_number'
+        product_id: string
+        product_name: string
+        product_sku: string
+        selling_price: number | null
+        hsn_code: string | null
+        gst_rate: number | null
+      }
+    }
+  | { 
+      type: 'PRODUCT_FOUND'
+      data: {
+        found: boolean
+        lookup_type: 'product_code'
+        product_id: string
+        master_product_id: string | null
+        product_name: string
+        product_sku: string
+        selling_price: number | null
+        hsn_code: string | null
+        gst_rate: number | null
+        category_id: string | null
+        category_name: string | null
+      }
+      source: 'master' | 'org'
+    }
   | { type: 'UNKNOWN'; query: string }
   | { type: 'ERROR'; message: string; query: string }
 

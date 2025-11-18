@@ -78,13 +78,13 @@ export function InvoiceView({ invoiceId, orgId, userId, onClose }: InvoiceViewPr
     printInvoice(invoice, org, invoice.customer)
   }
 
-  const handleDownloadPDF = () => {
-    if (!invoice || !org || !invoice.customer) {
-      return
-    }
-
-    downloadInvoicePDF(invoice, org, invoice.customer)
-  }
+  // Removed unused handleDownloadPDF function
+  // const handleDownloadPDF = () => {
+  //   if (!invoice || !org || !invoice.customer) {
+  //     return
+  //   }
+  //   downloadInvoicePDF(invoice, org, invoice.customer)
+  // }
 
   // POST ACTION: finalized → posted (calls RPC for atomic stock deduction)
   const handlePost = async () => {

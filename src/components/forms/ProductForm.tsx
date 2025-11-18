@@ -564,7 +564,6 @@ export function ProductForm({ isOpen, onClose, onSubmit, product, title, orgId, 
               { value: '', label: 'Use Master Default' },
               ...getGSTSlabOptions(),
             ]}
-            placeholder="Select tax rate (optional)"
           />
 
           <Input

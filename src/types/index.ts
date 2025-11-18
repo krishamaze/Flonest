@@ -67,6 +67,8 @@ export interface ProductWithStock extends Product {
 }
 
 export interface ProductWithMaster extends Product {
+  tax_rate: number | null
+  hsn_sac_code: string | null
   master_product: {
     id: string
     gst_rate: number | null

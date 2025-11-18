@@ -184,7 +184,7 @@ export function calculateBillTotals(
   // Group by tax rate for breakdown
   const taxBreakdown = new Map<number, TaxBreakdownItem>()
 
-  itemCalculations.forEach((calc, index) => {
+  itemCalculations.forEach((calc) => {
     const rate = calc.taxRate
     const existing = taxBreakdown.get(rate) || {
       rate,

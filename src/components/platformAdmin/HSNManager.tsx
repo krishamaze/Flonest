@@ -338,7 +338,6 @@ export function HSNManager() {
             onChange={(e) => setFormData({ ...formData, gst_rate: e.target.value })}
             required
             options={getGSTSlabOptions()}
-            placeholder="Select GST rate"
           />
 
           <Input

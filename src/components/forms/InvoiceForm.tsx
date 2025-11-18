@@ -18,7 +18,6 @@ import { createInvoice, autoSaveInvoiceDraft, validateInvoiceItems, getDraftInvo
 import { checkSerialStatus } from '../../lib/api/serials'
 import { validateScannerCodes } from '../../lib/api/scanner'
 import { calculateTax, createTaxContext, productToLineItem } from '../../lib/utils/taxCalculationService'
-import { isOrgGstEnabled } from '../../lib/utils/orgGst'
 import { useAutoSave } from '../../hooks/useAutoSave'
 import { ChevronLeftIcon, ChevronRightIcon, PlusIcon, TrashIcon, XCircleIcon, BookmarkIcon } from '@heroicons/react/24/outline'
 import type { IdentifierType } from '../../lib/utils/identifierValidation'

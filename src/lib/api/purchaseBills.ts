@@ -1,7 +1,7 @@
 import { supabase } from '../supabase'
 import type { Database } from '../supabase'
-import { calculateBillTotals, type BillItem } from '../hooks/useBillCalculations'
-import { isValidGSTStateCode } from '../lib/constants/gstStateCodes'
+import { calculateBillTotals, type BillItem } from '../../hooks/useBillCalculations'
+import { isValidGSTStateCode } from '../constants/gstStateCodes'
 import { getOrgById } from './orgs'
 
 type PurchaseBill = Database['public']['Tables']['purchase_bills']['Row']
