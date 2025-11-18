@@ -57,7 +57,6 @@ export function PurchaseBillsPage() {
   const loadOrgDetails = async () => {
     if (!user?.orgId) return
     try {
-      setOrgLoading(true)
       const orgData = await getOrgById(user.orgId)
       setOrg(orgData)
       
@@ -71,8 +70,6 @@ export function PurchaseBillsPage() {
     } catch (error: any) {
       console.error('Failed to load org details:', error)
       toast.error('Failed to load organization details')
-    } finally {
-      setOrgLoading(false)
     }
   }
   
