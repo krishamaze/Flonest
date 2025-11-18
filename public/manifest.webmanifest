@@ -1,7 +1,7 @@
 {
-  "name": "finetune",
-  "short_name": "finetune",
-  "description": "Multi-tenant inventory management SaaS application",
+  "name": "FineTune WorkHub",
+  "short_name": "WorkHub",
+  "description": "Digital Infrastructure for Modern Business",
   "theme_color": "#E2C33D",
   "background_color": "#ffffff",
   "display": "standalone",
@@ -10,20 +10,28 @@
   "start_url": "/",
   "icons": [
     {
-      "src": "/pwa-192x192.svg",
+      "src": "/pwa-192x192.png",
       "sizes": "192x192",
-      "type": "image/svg+xml"
+      "type": "image/png",
+      "purpose": "any"
     },
     {
-      "src": "/pwa-512x512.svg",
+      "src": "/pwa-512x512.png",
       "sizes": "512x512",
-      "type": "image/svg+xml"
+      "type": "image/png",
+      "purpose": "any"
     },
     {
-      "src": "/pwa-512x512.svg",
+      "src": "/pwa-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/pwa-512x512.png",
       "sizes": "512x512",
-      "type": "image/svg+xml",
-      "purpose": "any maskable"
+      "type": "image/png",
+      "purpose": "maskable"
     }
   ],
   "prefer_related_applications": false
