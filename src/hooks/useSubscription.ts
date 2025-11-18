@@ -49,10 +49,15 @@ export const useBillingPlans = () => {
 export const useUpgradeSubscription = () => {
   const queryClient = useQueryClient()
 
+  type SubscriptionContext = {
+    previousSummary?: SubscriptionSummary
+  }
+
   return useMutation<
     any,
     Error,
-    { orgId: string; planSlug: string; actorUserId: string }
+    { orgId: string; planSlug: string; actorUserId: string },
+    SubscriptionContext
   >({
     mutationFn: ({ orgId, planSlug, actorUserId }) =>
       upgradeSubscription(orgId, planSlug, { actorUserId }),
@@ -97,13 +102,13 @@ export const useUpgradeSubscription = () => {
       return { previousSummary }
     },
     // On error, rollback to previous value
-    onError: (error, variables, context) => {
+    onError: (_error, variables, context) => {
       if (context?.previousSummary) {
         queryClient.setQueryData(['subscription-summary', variables.orgId], context.previousSummary)
       }
     },
     // On success, invalidate to refetch fresh data
-    onSettled: (data, error, variables) => {
+    onSettled: (_data, _error, variables) => {
       queryClient.invalidateQueries({ queryKey: ['subscription-summary', variables.orgId] })
     },
   })
@@ -116,10 +121,15 @@ export const useUpgradeSubscription = () => {
 export const useScheduleDowngrade = () => {
   const queryClient = useQueryClient()
 
+  type SubscriptionContext = {
+    previousSummary?: SubscriptionSummary
+  }
+
   return useMutation<
     any,
     Error,
-    { orgId: string; planSlug: string; actorUserId: string }
+    { orgId: string; planSlug: string; actorUserId: string },
+    SubscriptionContext
   >({
     mutationFn: ({ orgId, planSlug, actorUserId }) =>
       scheduleDowngrade(orgId, planSlug, { actorUserId }),
@@ -147,12 +157,12 @@ export const useScheduleDowngrade = () => {
 
       return { previousSummary }
     },
-    onError: (error, variables, context) => {
+    onError: (_error, variables, context) => {
       if (context?.previousSummary) {
         queryClient.setQueryData(['subscription-summary', variables.orgId], context.previousSummary)
       }
     },
-    onSettled: (data, error, variables) => {
+    onSettled: (_data, _error, variables) => {
       queryClient.invalidateQueries({ queryKey: ['subscription-summary', variables.orgId] })
     },
   })

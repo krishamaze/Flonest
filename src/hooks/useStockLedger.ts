@@ -42,7 +42,11 @@ export const useStockLedger = (
 export const useCreateStockTransaction = () => {
   const queryClient = useQueryClient()
 
-  return useMutation<StockLedger, Error, { orgId: string; userId: string; data: Parameters<typeof createStockTransaction>[2] }>({
+  type StockLedgerContext = {
+    previousLedger?: StockLedgerWithProduct[]
+  }
+
+  return useMutation<StockLedger, Error, { orgId: string; userId: string; data: Parameters<typeof createStockTransaction>[2] }, StockLedgerContext>({
     mutationFn: async ({ orgId, userId, data }) => {
       return createStockTransaction(orgId, userId, data)
     },
@@ -58,6 +62,7 @@ export const useCreateStockTransaction = () => {
       // Note: We don't have product data here, so we'll add a placeholder
       // The real product will be fetched on success
       const optimisticTransaction: StockLedgerWithProduct = {
+        id: `temp-${Date.now()}`, // Temporary ID, will be replaced by server response
         org_id: orgId,
         product_id: data.product_id,
         transaction_type: data.transaction_type,
@@ -91,13 +96,13 @@ export const useCreateStockTransaction = () => {
       return { previousLedger }
     },
     // On error, rollback to previous value
-    onError: (error, variables, context) => {
+    onError: (_error, variables, context) => {
       if (context?.previousLedger) {
         queryClient.setQueryData(['stock-ledger', variables.orgId], context.previousLedger)
       }
     },
     // On success, invalidate to refetch fresh data (with proper product details)
-    onSuccess: (data, variables) => {
+    onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: ['stock-ledger', variables.orgId] })
       queryClient.invalidateQueries({ queryKey: ['products-with-stock', variables.orgId] })
     },
