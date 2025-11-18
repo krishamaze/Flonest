@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
 import { useAuth } from '../contexts/AuthContext'
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card'
 import { Button } from '../components/ui/Button'
@@ -20,53 +21,75 @@ import { Modal } from '../components/ui/Modal'
 import { setGstFromValidation } from '../lib/api/orgs'
 import { fetchGSTBusinessData, validateGSTIN } from '../lib/api/gst'
 import { extractStateCodeFromGSTIN, getStateNameFromGSTCode } from '../lib/constants/gstStateCodes'
-import {
-  fetchSubscriptionSummary,
-  listActivePlans,
-  upgradeSubscription,
-  scheduleDowngrade,
-  cancelSubscriptionAtPeriodEnd,
-  resumeSubscription,
-} from '../lib/api/billing'
-import type { SubscriptionSummary } from '../lib/api/billing'
 import type { BillingPlan, SubscriptionEvent } from '../types'
-
-interface OrgSettings {
-  id: string
-  name: string
-  legal_name: string | null
-  custom_logo_url: string | null
-  phone: string | null
-  address: string | null
-  gst_number: string | null
-  gst_verification_status: string
-}
+import {
+  useOrgSettings,
+  useUpdateOrgSettings,
+  useUploadOrgLogo,
+  useRemoveOrgLogo,
+  type OrgSettings,
+} from '../hooks/useOrgSettings'
+import {
+  useSubscriptionSummary,
+  useBillingPlans,
+  useUpgradeSubscription,
+  useScheduleDowngrade,
+  useCancelSubscription,
+  useResumeSubscription,
+} from '../hooks/useSubscription'
 
 export function SettingsPage() {
   const { user } = useAuth()
-  const [loading, setLoading] = useState(true)
-  const [saving, setSaving] = useState(false)
-  const [uploading, setUploading] = useState(false)
-  const [orgSettings, setOrgSettings] = useState<OrgSettings | null>(null)
+  const queryClient = useQueryClient()
   const [isEditing, setIsEditing] = useState(false)
   const [formData, setFormData] = useState({
     name: '',
     phone: '',
   })
-  const [billingSummary, setBillingSummary] = useState<SubscriptionSummary | null>(null)
-  const [billingPlans, setBillingPlans] = useState<BillingPlan[]>([])
-  const [billingLoading, setBillingLoading] = useState(true)
-  const [billingError, setBillingError] = useState<string | null>(null)
   const [planModalOpen, setPlanModalOpen] = useState(false)
   const [planAction, setPlanAction] = useState<'upgrade' | 'downgrade'>('upgrade')
   const [selectedPlanSlug, setSelectedPlanSlug] = useState<string | null>(null)
-  const [billingAction, setBillingAction] = useState<null | 'upgrade' | 'downgrade' | 'cancel' | 'resume'>(null)
   const [gstinInput, setGstinInput] = useState('')
   const [gstinLoading, setGstinLoading] = useState(false)
   const [gstinError, setGstinError] = useState<string | null>(null)
   const [gstBusinessData, setGstBusinessData] = useState<any>(null)
 
   const isAdmin = canManageOrgSettings(user)
+
+  // React Query hooks - replaces manual state management
+  const { data: orgSettings, isLoading: loading, error: orgSettingsError } = useOrgSettings(user?.orgId)
+  const updateSettingsMutation = useUpdateOrgSettings()
+  const uploadLogoMutation = useUploadOrgLogo()
+  const removeLogoMutation = useRemoveOrgLogo()
+
+  // Billing & Subscription hooks
+  const { data: billingSummary, isLoading: billingLoading, error: billingError } = useSubscriptionSummary(
+    user?.orgId,
+    isAdmin
+  )
+  const { data: billingPlans = [] } = useBillingPlans()
+  const upgradeMutation = useUpgradeSubscription()
+  const downgradeMutation = useScheduleDowngrade()
+  const cancelMutation = useCancelSubscription()
+  const resumeMutation = useResumeSubscription()
+
+  // Initialize form data when org settings load
+  useEffect(() => {
+    if (orgSettings && !isEditing) {
+      setFormData({
+        name: orgSettings.name || '',
+        phone: orgSettings.phone || '',
+      })
+    }
+  }, [orgSettings, isEditing])
+
+  // Show error toast if org settings query fails
+  useEffect(() => {
+    if (orgSettingsError) {
+      toast.error('Failed to load settings')
+    }
+  }, [orgSettingsError])
+
   const planOptions = useMemo(() => {
     if (!billingPlans.length) return []
     const currentPlanId = billingSummary?.plan?.id
@@ -78,45 +101,13 @@ export function SettingsPage() {
       .sort((a, b) => a.price_in_paise - b.price_in_paise)
   }, [billingPlans, billingSummary?.plan?.id])
 
+  // Show error toast if billing query fails
   useEffect(() => {
-    loadOrgSettings()
-  }, [user])
-
-  useEffect(() => {
-    if (!isAdmin || !user?.orgId) {
-      setBillingLoading(false)
-      return
+    if (billingError) {
+      toast.error('Failed to load billing information')
     }
-    loadBillingSummary()
-  }, [isAdmin, user?.orgId])
+  }, [billingError])
 
-  const loadOrgSettings = async () => {
-    if (!user?.orgId) return
-
-    try {
-      const { data, error } = await supabase
-        .from('orgs')
-        .select('id, name, legal_name, custom_logo_url, phone, address, gst_number, gst_verification_status')
-        .eq('id', user.orgId)
-        .single()
-
-      if (error) throw error
-
-      if (data) {
-        setOrgSettings(data as OrgSettings)
-        setFormData({
-          name: data.name || '',
-          phone: data.phone || '',
-        })
-        setIsEditing(false)
-      }
-    } catch (error: any) {
-      console.error('Error loading org settings:', error)
-      toast.error('Failed to load settings')
-    } finally {
-      setLoading(false)
-    }
-  }
 
   useEffect(() => {
     if (!planModalOpen) return
@@ -140,23 +131,29 @@ export function SettingsPage() {
 
   const handleConfirmPlanChange = async () => {
     if (!user?.orgId || !selectedPlanSlug) return
-    const actionType = planAction
-    setBillingAction(actionType)
+
     try {
-      if (actionType === 'upgrade') {
-        await upgradeSubscription(user.orgId, selectedPlanSlug, { actorUserId: user.id })
+      if (planAction === 'upgrade') {
+        // OPTIMISTIC UPDATE: Mutation updates cache immediately
+        await upgradeMutation.mutateAsync({
+          orgId: user.orgId,
+          planSlug: selectedPlanSlug,
+          actorUserId: user.id,
+        })
         toast.success('Subscription upgraded successfully')
       } else {
-        await scheduleDowngrade(user.orgId, selectedPlanSlug, { actorUserId: user.id })
+        // OPTIMISTIC UPDATE: Mutation updates cache immediately
+        await downgradeMutation.mutateAsync({
+          orgId: user.orgId,
+          planSlug: selectedPlanSlug,
+          actorUserId: user.id,
+        })
         toast.success('Downgrade scheduled for the next renewal')
       }
       setPlanModalOpen(false)
-      await loadBillingSummary()
     } catch (error: any) {
-      console.error('Error updating subscription:', error)
+      // Error handling is done by mutation (rollback happens automatically)
       toast.error(error.message || 'Unable to update subscription')
-    } finally {
-      setBillingAction(null)
     }
   }
 
@@ -167,35 +164,41 @@ export function SettingsPage() {
     )
     if (!confirmCancel) return
 
-    setBillingAction('cancel')
     try {
-      await cancelSubscriptionAtPeriodEnd(user.orgId, { actorUserId: user.id })
+      // OPTIMISTIC UPDATE: Mutation updates cache immediately
+      await cancelMutation.mutateAsync({
+        orgId: user.orgId,
+        actorUserId: user.id,
+      })
       toast.success('Cancellation scheduled for the end of the term')
-      await loadBillingSummary()
     } catch (error: any) {
-      console.error('Error scheduling cancellation:', error)
+      // Error handling is done by mutation (rollback happens automatically)
       toast.error(error.message || 'Unable to cancel subscription')
-    } finally {
-      setBillingAction(null)
     }
   }
 
   const handleResumeSubscription = async () => {
     if (!user?.orgId) return
-    setBillingAction('resume')
+
     try {
-      await resumeSubscription(user.orgId, { actorUserId: user.id })
+      // OPTIMISTIC UPDATE: Mutation updates cache immediately
+      await resumeMutation.mutateAsync({
+        orgId: user.orgId,
+        actorUserId: user.id,
+      })
       toast.success('Subscription will continue beyond this term')
-      await loadBillingSummary()
     } catch (error: any) {
-      console.error('Error resuming subscription:', error)
+      // Error handling is done by mutation (rollback happens automatically)
       toast.error(error.message || 'Unable to resume subscription')
-    } finally {
-      setBillingAction(null)
     }
   }
 
   const hasSubscription = Boolean(billingSummary?.subscription)
+  const billingActionPending =
+    upgradeMutation.isPending ||
+    downgradeMutation.isPending ||
+    cancelMutation.isPending ||
+    resumeMutation.isPending
   const planIntervalLabel = billingSummary?.plan
     ? billingSummary.plan.billing_interval === 'yearly'
       ? 'year'
@@ -221,55 +224,22 @@ export function SettingsPage() {
   const cancellationScheduled = Boolean(billingSummary?.subscription?.cancel_at_period_end)
   const billingHistory = billingSummary?.events.slice(0, 5) ?? []
 
-  const loadBillingSummary = async () => {
-    if (!user?.orgId || !isAdmin) {
-      setBillingSummary(null)
-      setBillingPlans([])
-      return
-    }
-
-    setBillingError(null)
-    setBillingLoading(true)
-    try {
-      const [summary, plans] = await Promise.all([
-        fetchSubscriptionSummary(user.orgId),
-        listActivePlans(),
-      ])
-      setBillingSummary(summary)
-      setBillingPlans(plans)
-    } catch (error: any) {
-      console.error('Error loading billing information:', error)
-      setBillingError(error.message || 'Failed to load billing information')
-    } finally {
-      setBillingLoading(false)
-    }
-  }
 
   const handleSaveSettings = async () => {
     if (!user?.orgId || !isAdmin) return
 
-    setSaving(true)
     try {
-      // Only update editable fields: display name and phone
-      // Legal name, GSTIN, and address are immutable after GST verification
-      const { error: updateError } = await supabase
-        .from('orgs')
-        .update({
-          name: formData.name,
-          phone: formData.phone,
-        })
-        .eq('id', user.orgId)
-
-      if (updateError) throw updateError
-
+      // OPTIMISTIC UPDATE: Mutation updates cache immediately
+      await updateSettingsMutation.mutateAsync({
+        orgId: user.orgId,
+        name: formData.name,
+        phone: formData.phone || null,
+      })
       toast.success('Settings saved successfully')
-      await loadOrgSettings()
       setIsEditing(false)
     } catch (error: any) {
-      console.error('Error saving settings:', error)
+      // Error handling is done by mutation's onError (rollback happens automatically)
       toast.error(error.message || 'Failed to save settings')
-    } finally {
-      setSaving(false)
     }
   }
 
@@ -357,7 +327,8 @@ export function SettingsPage() {
       toast.success('GSTIN added successfully. Awaiting platform admin verification.')
       setGstinInput('')
       setGstBusinessData(null)
-      await loadOrgSettings()
+      // Invalidate org settings query to refetch with new GST data
+      queryClient.invalidateQueries({ queryKey: ['org-settings', user.orgId] })
     } catch (error: any) {
       setGstinError(error.message || 'Failed to add GSTIN. Please try again.')
     } finally {
@@ -371,54 +342,16 @@ export function SettingsPage() {
     const file = e.target.files?.[0]
     if (!file) return
 
-    // Validate file type
-    if (!file.type.startsWith('image/')) {
-      toast.error('Please upload an image file')
-      return
-    }
-
-    // Validate file size (max 2MB)
-    if (file.size > 2 * 1024 * 1024) {
-      toast.error('File size must be less than 2MB')
-      return
-    }
-
-    setUploading(true)
     try {
-      // Upload to Supabase Storage
-      const fileExt = file.name.split('.').pop()
-      const fileName = `${user.orgId}-${Date.now()}.${fileExt}`
-      const filePath = `org-logos/${fileName}`
-
-      const { error: uploadError } = await supabase.storage
-        .from('public')
-        .upload(filePath, file, {
-          cacheControl: '3600',
-          upsert: false,
-        })
-
-      if (uploadError) throw uploadError
-
-      // Get public URL
-      const { data: { publicUrl } } = supabase.storage
-        .from('public')
-        .getPublicUrl(filePath)
-
-      // Update org with logo URL
-      const { error: updateError } = await supabase
-        .from('orgs')
-        .update({ custom_logo_url: publicUrl })
-        .eq('id', user.orgId)
-
-      if (updateError) throw updateError
-
+      // OPTIMISTIC UPDATE: Mutation updates cache after upload completes
+      await uploadLogoMutation.mutateAsync({
+        orgId: user.orgId,
+        file,
+      })
       toast.success('Logo uploaded successfully')
-      await loadOrgSettings()
     } catch (error: any) {
-      console.error('Error uploading logo:', error)
+      // Error handling is done by mutation
       toast.error(error.message || 'Failed to upload logo')
-    } finally {
-      setUploading(false)
     }
   }
 
@@ -426,18 +359,13 @@ export function SettingsPage() {
     if (!user?.orgId || !isAdmin || !orgSettings?.custom_logo_url) return
 
     try {
-      // Update org to remove logo
-      const { error } = await supabase
-        .from('orgs')
-        .update({ custom_logo_url: null })
-        .eq('id', user.orgId)
-
-      if (error) throw error
-
+      // OPTIMISTIC UPDATE: Mutation updates cache immediately
+      await removeLogoMutation.mutateAsync({
+        orgId: user.orgId,
+      })
       toast.success('Logo removed successfully')
-      await loadOrgSettings()
     } catch (error: any) {
-      console.error('Error removing logo:', error)
+      // Error handling is done by mutation (rollback happens automatically)
       toast.error(error.message || 'Failed to remove logo')
     }
   }
@@ -618,19 +546,19 @@ export function SettingsPage() {
                     type="file"
                     accept="image/*"
                     onChange={handleLogoUpload}
-                    disabled={uploading}
+                    disabled={uploadLogoMutation.isPending}
                     className="hidden"
                   />
                   <Button
                     variant="secondary"
                     size="sm"
-                    isLoading={uploading}
-                    disabled={uploading}
+                    isLoading={uploadLogoMutation.isPending}
+                    disabled={uploadLogoMutation.isPending}
                     className="cursor-pointer"
                     onClick={() => document.getElementById('logo-upload')?.click()}
                   >
                     <ArrowUpTrayIcon className="h-4 w-4 mr-xs" />
-                    {uploading ? 'Uploading...' : 'Upload Logo'}
+                    {uploadLogoMutation.isPending ? 'Uploading...' : 'Upload Logo'}
                   </Button>
                 </label>
 
@@ -823,8 +751,8 @@ export function SettingsPage() {
                 size="lg"
                 className="flex-1"
                 onClick={handleSaveSettings}
-                isLoading={saving}
-                disabled={!hasChanges || saving}
+                isLoading={updateSettingsMutation.isPending}
+                disabled={!hasChanges || updateSettingsMutation.isPending}
               >
                 Save Changes
               </Button>
@@ -832,7 +760,7 @@ export function SettingsPage() {
                 variant="ghost"
                 size="lg"
                 onClick={handleCancelEdit}
-                disabled={saving}
+                disabled={updateSettingsMutation.isPending}
               >
                 Cancel
               </Button>
@@ -856,8 +784,12 @@ export function SettingsPage() {
             </div>
           ) : billingError ? (
             <div className="rounded-lg border border-error bg-error-light/40 p-md text-sm text-error-dark space-y-sm">
-              <p>{billingError}</p>
-              <Button variant="secondary" size="sm" onClick={loadBillingSummary}>
+              <p>{billingError instanceof Error ? billingError.message : 'Failed to load billing information'}</p>
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => queryClient.invalidateQueries({ queryKey: ['subscription-summary', user?.orgId] })}
+              >
                 Retry
               </Button>
             </div>
@@ -942,7 +874,8 @@ export function SettingsPage() {
                         size="sm"
                         className="text-success"
                         onClick={handleResumeSubscription}
-                        isLoading={billingAction === 'resume'}
+                        isLoading={resumeMutation.isPending}
+                        disabled={billingActionPending}
                       >
                         Resume subscription
                       </Button>
@@ -952,7 +885,8 @@ export function SettingsPage() {
                         size="sm"
                         className="text-error"
                         onClick={handleCancelSubscription}
-                        isLoading={billingAction === 'cancel'}
+                        isLoading={cancelMutation.isPending}
+                        disabled={billingActionPending}
                       >
                         Cancel at period end
                       </Button>
@@ -1045,8 +979,11 @@ export function SettingsPage() {
               variant="primary"
               className="w-full"
               onClick={handleConfirmPlanChange}
-              disabled={!selectedPlanSlug}
-              isLoading={billingAction === planAction}
+              disabled={!selectedPlanSlug || billingActionPending}
+              isLoading={
+                (planAction === 'upgrade' && upgradeMutation.isPending) ||
+                (planAction === 'downgrade' && downgradeMutation.isPending)
+              }
             >
               {planAction === 'upgrade' ? 'Confirm upgrade' : 'Confirm downgrade'}
             </Button>

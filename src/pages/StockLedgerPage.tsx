@@ -13,42 +13,124 @@ import {
   AdjustmentsHorizontalIcon,
 } from '@heroicons/react/24/outline'
 import { getStockLedgerWithProducts, createStockTransaction } from '../lib/api/stockLedger'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import type { StockLedgerFormData } from '../types'
 
 export function StockLedgerPage() {
   const { user } = useAuth()
   const { registerRefreshHandler, unregisterRefreshHandler } = useRefresh()
-  const [stockLedger, setStockLedger] = useState<(StockLedger & { product: Product })[]>([])
-  const [loadingLedger, setLoadingLedger] = useState(true)
   const [isTransactionFormOpen, setIsTransactionFormOpen] = useState(false)
   const [filterType, setFilterType] = useState<'all' | 'in' | 'out' | 'adjustment'>('all')
+  const queryClient = useQueryClient()
+  const stockLedgerQueryKey = useMemo(
+    () => ['stock-ledger', user?.orgId] as const,
+    [user?.orgId]
+  )
 
-  const loadStockLedger = useCallback(async () => {
-    if (!user || !user.orgId) return
+  const {
+    data: stockLedger = [],
+    isLoading: loadingLedger,
+  } = useQuery<(StockLedger & { product: Product })[]>({
+    queryKey: stockLedgerQueryKey,
+    enabled: !!user?.orgId,
+    queryFn: async () => {
+      if (!user?.orgId) {
+        return []
+      }
+      return await getStockLedgerWithProducts(user.orgId)
+    },
+    staleTime: 30_000,
+  })
 
-    try {
-      const data = await getStockLedgerWithProducts(user.orgId)
-      setStockLedger(data)
-    } catch (error) {
-      console.error('Error loading stock ledger:', error)
-    } finally {
-      setLoadingLedger(false)
-    }
-  }, [user])
+  const createTransactionMutation = useMutation({
+    mutationFn: async ({ formData }: { formData: StockLedgerFormData; product?: Product }) => {
+      if (!user?.orgId || !user?.id) {
+        throw new Error('User not authenticated')
+      }
+      return await createStockTransaction(user.orgId, user.id, formData)
+    },
+    onMutate: async ({ formData, product }: { formData: StockLedgerFormData; product?: Product }) => {
+      if (!user?.orgId) {
+        return { previousEntries: undefined as (StockLedger & { product: Product })[] | undefined }
+      }
+      await queryClient.cancelQueries({ queryKey: stockLedgerQueryKey })
+      const previousEntries =
+        queryClient.getQueryData<(StockLedger & { product: Product })[]>(stockLedgerQueryKey) || []
+
+      const existingProduct =
+        product ||
+        previousEntries.find(entry => entry.product_id === formData.product_id)?.product ||
+        buildPlaceholderProduct(user.orgId, formData.product_id)
+
+      const optimisticEntry: StockLedger & { product: Product } = {
+        id: `temp-ledger-${Date.now()}`,
+        org_id: user.orgId,
+        product_id: formData.product_id,
+        transaction_type: formData.transaction_type,
+        quantity: formData.quantity,
+        notes: formData.notes || null,
+        created_at: new Date().toISOString(),
+        created_by: user.id,
+        cost_provisional: false,
+        product: existingProduct,
+      }
+
+      queryClient.setQueryData<(StockLedger & { product: Product })[]>(stockLedgerQueryKey, [
+        optimisticEntry,
+        ...previousEntries,
+      ])
+
+      return { previousEntries, optimisticId: optimisticEntry.id }
+    },
+    onError: (_error, _variables, context) => {
+      if (context?.previousEntries) {
+        queryClient.setQueryData(stockLedgerQueryKey, context.previousEntries)
+      }
+    },
+    onSuccess: (newEntry, variables, context) => {
+      queryClient.setQueryData<(StockLedger & { product: Product })[]>(
+        stockLedgerQueryKey,
+        currentEntries => {
+          const normalizedEntries = currentEntries || []
+          const resolvedProduct =
+            newEntry.product ||
+            variables?.product ||
+            normalizedEntries.find(entry => entry.product_id === newEntry.product_id)?.product ||
+            (user?.orgId ? buildPlaceholderProduct(user.orgId, newEntry.product_id) : undefined)
+
+          if (!resolvedProduct) {
+            return normalizedEntries
+          }
+
+          const entryWithProduct: StockLedger & { product: Product } = {
+            ...(newEntry as StockLedger),
+            product: resolvedProduct,
+          }
+
+          return [
+            entryWithProduct,
+            ...normalizedEntries.filter(entry => entry.id !== context?.optimisticId),
+          ]
+        }
+      )
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: stockLedgerQueryKey })
+    },
+  })
+
+  const loadLatestLedger = useCallback(async () => {
+    if (!user?.orgId) return
+    await queryClient.invalidateQueries({ queryKey: stockLedgerQueryKey })
+  }, [queryClient, stockLedgerQueryKey, user?.orgId])
 
   useEffect(() => {
-    loadStockLedger()
-  }, [loadStockLedger])
-
-  // Register refresh handler for pull-to-refresh
-  useEffect(() => {
-    registerRefreshHandler(loadStockLedger)
+    registerRefreshHandler(loadLatestLedger)
     return () => unregisterRefreshHandler()
-  }, [registerRefreshHandler, unregisterRefreshHandler, loadStockLedger])
+  }, [registerRefreshHandler, unregisterRefreshHandler, loadLatestLedger])
 
-  const handleCreateTransaction = async (data: any) => {
-    if (!user || !user.orgId) return
-    await createStockTransaction(user.orgId, user.id, data)
-    await loadStockLedger()
+  const handleCreateTransaction = async (data: StockLedgerFormData, product?: Product) => {
+    await createTransactionMutation.mutateAsync({ formData: data, product })
   }
 
   const filteredLedger = useMemo(() => {
@@ -244,5 +326,31 @@ export function StockLedgerPage() {
       )}
     </div>
   )
+}
+
+function buildPlaceholderProduct(orgId: string, productId: string): Product {
+  const timestamp = new Date().toISOString()
+  return {
+    id: productId,
+    org_id: orgId,
+    name: 'Updating stock...',
+    sku: '',
+    ean: null,
+    description: null,
+    category: null,
+    category_id: null,
+    branch_id: null,
+    unit: 'pcs',
+    cost_price: null,
+    selling_price: null,
+    min_stock_level: 0,
+    tax_rate: null,
+    hsn_sac_code: null,
+    master_product_id: null,
+    serial_tracked: false,
+    status: 'active',
+    created_at: timestamp,
+    updated_at: timestamp,
+  }
 }
 

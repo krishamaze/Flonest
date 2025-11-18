@@ -1,13 +1,10 @@
-import { FormEvent, useEffect, useState, useRef } from 'react'
+import { FormEvent, useEffect, useState, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
 import { Button } from '../components/ui/Button'
 import { Input } from '../components/ui/Input'
-import { adminMfaStatus, adminMfaStart, adminMfaVerify } from '../lib/api/adminMfa'
-
-// Force rebuild v2: MFA status endpoint with timeout handling
-// Updated: 2025-11-15 - Force new chunk hash for Service Worker cache busting
+import { LoadingSpinner } from '../components/ui/LoadingSpinner'
+import { useMFAStatus, useEnrollMFA, useVerifyMFA } from '../hooks/useMFA'
 
 interface EnrollmentState {
   factorId: string
@@ -19,20 +16,19 @@ type FlowMode = 'checking' | 'none' | 'enrollment' | 'verification'
 
 export function PlatformAdminMfaPage() {
   const navigate = useNavigate()
-  const { user, requiresAdminMfa, refreshAdminMfaRequirement, signOut } = useAuth()
-  const [enrollmentState, setEnrollmentState] = useState<EnrollmentState | null>(null)
-  const [factorId, setFactorId] = useState<string | null>(null)
+  const { user, requiresAdminMfa, signOut } = useAuth()
   const [code, setCode] = useState('')
-  const [isSubmitting, setIsSubmitting] = useState(false)
-  const [enrolling, setEnrolling] = useState(false)
-  const [checking, setChecking] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-  const [info, setInfo] = useState<string>('Loading MFA status...')
-  const [flowMode, setFlowMode] = useState<FlowMode>('checking')
-  const hasCheckedRef = useRef(false)
-  const loadingTimeoutRef = useRef<NodeJS.Timeout | null>(null)
-  const isCheckingRef = useRef(false)
+  const [enrollmentState, setEnrollmentState] = useState<EnrollmentState | null>(null)
+  const [localError, setLocalError] = useState<string | null>(null)
 
+  // React Query hooks - handles caching, deduplication, and race conditions automatically
+  const { data: statusData, isLoading: checkingStatus, error: statusError } = useMFAStatus(
+    !!user && !!user.platformAdmin && requiresAdminMfa
+  )
+  const enrollMutation = useEnrollMFA()
+  const verifyMutation = useVerifyMFA()
+
+  // Guard clauses - redirect if not authorized
   useEffect(() => {
     if (!user) {
       navigate('/login', { replace: true })
@@ -48,186 +44,125 @@ export function PlatformAdminMfaPage() {
       navigate('/platform-admin', { replace: true })
       return
     }
-
-    // Check factors ONCE on mount - no polling, no loops
-    if (!hasCheckedRef.current) {
-      hasCheckedRef.current = true
-      initializeFlow()
-    }
-
-    // Cleanup timeout on unmount
-    return () => {
-      if (loadingTimeoutRef.current) {
-        clearTimeout(loadingTimeoutRef.current)
-      }
-    }
   }, [user, requiresAdminMfa, navigate])
 
-  const initializeFlow = async () => {
-    setChecking(true)
-    isCheckingRef.current = true
-    setError(null)
-    setInfo('Loading MFA status...')
+  // Determine flow mode based on React Query state
+  const flowMode: FlowMode = useMemo(() => {
+    if (checkingStatus) return 'checking'
+    if (enrollmentState) return 'enrollment'
+    if (statusData?.hasVerifiedFactor && statusData.factorId) return 'verification'
+    return 'none'
+  }, [checkingStatus, enrollmentState, statusData])
 
-    // Set loading state timeout (15 seconds)
-    loadingTimeoutRef.current = setTimeout(() => {
-      if (isCheckingRef.current) {
-        setError('Unable to check MFA status. Please refresh or sign out and sign in again.')
-        setFlowMode('none')
-        setInfo('No authenticator enrolled. Click "Start Enrollment" to set up TOTP.')
-        setChecking(false)
-        isCheckingRef.current = false
-      }
-    }, 15000)
+  // Derive info message from state
+  const info = useMemo(() => {
+    if (checkingStatus) return 'Loading MFA status...'
+    if (enrollmentState) return 'Scan the QR code with your authenticator app, then enter the 6-digit code to verify.'
+    if (flowMode === 'verification') return 'Enter the 6-digit code from your authenticator app.'
+    return 'No authenticator enrolled. Click "Start Enrollment" to set up TOTP.'
+  }, [checkingStatus, enrollmentState, flowMode])
 
-    try {
-      const response = await adminMfaStatus()
+  // Derive error message from React Query errors (non-session errors only)
+  // Session errors (401) are handled globally and trigger redirect
+  const error = useMemo(() => {
+    if (localError) return localError
 
-      // Clear timeout on success
-      if (loadingTimeoutRef.current) {
-        clearTimeout(loadingTimeoutRef.current)
-        loadingTimeoutRef.current = null
-      }
-      isCheckingRef.current = false
+    const err = statusError || enrollMutation.error || verifyMutation.error
+    if (!err) return null
 
-      console.log('MFA Status Response:', response)
+    const code = (err as any)?.code as string | undefined
+    const status = typeof (err as any)?.status === 'number' ? (err as any).status : undefined
+    const message = err?.message || ''
 
-      if (response.hasVerifiedFactor && response.factorId) {
-        console.log('Setting verification mode with factorId:', response.factorId)
-        setFactorId(response.factorId)
-        setEnrollmentState(null)
-        setFlowMode('verification')
-        setInfo('Enter the 6-digit code from your authenticator app.')
-      } else {
-        console.log('No verified factor found, setting none mode')
-        setFactorId(null)
-        setEnrollmentState(null)
-        setFlowMode('none')
-        setInfo('No authenticator enrolled. Click "Start Enrollment" to set up TOTP.')
-      }
-    } catch (err: any) {
-      console.error('Failed to load MFA status:', err)
-      console.error('Error type:', err?.constructor?.name)
-      console.error('Error message:', err?.message)
-      console.error('Error stack:', err?.stack)
-      console.error('Error code:', err?.code)
-      console.error('Error status:', err?.status)
+    // Session errors are handled globally - shouldn't reach here, but sanitize just in case
+    const isSessionError =
+      status === 401 ||
+      code === 'user_lookup_failed' ||
+      code === 'missing_authorization' ||
+      code === 'invalid_authorization' ||
+      message.includes('Unable to load user from access token') ||
+      message.includes('No active session') ||
+      message.includes('access token')
 
-      // Clear timeout on error
-      if (loadingTimeoutRef.current) {
-        clearTimeout(loadingTimeoutRef.current)
-        loadingTimeoutRef.current = null
-      }
-      isCheckingRef.current = false
-
-      const rawMessage = err?.message || ''
-      const code = err?.code as string | undefined
-      const status = typeof err?.status === 'number' ? err.status : undefined
-      const isNotAdmin =
-        code === 'not_platform_admin' ||
-        rawMessage.includes('not_platform_admin') ||
-        rawMessage.includes('Platform admin access required')
-
-      if (isNotAdmin) {
-        setError(
-          'This account is not recognized as a platform admin. Please sign out and sign in with your admin account.',
-        )
-      } else if (status && status >= 500) {
-        setError('Admin MFA service is temporarily unavailable. Please try again.')
-      } else if (code === 'timeout') {
-        setError('Admin MFA service took too long to respond. Please try again.')
-      } else {
-        setError(rawMessage || 'Unable to check MFA status. Please refresh or sign out and sign in again.')
-      }
-
-      setFlowMode('none')
-      setInfo('No authenticator enrolled. Click \"Start Enrollment\" to set up TOTP.')
-    } finally {
-      setChecking(false)
+    if (isSessionError) {
+      // Global handler should have redirected, but return null to prevent UI error display
+      return null
     }
-  }
 
-  const startEnrollment = async () => {
-    setEnrolling(true)
-    setError(null)
+    // Handle non-session errors
+    const isNotAdmin =
+      code === 'not_platform_admin' ||
+      message.includes('not_platform_admin') ||
+      message.includes('Platform admin access required')
 
+    if (isNotAdmin) {
+      return 'This account is not recognized as a platform admin. Please sign out and sign in with your admin account.'
+    }
+
+    if (code === 'enroll_failed') {
+      return 'Could not start enrollment. Please try again.'
+    }
+
+    if (status && status >= 500) {
+      return 'Admin MFA service is temporarily unavailable. Please try again.'
+    }
+
+    if (code === 'timeout') {
+      return 'Admin MFA service took too long to respond. Please try again.'
+    }
+
+    if (code === 'verification_failed') {
+      return 'Invalid code. Please try again.'
+    }
+
+    // Sanitize technical error messages
+    return 'An error occurred. Please try again.'
+  }, [localError, statusError, enrollMutation.error, verifyMutation.error])
+
+  // Handle enrollment start
+  const handleStartEnrollment = async () => {
+    setLocalError(null)
     try {
-      const response = await adminMfaStart()
-
+      const response = await enrollMutation.mutateAsync()
       if (response.mode !== 'enrollment' || !response.factorId || !response.qrCode) {
-        throw new Error('Failed to start enrollment. Please try again.')
+        setLocalError('Failed to start enrollment. Please try again.')
+        return
       }
-
       setEnrollmentState({
         factorId: response.factorId,
         qrCode: response.qrCode,
         secret: response.secret ?? '',
       })
-      setFactorId(response.factorId)
-      setFlowMode('enrollment')
-      setInfo('Scan the QR code with your authenticator app, then enter the 6-digit code to verify.')
-    } catch (err: any) {
-      console.error('Enrollment failed:', err)
-      console.error('Enrollment error code:', err?.code)
-      console.error('Enrollment error status:', err?.status)
-      const rawMessage = err?.message || ''
-      const code = err?.code as string | undefined
-      const status = typeof err?.status === 'number' ? err.status : undefined
-      const isNotAdmin =
-        code === 'not_platform_admin' ||
-        rawMessage.includes('not_platform_admin') ||
-        rawMessage.includes('Platform admin access required')
-
-      if (isNotAdmin) {
-        setError(
-          'This account is not recognized as a platform admin. Please sign out and sign in with your admin account.',
-        )
-      } else if (code === 'enroll_failed') {
-        setError(rawMessage || 'Could not start enrollment. Please try again.')
-      } else if (status && status >= 500) {
-        setError('Admin MFA service is temporarily unavailable. Please try again.')
-      } else if (code === 'timeout') {
-        setError('Admin MFA service took too long to respond. Please try again.')
-      } else {
-        setError(rawMessage || 'Failed to start enrollment. Please try again.')
-      }
-    } finally {
-      setEnrolling(false)
+    } catch (err) {
+      // Errors are handled by error memo above
+      // Global handler will redirect on 401 errors
     }
   }
 
+  // Handle verification
   const handleVerify = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
 
     const sanitizedCode = code.trim()
     if (sanitizedCode.length !== 6) {
-      setError('Enter the full 6-digit code.')
+      setLocalError('Enter the full 6-digit code.')
       return
     }
 
-    const targetFactorId = enrollmentState?.factorId ?? factorId
+    const targetFactorId = enrollmentState?.factorId ?? statusData?.factorId
     if (!targetFactorId) {
-      setError('No authenticator factor found. Start enrollment first.')
+      setLocalError('No authenticator factor found. Start enrollment first.')
       return
     }
 
-    setIsSubmitting(true)
-    setError(null)
-
+    setLocalError(null)
     try {
-      await adminMfaVerify(targetFactorId, sanitizedCode)
-      await supabase.auth.refreshSession()
-      await refreshAdminMfaRequirement()
-      setInfo('Verification successful! Redirecting...')
-      navigate('/platform-admin', { replace: true })
-    } catch (err: any) {
-      console.error('Verification failed:', err)
-      setError(err?.message || 'Invalid code. Please try again.')
-      if (!enrollmentState) {
-        initializeFlow()
-      }
-    } finally {
-      setIsSubmitting(false)
+      await verifyMutation.mutateAsync({ factorId: targetFactorId, code: sanitizedCode })
+      // Success handler in hook will redirect
+    } catch (err) {
+      // Errors are handled by error memo above
+      // Global handler will redirect on 401 errors
+      // For verification failures, error memo will show "Invalid code"
     }
   }
 
@@ -241,10 +176,7 @@ export function PlatformAdminMfaPage() {
     }
   }
 
-  // SECURITY: MFA reset removed - requires email verification or manual admin intervention
-  // Self-service reset without additional verification is a critical security vulnerability
-  // If reset is needed, implement email-based reset flow or require manual admin approval
-
+  // Guard: redirect if not authorized
   if (!user || !user.platformAdmin) {
     return null
   }
@@ -263,9 +195,10 @@ export function PlatformAdminMfaPage() {
         </div>
 
         <div className="rounded-lg bg-bg-card p-xl shadow-md border border-color">
-          {checking ? (
+          {checkingStatus ? (
             <div className="text-center py-lg">
-              <p className="text-secondary-text">{info}</p>
+              <LoadingSpinner size="lg" />
+              <p className="text-secondary-text mt-md">{info}</p>
             </div>
           ) : enrollmentState && flowMode === 'enrollment' ? (
             <div className="space-y-md">
@@ -301,10 +234,17 @@ export function PlatformAdminMfaPage() {
                   value={code}
                   onChange={(e) => setCode(e.target.value.replace(/\D/g, ''))}
                   required
-                  disabled={isSubmitting}
+                  disabled={verifyMutation.isPending}
                 />
 
-                <Button type="submit" variant="primary" size="lg" className="w-full" disabled={isSubmitting} isLoading={isSubmitting}>
+                <Button
+                  type="submit"
+                  variant="primary"
+                  size="lg"
+                  className="w-full"
+                  disabled={verifyMutation.isPending}
+                  isLoading={verifyMutation.isPending}
+                >
                   Verify & Complete Enrollment
                 </Button>
 
@@ -340,10 +280,17 @@ export function PlatformAdminMfaPage() {
                 value={code}
                 onChange={(e) => setCode(e.target.value.replace(/\D/g, ''))}
                 required
-                disabled={isSubmitting}
+                disabled={verifyMutation.isPending}
               />
 
-              <Button type="submit" variant="primary" size="lg" className="w-full" disabled={isSubmitting} isLoading={isSubmitting}>
+              <Button
+                type="submit"
+                variant="primary"
+                size="lg"
+                className="w-full"
+                disabled={verifyMutation.isPending}
+                isLoading={verifyMutation.isPending}
+              >
                 Verify Code
               </Button>
 
@@ -376,11 +323,11 @@ export function PlatformAdminMfaPage() {
                 variant="primary"
                 size="lg"
                 className="w-full"
-                onClick={startEnrollment}
-                disabled={enrolling}
-                isLoading={enrolling}
+                onClick={handleStartEnrollment}
+                disabled={enrollMutation.isPending}
+                isLoading={enrollMutation.isPending}
               >
-                {enrolling ? 'Starting Enrollment...' : 'Start Enrollment'}
+                {enrollMutation.isPending ? 'Starting Enrollment...' : 'Start Enrollment'}
               </Button>
 
               <Button type="button" variant="ghost" size="md" className="w-full text-error" onClick={handleSignOut}>

@@ -9,16 +9,6 @@ import { LoadingSpinner } from '../components/ui/LoadingSpinner'
 import { Modal } from '../components/ui/Modal'
 import { toast } from 'react-toastify'
 import { 
-  getAgentsForOrg,
-  searchPotentialAgents,
-  createAgentRelationship,
-  revokeAgentRelationship,
-  reactivateAgentRelationship,
-  getAgentHelpers,
-  // grantPortalPermission, // TODO: Uncomment when implementing helper grant UI
-  revokePortalPermission
-} from '../lib/api/agentRelationships'
-import { 
   UserPlusIcon, 
   UserGroupIcon,
   CheckCircleIcon,
@@ -26,62 +16,76 @@ import {
   ArrowPathIcon
 } from '@heroicons/react/24/outline'
 import { canManageAgents } from '../lib/permissions'
+import {
+  useAgents,
+  useSearchPotentialAgents,
+  useCreateAgent,
+  useRevokeAgent,
+  useReactivateAgent,
+  useAgentHelpers,
+  useRevokeHelperPermission,
+  type AgentListItem,
+} from '../hooks/useAgents'
 
 export function AgentsPage() {
   const { user } = useAuth()
   const navigate = useNavigate()
-  const [loading, setLoading] = useState(true)
-  const [agents, setAgents] = useState<any[]>([])
   const [showAddModal, setShowAddModal] = useState(false)
-  const [selectedAgent, setSelectedAgent] = useState<any>(null)
+  const [selectedAgent, setSelectedAgent] = useState<AgentListItem | null>(null)
   const [showHelpersModal, setShowHelpersModal] = useState(false)
+
+  // React Query hooks
+  const { data: agents = [], isLoading: loading, error: agentsError } = useAgents(user?.orgId)
+  const revokeMutation = useRevokeAgent()
+  const reactivateMutation = useReactivateAgent()
 
   useEffect(() => {
     if (!user || !canManageAgents(user)) {
       navigate('/')
       return
     }
-    loadAgents()
-  }, [user])
+  }, [user, navigate])
 
-  const loadAgents = async () => {
-    if (!user?.orgId) return
-
-    try {
-      setLoading(true)
-      const data = await getAgentsForOrg(user.orgId)
-      setAgents(data)
-    } catch (error) {
-      console.error('Error loading agents:', error)
+  // Show error toast if agents query fails
+  useEffect(() => {
+    if (agentsError) {
       toast.error('Failed to load agents')
-    } finally {
-      setLoading(false)
     }
-  }
+  }, [agentsError])
 
   const handleRevoke = async (relationshipId: string) => {
-    if (!confirm('Are you sure you want to revoke this agent relationship?')) return
+    if (!confirm('Are you sure you want to revoke this agent relationship?') || !user?.orgId) return
 
     try {
-      await revokeAgentRelationship(relationshipId)
+      // OPTIMISTIC UPDATE: Mutation updates cache immediately
+      await revokeMutation.mutateAsync({
+        relationshipId,
+        orgId: user.orgId,
+      })
       toast.success('Agent relationship revoked')
-      loadAgents()
     } catch (error: any) {
+      // Error handling is done by mutation (rollback happens automatically)
       toast.error(error.message || 'Failed to revoke relationship')
     }
   }
 
   const handleReactivate = async (relationshipId: string) => {
+    if (!user?.orgId) return
+
     try {
-      await reactivateAgentRelationship(relationshipId)
+      // OPTIMISTIC UPDATE: Mutation updates cache immediately
+      await reactivateMutation.mutateAsync({
+        relationshipId,
+        orgId: user.orgId,
+      })
       toast.success('Agent relationship reactivated')
-      loadAgents()
     } catch (error: any) {
+      // Error handling is done by mutation (rollback happens automatically)
       toast.error(error.message || 'Failed to reactivate relationship')
     }
   }
 
-  const handleManageHelpers = async (agent: any) => {
+  const handleManageHelpers = (agent: AgentListItem) => {
     setSelectedAgent(agent)
     setShowHelpersModal(true)
   }
@@ -210,7 +214,6 @@ export function AgentsPage() {
           onClose={() => setShowAddModal(false)}
           onSuccess={() => {
             setShowAddModal(false)
-            loadAgents()
           }}
           currentOrgId={user?.orgId || ''}
           currentUserId={user?.id || ''}
@@ -248,46 +251,64 @@ function AddAgentModal({
   currentUserId: string
 }) {
   const [email, setEmail] = useState('')
-  const [searching, setSearching] = useState(false)
-  const [searchResults, setSearchResults] = useState<any[]>([])
   const [selectedUser, setSelectedUser] = useState<any>(null)
   const [notes, setNotes] = useState('')
-  const [submitting, setSubmitting] = useState(false)
 
-  const handleSearch = async () => {
-    if (!email.trim()) return
+  const [shouldSearch, setShouldSearch] = useState(false)
 
-    try {
-      setSearching(true)
-      const results = await searchPotentialAgents(email, currentOrgId)
-      setSearchResults(results)
-      if (results.length === 0) {
-        toast.error('No eligible users found')
-      }
-    } catch (error: any) {
-      toast.error(error.message || 'Search failed')
-    } finally {
-      setSearching(false)
+  // React Query hooks - only search when shouldSearch is true
+  const { data: searchResults = [], isLoading: searching } = useSearchPotentialAgents(
+    shouldSearch ? email : '',
+    currentOrgId
+  )
+  const createMutation = useCreateAgent()
+
+  // Reset search when modal closes
+  useEffect(() => {
+    if (!isOpen) {
+      setEmail('')
+      setSelectedUser(null)
+      setNotes('')
+      setShouldSearch(false)
     }
+  }, [isOpen])
+
+  const handleSearch = () => {
+    if (!email.trim() || email.length < 3) {
+      toast.error('Please enter at least 3 characters')
+      return
+    }
+    setShouldSearch(true)
+    setSelectedUser(null) // Clear previous selection
   }
+
+  // Show error toast if search returns no results
+  useEffect(() => {
+    if (shouldSearch && email.trim() && searchResults.length === 0 && !searching && email.length >= 3) {
+      toast.error('No eligible users found')
+      setShouldSearch(false) // Reset to prevent repeated toasts
+    }
+  }, [email, searchResults, searching, shouldSearch])
 
   const handleSubmit = async () => {
     if (!selectedUser) return
 
     try {
-      setSubmitting(true)
-      await createAgentRelationship(
-        currentOrgId,
-        selectedUser.id,
-        currentUserId,
-        notes
-      )
+      // OPTIMISTIC UPDATE: Mutation updates cache immediately
+      await createMutation.mutateAsync({
+        senderOrgId: currentOrgId,
+        agentUserId: selectedUser.id,
+        invitedBy: currentUserId,
+        notes: notes || undefined,
+      })
       toast.success('Agent added successfully')
+      setEmail('')
+      setSelectedUser(null)
+      setNotes('')
       onSuccess()
     } catch (error: any) {
+      // Error handling is done by mutation (rollback happens automatically)
       toast.error(error.message || 'Failed to add agent')
-    } finally {
-      setSubmitting(false)
     }
   }
 
@@ -303,14 +324,18 @@ function AddAgentModal({
               type="email"
               placeholder="agent@example.com"
               value={email}
-              onChange={(e) => setEmail(e.target.value)}
               onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
+              onChange={(e) => {
+                setEmail(e.target.value)
+                setShouldSearch(false) // Reset search when email changes
+                setSelectedUser(null) // Clear selection when email changes
+              }}
               className="flex-1"
             />
             <Button
               onClick={handleSearch}
               variant="primary"
-              disabled={!email.trim()}
+              disabled={!email.trim() || email.length < 3}
               isLoading={searching}
             >
               Search
@@ -381,8 +406,8 @@ function AddAgentModal({
             onClick={handleSubmit}
             variant="primary"
             className="flex-1"
-            disabled={!selectedUser || submitting}
-            isLoading={submitting}
+            disabled={!selectedUser || createMutation.isPending}
+            isLoading={createMutation.isPending}
           >
             Add Agent
           </Button>
@@ -404,63 +429,26 @@ function ManageHelpersModal({
   relationshipId: string
   agentUserId: string
 }) {
-  // const { user } = useAuth() // TODO: Needed for helper grant functionality
-  const [loading, setLoading] = useState(true)
-  const [helpers, setHelpers] = useState<any[]>([])
-  // TODO: Implement helper management UI
-  // const [availableUsers, setAvailableUsers] = useState<any[]>([])
-  // const [selectedUserId, setSelectedUserId] = useState('')
-  // const [granting, setGranting] = useState(false)
-
-  useEffect(() => {
-    if (isOpen) {
-      loadHelpers()
-      loadAvailableUsers()
-    }
-  }, [isOpen])
-
-  const loadHelpers = async () => {
-    try {
-      const data = await getAgentHelpers(relationshipId)
-      setHelpers(data)
-    } catch (error) {
-      console.error('Error loading helpers:', error)
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  const loadAvailableUsers = async () => {
-    // Load branch_heads and advisors from agent's org
-    // TODO: Implement this when helper UI is ready
-    // setAvailableUsers([])
-  }
+  // React Query hooks
+  const { data: helpers = [], isLoading: loading } = useAgentHelpers(isOpen ? relationshipId : null)
+  const revokePermissionMutation = useRevokeHelperPermission()
 
   // TODO: Implement helper grant functionality
-  // const handleGrant = async () => {
-  //   if (!selectedUserId || !user) return
-  //
-  //   try {
-  //     setGranting(true)
-  //     await grantPortalPermission(relationshipId, selectedUserId, user.id)
-  //     toast.success('Portal access granted')
-  //     setSelectedUserId('')
-  //     loadHelpers()
-  //   } catch (error: any) {
-  //     toast.error(error.message || 'Failed to grant access')
-  //   } finally {
-  //     setGranting(false)
-  //   }
-  // }
+  // const [selectedUserId, setSelectedUserId] = useState('')
+  // const grantPermissionMutation = useGrantHelperPermission()
 
   const handleRevoke = async (permissionId: string) => {
     if (!confirm('Remove portal access for this helper?')) return
 
     try {
-      await revokePortalPermission(permissionId)
+      // OPTIMISTIC UPDATE: Mutation updates cache immediately
+      await revokePermissionMutation.mutateAsync({
+        permissionId,
+        relationshipId,
+      })
       toast.success('Portal access revoked')
-      loadHelpers()
     } catch (error: any) {
+      // Error handling is done by mutation (rollback happens automatically)
       toast.error(error.message || 'Failed to revoke access')
     }
   }

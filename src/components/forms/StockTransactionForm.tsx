@@ -13,7 +13,7 @@ import { getCurrentStock, calculateStockAfterTransaction } from '../../lib/api/s
 interface StockTransactionFormProps {
   isOpen: boolean
   onClose: () => void
-  onSubmit: (data: StockLedgerFormData) => Promise<void>
+  onSubmit: (data: StockLedgerFormData, product?: Product) => Promise<void>
   orgId: string
   title?: string
 }
@@ -115,7 +115,7 @@ export function StockTransactionForm({
 
     setIsSubmitting(true)
     try {
-      await onSubmit(formData)
+      await onSubmit(formData, selectedProduct || undefined)
       onClose()
       // Reset form
       setFormData({

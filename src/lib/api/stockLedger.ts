@@ -13,11 +13,11 @@ export async function createStockTransaction(
   orgId: string,
   userId: string,
   data: StockLedgerFormData
-): Promise<StockLedger> {
+): Promise<StockLedger & { product: Product }> {
   // Validate product exists and belongs to org
   const { data: product, error: productError } = await supabase
     .from('products')
-    .select('id')
+    .select('*')
     .eq('id', data.product_id)
     .eq('org_id', orgId)
     .single()
@@ -38,14 +38,21 @@ export async function createStockTransaction(
   const { data: ledgerEntry, error } = await supabase
     .from('stock_ledger')
     .insert([ledgerData])
-    .select()
+    .select(`
+      *,
+      product:products(*)
+    `)
     .single()
 
   if (error) {
     throw new Error(`Failed to create stock transaction: ${error.message}`)
   }
 
-  return ledgerEntry
+  if (!ledgerEntry || !ledgerEntry.product) {
+    throw new Error('Failed to load product details for stock transaction')
+  }
+
+  return ledgerEntry as StockLedger & { product: Product }
 }
 
 /**

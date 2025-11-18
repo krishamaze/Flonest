@@ -108,7 +108,32 @@ class HttpError extends Error {
   }
 }
 
+/**
+ * SECURITY: Authoritative token validation
+ * 
+ * This function validates access tokens against the Supabase Auth server, not via local JWT decode.
+ * 
+ * Key security properties:
+ * 1. Server-side validation: `adminClient.auth.getUser(accessToken)` makes an HTTP request to
+ *    the Auth server, which verifies:
+ *    - Token signature (cryptographic verification)
+ *    - Token expiration (exp claim)
+ *    - Token revocation status (checks auth.sessions table)
+ *    - User account status (active, banned, etc.)
+ * 
+ * 2. Revoked token detection: If a token is revoked (user signed out, session terminated),
+ *    the Auth server will return an error, preventing use of stale tokens.
+ * 
+ * 3. Service role context: While adminClient uses SERVICE_ROLE_KEY, getUser(accessToken) still
+ *    validates the user's access token against the Auth server. The service role only grants
+ *    permission to make the validation request, not to bypass validation.
+ * 
+ * This is NOT a local JWT decode - it requires Auth server validation, ensuring revoked tokens
+ * are detected and cannot be used even if they are cryptographically valid.
+ */
 const getUserAndProfile = async (accessToken: string): Promise<UserProfileCheckResult> => {
+  // SECURITY: This call validates the token against the Auth server
+  // It will fail if: token is revoked, expired, invalid signature, or user account is inactive
   const {
     data: { user },
     error,
@@ -120,6 +145,7 @@ const getUserAndProfile = async (accessToken: string): Promise<UserProfileCheckR
       code: error?.code,
       name: error?.name,
     })
+    // Token validation failed - could be revoked, expired, or invalid
     throw new HttpError(401, "user_lookup_failed", "Unable to load user from access token")
   }
 
@@ -159,6 +185,19 @@ const getUserAndProfile = async (accessToken: string): Promise<UserProfileCheckR
   }
 }
 
+/**
+ * Creates a Supabase client scoped to a specific user's access token.
+ * 
+ * SECURITY: The access token passed here has already been validated by getUserAndProfile().
+ * This client is used for MFA operations which require the user's authenticated context.
+ * 
+ * Note: MFA factors are stored in Supabase's auth schema (auth.mfa_factors), which is
+ * read-only and managed by Supabase Auth API. RLS policies cannot be applied to auth schema
+ * tables, but security is enforced by:
+ * 1. Token validation in getUserAndProfile() (checks revocation, expiration, signature)
+ * 2. Supabase Auth API enforcing user-scoped access (users can only access their own factors)
+ * 3. Platform admin check before allowing MFA operations
+ */
 const createUserClient = (accessToken: string) =>
   createClient(SUPABASE_URL, SERVICE_ROLE_KEY, {
     auth: { autoRefreshToken: false, persistSession: false },
@@ -339,6 +378,10 @@ const handleVerify = async (accessToken: string, body: any) => {
 
     return jsonResponse(200, { success: true })
   } catch (err: any) {
+    // Re-throw HttpError to preserve status codes (401 for invalid tokens)
+    if (err instanceof HttpError) {
+      throw err
+    }
     console.error("[DEBUG] handleVerify error:", err)
     return errorResponse(500, err?.message ?? "Unexpected verification error", "verification_error")
   }
@@ -380,6 +423,10 @@ const handleReset = async (accessToken: string) => {
 
     return jsonResponse(200, { success: true })
   } catch (err: any) {
+    // Re-throw HttpError to preserve status codes (401 for invalid tokens)
+    if (err instanceof HttpError) {
+      throw err
+    }
     console.error("[DEBUG] handleReset error:", err)
     return errorResponse(500, err?.message ?? "Failed to reset authenticator", "reset_failed")
   }
@@ -401,7 +448,16 @@ Deno.serve(async (req) => {
   })
 
   const authHeader = req.headers.get("Authorization") ?? ""
-  const accessToken = authHeader.replace("Bearer", "").trim()
+  // Robust token extraction: handle "Bearer <token>" format properly
+  // This prevents bypasses like "BearerBearer" being treated as valid
+  let accessToken = ""
+  if (authHeader.startsWith("Bearer ")) {
+    accessToken = authHeader.slice(7).trim()
+  } else if (authHeader.startsWith("Bearer")) {
+    // Handle malformed "Bearer<token>" (no space) - reject for security
+    console.error("[DEBUG] Malformed Authorization header (missing space after Bearer)")
+    return errorResponse(401, "Invalid Authorization header format", "invalid_authorization")
+  }
 
   if (req.method === "OPTIONS") {
     console.log("[DEBUG] OPTIONS request, returning CORS headers")

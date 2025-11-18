@@ -1,7 +1,7 @@
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
 import { useAuth } from '../contexts/AuthContext'
 import { useRefresh } from '../contexts/RefreshContext'
-import { supabase } from '../lib/supabase'
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card'
 import { LoadingSpinner } from '../components/ui/LoadingSpinner'
 import { Button } from '../components/ui/Button'
@@ -14,119 +14,68 @@ import {
   CheckCircleIcon,
   XMarkIcon,
 } from '@heroicons/react/24/outline'
-import { getPendingMemberships, approveMembership } from '../lib/api/memberships'
 import { canManageOrgSettings, canManageUsers, canAccessAgentPortal } from '../lib/permissions'
 import { toast } from 'react-toastify'
 import { AddAdvisorForm } from '../components/advisors/AddAdvisorForm'
 import { BuildingOfficeIcon } from '@heroicons/react/24/outline'
 import { useNavigate } from 'react-router-dom'
-
-interface DashboardStats {
-  totalProducts: number
-  lowStockItems: number
-  totalValue: number
-  totalInvoices: number
-  finalizedDrafts: number
-}
+import {
+  useDashboardStats,
+  usePendingMemberships,
+  useApproveMembership,
+} from '../hooks/useDashboard'
 
 export function DashboardPage() {
   const { user } = useAuth()
   const navigate = useNavigate()
+  const queryClient = useQueryClient()
   const { registerRefreshHandler, unregisterRefreshHandler } = useRefresh()
-  const [stats, setStats] = useState<DashboardStats | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [pendingMemberships, setPendingMemberships] = useState<any[]>([])
   const [showAddAdvisorForm, setShowAddAdvisorForm] = useState(false)
   const [showTrialBanner, setShowTrialBanner] = useState(false)
 
-  const loadDashboardStats = useCallback(async () => {
-    if (!user || !user.orgId) return
+  // React Query hooks - parallel queries eliminate loading waterfalls
+  const { data: stats, isLoading: statsLoading, error: statsError } = useDashboardStats(user?.orgId)
+  const { data: pendingMemberships = [], isLoading: membershipsLoading } = usePendingMemberships(
+    user?.orgId,
+    canManageOrgSettings(user)
+  )
+  const approveMutation = useApproveMembership()
 
-    try {
-      // Execute all queries in parallel for better performance
-      const [inventoryCountResult, inventoryResult, invoicesCountResult, finalizedDraftsResult] = await Promise.all([
-        supabase
-          .from('inventory')
-          .select('*', { count: 'exact', head: true })
-          .eq('org_id', user.orgId),
-        supabase
-          .from('inventory')
-          .select('quantity, cost_price, selling_price')
-          .eq('org_id', user.orgId),
-        supabase
-          .from('invoices')
-          .select('*', { count: 'exact', head: true })
-          .eq('org_id', user.orgId),
-        supabase
-          .from('invoices')
-          .select('id', { count: 'exact', head: true })
-          .eq('org_id', user.orgId)
-          .eq('status', 'finalized')
-          .not('draft_data', 'is', null)
-      ])
-
-      const inventory = inventoryResult.data || []
-      const lowStockItems = inventory.filter(
-        (item: any) => item.quantity < 10
-      ).length
-
-      const totalValue = inventory.reduce(
-        (sum: number, item: any) => sum + item.quantity * item.selling_price,
-        0
-      )
-
-      setStats({
-        totalProducts: inventoryCountResult.count || 0,
-        lowStockItems,
-        totalValue,
-        totalInvoices: invoicesCountResult.count || 0,
-        finalizedDrafts: finalizedDraftsResult.count || 0,
-      })
-    } catch (error) {
-      console.error('Error loading dashboard stats:', error)
-    } finally {
-      setLoading(false)
+  // Show error toast if stats query fails
+  useEffect(() => {
+    if (statsError) {
+      console.error('Error loading dashboard stats:', statsError)
     }
-  }, [user])
-
-  const loadPendingMemberships = useCallback(async () => {
-    if (!user || !user.orgId || !canManageOrgSettings(user)) return
-
-    try {
-      const pending = await getPendingMemberships(user.orgId!)
-      setPendingMemberships(pending)
-    } catch (error) {
-      console.error('Error loading pending memberships:', error)
-    }
-  }, [user])
+  }, [statsError])
 
   const handleApproveMembership = async (membershipId: string) => {
+    if (!user?.orgId) return
+
     try {
-      await approveMembership(membershipId)
+      // OPTIMISTIC UPDATE: Mutation removes membership from cache immediately
+      await approveMutation.mutateAsync({
+        membershipId,
+        orgId: user.orgId,
+      })
       toast.success('Membership approved successfully')
-      // Reload pending memberships
-      await loadPendingMemberships()
     } catch (error: any) {
+      // Error handling is done by mutation (rollback happens automatically)
       toast.error(error.message || 'Failed to approve membership')
     }
   }
 
-  useEffect(() => {
-    loadDashboardStats()
-    loadPendingMemberships()
-  }, [loadDashboardStats, loadPendingMemberships])
-
-  // Register refresh handler for pull-to-refresh
+  // Register refresh handler for pull-to-refresh using React Query refetch
   useEffect(() => {
     const refreshHandler = async () => {
+      // Refetch all dashboard-related queries in parallel
       await Promise.all([
-        loadDashboardStats(),
-        loadPendingMemberships()
+        queryClient.refetchQueries({ queryKey: ['dashboard-stats', user?.orgId] }),
+        queryClient.refetchQueries({ queryKey: ['pending-memberships', user?.orgId] }),
       ])
     }
     registerRefreshHandler(refreshHandler)
     return () => unregisterRefreshHandler()
-  }, [registerRefreshHandler, unregisterRefreshHandler, loadDashboardStats, loadPendingMemberships])
+  }, [registerRefreshHandler, unregisterRefreshHandler, queryClient, user?.orgId])
 
   // Check if trial banner should be shown
   useEffect(() => {
@@ -145,6 +94,8 @@ export function DashboardPage() {
     localStorage.setItem('ft_trial_banner_seen', 'true')
     setShowTrialBanner(false)
   }
+
+  const loading = statsLoading || membershipsLoading
 
   if (loading) {
     return (
@@ -370,7 +321,7 @@ export function DashboardPage() {
           isOpen={showAddAdvisorForm}
           onClose={() => setShowAddAdvisorForm(false)}
           onSuccess={() => {
-            loadPendingMemberships()
+            // Mutation already invalidates pending-memberships cache
           }}
         />
       )}

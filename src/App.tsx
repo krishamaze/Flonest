@@ -1,6 +1,6 @@
 import { lazy, Suspense, useEffect } from 'react'
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { QueryClient, QueryClientProvider, QueryCache, MutationCache } from '@tanstack/react-query'
 import { ToastContainer } from 'react-toastify'
 import { AuthProvider, useAuth } from './contexts/AuthContext'
 import { VersionCheckProvider } from './contexts/VersionCheckContext'
@@ -295,15 +295,66 @@ function AppRoutes() {
   )
 }
 
-// Create QueryClient instance with sensible defaults
+/**
+ * SECURITY: Global error handler for session failures
+ * Detects 401 errors and session-related failures, triggers silent redirect to login
+ * This ensures consistent security behavior across all React Query operations
+ */
+const handleSessionError = (error: any): boolean => {
+  const status = typeof error?.status === 'number' ? error.status : undefined
+  const code = error?.code as string | undefined
+  const message = error?.message || ''
+  
+  // Detect fatal session errors
+  const isSessionError =
+    status === 401 ||
+    code === 'user_lookup_failed' ||
+    code === 'missing_authorization' ||
+    code === 'invalid_authorization' ||
+    message.includes('Unable to load user from access token') ||
+    message.includes('No active session') ||
+    message.includes('access token')
+  
+  if (isSessionError) {
+    // Silent redirect - no error message, no state exposure
+    // SECURITY: Use window.location for immediate redirect, bypassing React state
+    window.location.href = '/login'
+    return true // Indicate error was handled
+  }
+  
+  return false // Error not handled, let React Query handle it normally
+}
+
+// Create QueryClient instance with sensible defaults and global security handlers
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
       staleTime: 5 * 60 * 1000, // 5 minutes default stale time
-      retry: 1, // Retry once on failure
+      retry: 1, // Retry once on failure (can be overridden per-query)
       refetchOnWindowFocus: false, // Don't refetch on window focus
     },
+    mutations: {
+      retry: false, // Don't retry mutations by default
+    },
   },
+  queryCache: new QueryCache({
+    onError: (error) => {
+      // DEBUG: Log for debugging (console-only, not user-facing)
+      console.error('[QueryCache] Query error:', error)
+      
+      // Handle session errors globally
+      handleSessionError(error)
+    },
+  }),
+  mutationCache: new MutationCache({
+    onError: (error) => {
+      // DEBUG: Log for debugging (console-only, not user-facing)
+      console.error('[MutationCache] Mutation error:', error)
+      
+      // Handle session errors globally
+      handleSessionError(error)
+    },
+  }),
 })
 
 function App() {

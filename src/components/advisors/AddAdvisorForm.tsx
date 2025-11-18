@@ -6,9 +6,8 @@ import { Drawer } from '../ui/Drawer'
 import { Select } from '../ui/Select'
 import { isMobileDevice } from '../../lib/deviceDetection'
 import { useAuth } from '../../contexts/AuthContext'
-import { createAdvisorMembership } from '../../lib/api/memberships'
-import { supabase } from '../../lib/supabase'
 import { toast } from 'react-toastify'
+import { useBranches, useSearchUser, useCreateAdvisorMembership } from '../../hooks/useAdvisors'
 
 interface AddAdvisorFormProps {
   isOpen: boolean
@@ -20,90 +19,57 @@ export function AddAdvisorForm({ isOpen, onClose, onSuccess }: AddAdvisorFormPro
   const { user } = useAuth()
   const [email, setEmail] = useState('')
   const [branchId, setBranchId] = useState<string>('')
-  const [branches, setBranches] = useState<any[]>([])
-  const [loading, setLoading] = useState(false)
-  const [searching, setSearching] = useState(false)
-  const [userFound, setUserFound] = useState<any>(null)
+  const [shouldSearch, setShouldSearch] = useState(false)
 
-  // Load branches when form opens
+  // React Query hooks
+  const { data: branches = [], isLoading: branchesLoading } = useBranches(user?.orgId)
+  const { data: userFound, isLoading: searching, error: searchError } = useSearchUser(
+    shouldSearch ? email : '',
+    user?.orgId
+  )
+  const createMutation = useCreateAdvisorMembership()
+
+  // Set default branch when branches load
   useEffect(() => {
-    if (isOpen && user?.orgId) {
-      loadBranches()
-    }
-  }, [isOpen, user?.orgId])
-
-  const loadBranches = async () => {
-    if (!user?.orgId) return
-
-    try {
-      // Query branches table (using type assertion since types may not be updated yet)
-      const { data, error } = await (supabase as any)
-        .from('branches')
-        .select('*')
-        .eq('org_id', user.orgId)
-        .order('name')
-
-      if (error) throw error
-      setBranches(data || [])
-
-      // If user is branch_head, set their branch as default
-      if (user.role === 'branch_head' && user.branchId) {
+    if (branches.length > 0 && !branchId) {
+      if (user?.role === 'branch_head' && user.branchId) {
         setBranchId(user.branchId)
-      } else if (data && data.length > 0) {
-        // Org owner: set first branch as default
-        setBranchId(data[0].id)
+      } else {
+        setBranchId(branches[0].id)
       }
-    } catch (error) {
-      console.error('Error loading branches:', error)
-      toast.error('Failed to load branches')
     }
-  }
+  }, [branches, branchId, user?.role, user?.branchId])
 
-  const searchUser = async () => {
+  // Reset form when modal closes
+  useEffect(() => {
+    if (!isOpen) {
+      setEmail('')
+      setBranchId('')
+      setShouldSearch(false)
+    }
+  }, [isOpen])
+
+  // Handle search errors
+  useEffect(() => {
+    if (searchError) {
+      if (searchError.message.includes('already has a membership')) {
+        toast.error('User already has a membership in this organization')
+      } else {
+        toast.error(searchError.message || 'Error searching for user')
+      }
+      setShouldSearch(false)
+    } else if (shouldSearch && userFound && !searching) {
+      toast.success('User found!')
+      setShouldSearch(false)
+    }
+  }, [searchError, userFound, searching, shouldSearch])
+
+  const searchUser = () => {
     if (!email.trim()) {
       toast.error('Please enter an email address')
       return
     }
-
-    setSearching(true)
-    try {
-      // Search for user by email in profiles
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('id, email, full_name')
-        .eq('email', email.trim().toLowerCase())
-        .maybeSingle()
-
-      if (error) throw error
-
-      if (!data) {
-        toast.error('User not found. They need to sign up first.')
-        setUserFound(null)
-        return
-      }
-
-      // Check if user already has membership in this org
-      const { data: existingMembership } = await supabase
-        .from('memberships')
-        .select('id')
-        .eq('profile_id', data.id)
-        .eq('org_id', user?.orgId || '')
-        .maybeSingle()
-
-      if (existingMembership) {
-        toast.error('User already has a membership in this organization')
-        setUserFound(null)
-        return
-      }
-
-      setUserFound(data)
-      toast.success('User found!')
-    } catch (error: any) {
-      toast.error(error.message || 'Error searching for user')
-      setUserFound(null)
-    } finally {
-      setSearching(false)
-    }
+    setShouldSearch(true)
   }
 
   const handleSubmit = async (e: FormEvent) => {
@@ -119,28 +85,26 @@ export function AddAdvisorForm({ isOpen, onClose, onSuccess }: AddAdvisorFormPro
       return
     }
 
-    if (!userFound?.id || !branchId) {
-      toast.error('Missing required information')
-      return
-    }
-
-    setLoading(true)
     try {
-      await createAdvisorMembership(userFound.id, branchId, userFound.email || '')
+      // OPTIMISTIC UPDATE: Mutation invalidates pending memberships cache
+      await createMutation.mutateAsync({
+        userId: userFound.id,
+        branchId,
+        email: userFound.email || '',
+      })
       toast.success(
         user?.role === 'org_owner'
           ? 'Advisor added successfully'
           : 'Advisor added and pending approval'
       )
       setEmail('')
-      setUserFound(null)
       setBranchId('')
+      setShouldSearch(false)
       onSuccess?.()
       onClose()
     } catch (error: any) {
+      // Error handling is done by mutation
       toast.error(error.message || 'Failed to add advisor')
-    } finally {
-      setLoading(false)
     }
   }
 
@@ -157,7 +121,7 @@ export function AddAdvisorForm({ isOpen, onClose, onSuccess }: AddAdvisorFormPro
             value={email}
             onChange={(e) => {
               setEmail(e.target.value)
-              setUserFound(null)
+              setShouldSearch(false) // Reset search when email changes
             }}
             placeholder="user@example.com"
             required
@@ -230,13 +194,13 @@ export function AddAdvisorForm({ isOpen, onClose, onSuccess }: AddAdvisorFormPro
         >
           Cancel
         </Button>
-        <Button
-          type="submit"
-          variant="primary"
-          disabled={!userFound || !branchId || loading}
-          isLoading={loading}
-          className="flex-1"
-        >
+          <Button
+            type="submit"
+            variant="primary"
+            disabled={!userFound || !branchId || createMutation.isPending}
+            isLoading={createMutation.isPending}
+            className="flex-1"
+          >
           {user?.role === 'org_owner' ? 'Add Advisor' : 'Request Approval'}
         </Button>
       </div>
