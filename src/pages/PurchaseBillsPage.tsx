@@ -19,20 +19,20 @@ import { getOrgById } from '../lib/api/orgs'
 import { useBillCalculations, type BillItem } from '../hooks/useBillCalculations'
 import { GST_STATE_CODE_MAP } from '../lib/constants/gstStateCodes'
 import type { Product, Org } from '../types'
-import { PlusIcon, TrashIcon } from '@heroicons/react/24/outline'
+import { TrashIcon } from '@heroicons/react/24/outline'
 import { useNavigate } from 'react-router-dom'
 
 export function PurchaseBillsPage() {
   const { user } = useAuth()
   const navigate = useNavigate()
-  const [loading, setLoading] = useState(false)
+  // Removed unused loading state
   const [submitting, setSubmitting] = useState(false)
   const [showProductForm, setShowProductForm] = useState(false)
   const [newProductQuery, setNewProductQuery] = useState('')
   const smartEntryInputRef = useRef<SmartEntryInputRef>(null)
   const [highlightedItemIndex, setHighlightedItemIndex] = useState<number | null>(null)
   const [org, setOrg] = useState<Org | null>(null)
-  const [orgLoading, setOrgLoading] = useState(true)
+  // Removed unused orgLoading state
 
   // Form state
   const [formData, setFormData] = useState<PurchaseBillFormData>({
