@@ -175,10 +175,15 @@ export const useScheduleDowngrade = () => {
 export const useCancelSubscription = () => {
   const queryClient = useQueryClient()
 
+  type SubscriptionContext = {
+    previousSummary?: SubscriptionSummary
+  }
+
   return useMutation<
     any,
     Error,
-    { orgId: string; actorUserId: string }
+    { orgId: string; actorUserId: string },
+    SubscriptionContext
   >({
     mutationFn: ({ orgId, actorUserId }) =>
       cancelSubscriptionAtPeriodEnd(orgId, { actorUserId }),
@@ -203,12 +208,12 @@ export const useCancelSubscription = () => {
 
       return { previousSummary }
     },
-    onError: (error, variables, context) => {
+    onError: (_error, variables, context) => {
       if (context?.previousSummary) {
         queryClient.setQueryData(['subscription-summary', variables.orgId], context.previousSummary)
       }
     },
-    onSettled: (data, error, variables) => {
+    onSettled: (_data, _error, variables) => {
       queryClient.invalidateQueries({ queryKey: ['subscription-summary', variables.orgId] })
     },
   })
@@ -221,10 +226,15 @@ export const useCancelSubscription = () => {
 export const useResumeSubscription = () => {
   const queryClient = useQueryClient()
 
+  type SubscriptionContext = {
+    previousSummary?: SubscriptionSummary
+  }
+
   return useMutation<
     any,
     Error,
-    { orgId: string; actorUserId: string }
+    { orgId: string; actorUserId: string },
+    SubscriptionContext
   >({
     mutationFn: ({ orgId, actorUserId }) =>
       resumeSubscription(orgId, { actorUserId }),
@@ -249,12 +259,12 @@ export const useResumeSubscription = () => {
 
       return { previousSummary }
     },
-    onError: (error, variables, context) => {
+    onError: (_error, variables, context) => {
       if (context?.previousSummary) {
         queryClient.setQueryData(['subscription-summary', variables.orgId], context.previousSummary)
       }
     },
-    onSettled: (data, error, variables) => {
+    onSettled: (_data, _error, variables) => {
       queryClient.invalidateQueries({ queryKey: ['subscription-summary', variables.orgId] })
     },
   })
