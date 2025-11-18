@@ -1,4 +1,5 @@
 import { useEffect, useState, useMemo, useCallback } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { useRefresh } from '../contexts/RefreshContext'
 import { supabase } from '../lib/supabase'
@@ -17,6 +18,7 @@ import { useToastDedupe } from '../hooks/useToastDedupe'
 
 export function InventoryPage() {
   const { user } = useAuth()
+  const navigate = useNavigate()
   const { registerRefreshHandler, unregisterRefreshHandler } = useRefresh()
   const [invoices, setInvoices] = useState<Invoice[]>([])
   const [loading, setLoading] = useState(true)
@@ -288,11 +290,12 @@ export function InventoryPage() {
               )
             }
             
-            // Use regular Card for finalized invoices
+            // Use regular Card for finalized invoices (clickable to view details)
             return (
               <Card
                 key={invoice.id}
-                className={`border shadow-sm ${getStatusColor(invoice.status)}`}
+                className={`border shadow-sm cursor-pointer hover:shadow-md transition-shadow ${getStatusColor(invoice.status)}`}
+                onClick={() => navigate(`/invoices/${invoice.id}`)}
               >
                 <CardContent className="p-4">
                   <div className="flex items-start justify-between gap-4">

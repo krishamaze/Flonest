@@ -1,8 +1,7 @@
 import { supabase } from '../supabase'
 import type { Database } from '../../types/database'
 import type { Invoice, InvoiceItem, InvoiceFormData, Org, CustomerWithMaster } from '../../types'
-import { calculateItemGST, extractStateCodeFromGSTIN, getCustomerStateCode } from '../utils/gstCalculation'
-import { isOrgGstEnabled } from '../utils/orgGst'
+import { calculateTax, createTaxContext, productToLineItem } from '../utils/taxCalculationService'
 import { getProduct } from './products'
 import type { ProductWithMaster } from '../../types'
 import { clearDraftSessionId } from '../utils/draftSession'
@@ -55,7 +54,7 @@ async function generateInvoiceNumber(orgId: string): Promise<string> {
 
 /**
  * Create a new invoice (draft or finalized)
- * Uses per-item GST calculation based on product's gst_rate
+ * Uses new Tax Calculation Service for comprehensive GST handling (SEZ, Intrastate, Interstate)
  */
 export async function createInvoice(
   orgId: string,
@@ -64,94 +63,44 @@ export async function createInvoice(
   org: Org,
   customer: CustomerWithMaster
 ): Promise<Invoice> {
-  // Determine org GST mode (centralized check)
-  const gstEnabled = isOrgGstEnabled(org)
-  
-  // Get seller state code from org GSTIN or state field
-  // Note: Only use gst_number directly for state extraction, not for GST enabled check
-  const sellerStateCode = org.gst_number 
-    ? extractStateCodeFromGSTIN(org.gst_number) 
-    : (org.state ? org.state.slice(0, 2) : null)
+  // Create tax calculation context using new schema fields
+  const taxContext = createTaxContext(org, customer)
 
-  // Get buyer state code with fallback logic
-  const buyerStateCode = sellerStateCode 
-    ? getCustomerStateCode(customer, sellerStateCode) 
-    : null
-
-  // Calculate subtotal
-  const subtotal = data.items.reduce((sum, item) => sum + item.line_total, 0)
-
-  // Initialize tax accumulators
-  let cgst_amount = 0
-  let sgst_amount = 0
-  let igst_amount = 0
-
-  // Calculate GST per item if org has GST enabled
-  if (gstEnabled && sellerStateCode) {
-    // Fetch master product data for each item to get GST rates
-    for (const item of data.items) {
+  // Fetch products and convert to line items for tax calculation
+  const lineItems = await Promise.all(
+    data.items.map(async (item) => {
       try {
-        const product = await getProduct(item.product_id) as ProductWithMaster
+        const product = await getProduct(item.product_id) as ProductWithMaster & {
+          tax_rate?: number | null
+          hsn_sac_code?: string | null
+        }
         
-        // Get master_product_id
-        const masterProductId = product.master_product?.id || product.master_product_id
-
-        if (!masterProductId) {
-          console.warn(`Product ${item.product_id} does not have a master product, skipping GST calculation`)
-          continue
-        }
-
-        // Get GST rate from hsn_master via RPC (preferred method)
-        let productGstRate: number | null = null
-        try {
-          const { data: gstRate, error: gstError } = await supabase.rpc('get_master_product_gst_rate' as any, {
-            p_master_product_id: masterProductId,
-          })
-          
-          if (!gstError && gstRate !== null) {
-            productGstRate = gstRate as number
-          } else {
-            // Fallback to master_product.gst_rate (legacy support)
-            productGstRate = product.master_product?.gst_rate || null
-          }
-        } catch (error) {
-          // Fallback to master_product.gst_rate if RPC fails
-          console.warn(`Failed to get GST rate from hsn_master for product ${item.product_id}, using fallback`)
-          productGstRate = product.master_product?.gst_rate || null
-        }
-
-        // Skip GST calculation if product has no GST rate
-        if (!productGstRate || productGstRate <= 0) {
-          continue
-        }
-
-        // Calculate item GST (GST-inclusive pricing)
-        const itemGst = calculateItemGST(
+        // Use product.tax_rate (org-specific) if available, otherwise fallback to master_product.gst_rate
+        const taxRate = product?.tax_rate ?? product?.master_product?.gst_rate ?? null
+        const hsnSacCode = product?.hsn_sac_code ?? product?.master_product?.hsn_code ?? null
+        
+        return productToLineItem(
           item.line_total,
-          productGstRate,
-          sellerStateCode,
-          buyerStateCode || undefined,
-          true // isGstInclusive = true
+          taxRate,
+          hsnSacCode
         )
-
-        // Accumulate tax amounts (already rounded to 2 decimals per item)
-        cgst_amount += itemGst.cgst_amount
-        sgst_amount += itemGst.sgst_amount
-        igst_amount += itemGst.igst_amount
       } catch (error) {
-        console.error(`Error fetching product ${item.product_id} for GST calculation:`, error)
-        // Continue with other items even if one fails
+        console.error(`Error fetching product ${item.product_id} for tax calculation:`, error)
+        // Return zero-tax line item if product fetch fails
+        return productToLineItem(item.line_total, null, null)
       }
-    }
-  }
+    })
+  )
 
-  // Round aggregated amounts to 2 decimals
-  cgst_amount = Math.round(cgst_amount * 100) / 100
-  sgst_amount = Math.round(sgst_amount * 100) / 100
-  igst_amount = Math.round(igst_amount * 100) / 100
+  // Calculate tax using new service
+  const taxResult = calculateTax(taxContext, lineItems, true) // GST-inclusive pricing
 
-  // Calculate total
-  const total_amount = subtotal + cgst_amount + sgst_amount + igst_amount
+  // Extract tax amounts
+  const subtotal = taxResult.subtotal
+  const cgst_amount = taxResult.cgst_amount
+  const sgst_amount = taxResult.sgst_amount
+  const igst_amount = taxResult.igst_amount
+  const total_amount = taxResult.grand_total
 
   // Generate invoice number if not provided
   const invoice_number = data.invoice_number || await generateInvoiceNumber(orgId)
@@ -400,10 +349,100 @@ export async function finalizeInvoice(invoiceId: string, orgId: string): Promise
     throw new Error(`Failed to finalize invoice: ${updateError.message}`)
   }
 
-  // TODO: Deduct stock from inventory when invoice is finalized
-  // This will be implemented when we integrate with stock_ledger
-
   return updated
+}
+
+/**
+ * Translate RPC error messages to user-friendly guidance
+ * Maps backend error strings to actionable frontend messages
+ */
+function getUserFriendlyError(error: Error | string): string {
+  const message = typeof error === 'string' ? error : error.message
+  const lowerMessage = message.toLowerCase()
+
+  // Workflow enforcement errors
+  if (lowerMessage.includes('must be finalized') || lowerMessage.includes('status "draft"')) {
+    return 'Invoice must be finalized before posting. Please finalize the invoice first.'
+  }
+  if (lowerMessage.includes('already posted')) {
+    return 'Invoice is already posted to inventory.'
+  }
+  if (lowerMessage.includes('cancelled invoice')) {
+    return 'Cannot post cancelled invoice.'
+  }
+
+  // Stock validation errors
+  if (lowerMessage.includes('insufficient stock')) {
+    // Extract product name and quantities if available
+    const match = message.match(/Insufficient stock for product "([^"]+)"\. Available: (\d+), Requested: (\d+)/)
+    if (match) {
+      return `Insufficient stock for "${match[1]}". Available: ${match[2]}, Requested: ${match[3]}. Please reduce quantity or add stock.`
+    }
+    return 'Insufficient stock available. Please reduce quantity or add stock to inventory.'
+  }
+  if (lowerMessage.includes('insufficient serials')) {
+    const match = message.match(/Insufficient serials linked to invoice item for product ([^.]+)\. Linked: (\d+), Required: (\d+)/)
+    if (match) {
+      return `Insufficient serials linked for ${match[1]}. Linked: ${match[2]}, Required: ${match[3]}. Please link more serial numbers.`
+    }
+    return 'Insufficient serial numbers linked. Please link the required serial numbers to the invoice items.'
+  }
+
+  // Product mapping errors
+  if (lowerMessage.includes('no active org product found') || lowerMessage.includes('product mapping not found')) {
+    return 'Product not found in organization inventory. Please verify the product is active and linked correctly.'
+  }
+
+  // General validation errors
+  if (lowerMessage.includes('no items')) {
+    return 'Cannot post invoice with no items. Please add items to the invoice.'
+  }
+  if (lowerMessage.includes('not found') || lowerMessage.includes('access denied')) {
+    return 'Invoice not found or access denied. Please refresh and try again.'
+  }
+
+  // Return original message if no specific mapping found
+  return message
+}
+
+/**
+ * Post a sales invoice to inventory (Finalized → Posted)
+ * Performs atomic stock deduction and serial number updates.
+ * 
+ * WORKFLOW: Only allows 'finalized' → 'posted' transition
+ * ATOMICITY: All operations (stock deduction + status update) succeed or fail together
+ * CONCURRENCY: Row-level locking prevents race conditions
+ */
+export async function postSalesInvoice(
+  invoiceId: string,
+  orgId: string,
+  userId: string
+): Promise<{ success: boolean; invoice_id: string; status: string; stock_entries_created?: number }> {
+  try {
+    // Type assertion needed until database types are regenerated
+    const { data, error } = await (supabase.rpc as any)('post_sales_invoice', {
+      p_invoice_id: invoiceId,
+      p_org_id: orgId,
+      p_user_id: userId
+    })
+
+    if (error) {
+      // Translate database errors to user-friendly messages
+      throw new Error(getUserFriendlyError(error.message))
+    }
+
+    if (!data || !data.success) {
+      throw new Error('Failed to post invoice. Please try again.')
+    }
+
+    return data as { success: boolean; invoice_id: string; status: string; stock_entries_created?: number }
+  } catch (error) {
+    // Re-throw with user-friendly error message
+    if (error instanceof Error) {
+      throw new Error(getUserFriendlyError(error))
+    }
+    throw error
+  }
 }
 
 /**
@@ -459,7 +498,10 @@ export async function getInvoiceById(invoiceId: string): Promise<Invoice & {
         *,
         items:invoice_items(
           *,
-          product:master_products(*)
+          product:products(
+            *,
+            master_product:master_products(*)
+          )
         ),
         customer:customers(
           *,

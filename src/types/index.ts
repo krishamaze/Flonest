@@ -58,6 +58,8 @@ export interface ProductFormData {
   cost_price?: number
   selling_price?: number
   min_stock_level?: number
+  tax_rate?: number | null
+  hsn_sac_code?: string | null
 }
 
 export interface ProductWithStock extends Product {

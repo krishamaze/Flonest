@@ -5,6 +5,8 @@ import { LoadingSpinner } from '../ui/LoadingSpinner'
 import { Input } from '../ui/Input'
 import { Button } from '../ui/Button'
 import { Modal } from '../ui/Modal'
+import { Select } from '../ui/Select'
+import { getGSTSlabOptions, isValidGSTSlab } from '../../lib/constants/gstSlabs'
 import {
   getHSNCodes,
   createHSNCode,
@@ -150,8 +152,8 @@ export function HSNManager() {
     }
 
     const gstRate = parseFloat(formData.gst_rate)
-    if (isNaN(gstRate) || gstRate < 0 || gstRate > 28) {
-      setError('GST rate must be between 0 and 28')
+    if (isNaN(gstRate) || !isValidGSTSlab(gstRate)) {
+      setError('GST rate must be one of the standard slabs: 0%, 5%, 12%, 18%, or 28%')
       return
     }
 
@@ -330,16 +332,13 @@ export function HSNManager() {
             required
           />
 
-          <Input
+          <Select
             label="GST Rate (%)"
-            type="number"
             value={formData.gst_rate}
             onChange={(e) => setFormData({ ...formData, gst_rate: e.target.value })}
-            placeholder="0-28"
-            min="0"
-            max="28"
-            step="0.01"
             required
+            options={getGSTSlabOptions()}
+            placeholder="Select GST rate"
           />
 
           <Input

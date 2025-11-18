@@ -28,6 +28,7 @@ const SetupPage = lazy(() => import('./pages/SetupPage').then(m => ({ default: m
 const DashboardPage = lazy(() => import('./pages/DashboardPage').then(m => ({ default: m.DashboardPage })))
 const ProductsPage = lazy(() => import('./pages/ProductsPage').then(m => ({ default: m.ProductsPage })))
 const InventoryPage = lazy(() => import('./pages/InventoryPage').then(m => ({ default: m.InventoryPage })))
+const InvoiceDetailsPage = lazy(() => import('./pages/InvoiceDetailsPage').then(m => ({ default: m.InvoiceDetailsPage })))
 const StockLedgerPage = lazy(() => import('./pages/StockLedgerPage').then(m => ({ default: m.StockLedgerPage })))
 const CustomersPage = lazy(() => import('./pages/CustomersPage').then(m => ({ default: m.CustomersPage })))
 const PlatformAdminDashboardPage = lazy(() => import('./pages/PlatformAdminDashboardPage').then(m => ({ default: m.PlatformAdminDashboardPage })))
@@ -46,6 +47,8 @@ const AgentCashPage = lazy(() => import('./pages/agent/AgentCashPage').then(m =>
 const AgentCashOversightPage = lazy(() => import('./pages/AgentCashOversightPage').then(m => ({ default: m.AgentCashOversightPage })))
 const PlatformAdminMfaPage = lazy(() => import('./pages/PlatformAdminMfaPage').then(m => ({ default: m.PlatformAdminMfaPage })))
 const JoinOrgPage = lazy(() => import('./pages/JoinOrgPage').then(m => ({ default: m.JoinOrgPage })))
+const PurchaseBillsPage = lazy(() => import('./pages/PurchaseBillsPage').then(m => ({ default: m.PurchaseBillsPage })))
+const PurchaseBillDetailsPage = lazy(() => import('./pages/PurchaseBillDetailsPage').then(m => ({ default: m.PurchaseBillDetailsPage })))
 
 /**
  * Redirect platform admins away from org routes to /platform-admin
@@ -180,6 +183,10 @@ function AppRoutes() {
                 </RoleProtectedRoute>
               } 
             />
+            <Route 
+              path="invoices/:id" 
+              element={<InvoiceDetailsPage />} 
+            />
             <Route path="inventory" element={<InventoryPage />} />
             <Route 
               path="stock-ledger" 
@@ -192,6 +199,8 @@ function AppRoutes() {
             <Route path="customers" element={<CustomersPage />} />
             <Route path="notifications" element={<NotificationsPage />} />
             <Route path="pending-products" element={<PendingProductsPage />} />
+            <Route path="purchase-bills" element={<PurchaseBillsPage />} />
+            <Route path="purchase-bills/:id" element={<PurchaseBillDetailsPage />} />
             <Route path="settings" element={<SettingsPage />} />
             
             {/* Agent Management Routes (Business context - Admin only) */}

@@ -69,13 +69,26 @@ export async function createProduct(orgId: string, data: ProductFormData): Promi
     cost_price: data.cost_price || null,
     selling_price: data.selling_price || null,
     min_stock_level: data.min_stock_level || 0,
+    tax_rate: data.tax_rate ?? null,
+    hsn_sac_code: data.hsn_sac_code ?? null,
     status: 'active',
   }
 
   const { data: product, error } = await supabase
     .from('products')
     .insert([productData])
-    .select()
+    .select(`
+      *,
+      master_product:master_products(
+        id,
+        gst_rate,
+        hsn_code,
+        base_price,
+        name,
+        sku,
+        approval_status
+      )
+    `)
     .single()
 
   if (error) {
@@ -103,6 +116,8 @@ export async function updateProduct(productId: string, data: Partial<ProductForm
     cost_price: data.cost_price !== undefined ? data.cost_price : undefined,
     selling_price: data.selling_price !== undefined ? data.selling_price : undefined,
     min_stock_level: data.min_stock_level !== undefined ? data.min_stock_level : undefined,
+    tax_rate: data.tax_rate !== undefined ? data.tax_rate : undefined,
+    hsn_sac_code: data.hsn_sac_code !== undefined ? data.hsn_sac_code : undefined,
     updated_at: new Date().toISOString(),
   }
 
@@ -117,7 +132,18 @@ export async function updateProduct(productId: string, data: Partial<ProductForm
     .from('products')
     .update(updateData)
     .eq('id', productId)
-    .select()
+    .select(`
+      *,
+      master_product:master_products(
+        id,
+        gst_rate,
+        hsn_code,
+        base_price,
+        name,
+        sku,
+        approval_status
+      )
+    `)
     .single()
 
   if (error) {

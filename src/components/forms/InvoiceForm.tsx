@@ -17,7 +17,7 @@ import { getAllProducts } from '../../lib/api/products'
 import { createInvoice, autoSaveInvoiceDraft, validateInvoiceItems, getDraftInvoiceByCustomer, loadDraftInvoiceData, revalidateDraftInvoice, getInvoiceById, clearDraftSessionId } from '../../lib/api/invoices'
 import { checkSerialStatus } from '../../lib/api/serials'
 import { validateScannerCodes } from '../../lib/api/scanner'
-import { calculateItemGST, extractStateCodeFromGSTIN, getCustomerStateCode } from '../../lib/utils/gstCalculation'
+import { calculateTax, createTaxContext, productToLineItem } from '../../lib/utils/taxCalculationService'
 import { isOrgGstEnabled } from '../../lib/utils/orgGst'
 import { useAutoSave } from '../../hooks/useAutoSave'
 import { ChevronLeftIcon, ChevronRightIcon, PlusIcon, TrashIcon, XCircleIcon, BookmarkIcon } from '@heroicons/react/24/outline'
@@ -849,81 +849,51 @@ export function InvoiceForm({
     }
   }
 
-  // Calculate totals with per-item GST calculation
+  // Calculate totals using new Tax Calculation Service
   const totals = useMemo(() => {
     const subtotal = items.reduce((sum, item) => sum + (item.line_total || 0), 0)
     
-    // Determine org GST mode (centralized check)
-    const gstEnabled = isOrgGstEnabled(org)
-    if (!gstEnabled || !selectedCustomer) {
+    // If no customer selected or no items, return zero tax
+    if (!selectedCustomer || items.length === 0) {
       return {
         subtotal,
         cgst_amount: 0,
         sgst_amount: 0,
         igst_amount: 0,
         total_amount: subtotal,
+        tax_label: '',
+        supply_type: 'exempt' as const,
       }
     }
 
-    // Get seller state code from org GSTIN or state field
-    // Note: Only use gst_number directly for state extraction, not for GST enabled check
-    const sellerStateCode = org.gst_number 
-      ? extractStateCodeFromGSTIN(org.gst_number) 
-      : (org.state ? org.state.slice(0, 2) : null)
+    // Create tax calculation context using new schema fields
+    const taxContext = createTaxContext(org, selectedCustomer)
 
-    if (!sellerStateCode) {
-      return {
-        subtotal,
-        cgst_amount: 0,
-        sgst_amount: 0,
-        igst_amount: 0,
-        total_amount: subtotal,
-      }
-    }
-
-    // Get buyer state code with fallback logic
-    const buyerStateCode = getCustomerStateCode(selectedCustomer, sellerStateCode)
-
-    // Calculate GST per item
-    let cgst_amount = 0
-    let sgst_amount = 0
-    let igst_amount = 0
-
-    for (const item of items) {
+    // Convert items to line items format for tax calculation
+    const lineItems = items.map(item => {
       const product = products.find((p) => p.id === item.product_id) as ProductWithMaster | undefined
-      const productGstRate = product?.master_product?.gst_rate
-
-      if (!productGstRate || productGstRate <= 0) {
-        continue
-      }
-
-      // Calculate item GST (GST-inclusive pricing)
-      const itemGst = calculateItemGST(
+      // Use product.tax_rate (org-specific) if available, otherwise fallback to master_product.gst_rate
+      const taxRate = product?.tax_rate ?? product?.master_product?.gst_rate ?? null
+      const hsnSacCode = product?.hsn_sac_code ?? product?.master_product?.hsn_code ?? null
+      
+      return productToLineItem(
         item.line_total,
-        productGstRate,
-        sellerStateCode,
-        buyerStateCode || undefined,
-        true // isGstInclusive = true
+        taxRate,
+        hsnSacCode
       )
+    })
 
-      cgst_amount += itemGst.cgst_amount
-      sgst_amount += itemGst.sgst_amount
-      igst_amount += itemGst.igst_amount
-    }
-
-    // Round aggregated amounts
-    cgst_amount = Math.round(cgst_amount * 100) / 100
-    sgst_amount = Math.round(sgst_amount * 100) / 100
-    igst_amount = Math.round(igst_amount * 100) / 100
-
-    const total_amount = subtotal + cgst_amount + sgst_amount + igst_amount
+    // Calculate tax using new service
+    const taxResult = calculateTax(taxContext, lineItems, true) // GST-inclusive pricing
 
     return {
-      subtotal,
-      cgst_amount,
-      sgst_amount,
-      igst_amount,
-      total_amount,
+      subtotal: taxResult.subtotal,
+      cgst_amount: taxResult.cgst_amount,
+      sgst_amount: taxResult.sgst_amount,
+      igst_amount: taxResult.igst_amount,
+      total_amount: taxResult.grand_total,
+      tax_label: taxResult.tax_label,
+      supply_type: taxResult.supply_type,
     }
   }, [items, org, selectedCustomer, products])
 
@@ -1645,7 +1615,14 @@ export function InvoiceForm({
                 <span className="text-secondary-text">Subtotal</span>
                 <span className="font-medium text-primary-text">${totals.subtotal.toFixed(2)}</span>
               </div>
-              {isOrgGstEnabled(org) && (
+              {/* Tax Label - Display supply type information */}
+              {totals.tax_label && (
+                <div className="text-xs text-secondary-text italic py-xs">
+                  {totals.tax_label}
+                </div>
+              )}
+              {/* Tax Breakdown */}
+              {(totals.cgst_amount > 0 || totals.sgst_amount > 0 || totals.igst_amount > 0) && (
                 <>
                   {totals.cgst_amount > 0 && (
                     <div className="flex justify-between text-sm">
@@ -1666,6 +1643,14 @@ export function InvoiceForm({
                     </div>
                   )}
                 </>
+              )}
+              {/* Zero-rated or Exempt indicator */}
+              {(totals.supply_type === 'zero_rated' || totals.supply_type === 'exempt') && totals.cgst_amount === 0 && totals.sgst_amount === 0 && totals.igst_amount === 0 && (
+                <div className="text-xs text-secondary-text py-xs">
+                  {totals.supply_type === 'zero_rated' 
+                    ? 'Zero-Rated Supply - No Tax Applicable'
+                    : 'Exempt Supply - No Tax Applicable'}
+                </div>
               )}
               <div className="flex justify-between text-lg font-semibold pt-sm border-t border-neutral-200">
                 <span className="text-primary-text">Total</span>

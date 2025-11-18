@@ -26,7 +26,6 @@ alwaysApply: true
 **Communication:**
 - Keep replies concise and confident
 - Speak collaboratively, not dictatorially
-- No code or SQL generation [Advisory/review role only]
 
 **Learning System:**
 Extract lessons from all execution errors:

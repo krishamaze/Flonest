@@ -4,24 +4,27 @@ import { Textarea } from '../ui/Textarea'
 import { Button } from '../ui/Button'
 import { Modal } from '../ui/Modal'
 import { Drawer } from '../ui/Drawer'
+import { Select } from '../ui/Select'
 import { isMobileDevice } from '../../lib/deviceDetection'
 import type { ProductFormData, Product } from '../../types'
 import { searchMasterProducts } from '../../lib/api/master-products'
 import { createProductFromMaster } from '../../lib/api/products'
 import type { MasterProduct } from '../../lib/api/master-products'
 import { MagnifyingGlassIcon } from '@heroicons/react/24/outline'
+import { getGSTSlabOptions, isValidGSTSlab } from '../../lib/constants/gstSlabs'
 
 interface ProductFormProps {
   isOpen: boolean
   onClose: () => void
-  onSubmit: (data: ProductFormData) => Promise<void>
+  onSubmit: (data: ProductFormData) => Promise<Product | void>
   product?: Product | null
   title?: string
   orgId?: string
   userId?: string
+  prefillQuery?: string // Pre-fill SKU/EAN from unknown entry
 }
 
-export function ProductForm({ isOpen, onClose, onSubmit, product, title, orgId, userId }: ProductFormProps) {
+export function ProductForm({ isOpen, onClose, onSubmit, product, title, orgId, userId, prefillQuery }: ProductFormProps) {
   const [sourceType, setSourceType] = useState<'master' | 'new'>('master')
   const [masterSearchQuery, setMasterSearchQuery] = useState('')
   const [masterSearchResults, setMasterSearchResults] = useState<MasterProduct[]>([])
@@ -33,15 +36,31 @@ export function ProductForm({ isOpen, onClose, onSubmit, product, title, orgId, 
 
   const [formData, setFormData] = useState<ProductFormData>({
     name: product?.name || '',
-    sku: product?.sku || '',
-    ean: product?.ean || '',
+    sku: product?.sku || (prefillQuery || ''),
+    ean: product?.ean || (prefillQuery || ''),
     description: product?.description || '',
     category: product?.category || '',
     unit: product?.unit || 'pcs',
     cost_price: product?.cost_price || undefined,
     selling_price: product?.selling_price || undefined,
     min_stock_level: product?.min_stock_level || 0,
+    tax_rate: product?.tax_rate ?? null,
+    hsn_sac_code: product?.hsn_sac_code ?? null,
   })
+
+  // Update form when prefillQuery changes (for unknown entry flow)
+  useEffect(() => {
+    if (prefillQuery && !product && isOpen) {
+      // Pre-fill SKU/EAN with the unknown query
+      // Try to detect if it's likely a barcode (longer) or SKU (shorter)
+      const isLikelyBarcode = prefillQuery.length >= 8
+      setFormData(prev => ({
+        ...prev,
+        sku: isLikelyBarcode ? prev.sku : prefillQuery,
+        ean: isLikelyBarcode ? prefillQuery : prev.ean,
+      }))
+    }
+  }, [prefillQuery, product, isOpen])
 
   // Search master products with debounce
   const searchMaster = useCallback(async (query: string) => {
@@ -100,6 +119,8 @@ export function ProductForm({ isOpen, onClose, onSubmit, product, title, orgId, 
       cost_price: undefined,
       selling_price: masterProduct.base_price || undefined,
       min_stock_level: 0,
+      tax_rate: null, // Org-specific override (defaults to master)
+      hsn_sac_code: null, // Org-specific override (defaults to master)
     })
   }
 
@@ -116,6 +137,8 @@ export function ProductForm({ isOpen, onClose, onSubmit, product, title, orgId, 
         cost_price: product.cost_price || undefined,
         selling_price: product.selling_price || undefined,
         min_stock_level: product.min_stock_level || 0,
+        tax_rate: product.tax_rate ?? null,
+        hsn_sac_code: product.hsn_sac_code ?? null,
       })
       setSourceType('new') // Edit mode always uses 'new'
       setSelectedMasterProduct(null)
@@ -131,6 +154,8 @@ export function ProductForm({ isOpen, onClose, onSubmit, product, title, orgId, 
         cost_price: undefined,
         selling_price: undefined,
         min_stock_level: 0,
+        tax_rate: null,
+        hsn_sac_code: null,
       })
       setSourceType('master') // Default to master search
       setSelectedMasterProduct(null)
@@ -171,6 +196,13 @@ export function ProductForm({ isOpen, onClose, onSubmit, product, title, orgId, 
       newErrors.min_stock_level = 'Minimum stock level cannot be negative'
     }
 
+    // Validate tax_rate if provided (must be valid GST slab)
+    if (formData.tax_rate !== null && formData.tax_rate !== undefined) {
+      if (!isValidGSTSlab(formData.tax_rate)) {
+        newErrors.tax_rate = 'Tax rate must be one of the standard GST slabs: 0%, 5%, 12%, 18%, or 28%'
+      }
+    }
+
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors)
       return
@@ -178,9 +210,11 @@ export function ProductForm({ isOpen, onClose, onSubmit, product, title, orgId, 
 
     setIsSubmitting(true)
     try {
+      let createdProduct: Product | undefined
+      
       // If creating from master product, use createProductFromMaster
       if (canUseMaster && sourceType === 'master' && selectedMasterProduct && orgId) {
-        await createProductFromMaster(orgId, {
+        createdProduct = await createProductFromMaster(orgId, {
           master_product_id: selectedMasterProduct.id,
           alias_name: formData.name !== selectedMasterProduct.name ? formData.name : undefined,
           unit: formData.unit !== selectedMasterProduct.base_unit ? formData.unit : undefined,
@@ -191,13 +225,33 @@ export function ProductForm({ isOpen, onClose, onSubmit, product, title, orgId, 
           barcode_ean: formData.ean !== selectedMasterProduct.barcode_ean ? formData.ean : undefined,
           category: formData.category !== selectedMasterProduct.category ? formData.category : undefined,
         }, userId)
+        
+        // Also call parent's onSubmit with the created product data so parent can handle it
+        // This ensures the parent (PurchaseBillsPage) can add it to the bill
+        if (createdProduct) {
+          await onSubmit({
+            name: createdProduct.name,
+            sku: createdProduct.sku,
+            ean: createdProduct.ean || '',
+            description: createdProduct.description || '',
+            category: createdProduct.category || '',
+            unit: createdProduct.unit,
+            cost_price: createdProduct.cost_price || undefined,
+            selling_price: createdProduct.selling_price || undefined,
+            min_stock_level: createdProduct.min_stock_level,
+            tax_rate: createdProduct.tax_rate ?? null,
+            hsn_sac_code: createdProduct.hsn_sac_code ?? null,
+          })
+        }
       } else {
-        // Use regular create/update flow
-        await onSubmit(formData)
+        // Use regular create/update flow - onSubmit may return Product
+        const result = await onSubmit(formData)
+        if (result) {
+          createdProduct = result as Product
+        }
       }
       
-      onClose()
-      // Reset form
+      // Reset form before closing
       setFormData({
         name: '',
         sku: '',
@@ -208,11 +262,18 @@ export function ProductForm({ isOpen, onClose, onSubmit, product, title, orgId, 
         cost_price: undefined,
         selling_price: undefined,
         min_stock_level: 0,
+        tax_rate: null,
+        hsn_sac_code: null,
       })
       setSelectedMasterProduct(null)
       setSourceType('master')
       setMasterSearchQuery('')
       setMasterSearchResults([])
+      
+      onClose()
+      
+      // Return created product for parent to use (if needed)
+      return createdProduct
     } catch (error) {
       console.error('Error submitting product form:', error)
       // Handle error (could show toast notification)
@@ -254,6 +315,8 @@ export function ProductForm({ isOpen, onClose, onSubmit, product, title, orgId, 
                   cost_price: undefined,
                   selling_price: undefined,
                   min_stock_level: 0,
+                  tax_rate: null,
+                  hsn_sac_code: null,
                 })
               }}
               className={`flex-1 rounded-md px-md py-sm min-h-[44px] text-sm font-medium transition-colors ${
@@ -281,6 +344,8 @@ export function ProductForm({ isOpen, onClose, onSubmit, product, title, orgId, 
                   cost_price: undefined,
                   selling_price: undefined,
                   min_stock_level: 0,
+                  tax_rate: null,
+                  hsn_sac_code: null,
                 })
               }}
               className={`flex-1 rounded-md px-md py-sm min-h-[44px] text-sm font-medium transition-colors ${
@@ -477,6 +542,49 @@ export function ProductForm({ isOpen, onClose, onSubmit, product, title, orgId, 
           error={errors.min_stock_level}
           disabled={isSubmitting}
         />
+      </div>
+
+      {/* Tax & HSN/SAC Group */}
+      <div className="space-y-4">
+        <h3 className="text-sm font-semibold text-primary-text border-b border-neutral-200 pb-sm">Tax & Classification</h3>
+        
+        <div className="grid grid-cols-2 gap-4">
+          <Select
+            label="Tax Rate (%)"
+            value={formData.tax_rate?.toString() || ''}
+            onChange={(e) =>
+              setFormData({
+                ...formData,
+                tax_rate: e.target.value ? parseFloat(e.target.value) : null,
+              })
+            }
+            error={errors.tax_rate}
+            disabled={isSubmitting}
+            options={[
+              { value: '', label: 'Use Master Default' },
+              ...getGSTSlabOptions(),
+            ]}
+            placeholder="Select tax rate (optional)"
+          />
+
+          <Input
+            label="HSN/SAC Code"
+            value={formData.hsn_sac_code || ''}
+            onChange={(e) =>
+              setFormData({
+                ...formData,
+                hsn_sac_code: e.target.value.trim() || null,
+              })
+            }
+            error={errors.hsn_sac_code}
+            disabled={isSubmitting}
+            placeholder="Optional (uses master default if empty)"
+            type="text"
+          />
+        </div>
+        <p className="text-xs text-muted-text -mt-sm">
+          Leave empty to use master product defaults. Set org-specific values to override.
+        </p>
       </div>
 
       <div className="flex justify-end gap-3 pt-4">

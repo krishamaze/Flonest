@@ -15,7 +15,7 @@
     "supabase:db:diff": "npx supabase db diff --linked",
     "supabase:db:push": "npx supabase db push --linked --yes",
     "supabase:db:reset": "npx supabase db reset --linked",
-    "supabase:types": "npx supabase gen types typescript --linked > src/types/database.ts",
+    "supabase:types": "node scripts/generate-types.cjs",
     "supabase:migration:new": "npx supabase migration new",
     "db:migrate": "npm run supabase:db:push",
     "db:types": "npm run supabase:types",

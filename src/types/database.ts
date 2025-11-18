@@ -375,11 +375,14 @@ export type Database = {
           billing_address: string | null
           created_at: string | null
           created_by: string | null
+          gst_number: string | null
           id: string
           master_customer_id: string
           notes: string | null
           org_id: string
           shipping_address: string | null
+          state_code: string | null
+          tax_status: "registered_regular" | "registered_composition" | "sez_unit" | "sez_developer" | "unregistered" | "consumer" | null
           updated_at: string | null
         }
         Insert: {
@@ -387,11 +390,14 @@ export type Database = {
           billing_address?: string | null
           created_at?: string | null
           created_by?: string | null
+          gst_number?: string | null
           id?: string
           master_customer_id: string
           notes?: string | null
           org_id: string
           shipping_address?: string | null
+          state_code?: string | null
+          tax_status?: "registered_regular" | "registered_composition" | "sez_unit" | "sez_developer" | "unregistered" | "consumer" | null
           updated_at?: string | null
         }
         Update: {
@@ -399,11 +405,14 @@ export type Database = {
           billing_address?: string | null
           created_at?: string | null
           created_by?: string | null
+          gst_number?: string | null
           id?: string
           master_customer_id?: string
           notes?: string | null
           org_id?: string
           shipping_address?: string | null
+          state_code?: string | null
+          tax_status?: "registered_regular" | "registered_composition" | "sez_unit" | "sez_developer" | "unregistered" | "consumer" | null
           updated_at?: string | null
         }
         Relationships: [
