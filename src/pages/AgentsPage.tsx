@@ -25,6 +25,7 @@ import {
   useAgentHelpers,
   useRevokeHelperPermission,
   type AgentListItem,
+  type AgentHelper,
 } from '../hooks/useAgents'
 
 export function AgentsPage() {
@@ -430,7 +431,7 @@ function ManageHelpersModal({
   agentUserId: string
 }) {
   // React Query hooks
-  const { data: helpers = [], isLoading: loading } = useAgentHelpers(isOpen ? relationshipId : null)
+  const { data: helpers = [] as AgentHelper[], isLoading: loading } = useAgentHelpers(isOpen ? relationshipId : null)
   const revokePermissionMutation = useRevokeHelperPermission()
 
   // TODO: Implement helper grant functionality

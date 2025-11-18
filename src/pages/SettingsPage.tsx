@@ -27,7 +27,6 @@ import {
   useUpdateOrgSettings,
   useUploadOrgLogo,
   useRemoveOrgLogo,
-  type OrgSettings,
 } from '../hooks/useOrgSettings'
 import {
   useSubscriptionSummary,
