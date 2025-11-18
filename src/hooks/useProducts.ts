@@ -94,7 +94,12 @@ export const useProductsWithStock = (
 export const useCreateProduct = () => {
   const queryClient = useQueryClient()
 
-  return useMutation<Product, Error, { orgId: string; data: Parameters<typeof createProduct>[1] }>({
+  type ProductsContext = {
+    previousProducts?: { pages: { data: Product[]; total: number }[] }
+    previousProductsWithStock?: ProductWithStock[]
+  }
+
+  return useMutation<Product, Error, { orgId: string; data: Parameters<typeof createProduct>[1] }, ProductsContext>({
     mutationFn: async ({ orgId, data }) => {
       return createProduct(orgId, data)
     },
@@ -156,7 +161,7 @@ export const useCreateProduct = () => {
       return { previousProducts, previousProductsWithStock }
     },
     // On error, rollback to previous values
-    onError: (error, variables, context) => {
+    onError: (_error, variables, context) => {
       if (context?.previousProducts) {
         queryClient.setQueryData(['products', variables.orgId], context.previousProducts)
       }
@@ -165,7 +170,7 @@ export const useCreateProduct = () => {
       }
     },
     // On success, invalidate to refetch fresh data
-    onSuccess: (data, variables) => {
+    onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: ['products', variables.orgId] })
       queryClient.invalidateQueries({ queryKey: ['products-with-stock', variables.orgId] })
     },
@@ -179,7 +184,12 @@ export const useCreateProduct = () => {
 export const useUpdateProduct = () => {
   const queryClient = useQueryClient()
 
-  return useMutation<Product, Error, { productId: string; orgId: string; data: Parameters<typeof updateProduct>[1] }>({
+  type ProductsContext = {
+    previousProducts?: { pages: { data: Product[]; total: number }[] }
+    previousProductsWithStock?: ProductWithStock[]
+  }
+
+  return useMutation<Product, Error, { productId: string; orgId: string; data: Parameters<typeof updateProduct>[1] }, ProductsContext>({
     mutationFn: async ({ productId, data }) => {
       return updateProduct(productId, data)
     },
@@ -211,7 +221,7 @@ export const useUpdateProduct = () => {
       return { previousProducts, previousProductsWithStock }
     },
     // On error, rollback
-    onError: (error, variables, context) => {
+    onError: (_error, variables, context) => {
       if (context?.previousProducts) {
         queryClient.setQueryData(['products', variables.orgId], context.previousProducts)
       }
@@ -220,7 +230,7 @@ export const useUpdateProduct = () => {
       }
     },
     // On success, invalidate to refetch
-    onSuccess: (data, variables) => {
+    onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: ['products', variables.orgId] })
       queryClient.invalidateQueries({ queryKey: ['products-with-stock', variables.orgId] })
     },
@@ -234,7 +244,12 @@ export const useUpdateProduct = () => {
 export const useDeleteProduct = () => {
   const queryClient = useQueryClient()
 
-  return useMutation<void, Error, { productId: string; orgId: string }>({
+  type ProductsContext = {
+    previousProducts?: { pages: { data: Product[]; total: number }[] }
+    previousProductsWithStock?: ProductWithStock[]
+  }
+
+  return useMutation<void, Error, { productId: string; orgId: string }, ProductsContext>({
     mutationFn: async ({ productId }) => {
       return deleteProduct(productId)
     },
@@ -267,7 +282,7 @@ export const useDeleteProduct = () => {
       return { previousProducts, previousProductsWithStock }
     },
     // On error, rollback
-    onError: (error, variables, context) => {
+    onError: (_error, variables, context) => {
       if (context?.previousProducts) {
         queryClient.setQueryData(['products', variables.orgId], context.previousProducts)
       }
@@ -276,7 +291,7 @@ export const useDeleteProduct = () => {
       }
     },
     // On success, invalidate to refetch
-    onSuccess: (data, variables) => {
+    onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: ['products', variables.orgId] })
       queryClient.invalidateQueries({ queryKey: ['products-with-stock', variables.orgId] })
     },
