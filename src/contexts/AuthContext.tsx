@@ -17,6 +17,7 @@ import { useSessionQuery, useAuthDataQuery, useAdminMfaRequirementQuery, useInva
 import type { AuthUser } from '../types'
 import {
   saveAgentContextMode,
+  type AgentContextInfo,
 } from '../lib/agentContext'
 
 type OrgContextSummary = OrgMembershipSummary | null

@@ -95,13 +95,13 @@ export const useCreateAgent = () => {
       return { previousAgents }
     },
     // On error, rollback
-    onError: (error, variables, context) => {
+    onError: (_error, variables, context) => {
       if (context?.previousAgents) {
         queryClient.setQueryData(['agents', variables.senderOrgId], context.previousAgents)
       }
     },
     // On success, invalidate to refetch with full data
-    onSuccess: (data, variables) => {
+    onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: ['agents', variables.senderOrgId] })
     },
   })
@@ -137,12 +137,12 @@ export const useRevokeAgent = () => {
 
       return { previousAgents }
     },
-    onError: (error, variables, context) => {
+    onError: (_error, variables, context) => {
       if (context?.previousAgents) {
         queryClient.setQueryData(['agents', variables.orgId], context.previousAgents)
       }
     },
-    onSettled: (data, error, variables) => {
+    onSettled: (_data, _error, variables) => {
       queryClient.invalidateQueries({ queryKey: ['agents', variables.orgId] })
     },
   })
@@ -178,12 +178,12 @@ export const useReactivateAgent = () => {
 
       return { previousAgents }
     },
-    onError: (error, variables, context) => {
+    onError: (_error, variables, context) => {
       if (context?.previousAgents) {
         queryClient.setQueryData(['agents', variables.orgId], context.previousAgents)
       }
     },
-    onSettled: (data, error, variables) => {
+    onSettled: (_data, _error, variables) => {
       queryClient.invalidateQueries({ queryKey: ['agents', variables.orgId] })
     },
   })
