@@ -23,7 +23,7 @@ export function Header() {
           <div className="flex h-8 w-8 items-center justify-center rounded-md bg-white shadow-sm p-1">
             <img
               src="/pwa-192x192.png"
-              alt="finetune"
+              alt="FineTune logo"
               className="h-full w-full object-contain"
             />
           </div>

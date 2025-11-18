@@ -10,10 +10,18 @@ import type { RefreshStatus } from '../contexts/RefreshContext'
 
 type AuthView = 'sign_in' | 'sign_up' | 'forgot_password'
 
+const resolveViewParam = (value: string | null): AuthView | null => {
+  if (value === 'sign_in' || value === 'sign_up' || value === 'forgot_password') {
+    return value
+  }
+  return null
+}
+
 export function LoginPage() {
   const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
-  const [view, setView] = useState<AuthView>('sign_in')
+  const initialViewParam = resolveViewParam(searchParams.get('view'))
+  const [view, setView] = useState<AuthView>(initialViewParam ?? 'sign_in')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
@@ -34,6 +42,16 @@ export function LoginPage() {
       setSearchParams({}, { replace: true }) // Clear params
     }
   }, [searchParams, setSearchParams])
+
+  // Handle view parameter from URL (e.g., /login?view=sign_up)
+  useEffect(() => {
+    const requestedView = resolveViewParam(searchParams.get('view'))
+    if (requestedView && requestedView !== view) {
+      setView(requestedView)
+      setError(null)
+      setMessage(null)
+    }
+  }, [searchParams])
 
   const handleRefresh = async (onStatusChange?: (status: RefreshStatus) => void) => {
     onStatusChange?.({ 
@@ -166,17 +184,14 @@ export function LoginPage() {
                 className="w-full h-full object-contain"
               />
             </div>
-            <h1 className="text-3xl font-bold text-primary-text mb-xs">
-              {view === 'sign_up' ? 'Create Account' : view === 'forgot_password' ? 'Reset Password' : 'Welcome Back'}
-            </h1>
+            <h1 className="text-3xl font-bold text-primary-text mb-xs">FineTune WorkHub</h1>
             <p className="text-base text-secondary-text">
               {view === 'sign_up' 
-                ? 'Sign up to start managing your inventory' 
+                ? 'Sign up to start managing your operations' 
                 : view === 'forgot_password' 
                 ? 'Enter your email to reset your password'
                 : 'Sign in to your account'}
             </p>
-          </div>
 
           {/* Auth Form Card */}
           <div className="rounded-lg bg-bg-card p-xl shadow-md border border-color space-y-md">

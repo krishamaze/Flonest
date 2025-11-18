@@ -300,7 +300,7 @@ const queryClient = new QueryClient({
 function App() {
   // Log version on mount for debugging
   useEffect(() => {
-    console.log(`FineTune Store v${FRONTEND_VERSION} [Service Worker Auto-Update]`)
+    console.log(`FineTune WorkHub v${FRONTEND_VERSION} [Service Worker Auto-Update]`)
   }, [])
 
   return (

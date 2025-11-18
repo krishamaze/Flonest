@@ -11,9 +11,9 @@ export default defineConfig({
       registerType: 'prompt',
       includeAssets: ['favicon.ico'],
       manifest: {
-        name: 'FineTune Store',
-        short_name: 'FineTune',
-        description: 'Smart inventory and invoice management for your business',
+        name: 'FineTune WorkHub',
+        short_name: 'WorkHub',
+        description: 'Digital Infrastructure for Modern Business',
         theme_color: '#E2C33D',
         background_color: '#FFFFFF',
         display: 'standalone',
