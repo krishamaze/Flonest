@@ -118,7 +118,7 @@ export const usePendingMemberships = (orgId: string | null | undefined, enabled:
 export const useApproveMembership = () => {
   const queryClient = useQueryClient()
 
-  return useMutation<void, Error, { membershipId: string; orgId: string }>({
+  return useMutation<void, Error, { membershipId: string; orgId: string }, { previousMemberships?: PendingMembership[] }>({
     mutationFn: ({ membershipId }) => approveMembership(membershipId),
     // OPTIMISTIC UPDATE: Remove membership from cache immediately
     // SECURITY: Backend RPC re-validates permissions - if unauthorized, error triggers rollback
@@ -135,13 +135,13 @@ export const useApproveMembership = () => {
 
       return { previousMemberships }
     },
-    onError: (error, variables, context) => {
+    onError: (_error, variables, context) => {
       // SECURITY: Rollback on error - backend rejected unauthorized attempt
       if (context?.previousMemberships) {
         queryClient.setQueryData(['pending-memberships', variables.orgId], context.previousMemberships)
       }
     },
-    onSettled: (data, error, variables) => {
+    onSettled: (_data, _error, variables) => {
       queryClient.invalidateQueries({ queryKey: ['pending-memberships', variables.orgId] })
     },
   })

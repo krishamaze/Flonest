@@ -84,7 +84,8 @@ export const useCreateAgent = () => {
   return useMutation<
     AgentRelationship,
     Error,
-    { senderOrgId: string; agentUserId: string; invitedBy: string; notes?: string }
+    { senderOrgId: string; agentUserId: string; invitedBy: string; notes?: string },
+    { previousAgents?: AgentListItem[] }
   >({
     mutationFn: ({ senderOrgId, agentUserId, invitedBy, notes }) =>
       createAgentRelationship(senderOrgId, agentUserId, invitedBy, notes),
@@ -114,7 +115,7 @@ export const useCreateAgent = () => {
 export const useRevokeAgent = () => {
   const queryClient = useQueryClient()
 
-  return useMutation<void, Error, { relationshipId: string; orgId: string }>({
+  return useMutation<void, Error, { relationshipId: string; orgId: string }, { previousAgents?: AgentListItem[] }>({
     mutationFn: ({ relationshipId }) => revokeAgentRelationship(relationshipId),
     // OPTIMISTIC UPDATE: Update status immediately
     onMutate: async ({ relationshipId, orgId }): Promise<{ previousAgents?: AgentListItem[] }> => {
@@ -155,7 +156,7 @@ export const useRevokeAgent = () => {
 export const useReactivateAgent = () => {
   const queryClient = useQueryClient()
 
-  return useMutation<void, Error, { relationshipId: string; orgId: string }>({
+  return useMutation<void, Error, { relationshipId: string; orgId: string }, { previousAgents?: AgentListItem[] }>({
     mutationFn: ({ relationshipId }) => reactivateAgentRelationship(relationshipId),
     // OPTIMISTIC UPDATE: Update status immediately
     onMutate: async ({ relationshipId, orgId }): Promise<{ previousAgents?: AgentListItem[] }> => {
@@ -209,7 +210,7 @@ export const useAgentHelpers = (relationshipId: string | null | undefined) => {
 export const useRevokeHelperPermission = () => {
   const queryClient = useQueryClient()
 
-  return useMutation<void, Error, { permissionId: string; relationshipId: string }>({
+  return useMutation<void, Error, { permissionId: string; relationshipId: string }, { previousHelpers?: AgentHelper[] }>({
     mutationFn: ({ permissionId }) => revokePortalPermission(permissionId),
     // OPTIMISTIC UPDATE: Remove helper immediately
     onMutate: async ({ permissionId, relationshipId }): Promise<{ previousHelpers?: AgentHelper[] }> => {
@@ -225,7 +226,7 @@ export const useRevokeHelperPermission = () => {
 
       return { previousHelpers }
     },
-    onError: (error, variables, context) => {
+    onError: (_error, variables, context) => {
       if (context?.previousHelpers) {
         queryClient.setQueryData(['agent-helpers', variables.relationshipId], context.previousHelpers)
       }
