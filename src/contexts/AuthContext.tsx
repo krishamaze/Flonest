@@ -168,7 +168,7 @@ function persistOrgId(orgId: string | null) {
 const persistServerOrgContext = async (orgId: string | null) => {
   try {
     const { error } = await supabase.rpc('set_current_org_context', {
-      p_org_id: orgId,
+      p_org_id: orgId ?? undefined,
     })
     if (error) {
       console.error('[Auth] Failed to persist org context server-side:', error)

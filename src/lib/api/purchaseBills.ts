@@ -6,9 +6,7 @@ import { getOrgById } from './orgs'
 
 type PurchaseBill = Database['public']['Tables']['purchase_bills']['Row']
 type PurchaseBillItem = Database['public']['Tables']['purchase_bill_items']['Row']
-type PurchaseBillInsert = Database['public']['Tables']['purchase_bills']['Insert']
 type PurchaseBillItemInsert = Database['public']['Tables']['purchase_bill_items']['Insert']
-type StockLedgerInsert = Database['public']['Tables']['stock_ledger']['Insert']
 
 export interface PurchaseBillFormData {
   bill_number: string
@@ -255,7 +253,7 @@ export async function approvePurchaseBill(
   userId: string
 ): Promise<PurchaseBillWithItems> {
   // Use RPC function for atomic HSN validation and approval
-  const { data: result, error: rpcError } = await supabase.rpc(
+  const { error: rpcError } = await supabase.rpc(
     'approve_purchase_bill_with_hsn_validation',
     {
       p_bill_id: billId,
@@ -398,7 +396,7 @@ export async function postPurchaseBill(
   userId: string
 ): Promise<PurchaseBillWithItems> {
   // Use RPC function for true atomic transaction
-  const { data: result, error: rpcError } = await supabase.rpc(
+  const { error: rpcError } = await supabase.rpc(
     'post_purchase_bill',
     {
       p_bill_id: billId,

@@ -91,7 +91,7 @@ export async function resolveEntry(
         type: 'SERIAL_FOUND',
         data: {
           found: serialData.found,
-          lookup_type: serialData.lookup_type,
+          lookup_type: serialData.lookup_type as 'serial_number',
           product_id: serialData.product_id,
           product_name: serialData.product_name || '',
           product_sku: serialData.product_sku || '',
@@ -131,7 +131,7 @@ export async function resolveEntry(
         type: 'PRODUCT_FOUND',
         data: {
           found: productData.found,
-          lookup_type: productData.lookup_type,
+          lookup_type: productData.lookup_type as 'product_code',
           product_id: productData.product_id,
           master_product_id: productData.master_product_id,
           product_name: productData.product_name || '',
@@ -222,6 +222,10 @@ export async function getMasterCategories(): Promise<
     throw new Error(`Failed to fetch master categories: ${error.message}`)
   }
 
-  return data || []
+  // Filter out null gst_type and cast to expected type
+  return (data || []).filter(cat => cat.gst_type !== null).map(cat => ({
+    ...cat,
+    gst_type: cat.gst_type as 'goods' | 'services'
+  }))
 }
 

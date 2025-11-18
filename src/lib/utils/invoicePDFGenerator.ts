@@ -11,7 +11,7 @@ import type { Invoice } from '../../types'
 import type { Org } from '../../types'
 import type { CustomerWithMaster } from '../../types'
 import type { ProductWithMaster } from '../../types'
-import { calculateTax, createTaxContext, productToLineItem, getTaxLabel, determineSupplyType } from './taxCalculationService'
+import { calculateTax, createTaxContext, productToLineItem, determineSupplyType } from './taxCalculationService'
 import type { TaxCalculationResult } from './taxCalculationService'
 
 export interface InvoiceWithDetails extends Invoice {
@@ -702,7 +702,7 @@ function numberToWords(amount: number): string {
     return result
   }
   
-  const rupees = Math.floor(amount)
+  let rupees = Math.floor(amount)
   const paise = Math.round((amount - rupees) * 100)
   
   let words = ''

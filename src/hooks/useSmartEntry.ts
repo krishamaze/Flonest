@@ -15,7 +15,7 @@
  */
 
 import { useState, useCallback, useRef, useEffect } from 'react'
-import { resolveEntry, type EntryResolution } from '@/lib/api/reactive-entry'
+import { resolveEntry } from '@/lib/api/reactive-entry'
 
 export type EntryState = 
   | { type: 'IDLE' }
