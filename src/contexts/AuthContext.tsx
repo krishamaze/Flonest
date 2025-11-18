@@ -14,11 +14,9 @@ import { useQueryClient } from '@tanstack/react-query'
 import { supabase } from '../lib/supabase'
 import { useUserPasswordCheck } from '../hooks/useUserSecurity'
 import { useSessionQuery, useAuthDataQuery, useAdminMfaRequirementQuery, useInvalidateAuth, type OrgMembershipSummary } from '../hooks/useAuthQuery'
-import type { AuthUser, UserRole, Org } from '../types'
+import type { AuthUser } from '../types'
 import {
-  loadAgentContextMode,
   saveAgentContextMode,
-  type AgentContextInfo,
 } from '../lib/agentContext'
 
 type OrgContextSummary = OrgMembershipSummary | null
@@ -68,13 +66,6 @@ function stripSupabaseAuthHash() {
   window.history.replaceState(null, '', cleanUrl)
 }
 
-function loadPersistedOrgId(): string | null {
-  try {
-    return localStorage.getItem(ORG_CONTEXT_STORAGE_KEY)
-  } catch {
-    return null
-  }
-}
 
 function persistOrgId(orgId: string | null) {
   try {
@@ -120,7 +111,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // React Query hooks - all state management delegated here
   const { data: session, isLoading: sessionLoading, error: sessionError } = useSessionQuery()
-  const { data: authData, isLoading: authDataLoading, error: authDataError } = useAuthDataQuery(session)
+  const { data: authData, isLoading: authDataLoading, error: authDataError } = useAuthDataQuery(session || null)
   const { data: requiresAdminMfa = false } = useAdminMfaRequirementQuery(authData?.user ?? null)
 
   // When session is null, authData query is disabled, so provide default empty state

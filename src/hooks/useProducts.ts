@@ -6,11 +6,19 @@
  */
 
 import { useQuery, useMutation, useQueryClient, useInfiniteQuery } from '@tanstack/react-query'
-import { getProducts, createProduct, updateProduct, deleteProduct, type Product, type GetProductsParams, type GetProductsOptions } from '../lib/api/products'
+import { getProducts, createProduct, updateProduct, deleteProduct } from '../lib/api/products'
 import { getCurrentStockForProducts } from '../lib/api/stockCalculations'
+import type { Product, ProductWithStock, ProductFormData } from '../types'
 
-export interface ProductWithStock extends Product {
-  current_stock: number
+export interface GetProductsParams {
+  status?: 'active' | 'inactive'
+  category?: string
+  search?: string
+}
+
+export interface GetProductsOptions {
+  page?: number
+  pageSize?: number
 }
 
 /**
@@ -36,6 +44,7 @@ export const useProducts = (
       const nextPage = allPages.length + 1
       return nextPage <= totalPages ? nextPage : undefined
     },
+    initialPageParam: 1,
     enabled: !!orgId,
     staleTime: 30 * 1000, // 30 seconds - matches cache window
     refetchOnWindowFocus: false,
@@ -112,12 +121,15 @@ export const useCreateProduct = () => {
         cost_price: data.cost_price || null,
         selling_price: data.selling_price || null,
         min_stock_level: data.min_stock_level || null,
-        hsn_code: data.hsn_code || null,
-        gst_rate: data.gst_rate || null,
+        hsn_sac_code: data.hsn_sac_code || null,
+        tax_rate: data.tax_rate || null,
         status: 'active',
-        master_product_id: data.master_product_id || null,
+        master_product_id: null,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
+        branch_id: null,
+        category_id: null,
+        serial_tracked: false,
       }
 
       // Optimistically update products list
@@ -129,7 +141,7 @@ export const useCreateProduct = () => {
             data: [optimisticProduct, ...newPages[0].data],
             total: newPages[0].total + 1,
           }
-          queryClient.setQueryData(['products', orgId], { pages: newPages, pageParams: previousProducts.pageParams })
+          queryClient.setQueryData(['products', orgId], { ...previousProducts, pages: newPages })
         }
       }
 
@@ -184,9 +196,9 @@ export const useUpdateProduct = () => {
       if (previousProducts) {
         const newPages = previousProducts.pages.map(page => ({
           ...page,
-          data: page.data.map(p => p.id === productId ? { ...p, ...data, updated_at: new Date().toISOString() } : p),
+          data: page.data.map(p => (p.id === productId ? { ...p, ...data, updated_at: new Date().toISOString() } : p)),
         }))
-        queryClient.setQueryData(['products', orgId], { pages: newPages, pageParams: previousProducts.pageParams })
+        queryClient.setQueryData(['products', orgId], { ...previousProducts, pages: newPages })
       }
 
       // Optimistically update products with stock
@@ -242,7 +254,7 @@ export const useDeleteProduct = () => {
           data: page.data.filter(p => p.id !== productId),
           total: Math.max(0, page.total - 1),
         }))
-        queryClient.setQueryData(['products', orgId], { pages: newPages, pageParams: previousProducts.pageParams })
+        queryClient.setQueryData(['products', orgId], { ...previousProducts, pages: newPages })
       }
 
       // Optimistically remove from products with stock

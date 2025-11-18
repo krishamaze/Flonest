@@ -6,8 +6,8 @@
  */
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { getStockLedgerWithProducts, createStockTransaction, type StockLedger } from '../lib/api/stockLedger'
-import type { Product } from '../types'
+import { getStockLedgerWithProducts, createStockTransaction } from '../lib/api/stockLedger'
+import type { StockLedger, Product } from '../types'
 
 export interface StockLedgerWithProduct extends StockLedger {
   product: Product
@@ -58,7 +58,6 @@ export const useCreateStockTransaction = () => {
       // Note: We don't have product data here, so we'll add a placeholder
       // The real product will be fetched on success
       const optimisticTransaction: StockLedgerWithProduct = {
-        id: `temp-${Date.now()}`,
         org_id: orgId,
         product_id: data.product_id,
         transaction_type: data.transaction_type,
@@ -66,12 +65,15 @@ export const useCreateStockTransaction = () => {
         notes: data.notes || null,
         created_by: '', // Will be set by server
         created_at: new Date().toISOString(),
+        cost_provisional: false,
         product: {
           id: data.product_id,
           org_id: orgId,
           name: 'Loading...',
           sku: '',
           status: 'active',
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
         } as Product,
       }
 

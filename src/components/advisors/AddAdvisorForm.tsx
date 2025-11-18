@@ -22,7 +22,7 @@ export function AddAdvisorForm({ isOpen, onClose, onSuccess }: AddAdvisorFormPro
   const [shouldSearch, setShouldSearch] = useState(false)
 
   // React Query hooks
-  const { data: branches = [], isLoading: branchesLoading } = useBranches(user?.orgId)
+  const { data: branches = [] } = useBranches(user?.orgId)
   const { data: userFound, isLoading: searching, error: searchError } = useSearchUser(
     shouldSearch ? email : '',
     user?.orgId
@@ -187,7 +187,7 @@ export function AddAdvisorForm({ isOpen, onClose, onSuccess }: AddAdvisorFormPro
           variant="ghost"
           onClick={() => {
             setEmail('')
-            setUserFound(null)
+            setShouldSearch(false)
             onClose()
           }}
           className="flex-1"

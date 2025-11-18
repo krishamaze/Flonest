@@ -93,14 +93,14 @@ export const useCreateAdvisorMembership = () => {
   const queryClient = useQueryClient()
 
   return useMutation<
-    void,
+    { membership_id: string; status: string },
     Error,
     { userId: string; branchId: string; email: string }
   >({
     mutationFn: ({ userId, branchId, email }) =>
       createAdvisorMembership(userId, branchId, email),
     // On success, invalidate relevant queries
-    onSuccess: (data, variables) => {
+    onSuccess: (_data, _variables) => {
       // Invalidate pending memberships (shown on dashboard)
       queryClient.invalidateQueries({ queryKey: ['pending-memberships'] })
       // Invalidate user search to clear cached "already exists" state
