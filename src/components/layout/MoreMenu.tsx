@@ -40,12 +40,26 @@ export function MoreMenu({ isOpen, onClose }: MoreMenuProps) {
 
   // Platform admins only see their workspace entry point (no org routes)
   if (user?.platformAdmin) {
-    moreMenuItems.push({
-      to: '/platform-admin',
-      label: 'Platform Admin',
-      icon: ClipboardDocumentCheckIcon,
-      description: 'Review product submissions',
-    })
+    moreMenuItems.push(
+      {
+        to: '/platform-admin/hsn',
+        label: 'HSN Manager',
+        icon: DocumentTextIcon,
+        description: 'Manage HSN codes and tax rates',
+      },
+      {
+        to: '/platform-admin/gst-verification',
+        label: 'GST Verification',
+        icon: ClipboardDocumentCheckIcon,
+        description: 'Verify organization GSTINs',
+      },
+      {
+        to: '/platform-admin/blocked-invoices',
+        label: 'Blocked Invoices',
+        icon: ExclamationTriangleIcon,
+        description: 'Review invoices with validation errors',
+      }
+    )
   } else {
     // Org users see org routes based on permissions
     // Stock Ledger: admin and branch_head only

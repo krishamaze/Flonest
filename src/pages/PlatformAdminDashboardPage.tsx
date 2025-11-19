@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react'
 import { useRefresh } from '../contexts/RefreshContext'
-import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card'
 import { LoadingSpinner } from '../components/ui/LoadingSpinner'
 import { getPendingReviews } from '../lib/api/master-product-review'
 import { getBlockedInvoices } from '../lib/api/invoiceValidation'
@@ -13,6 +12,7 @@ import {
   DocumentTextIcon,
   ChartBarIcon,
   BuildingOfficeIcon,
+  ChevronRightIcon,
 } from '@heroicons/react/24/outline'
 import { Link, useLocation } from 'react-router-dom'
 import { ReviewQueue } from '../components/platformAdmin/ReviewQueue'
@@ -86,176 +86,133 @@ function PlatformAdminDashboardHome() {
   }
 
   return (
-    <div className="space-y-lg">
-      {/* Page Header */}
-      <div>
-        <h1 className="text-xl font-semibold text-primary-text">Platform Admin Dashboard</h1>
-        <p className="mt-xs text-sm text-secondary-text">
-          Overview of pending tasks and system status
-        </p>
+    <div className="space-y-lg pt-sm">
+      {/* Stats Grid */}
+      <div className="grid grid-cols-3 divide-x divide-neutral-200 border-b border-neutral-200 pb-md">
+        <Link 
+          to="/platform-admin/queue"
+          className="flex flex-col items-center px-sm text-center group"
+        >
+          <span className="text-xs font-medium text-secondary-text mb-1 group-hover:text-primary transition-colors">Pending</span>
+          <span className="text-2xl font-semibold text-primary-text">
+            {stats?.pendingCount || 0}
+          </span>
+        </Link>
+
+        <Link 
+          to="/platform-admin/gst-verification"
+          className="flex flex-col items-center px-sm text-center group"
+        >
+          <span className="text-xs font-medium text-secondary-text mb-1 group-hover:text-primary transition-colors">GST Verify</span>
+          <span className="text-2xl font-semibold text-primary-text">
+            {stats?.gstVerificationCount || 0}
+          </span>
+        </Link>
+
+        <Link 
+          to="/platform-admin/blocked-invoices"
+          className="flex flex-col items-center px-sm text-center group"
+        >
+          <span className="text-xs font-medium text-secondary-text mb-1 group-hover:text-error transition-colors">Blocked</span>
+          <span className="text-2xl font-semibold text-primary-text">
+            {stats?.blockedInvoicesCount || 0}
+          </span>
+        </Link>
       </div>
 
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 gap-md sm:grid-cols-3">
-        <Card className="shadow-sm hover:shadow-md transition-shadow">
-          <CardContent className="flex flex-col items-center gap-sm p-md">
-            <div className="flex h-10 w-10 items-center justify-center rounded-md bg-warning-light">
-              <ClockIcon className="h-5 w-5 text-warning" />
-            </div>
-            <p className="text-xs font-medium text-secondary-text">Pending Reviews</p>
-            <p className="text-2xl font-bold text-primary-text">
-              {stats?.pendingCount || 0}
-            </p>
-            <Link
-              to="/platform-admin/queue"
-              className="text-xs text-primary hover:underline"
-            >
-              View Queue →
-            </Link>
-          </CardContent>
-        </Card>
-
-        <Card className="shadow-sm hover:shadow-md transition-shadow">
-          <CardContent className="flex flex-col items-center gap-sm p-md">
-            <div className="flex h-10 w-10 items-center justify-center rounded-md bg-primary-light">
-              <BuildingOfficeIcon className="h-5 w-5 text-primary" />
-            </div>
-            <p className="text-xs font-medium text-secondary-text">GST Verifications</p>
-            <p className="text-2xl font-bold text-primary-text">
-              {stats?.gstVerificationCount || 0}
-            </p>
-            <Link
-              to="/platform-admin/gst-verification"
-              className="text-xs text-primary hover:underline"
-            >
-              Verify Now →
-            </Link>
-          </CardContent>
-        </Card>
-
-        <Card className="shadow-sm hover:shadow-md transition-shadow">
-          <CardContent className="flex flex-col items-center gap-sm p-md">
-            <div className="flex h-10 w-10 items-center justify-center rounded-md bg-error-light">
-              <ExclamationTriangleIcon className="h-5 w-5 text-error" />
-            </div>
-            <p className="text-xs font-medium text-secondary-text">Blocked Invoices</p>
-            <p className="text-2xl font-bold text-primary-text">
-              {stats?.blockedInvoicesCount || 0}
-            </p>
-            <Link
-              to="/platform-admin/blocked-invoices"
-              className="text-xs text-primary hover:underline"
-            >
-              View Details →
-            </Link>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Quick Actions */}
-      <div className="space-y-md">
-        <h2 className="text-lg font-medium text-primary-text">Quick Actions</h2>
-        <div className="grid gap-md sm:grid-cols-2 lg:grid-cols-4">
+      {/* Quick Actions - Horizontal Scroll */}
+      <div className="space-y-sm">
+        <h2 className="text-sm font-semibold text-primary-text px-xs">Quick Actions</h2>
+        <div className="flex gap-md overflow-x-auto pb-sm px-xs -mx-xs scrollbar-hide">
           <Link
             to="/platform-admin/queue"
-            className="group flex flex-col gap-sm rounded-lg border border-neutral-200 bg-white p-md transition-all hover:border-primary/50 hover:shadow-sm"
+            className="flex flex-col items-center gap-xs min-w-[72px]"
           >
-            <div className="flex h-8 w-8 items-center justify-center rounded-md bg-neutral-50 group-hover:bg-primary-light">
-              <ClipboardDocumentCheckIcon className="h-4 w-4 text-secondary-text group-hover:text-primary" />
+            <div className="h-12 w-12 rounded-full bg-neutral-100 border border-neutral-200 flex items-center justify-center text-secondary-text hover:border-primary hover:text-primary transition-colors">
+              <ClipboardDocumentCheckIcon className="h-6 w-6" strokeWidth={1.5} />
             </div>
-            <div>
-              <p className="font-medium text-primary-text">Review Queue</p>
-              <p className="text-xs text-secondary-text mt-xxs">Approve product submissions</p>
-            </div>
+            <span className="text-[11px] font-medium text-secondary-text text-center leading-tight">Review<br/>Queue</span>
           </Link>
 
           <Link
             to="/platform-admin/hsn"
-            className="group flex flex-col gap-sm rounded-lg border border-neutral-200 bg-white p-md transition-all hover:border-primary/50 hover:shadow-sm"
+            className="flex flex-col items-center gap-xs min-w-[72px]"
           >
-            <div className="flex h-8 w-8 items-center justify-center rounded-md bg-neutral-50 group-hover:bg-primary-light">
-              <DocumentTextIcon className="h-4 w-4 text-secondary-text group-hover:text-primary" />
+            <div className="h-12 w-12 rounded-full bg-neutral-100 border border-neutral-200 flex items-center justify-center text-secondary-text hover:border-primary hover:text-primary transition-colors">
+              <DocumentTextIcon className="h-6 w-6" strokeWidth={1.5} />
             </div>
-            <div>
-              <p className="font-medium text-primary-text">HSN Manager</p>
-              <p className="text-xs text-secondary-text mt-xxs">Manage tax codes</p>
-            </div>
+            <span className="text-[11px] font-medium text-secondary-text text-center leading-tight">HSN<br/>Manager</span>
           </Link>
 
           <Link
             to="/platform-admin/gst-verification"
-            className="group flex flex-col gap-sm rounded-lg border border-neutral-200 bg-white p-md transition-all hover:border-primary/50 hover:shadow-sm"
+            className="flex flex-col items-center gap-xs min-w-[72px]"
           >
-            <div className="flex h-8 w-8 items-center justify-center rounded-md bg-neutral-50 group-hover:bg-primary-light">
-              <BuildingOfficeIcon className="h-4 w-4 text-secondary-text group-hover:text-primary" />
+            <div className="h-12 w-12 rounded-full bg-neutral-100 border border-neutral-200 flex items-center justify-center text-secondary-text hover:border-primary hover:text-primary transition-colors">
+              <BuildingOfficeIcon className="h-6 w-6" strokeWidth={1.5} />
             </div>
-            <div>
-              <p className="font-medium text-primary-text">GSTIN Verification</p>
-              <p className="text-xs text-secondary-text mt-xxs">Verify organization GSTs</p>
-            </div>
+            <span className="text-[11px] font-medium text-secondary-text text-center leading-tight">GST<br/>Verify</span>
           </Link>
 
           <Link
             to="/platform-admin/monitor"
-            className="group flex flex-col gap-sm rounded-lg border border-neutral-200 bg-white p-md transition-all hover:border-primary/50 hover:shadow-sm"
+            className="flex flex-col items-center gap-xs min-w-[72px]"
           >
-            <div className="flex h-8 w-8 items-center justify-center rounded-md bg-neutral-50 group-hover:bg-primary-light">
-              <ChartBarIcon className="h-4 w-4 text-secondary-text group-hover:text-primary" />
+            <div className="h-12 w-12 rounded-full bg-neutral-100 border border-neutral-200 flex items-center justify-center text-secondary-text hover:border-primary hover:text-primary transition-colors">
+              <ChartBarIcon className="h-6 w-6" strokeWidth={1.5} />
             </div>
-            <div>
-              <p className="font-medium text-primary-text">Submission Monitor</p>
-              <p className="text-xs text-secondary-text mt-xxs">View activity logs</p>
+            <span className="text-[11px] font-medium text-secondary-text text-center leading-tight">Monitor</span>
+          </Link>
+
+          <Link
+            to="/platform-admin/blocked-invoices"
+            className="flex flex-col items-center gap-xs min-w-[72px]"
+          >
+            <div className="h-12 w-12 rounded-full bg-neutral-100 border border-neutral-200 flex items-center justify-center text-secondary-text hover:border-error hover:text-error transition-colors">
+              <ExclamationTriangleIcon className="h-6 w-6" strokeWidth={1.5} />
             </div>
+            <span className="text-[11px] font-medium text-secondary-text text-center leading-tight">Blocked</span>
           </Link>
         </div>
       </div>
 
-      {/* Recent Submissions */}
+      {/* Recent Submissions List */}
       {stats && stats.recentSubmissions.length > 0 && (
-        <Card className="shadow-sm">
-          <CardHeader className="flex flex-row items-center justify-between">
-            <CardTitle className="text-base font-medium">Recent Submissions</CardTitle>
-            <Link
-              to="/platform-admin/queue"
-              className="text-sm text-primary hover:underline"
-            >
+        <div className="space-y-sm">
+          <div className="flex items-center justify-between px-xs">
+            <h2 className="text-sm font-semibold text-primary-text">Recent Submissions</h2>
+            <Link to="/platform-admin/queue" className="text-xs text-primary font-medium hover:underline">
               View All
             </Link>
-          </CardHeader>
-          <CardContent className="p-0">
-            <div className="divide-y divide-neutral-100">
-              {stats.recentSubmissions.map((product) => (
-                <div
-                  key={product.id}
-                  className="flex items-center justify-between px-md py-sm hover:bg-neutral-50 transition-colors"
-                >
-                  <div className="flex items-start gap-md">
-                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded bg-neutral-100 text-xs font-medium text-secondary-text uppercase">
-                      {product.name.slice(0, 2)}
-                    </div>
-                    <div className="min-w-0">
-                      <p className="text-sm font-medium text-primary-text truncate">
-                        {product.name}
-                      </p>
-                      <div className="flex items-center gap-xs text-xs text-secondary-text">
-                        <span>SKU: {product.sku}</span>
-                        {product.created_at && (
-                          <>
-                            <span>•</span>
-                            <span>{new Date(product.created_at).toLocaleDateString()}</span>
-                          </>
-                        )}
-                      </div>
-                    </div>
+          </div>
+          
+          <div className="divide-y divide-neutral-100 border-t border-b border-neutral-100">
+            {stats.recentSubmissions.map((product) => (
+              <div
+                key={product.id}
+                className="flex items-center justify-between py-md px-xs hover:bg-neutral-50 transition-colors cursor-default"
+              >
+                <div className="flex items-center gap-md min-w-0">
+                  <div className="h-8 w-8 shrink-0 rounded-full bg-neutral-100 flex items-center justify-center text-xs font-bold text-secondary-text uppercase border border-neutral-200">
+                    {product.name.slice(0, 2)}
                   </div>
-                  <span className="ml-md shrink-0 rounded-full bg-warning-light px-sm py-xs text-xs font-medium text-warning-dark">
-                    Pending
-                  </span>
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium text-primary-text truncate max-w-[180px]">
+                      {product.name}
+                    </p>
+                    <p className="text-xs text-secondary-text font-mono">
+                      {product.sku}
+                    </p>
+                  </div>
                 </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
+                <div className="flex items-center gap-sm">
+                  <span className="inline-flex h-2 w-2 rounded-full bg-warning" />
+                  <ChevronRightIcon className="h-4 w-4 text-neutral-300" />
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
       )}
     </div>
   )
