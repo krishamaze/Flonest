@@ -8,7 +8,6 @@ import type { MasterProduct } from '../lib/api/master-products'
 import {
   ClipboardDocumentCheckIcon,
   ExclamationTriangleIcon,
-  ClockIcon,
   DocumentTextIcon,
   ChartBarIcon,
   BuildingOfficeIcon,

@@ -6,6 +6,7 @@ import {
   ClipboardDocumentCheckIcon,
   DocumentTextIcon,
   Cog6ToothIcon,
+  ExclamationTriangleIcon,
 } from '@heroicons/react/24/outline'
 import { useAuth } from '../../contexts/AuthContext'
 import { hasPermission, MANAGE_INVENTORY, canManageOrgSettings, canManageAgents } from '../../lib/permissions'

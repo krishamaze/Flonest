@@ -12,7 +12,6 @@ import {
   HomeIcon as HomeIconSolid,
   CubeIcon as CubeIconSolid,
   ClipboardDocumentListIcon as ClipboardIconSolid,
-  EllipsisHorizontalIcon as EllipsisHorizontalIconSolid,
   ClipboardDocumentCheckIcon as ClipboardDocumentCheckIconSolid,
   ChartBarIcon as ChartBarIconSolid,
 } from '@heroicons/react/24/solid'
