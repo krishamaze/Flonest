@@ -23,7 +23,7 @@ function MainLayoutContent() {
     <div className="flex viewport-height flex-col bg-bg-page overflow-hidden">
       <Header />
       <PullToRefresh onRefresh={handleRefresh}>
-        <main className="pb-20 safe-bottom px-md">
+        <main className="pb-[calc(5rem+env(safe-area-inset-bottom))] px-md">
           <div className="container-mobile mx-auto max-w-7xl py-md">
             <Outlet />
           </div>
