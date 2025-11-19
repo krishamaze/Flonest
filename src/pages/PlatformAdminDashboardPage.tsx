@@ -87,35 +87,35 @@ function PlatformAdminDashboardHome() {
   return (
     <div className="space-y-lg pt-sm">
       {/* Stats Grid */}
-      <div className="grid grid-cols-3 divide-x divide-neutral-200 border-b border-neutral-200 pb-md">
+      <div className="grid grid-cols-3 pb-md">
         <Link 
           to="/platform-admin/queue"
           className="flex flex-col items-center px-sm text-center group"
         >
-          <span className="text-xs font-medium text-secondary-text mb-1 group-hover:text-primary transition-colors">Pending</span>
-          <span className="text-2xl font-semibold text-primary-text">
+          <span className="text-3xl font-bold text-primary-text group-hover:text-primary transition-colors">
             {stats?.pendingCount || 0}
           </span>
+          <span className="text-xs font-normal text-secondary-text mt-1">Pending Reviews</span>
         </Link>
 
         <Link 
           to="/platform-admin/gst-verification"
           className="flex flex-col items-center px-sm text-center group"
         >
-          <span className="text-xs font-medium text-secondary-text mb-1 group-hover:text-primary transition-colors">GST Verify</span>
-          <span className="text-2xl font-semibold text-primary-text">
+          <span className="text-3xl font-bold text-primary-text group-hover:text-primary transition-colors">
             {stats?.gstVerificationCount || 0}
           </span>
+          <span className="text-xs font-normal text-secondary-text mt-1">GST Verify</span>
         </Link>
 
         <Link 
           to="/platform-admin/blocked-invoices"
           className="flex flex-col items-center px-sm text-center group"
         >
-          <span className="text-xs font-medium text-secondary-text mb-1 group-hover:text-error transition-colors">Blocked</span>
-          <span className="text-2xl font-semibold text-primary-text">
+          <span className="text-3xl font-bold text-primary-text group-hover:text-error transition-colors">
             {stats?.blockedInvoicesCount || 0}
           </span>
+          <span className="text-xs font-normal text-secondary-text mt-1">Blocked Invoices</span>
         </Link>
       </div>
 
@@ -125,52 +125,52 @@ function PlatformAdminDashboardHome() {
         <div className="flex gap-md overflow-x-auto pb-sm px-xs -mx-xs scrollbar-hide">
           <Link
             to="/platform-admin/queue"
-            className="flex flex-col items-center gap-xs min-w-[72px]"
+            className="flex flex-col items-center gap-xs min-w-[64px]"
           >
-            <div className="h-12 w-12 rounded-full bg-neutral-100 border border-neutral-200 flex items-center justify-center text-secondary-text hover:border-primary hover:text-primary transition-colors">
-              <ClipboardDocumentCheckIcon className="h-6 w-6" strokeWidth={1.5} />
+            <div className="h-10 w-10 rounded-full bg-neutral-100 border border-neutral-200 flex items-center justify-center text-secondary-text hover:border-primary hover:text-primary transition-colors">
+              <ClipboardDocumentCheckIcon className="h-5 w-5" strokeWidth={1.5} />
             </div>
-            <span className="text-[11px] font-medium text-secondary-text text-center leading-tight">Review<br/>Queue</span>
+            <span className="text-[10px] font-medium text-secondary-text text-center leading-tight">Review<br/>Queue</span>
           </Link>
 
           <Link
             to="/platform-admin/hsn"
-            className="flex flex-col items-center gap-xs min-w-[72px]"
+            className="flex flex-col items-center gap-xs min-w-[64px]"
           >
-            <div className="h-12 w-12 rounded-full bg-neutral-100 border border-neutral-200 flex items-center justify-center text-secondary-text hover:border-primary hover:text-primary transition-colors">
-              <DocumentTextIcon className="h-6 w-6" strokeWidth={1.5} />
+            <div className="h-10 w-10 rounded-full bg-neutral-100 border border-neutral-200 flex items-center justify-center text-secondary-text hover:border-primary hover:text-primary transition-colors">
+              <DocumentTextIcon className="h-5 w-5" strokeWidth={1.5} />
             </div>
-            <span className="text-[11px] font-medium text-secondary-text text-center leading-tight">HSN<br/>Manager</span>
+            <span className="text-[10px] font-medium text-secondary-text text-center leading-tight">HSN<br/>Manager</span>
           </Link>
 
           <Link
             to="/platform-admin/gst-verification"
-            className="flex flex-col items-center gap-xs min-w-[72px]"
+            className="flex flex-col items-center gap-xs min-w-[64px]"
           >
-            <div className="h-12 w-12 rounded-full bg-neutral-100 border border-neutral-200 flex items-center justify-center text-secondary-text hover:border-primary hover:text-primary transition-colors">
-              <BuildingOfficeIcon className="h-6 w-6" strokeWidth={1.5} />
+            <div className="h-10 w-10 rounded-full bg-neutral-100 border border-neutral-200 flex items-center justify-center text-secondary-text hover:border-primary hover:text-primary transition-colors">
+              <BuildingOfficeIcon className="h-5 w-5" strokeWidth={1.5} />
             </div>
-            <span className="text-[11px] font-medium text-secondary-text text-center leading-tight">GST<br/>Verify</span>
+            <span className="text-[10px] font-medium text-secondary-text text-center leading-tight">GST<br/>Verify</span>
           </Link>
 
           <Link
             to="/platform-admin/monitor"
-            className="flex flex-col items-center gap-xs min-w-[72px]"
+            className="flex flex-col items-center gap-xs min-w-[64px]"
           >
-            <div className="h-12 w-12 rounded-full bg-neutral-100 border border-neutral-200 flex items-center justify-center text-secondary-text hover:border-primary hover:text-primary transition-colors">
-              <ChartBarIcon className="h-6 w-6" strokeWidth={1.5} />
+            <div className="h-10 w-10 rounded-full bg-neutral-100 border border-neutral-200 flex items-center justify-center text-secondary-text hover:border-primary hover:text-primary transition-colors">
+              <ChartBarIcon className="h-5 w-5" strokeWidth={1.5} />
             </div>
-            <span className="text-[11px] font-medium text-secondary-text text-center leading-tight">Monitor</span>
+            <span className="text-[10px] font-medium text-secondary-text text-center leading-tight">Monitor</span>
           </Link>
 
           <Link
             to="/platform-admin/blocked-invoices"
-            className="flex flex-col items-center gap-xs min-w-[72px]"
+            className="flex flex-col items-center gap-xs min-w-[64px]"
           >
-            <div className="h-12 w-12 rounded-full bg-neutral-100 border border-neutral-200 flex items-center justify-center text-secondary-text hover:border-error hover:text-error transition-colors">
-              <ExclamationTriangleIcon className="h-6 w-6" strokeWidth={1.5} />
+            <div className="h-10 w-10 rounded-full bg-neutral-100 border border-neutral-200 flex items-center justify-center text-secondary-text hover:border-error hover:text-error transition-colors">
+              <ExclamationTriangleIcon className="h-5 w-5" strokeWidth={1.5} />
             </div>
-            <span className="text-[11px] font-medium text-secondary-text text-center leading-tight">Blocked</span>
+            <span className="text-[10px] font-medium text-secondary-text text-center leading-tight">Blocked</span>
           </Link>
         </div>
       </div>

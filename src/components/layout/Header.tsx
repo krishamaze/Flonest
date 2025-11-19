@@ -16,7 +16,7 @@ export function Header() {
     : 'U'
 
   return (
-    <header className="sticky top-0 z-40 border-b border-neutral-200 bg-bg-card safe-top transition-all duration-200">
+    <header className="sticky top-0 z-40 border-b border-neutral-200 bg-white safe-top transition-all duration-200">
       <div className="mx-auto flex h-12 items-center justify-between px-md">
         <button
           type="button"
