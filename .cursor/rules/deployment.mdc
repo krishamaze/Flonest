@@ -1,0 +1,32 @@
+description: DEPLOYMENT / CI-CD / VERCEL. Apply when shipping builds, verifying deployments, handling build failures, service workers, caching, or user reports of "not live".
+alwaysApply: false
+globs: ["vercel.json", "**/api/**", "package.json"]
+lastReviewed: 2025-01-15
+
+# Deployment & Build Workflows
+
+# 🔴 CRITICAL PRIORITY
+
+## [P1] Vercel Deployment Verification
+- **Issue**: Pushed code is not live; Vercel shows "BUILDING" or an old version.
+- **Fix**: After `git push`, verify the deployment status.
+  1.  Use Vercel MCP `list_deployments` to get the latest deployment.
+  2.  Use `get_deployment` to check its state.
+  3.  Wait until the state is `READY`. If it's `ERROR`, check logs with `get_deployment_build_logs`.
+- **Prevention**: Deployment is not complete until the state is `READY`.
+
+## Update Detection System
+- A Service Worker automatically detects new builds by comparing bundle hashes.
+- No manual versioning is needed (`package.json`, `version.ts`, etc.).
+- A pull-to-refresh gesture triggers an update check.
+
+## Development
+- Design mobile-first (390px width).
+- Use React functional components with hooks and TypeScript.
+- Ensure all async operations have loading and error states.
+- Prioritize performance: code splitting, lazy loading, and WebP images.
+
+## Related Rules
+- `@database-rls.mdc` — Coordinate schema migrations with deployment timelines.
+- `@performance.mdc` — Ensure shipped bundles meet performance guidelines.
+- `@engineering-playbook.mdc` — Acts as the hub referencing this deployment node.

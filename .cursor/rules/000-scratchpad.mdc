@@ -1,0 +1,24 @@
+description: SCRATCHPAD / MEMORY BUFFER. Check when user mentions decisions, consensus, pending atoms, architectural choices, TODOs, or backlog items awaiting Librarian processing.
+alwaysApply: false
+
+# PROJECT SCRATCHPAD (Pending Decisions)
+
+This file acts as a **Short-Term Memory Buffer**.
+
+It contains architectural decisions, stack choices, and lessons learned that have NOT yet been fully integrated into the Core Rulebook.
+
+## INSTRUCTION FOR AI (Senior Dev)
+
+* **Read:** Check this file for recent decisions that might override older rules.
+
+* **Write:** If the user makes a decision (e.g., "Use Zustand"), **Append** it here immediately.
+
+---
+
+## 📥 PENDING ATOMS (Decisions waiting for Librarian)
+
+* *(Empty - No pending decisions)*
+
+## Related Rules
+- `@00-project-context.mdc` — Senior Dev identity that reads/writes this buffer.
+- `@99-librarian.mdc` — Processes pending atoms from the scratchpad into permanent rules.

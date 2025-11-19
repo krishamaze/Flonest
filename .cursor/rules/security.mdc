@@ -1,0 +1,56 @@
+description: SECURITY / AUTH / MFA. Apply when building authentication, authorization, password reset, session hardening, threat modeling, compliance, or investigating security vulnerabilities.
+alwaysApply: false
+lastReviewed: 2025-01-15
+
+# Security Patterns & Principles
+
+# 🔴 CRITICAL PRIORITY
+
+## [P1] Security over Convenience
+- **Principle**: Never compromise security for UX.
+- **Examples**:
+  - Use generic messages for password resets to prevent email enumeration.
+  - Use generic signup success messages to avoid revealing email configuration status.
+- **Rule**: If a security decision feels inconvenient, it's likely the correct one.
+
+## [P1] MFA Reset Security Vulnerability - Fixed
+- **Vulnerability**: Self-service MFA reset without additional verification
+- **Error Signature**: `adminMfaReset()` function allowed MFA bypass with only session token
+- **Root Cause**: Backend Edge Function `/admin-mfa-enroll/reset` only checked platform admin status, no email/SMS/backup code verification
+- **Impact**: Attacker with compromised session could disable MFA and gain permanent access
+- **Fix Applied**:
+  - Removed self-service reset link from `PlatformAdminMfaPage`
+  - Disabled `adminMfaReset()` function (throws error if called)
+  - Added security warning message directing users to contact support
+  - Added comprehensive security documentation
+- **Prevention**:
+  - **NEVER** allow MFA reset without additional verification:
+    - Email-based reset (send verification link to registered email)
+    - SMS-based reset (send code to registered phone)
+    - Backup recovery codes verification
+    - Manual admin approval workflow
+  - **ALWAYS** require out-of-band proof of identity for MFA reset
+  - **NEVER** allow single-click MFA bypass - defeats entire purpose of MFA
+  - If implementing reset flow: require email token verification before allowing reset
+- **Status**: UI access removed. Backend endpoint still exists but is not accessible from UI. TODO: Implement secure email-based reset flow or remove endpoint entirely.
+
+## [P1] Clock Skew Warnings - Harmless SDK Noise
+- **Warning**: `Session as retrieved from URL was issued in the future? Check the device clock for skew` or `JWT clock skew warning: Session timestamp is X seconds in the future`
+- **Source**: Supabase Auth SDK internal warnings
+- **Status**: **Harmless noise** - Authentication works correctly despite warnings
+- **Fix**: **None needed** - If auth works, warnings are informational only
+- **Verification**: 
+  - If authentication is working, warnings are noise - ignore them
+  - If authentication fails, investigate actual error (not clock skew warnings)
+  - Time is synced, NTP is configured correctly
+- **Prevention**: 
+  - Do NOT override console methods globally (creates debugging blindspots)
+  - Do NOT build client-side detection/handling for harmless SDK warnings
+  - If logs clutter production: use proper logging service with severity levels
+  - If logs annoy in dev: configure browser DevTools filters (user-level, not code-level)
+  - Only investigate if warnings correlate with actual user authentication failures
+
+## Related Rules
+- `@database-rls.mdc` — Shares policy and permission patterns that secure data access.
+- `@deployment.mdc` — Ensures deployment workflows respect security verification.
+- `@performance.mdc` — UI/perf considerations when implementing secure flows (e.g., MFA modals).

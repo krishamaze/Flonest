@@ -1,172 +1,29 @@
----
-description: Use this when you need a reliable path for deployment and verification, database changes, and resolving recurring errors without quick fixes. It captures priorities, concrete error signatures, and step-by-step remedies to prevent regressions during delivery.​
+description: ENGINEERING HUB. Apply for infrastructure questions, ops runbooks, routing instructions, and references to database/deployment/security/performance clusters.
 alwaysApply: false
+globs: ["**/*.sql", "**/migrations/**", "**/supabase/**", "vercel.json", "**/api/**"]
+lastReviewed: 2025-01-15
 ---
+
 # Engineering Playbook
+
+> **Note:** This playbook has been decomposed into focused files for better token efficiency. See specialized files:
+> - **Database/RLS**: `.cursor/rules/database-rls.mdc`
+> - **Deployment**: `.cursor/rules/deployment.mdc`
+> - **Security**: `.cursor/rules/security.mdc`
+> - **Performance**: `.cursor/rules/performance.mdc`
 
 ## Primary Rule: No Temporary Patches
 - "Temporary patches become permanent debt."
 - Never ship quick fixes. Every change must be a durable, production-grade solution.
 
----
-
-# 🔴 CRITICAL PRIORITY
-
-## [P1] RLS Policy 403 Errors - Fixed
-- **Error**: 403 Forbidden on all database operations (inventory, orgs, notifications)
-- **Error Signature**: `new row violates row-level security policy` or `permission denied for table` or `Authorization header present, but table access denied before RLS evaluation`
-- **Root Cause**: Two distinct issues:
-  1. RLS policies on `inventory` and `orgs` were querying `memberships` table via EXISTS subqueries, but `memberships` table RLS was blocking those checks. Also, policies used inconsistent roles (`public` vs `authenticated`).
-  2. **Missing GRANT permissions**: Tables have RLS policies but missing `GRANT SELECT/INSERT/UPDATE/DELETE ON table TO authenticated` statements, causing 403 before RLS evaluation.
-- **Fix Applied**: 
-  - Created `is_org_member(org_id, user_id)` SECURITY DEFINER function to bypass RLS on memberships checks
-  - Updated all RLS policies to use `authenticated` role consistently
-  - Replaced EXISTS subqueries with `is_org_member()` function calls
-  - **Added GRANT permissions**: 
-    - `GRANT SELECT, INSERT, UPDATE, DELETE ON public.inventory TO authenticated;`
-    - `GRANT UPDATE ON public.orgs TO authenticated;`
-    - `GRANT UPDATE ON public.master_products TO authenticated;`
-    - `GRANT INSERT, UPDATE, DELETE ON public.notifications TO authenticated;`
-  - Applied migrations: `fix_rls_policies_memberships_access`, `add_membership_check_function`, `update_orgs_select_policy`, `grant_inventory_permissions_to_authenticated`, `grant_orgs_update_permission_to_authenticated`, `grant_missing_permissions_master_products_notifications`
-- **Prevention**: 
-  - Always use SECURITY DEFINER functions for cross-table RLS checks
-  - Ensure consistent role usage (`authenticated` for user data, `public` only for truly public data)
-  - **When creating RLS policies, ALWAYS include corresponding GRANT statements**: `GRANT SELECT, INSERT, UPDATE, DELETE ON table_name TO authenticated;`
-  - **Checklist for new RLS policies**: For each operation (SELECT/INSERT/UPDATE/DELETE) in the policy, ensure matching GRANT exists
-  - **Verification query** to find missing grants:
-    ```sql
-    SELECT p.tablename, p.cmd as operation
-    FROM pg_policies p
-    WHERE p.schemaname = 'public'
-      AND p.cmd IN ('INSERT', 'UPDATE', 'DELETE')
-      AND p.roles::text LIKE '%authenticated%'
-      AND NOT EXISTS (
-        SELECT 1 FROM information_schema.role_table_grants rtg
-        WHERE rtg.table_name = p.tablename
-        AND rtg.grantee = 'authenticated'
-        AND rtg.privilege_type = p.cmd
-      )
-    GROUP BY p.tablename, p.cmd;
-    ```
-  - **Fixed tables**: inventory (SELECT/INSERT/UPDATE/DELETE), orgs (UPDATE), master_products (UPDATE), notifications (INSERT/UPDATE/DELETE)
-
-## [P1] Clock Skew Warnings - Harmless SDK Noise
-- **Warning**: `Session as retrieved from URL was issued in the future? Check the device clock for skew` or `JWT clock skew warning: Session timestamp is X seconds in the future`
-- **Source**: Supabase Auth SDK internal warnings
-- **Status**: **Harmless noise** - Authentication works correctly despite warnings
-- **Fix**: **None needed** - If auth works, warnings are informational only
-- **Verification**: 
-  - If authentication is working, warnings are noise - ignore them
-  - If authentication fails, investigate actual error (not clock skew warnings)
-  - Time is synced, NTP is configured correctly
-- **Prevention**: 
-  - Do NOT override console methods globally (creates debugging blindspots)
-  - Do NOT build client-side detection/handling for harmless SDK warnings
-  - If logs clutter production: use proper logging service with severity levels
-  - If logs annoy in dev: configure browser DevTools filters (user-level, not code-level)
-  - Only investigate if warnings correlate with actual user authentication failures
-
-## [P1] Supabase Migrations & DDL
-- **Error**: `ERROR: 25006: cannot execute CREATE TABLE in a read-only transaction`
-- **Context**: The Supabase MCP connection is read-only for DDL.
-- **Fix**: Use the Supabase CLI for migrations.
-  - Create migration: `npm run supabase:migration:new <migration_name>`
-  - Apply migration: `npx supabase db push --linked`
-- **Prevention**: ALWAYS use the CLI for DDL changes. MCP is for data queries.
-
-## [P1] Vercel Deployment Verification
-- **Issue**: Pushed code is not live; Vercel shows "BUILDING" or an old version.
-- **Fix**: After `git push`, verify the deployment status.
-  1.  Use Vercel MCP `list_deployments` to get the latest deployment.
-  2.  Use `get_deployment` to check its state.
-  3.  Wait until the state is `READY`. If it's `ERROR`, check logs with `get_deployment_build_logs`.
-- **Prevention**: Deployment is not complete until the state is `READY`.
-
-## [P1] Security over Convenience
-- **Principle**: Never compromise security for UX.
-- **Examples**:
-  - Use generic messages for password resets to prevent email enumeration.
-  - Use generic signup success messages to avoid revealing email configuration status.
-- **Rule**: If a security decision feels inconvenient, it's likely the correct one.
-
-## [P1] MFA Reset Security Vulnerability - Fixed
-- **Vulnerability**: Self-service MFA reset without additional verification
-- **Error Signature**: `adminMfaReset()` function allowed MFA bypass with only session token
-- **Root Cause**: Backend Edge Function `/admin-mfa-enroll/reset` only checked platform admin status, no email/SMS/backup code verification
-- **Impact**: Attacker with compromised session could disable MFA and gain permanent access
-- **Fix Applied**:
-  - Removed self-service reset link from `PlatformAdminMfaPage`
-  - Disabled `adminMfaReset()` function (throws error if called)
-  - Added security warning message directing users to contact support
-  - Added comprehensive security documentation
-- **Prevention**:
-  - **NEVER** allow MFA reset without additional verification:
-    - Email-based reset (send verification link to registered email)
-    - SMS-based reset (send code to registered phone)
-    - Backup recovery codes verification
-    - Manual admin approval workflow
-  - **ALWAYS** require out-of-band proof of identity for MFA reset
-  - **NEVER** allow single-click MFA bypass - defeats entire purpose of MFA
-  - If implementing reset flow: require email token verification before allowing reset
-- **Status**: UI access removed. Backend endpoint still exists but is not accessible from UI. TODO: Implement secure email-based reset flow or remove endpoint entirely.
-
----
-
-# 🟡 MEDIUM PRIORITY
-
-## [P2] Empty `database.ts`
-- **Error**: `File '.../database.ts' is not a module`, causing widespread TypeScript errors.
-- **Context**: `database.ts` is empty after a migration.
-- **Fix**: Regenerate types: `mcp_supabase_generate_typescript_types()`. Ensure the output file is not empty.
-- **Prevention**: Regenerate types after every migration.
-
-## [P2] UI Not Scrolling
-- **Error**: Content is cut off and the page doesn't scroll.
-- **Context**: A parent container has `overflow: hidden` or a fixed height.
-- **Fix**: Remove `overflow: hidden` and fixed heights from parent containers. Use `overflow-y: auto`.
-
-## [P2] Stale State in React
-- **Error**: UI doesn't update after an async `setState`.
-- **Fix**: Use functional updates for dependent state: `setState(prev => ...)`. Use `useEffect` to react to state changes.
-
-## [P2] Event Listener Thrashing in Touch Gestures - Fixed
-- **Error**: Touch gestures stutter or lag during drag interactions (pull-to-refresh, swipe, etc.)
-- **Error Signature**: Event listeners being removed/re-added repeatedly during gesture, causing frame drops
-- **Root Cause**: `useEffect` dependency array includes frequently-changing state values (`state`, `pullDistance`, `isRefreshing`), causing effect to re-run and re-attach listeners on every state update
-- **Fix Applied**: 
-  - Store frequently-changing state values in `useRef` (e.g., `stateRef`, `pullDistanceRef`, `isRefreshingRef`)
-  - Add separate `useEffect` to sync refs with state: `stateRef.current = state`
-  - Remove state values from main effect dependency array
-  - Event handlers read from refs instead of closures: `if (isRefreshingRef.current) return`
-- **Prevention**: 
-  - **NEVER** include frequently-changing state in `useEffect` dependency arrays for event listeners
-  - **ALWAYS** use `useRef` for values that event handlers need but shouldn't trigger re-renders
-  - **ALWAYS** add `overscroll-behavior-y: contain` to scrollable containers to prevent iOS Safari native gesture conflicts
-  - Pattern: `const valueRef = useRef(value)` + sync effect + handlers read `valueRef.current`
-- **Fixed Component**: `PullToRefresh.tsx` - Now achieves 60fps smooth gestures
-
----
-
-# General Guidelines
-
-## Update Detection System
-- A Service Worker automatically detects new builds by comparing bundle hashes.
-- No manual versioning is needed (`package.json`, `version.ts`, etc.).
-- A pull-to-refresh gesture triggers an update check.
-
-## Development
-- Design mobile-first (390px width).
-- Use React functional components with hooks and TypeScript.
-- Ensure all async operations have loading and error states.
-- Prioritize performance: code splitting, lazy loading, and WebP images.
+> **Note:** This rule also appears in `learned-rules.mdc` for code quality context. Engineering playbook focuses on deployment/infrastructure application.
 
 ## Documentation
 - NEVER create `.md` documentation files unless explicitly requested.
 - Communicate information via chat instead.
 
-## Org Lifecycle & Context Invariants
-- **Lifecycle states**: `onboarding_pending`, `active`, `suspended`, `archived`. Only org owners with `onboarding_pending` hit `/setup`; completion must flip the state to `active`.
-- **Single owner per org**: enforced via partial unique index on `(org_id, role)` for `org_owner`. Ownership transfers must go through a dedicated RPC for auditing.
-- **Org context storage**: `user_org_contexts` table + `set_current_org_context(uuid)` keep Postgres helpers (`current_user_org_id`, `current_user_role`, branch helpers) in sync with the client’s `currentOrgContext`. Always call the RPC when switching orgs.
-- **Multi-org switcher**: The header switcher is the only supported way to pick an org/agent context. All UI/RPC code must consume `currentOrgContext`/`currentAgentContext`, never raw `user.orgId`.
-- **Start vs join flows**: “Start a new business” calls `create_default_org_for_user` (owner-only) from the switcher or settings. “Join existing organization” lives at `/join-org` and requires an invite—no auto-org creation on login. Legacy `test-*` orgs must stay `archived`.
+## Related Rules
+- `@database-rls.mdc` — Database/RLS focused node you should load for SQL or Supabase issues.
+- `@deployment.mdc` — Deployment workflows and verification steps.
+- `@security.mdc` — Authentication and MFA security guardrails.
+- `@performance.mdc` — UI performance patterns referenced by this hub.

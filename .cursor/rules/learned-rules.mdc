@@ -1,13 +1,9 @@
----
-alwaysApply: true
----
-
-### Primary Rules
+description: CODE QUALITY / PATTERNS. Apply when user requests refactoring, DRY enforcement, linting, testing discipline, best practices for code structure, duplication removal, or architecture simplification.
+alwaysApply: false
+lastReviewed: 2025-01-15
+# Primary Rules
 
 **Quality Standards:**
-- No Temporary Patches — "Temporary patches become permanent debt"
-- Never ship quick fixes in normal development; every change must be durable and production-grade
-- Exception: Production emergencies require explicit approval + follow-up tickets
 - Prioritize security and simplicity—no overengineering
 
 **DRY Principle (Don't Repeat Yourself):**
@@ -15,6 +11,38 @@ alwaysApply: true
 - Reuse and refactor rather than duplicate
 - If you find duplication, consolidate it
 - Shared logic belongs in utilities, helpers, or services
+
+**DRY Examples:**
+
+```typescript
+// ❌ BAD: Duplicated logic
+function calculateTaxA(amount: number) {
+  return amount * 0.15;
+}
+
+function calculateTaxB(amount: number) {
+  return amount * 0.15;
+}
+
+// ✅ GOOD: Shared utility
+function calculateTax(amount: number, rate = 0.15) {
+  return amount * rate;
+}
+
+// ❌ BAD: Duplicated validation
+function validateEmailA(email: string) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+}
+
+function validateEmailB(email: string) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+}
+
+// ✅ GOOD: Shared utility
+function validateEmail(email: string): boolean {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+}
+```
 
 **Verification (DRY applies here):**
 - Always verify the current state of the codebase, db, and backend before making changes
@@ -30,7 +58,12 @@ alwaysApply: true
 **Learning System:**
 Extract lessons from all execution errors:
 - Capture: full context, error signature, reproduction steps
-- Document in: `.cursor/rules/design-system.mdc` or `engineering-playbook.mdc`
+- Document in: 
+  - `.cursor/rules/database-rls.mdc` (for RLS/database errors)
+  - `.cursor/rules/deployment.mdc` (for deployment/build errors)
+  - `.cursor/rules/security.mdc` (for auth/security issues)
+  - `.cursor/rules/performance.mdc` (for UI/performance issues)
+  - `.cursor/rules/design-system.mdc` (for UI/design patterns)
 - Format: Priority (🔴🟡🟢) + Count + Last Seen + Solution
 - Maintain: Remove outdated content monthly, keep project-specific only
 - Update: Increase priority for repeated errors
@@ -39,3 +72,8 @@ Extract lessons from all execution errors:
 - Stay within task boundaries unless explicitly expanding
 - All changes must be reversible with documented rollback
 - Flag scope creep early
+
+## Related Rules
+- `@design-system.mdc` — Applies the same quality principles to UI tokens and components.
+- `@database-rls.mdc`, `@deployment.mdc`, `@security.mdc`, `@performance.mdc` — Domain-specific lessons referenced from this learning system.
+- `@00-project-context.mdc` — Senior Dev identity enforcing these standards during execution.

@@ -169,3 +169,4 @@ GRANT EXECUTE ON FUNCTION public.test_rpc_security() TO authenticated;
 COMMIT;
 
 
+

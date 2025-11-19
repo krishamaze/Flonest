@@ -1,0 +1,21 @@
+---
+description: ROUTING MAP CACHE. The full semantic map used by the Senior Developer to route requests to specific rule files.
+globs: []
+alwaysApply: false
+---
+
+# KNOWLEDGE ROUTING (Semantic Map)
+
+Analyze the user's prompt for **Keywords**, **Concepts**, or **Symptoms** to load the correct "Law":
+
+| Domain File | Triggers & Symptoms (Strong Magnets) |
+| :--- | :--- |
+| **.cursor/rules/design-system.mdc** | **Visuals:** CSS, Tailwind, Tokens, Accessibility, Layout, "Ugly", "Misaligned", "Wrong Color". |
+| **.cursor/rules/database-rls.mdc** | **Database:** SQL, Postgres, RLS, GRANT, Migrations, 403, "Permission denied". |
+| **.cursor/rules/deployment.mdc** | **Deployment:** Vercel, CI/CD, "Build failed", "Not live", deployment verification, service workers. |
+| **.cursor/rules/security.mdc** | **Security:** Auth, MFA, password reset, "Security", vulnerabilities, MFA resets. |
+| **.cursor/rules/performance.mdc** | **Performance:** "Lag", "Stutter", "Slow", React state, scrolling, touch gestures. |
+| **.cursor/rules/engineering-playbook.mdc** | **Infrastructure:** General infrastructure issues, references specialized files. |
+| **.cursor/rules/learned-rules.mdc** | **Quality:** Refactoring, DRY, Patterns, "Messy code", "Simplify this". |
+| **.cursor/rules/99-librarian.mdc** | **Meta:** "Update rules", "Fix context", "Process scratchpad", "Wrong instructions". |
+| **.cursor/rules/000-scratchpad.mdc** | **Decisions:** Pending atoms, consensus, temporary memory. |

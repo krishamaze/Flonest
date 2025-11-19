@@ -177,3 +177,4 @@ GRANT EXECUTE ON FUNCTION public.post_purchase_bill(uuid, uuid, uuid) TO authent
 COMMIT;
 
 
+
