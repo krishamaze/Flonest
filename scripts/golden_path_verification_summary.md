@@ -54,3 +54,4 @@ Use the verification scripts in `scripts/verify_serial_number_workflow.sql` afte
 The **logic is architecturally sound** and ready for production. The serial number state machine (`available` → `reserved` → `used`) is correctly implemented. Full functional verification should be performed via the UI or API with authenticated sessions.
 
 
+
