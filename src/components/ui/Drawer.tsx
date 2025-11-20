@@ -121,8 +121,8 @@ export function Drawer({
           zIndex: drawerZIndex,
           transform: isOpen ? 'translateY(0)' : 'translateY(100%)',
           transition: isOpen
-            ? 'transform 300ms cubic-bezier(0.0, 0.0, 0.2, 1)'
-            : 'transform 250ms cubic-bezier(0.4, 0.0, 1, 1)',
+            ? 'transform var(--motion-duration-medium) var(--motion-ease-out)'
+            : 'transform var(--motion-duration-medium) var(--motion-ease-out)',
           backgroundColor: 'white',
         }}
         role="dialog"

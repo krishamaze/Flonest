@@ -4,22 +4,22 @@ import { ArrowRightOnRectangleIcon } from '@heroicons/react/24/outline'
 import { Button } from '../ui/Button'
 import { NotificationBell } from '../notifications/NotificationBell'
 import { RoleTag } from './RoleTag'
+import { useIdentitySheet } from '../identity/IdentitySheet'
 
 export function Header() {
   const { user, signOut } = useAuth()
   const navigate = useNavigate()
+  const { openIdentitySheet } = useIdentitySheet()
 
   const userInitials = user?.email
     ? user.email.substring(0, 2).toUpperCase()
     : 'U'
 
-  const isPlatformAdmin = user?.platformAdmin
-
   return (
     <header 
       className="sticky top-0 z-40 bg-white safe-top transition-all duration-200" 
       style={{ 
-        backgroundColor: '#ffffff',
+        backgroundColor: 'var(--bg-card)',
         height: 'var(--size-appbar-height)',
       }}
     >
@@ -38,7 +38,8 @@ export function Header() {
               className="h-full w-full object-contain"
             />
           </div>
-          {isPlatformAdmin && (
+          <RoleTag />
+          {user?.platformAdmin && (
             <span 
               className="text-sm leading-tight text-primary-text"
               style={{
@@ -54,23 +55,25 @@ export function Header() {
         {/* Spacer */}
         <div className="flex-1" />
 
-        {/* Right-side actions: RoleTag → NotificationBell → ProfileMenu */}
+        {/* Right-side actions: NotificationBell → ProfileMenu */}
         <div 
           className="flex items-center"
           style={{
             gap: 'var(--gap-appbar-actions)',
           }}
         >
-          <RoleTag />
           <NotificationBell />
           
-          <div className="flex items-center gap-sm pl-sm">
-            <div 
-              className="h-9 w-9 min-h-[44px] min-w-[44px] rounded-full bg-primary/10 border border-primary/20 flex items-center justify-center text-xs font-bold text-primary select-none"
+          <div className="flex items-center gap-sm">
+            <button
+              type="button"
+              className="h-9 w-9 min-h-[44px] min-w-[44px] rounded-full bg-primary/10 border border-primary/20 flex items-center justify-center text-xs font-bold text-primary select-none focus:outline-none focus-visible:outline focus-visible:outline-offset-2 focus-visible:outline-primary"
               title={user?.email || 'User'}
+              onClick={openIdentitySheet}
+              aria-label="Open identity switcher"
             >
               {userInitials}
-            </div>
+            </button>
 
             <Button
               variant="ghost"

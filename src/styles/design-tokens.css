@@ -124,5 +124,28 @@
   --gap-appbar-actions: var(--spacing-sm);              /* 12px */
   --font-weight-appbar-title: var(--font-weight-medium); /* 500 */
   --font-size-appbar-title: 1rem;                       /* 16px - never hardcode px */
+
+  /* Identity Hub Tokens */
+  --size-avatar: calc(var(--base-unit) * 5);
+  --radius-avatar: 50%;
+  --padding-identity-zone: var(--spacing-lg);
+  --padding-context-zone: var(--spacing-md);
+  --padding-danger-zone: var(--spacing-lg);
+  --height-sheet: 80vh;
+
+  /* Identity Typography */
+  --font-size-identity-name: calc(var(--font-size-appbar-title) * 1.1);
+  --font-weight-identity-name: 600; /* 500 + 100 */
+  --font-size-identity-role: calc(var(--font-size-appbar-title) * 0.85);
+  --font-weight-identity-role: 400;
+  --line-height-identity-text: calc(var(--spacing-sm) * 2);
+
+  /* Motion Tokens */
+  --motion-duration-short: 150ms;
+  --motion-duration-medium: 300ms;
+  --motion-duration-long: 500ms;
+  --motion-ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --motion-ease-in: cubic-bezier(0.4, 0, 1, 1);
+  --motion-ease-neutral: cubic-bezier(0.4, 0, 0.2, 1);
 }
 
