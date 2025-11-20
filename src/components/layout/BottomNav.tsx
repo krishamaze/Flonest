@@ -115,21 +115,12 @@ export function BottomNav() {
               aria-label={item.label}
             >
               {({ isActive }) => {
-                // Use outline icon for both states if requested, but sticking to solid for active is standard
-                // User requested "simple, stroke-based icons for all states". 
-                // I will interpret this as using the Outline icon always, but maybe filling it or just coloring it?
-                // Actually, the user said "simple, monochrome stroke icons... for a clean, modern aesthetic".
-                // I'll use the outline icon for active state too, just colored.
                 const Icon = item.icon 
-                // To strictly follow "stroke-based icons for all states", we should use the outline icon even when active.
-                // But standard pattern is solid for active. The user instruction "Refactor Iconography... Switch to simple, monochrome stroke icons" was for the dashboard body.
-                // For Bottom Navigation: "Use simple, stroke-based icons for all states."
-                // Okay, I will use the outline icon for active state as well.
                 
                 return (
                   <>
-                    {/* Navigation icons: 20px */}
-                    <Icon className={`h-6 w-6 ${isActive ? 'stroke-2' : 'stroke-1.5'}`} aria-hidden="true" />
+                    {/* Navigation icons: accent color only for active state, neutral/monochrome for inactive */}
+                    <Icon className={`h-6 w-6 ${isActive ? 'stroke-2 text-primary' : 'stroke-1.5 text-neutral-700'}`} aria-hidden="true" />
                     {/* Labels: text-xs (12px) */}
                     <span className="text-[10px] font-medium mt-1">{item.label}</span>
                   </>
@@ -146,7 +137,7 @@ export function BottomNav() {
             }`}
             aria-label="More options"
           >
-            <EllipsisHorizontalIcon className={`h-6 w-6 ${isMoreMenuActive ? 'stroke-2' : 'stroke-1.5'}`} aria-hidden="true" />
+            <EllipsisHorizontalIcon className={`h-6 w-6 ${isMoreMenuActive ? 'stroke-2 text-primary' : 'stroke-1.5 text-neutral-700'}`} aria-hidden="true" />
             <span className="text-[10px] font-medium mt-1">More</span>
           </button>
         </div>

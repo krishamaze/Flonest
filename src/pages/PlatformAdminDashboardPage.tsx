@@ -95,7 +95,7 @@ function PlatformAdminDashboardHome() {
           <span className="text-3xl font-bold text-primary-text group-hover:text-primary transition-colors">
             {stats?.pendingCount || 0}
           </span>
-          <span className="text-xs font-normal text-secondary-text mt-1">Pending Reviews</span>
+          <span className="text-xs font-normal text-muted-text mt-1">Pending Reviews</span>
         </Link>
 
         <Link 
@@ -105,7 +105,7 @@ function PlatformAdminDashboardHome() {
           <span className="text-3xl font-bold text-primary-text group-hover:text-primary transition-colors">
             {stats?.gstVerificationCount || 0}
           </span>
-          <span className="text-xs font-normal text-secondary-text mt-1">GST Verify</span>
+          <span className="text-xs font-normal text-muted-text mt-1">GST Verify</span>
         </Link>
 
         <Link 
@@ -115,19 +115,19 @@ function PlatformAdminDashboardHome() {
           <span className="text-3xl font-bold text-primary-text group-hover:text-error transition-colors">
             {stats?.blockedInvoicesCount || 0}
           </span>
-          <span className="text-xs font-normal text-secondary-text mt-1">Blocked Invoices</span>
+          <span className="text-xs font-normal text-muted-text mt-1">Blocked Invoices</span>
         </Link>
       </div>
 
       {/* Quick Actions - Horizontal Scroll */}
-      <div className="space-y-sm">
+      <div className="space-y-sm pt-md">
         <h2 className="text-sm font-semibold text-primary-text px-xs">Quick Actions</h2>
-        <div className="flex gap-md overflow-x-auto pb-sm px-xs -mx-xs scrollbar-hide">
+        <div className="flex gap-md overflow-x-auto pb-md px-xs -mx-xs scrollbar-hide">
           <Link
             to="/platform-admin/queue"
             className="flex flex-col items-center gap-xs min-w-[64px]"
           >
-            <div className="h-10 w-10 rounded-full bg-neutral-100 border border-neutral-200 flex items-center justify-center text-secondary-text hover:border-primary hover:text-primary transition-colors">
+            <div className="h-10 w-10 rounded-full bg-neutral-100 border border-neutral-200 flex items-center justify-center text-secondary-text hover:border-neutral-300 hover:text-neutral-700 transition-colors">
               <ClipboardDocumentCheckIcon className="h-5 w-5" strokeWidth={1.5} />
             </div>
             <span className="text-[10px] font-medium text-secondary-text text-center leading-tight">Review<br/>Queue</span>
@@ -137,7 +137,7 @@ function PlatformAdminDashboardHome() {
             to="/platform-admin/hsn"
             className="flex flex-col items-center gap-xs min-w-[64px]"
           >
-            <div className="h-10 w-10 rounded-full bg-neutral-100 border border-neutral-200 flex items-center justify-center text-secondary-text hover:border-primary hover:text-primary transition-colors">
+            <div className="h-10 w-10 rounded-full bg-neutral-100 border border-neutral-200 flex items-center justify-center text-secondary-text hover:border-neutral-300 hover:text-neutral-700 transition-colors">
               <DocumentTextIcon className="h-5 w-5" strokeWidth={1.5} />
             </div>
             <span className="text-[10px] font-medium text-secondary-text text-center leading-tight">HSN<br/>Manager</span>
@@ -147,7 +147,7 @@ function PlatformAdminDashboardHome() {
             to="/platform-admin/gst-verification"
             className="flex flex-col items-center gap-xs min-w-[64px]"
           >
-            <div className="h-10 w-10 rounded-full bg-neutral-100 border border-neutral-200 flex items-center justify-center text-secondary-text hover:border-primary hover:text-primary transition-colors">
+            <div className="h-10 w-10 rounded-full bg-neutral-100 border border-neutral-200 flex items-center justify-center text-secondary-text hover:border-neutral-300 hover:text-neutral-700 transition-colors">
               <BuildingOfficeIcon className="h-5 w-5" strokeWidth={1.5} />
             </div>
             <span className="text-[10px] font-medium text-secondary-text text-center leading-tight">GST<br/>Verify</span>
@@ -157,7 +157,7 @@ function PlatformAdminDashboardHome() {
             to="/platform-admin/monitor"
             className="flex flex-col items-center gap-xs min-w-[64px]"
           >
-            <div className="h-10 w-10 rounded-full bg-neutral-100 border border-neutral-200 flex items-center justify-center text-secondary-text hover:border-primary hover:text-primary transition-colors">
+            <div className="h-10 w-10 rounded-full bg-neutral-100 border border-neutral-200 flex items-center justify-center text-secondary-text hover:border-neutral-300 hover:text-neutral-700 transition-colors">
               <ChartBarIcon className="h-5 w-5" strokeWidth={1.5} />
             </div>
             <span className="text-[10px] font-medium text-secondary-text text-center leading-tight">Monitor</span>
@@ -167,10 +167,10 @@ function PlatformAdminDashboardHome() {
             to="/platform-admin/blocked-invoices"
             className="flex flex-col items-center gap-xs min-w-[64px]"
           >
-            <div className="h-10 w-10 rounded-full bg-neutral-100 border border-neutral-200 flex items-center justify-center text-secondary-text hover:border-error hover:text-error transition-colors">
+            <div className="h-10 w-10 rounded-full bg-neutral-100 border border-neutral-200 flex items-center justify-center text-secondary-text hover:border-neutral-300 hover:text-neutral-700 transition-colors">
               <ExclamationTriangleIcon className="h-5 w-5" strokeWidth={1.5} />
             </div>
-            <span className="text-[10px] font-medium text-secondary-text text-center leading-tight">Blocked</span>
+            <span className="text-[10px] font-medium text-secondary-text text-center leading-tight">View Blocked</span>
           </Link>
         </div>
       </div>

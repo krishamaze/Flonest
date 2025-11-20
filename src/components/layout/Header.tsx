@@ -15,29 +15,46 @@ export function Header() {
     ? user.email.substring(0, 2).toUpperCase()
     : 'U'
 
+  const isPlatformAdmin = user?.platformAdmin
+
   return (
     <header className="sticky top-0 z-40 border-b border-neutral-200 bg-white safe-top transition-all duration-200">
       <div className="mx-auto flex h-12 items-center justify-between px-md">
-        <button
-          type="button"
-          onClick={openSwitcher}
-          aria-label="Switch organization"
-          className="group flex items-center gap-sm -ml-sm px-sm py-1 rounded-md hover:bg-neutral-50 transition-colors cursor-pointer focus:outline-none focus-visible:outline focus-visible:outline-offset-2 focus-visible:outline-primary"
-        >
-          <div className="flex h-7 w-7 items-center justify-center rounded-md bg-white shadow-sm p-0.5 border border-neutral-100">
-            <img
-              src="/pwa-192x192.png"
-              alt="FineTune logo"
-              className="h-full w-full object-contain"
-            />
-          </div>
-          <div className="flex items-center gap-xs">
-            <span className="text-sm font-semibold text-primary-text leading-tight truncate max-w-[160px]">
-              {label}
+        {isPlatformAdmin ? (
+          <div className="flex items-center gap-sm -ml-sm px-sm py-1">
+            <div className="flex h-7 w-7 items-center justify-center rounded-md bg-white shadow-sm p-0.5 border border-neutral-100">
+              <img
+                src="/pwa-192x192.png"
+                alt="FineTune logo"
+                className="h-full w-full object-contain"
+              />
+            </div>
+            <span className="text-sm font-semibold text-primary-text leading-tight">
+              Platform Admin
             </span>
-            <ChevronDownIcon className="h-3 w-3 text-muted-text group-hover:text-primary transition-colors" strokeWidth={2.5} />
           </div>
-        </button>
+        ) : (
+          <button
+            type="button"
+            onClick={openSwitcher}
+            aria-label="Switch organization"
+            className="group flex items-center gap-sm -ml-sm px-sm py-1 rounded-md hover:bg-neutral-50 transition-colors cursor-pointer focus:outline-none focus-visible:outline focus-visible:outline-offset-2 focus-visible:outline-primary"
+          >
+            <div className="flex h-7 w-7 items-center justify-center rounded-md bg-white shadow-sm p-0.5 border border-neutral-100">
+              <img
+                src="/pwa-192x192.png"
+                alt="FineTune logo"
+                className="h-full w-full object-contain"
+              />
+            </div>
+            <div className="flex items-center gap-xs">
+              <span className="text-sm font-semibold text-primary-text leading-tight truncate max-w-[160px]">
+                {label}
+              </span>
+              <ChevronDownIcon className="h-3 w-3 text-muted-text group-hover:text-primary transition-colors" strokeWidth={2.5} />
+            </div>
+          </button>
+        )}
 
         <div className="flex items-center gap-md">
           <NotificationBell />
