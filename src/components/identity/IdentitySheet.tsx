@@ -4,6 +4,7 @@ import { ContextSheet } from './ContextSheet'
 
 interface IdentitySheetContextType {
   openIdentitySheet: () => void
+  openContextSheet: () => void
 }
 
 const IdentitySheetContext = createContext<IdentitySheetContextType | null>(null)
@@ -31,7 +32,7 @@ export function IdentitySheetProvider({ children }: { children: ReactNode }) {
   const closeContext = () => setIsContextOpen(false)
 
   return (
-    <IdentitySheetContext.Provider value={{ openIdentitySheet }}>
+    <IdentitySheetContext.Provider value={{ openIdentitySheet, openContextSheet }}>
       {children}
       <IdentityHubSheet 
         isOpen={isHubOpen} 

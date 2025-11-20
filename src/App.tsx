@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect } from 'react'
+import { lazy, Suspense, useEffect, type ReactNode } from 'react'
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import { QueryClient, QueryClientProvider, QueryCache, MutationCache } from '@tanstack/react-query'
 import { ToastContainer } from 'react-toastify'
@@ -6,7 +6,7 @@ import { AuthProvider, useAuth } from './contexts/AuthContext'
 import { VersionCheckProvider } from './contexts/VersionCheckContext'
 import { ServiceWorkerProvider } from './contexts/ServiceWorkerContext'
 import { OrgSwitcherProvider } from './components/orgs/OrgSwitcher'
-import { IdentitySheetProvider } from './components/identity/IdentitySheet'
+import { IdentitySheetProvider, useIdentitySheet } from './components/identity/IdentitySheet'
 import { MainLayout } from './components/layout/MainLayout'
 import { LoadingSpinner } from './components/ui/LoadingSpinner'
 import { ConnectionError } from './components/ui/ConnectionError'
@@ -358,6 +358,11 @@ const queryClient = new QueryClient({
   }),
 })
 
+function OrgSwitcherProviderWrapper({ children }: { children: ReactNode }) {
+  const { openContextSheet } = useIdentitySheet()
+  return <OrgSwitcherProvider onOpenSwitcher={openContextSheet}>{children}</OrgSwitcherProvider>
+}
+
 function App() {
   // Log version on mount for debugging
   useEffect(() => {
@@ -370,8 +375,8 @@ function App() {
         <VersionCheckProvider>
           <ServiceWorkerProvider>
             <AuthProvider>
-              <OrgSwitcherProvider>
-                <IdentitySheetProvider>
+              <IdentitySheetProvider>
+                <OrgSwitcherProviderWrapper>
                   <AppRoutes />
                   <PlatformAdminSessionWatcher />
                   <InstallPrompt />
@@ -390,8 +395,8 @@ function App() {
                     stacked={true}
                     style={{ zIndex: 9999 }}
                   />
-                </IdentitySheetProvider>
-              </OrgSwitcherProvider>
+                </OrgSwitcherProviderWrapper>
+              </IdentitySheetProvider>
             </AuthProvider>
           </ServiceWorkerProvider>
         </VersionCheckProvider>
@@ -401,4 +406,3 @@ function App() {
 }
 
 export default App
-

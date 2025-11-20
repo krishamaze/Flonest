@@ -1,15 +1,6 @@
-import { useState, createContext, useContext, type ReactNode } from 'react'
-import { useNavigate } from 'react-router-dom'
-import {
-  BuildingOffice2Icon,
-  UsersIcon,
-  CheckIcon,
-  ExclamationTriangleIcon,
-  ArrowRightCircleIcon,
-  ChevronDownIcon,
-} from '@heroicons/react/24/outline'
+import { createContext, useContext, type ReactNode } from 'react'
+import { ChevronDownIcon } from '@heroicons/react/24/outline'
 import { useAuth } from '../../contexts/AuthContext'
-import { supabase } from '../../lib/supabase'
 
 function formatRole(role: string | null | undefined) {
   if (!role) return 'Select or create an organization'
@@ -24,6 +15,7 @@ function formatRole(role: string | null | undefined) {
 
 interface OrgSwitcherContextType {
   getOrgDisplayInfo: () => { label: string; subtitle: string }
+  openSwitcher: () => void
 }
 
 const OrgSwitcherContext = createContext<OrgSwitcherContextType | null>(null)
@@ -36,7 +28,7 @@ export function useOrgSwitcher() {
   return context
 }
 
-export function OrgSwitcherProvider({ children }: { children: ReactNode }) {
+export function OrgSwitcherProvider({ children, onOpenSwitcher }: { children: ReactNode, onOpenSwitcher: () => void }) {
   const {
     user,
     currentOrg,
@@ -55,7 +47,7 @@ export function OrgSwitcherProvider({ children }: { children: ReactNode }) {
   })
 
   return (
-    <OrgSwitcherContext.Provider value={{ getOrgDisplayInfo }}>
+    <OrgSwitcherContext.Provider value={{ getOrgDisplayInfo, openSwitcher: onOpenSwitcher }}>
       {children}
     </OrgSwitcherContext.Provider>
   )
@@ -81,4 +73,3 @@ export function OrgSwitcher() {
     </div>
   )
 }
-

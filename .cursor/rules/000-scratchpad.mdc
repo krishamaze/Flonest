@@ -17,7 +17,11 @@ It contains architectural decisions, stack choices, and lessons learned that hav
 
 ## 📥 PENDING ATOMS (Decisions waiting for Librarian)
 
-_No pending atoms. All decisions have been processed and integrated into the rulebook._
+- [2025-11-20] [Architecture]: Identity Hub Split: Separated into `IdentityHubSheet` (User), `ContextSheet` (Switch), and `BusinessSetupFlow` (Setup). Setup logic banned from sheets.
+- [2025-11-20] [UX/Motion]: Sheet Motion: Identity/Context sheets must use `slide-up` with `motion-duration-medium` (300ms) and `motion-ease-out`.
+- [2025-11-20] [State]: Identity Provider Ownership: `IdentitySheetProvider` strictly owns all state, history logic, and transition locks. Children must be pure.
+- [2025-11-20] [Pattern]: Timestamp Lock: Use `transitionUntil` timestamp ref for interaction locking, not boolean flags.
+- [2025-11-20] [Pattern]: History Sync: Manual sheet close must use `history.back()` to sync with `popstate` logic.
 
 ## Related Rules
 - `@00-project-context.mdc` — Senior Dev identity that reads/writes this buffer.

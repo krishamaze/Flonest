@@ -76,7 +76,7 @@ export function IdentityHubSheet({ isOpen, onClose, onOpenContextSheet }: Identi
           </div>
           
           <Button
-             variant="outline"
+             variant="secondary"
              className="w-full justify-start"
              onClick={() => {
                onClose()

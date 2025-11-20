@@ -44,6 +44,12 @@ function validateEmail(email: string): boolean {
 }
 ```
 
+**Context & Provider Integrity:**
+- **Explicit Contracts:** Context Interfaces MUST explicitly define all properties and methods they expose.
+- **Export Types:** Always export the Context Type from the provider file so consumers (hooks) can reference it.
+- **Sync Check:** When modifying a Provider's values, immediately update the Interface definition.
+- **No Hidden Props:** Never rely on `any` or implicit typing for context values; this causes build failures in strict mode.
+
 **Verification (DRY applies here):**
 - Always verify the current state of the codebase, db, and backend before making changes
 - Search for existing implementations (functions, components, queries, patterns)
