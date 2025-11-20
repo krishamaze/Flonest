@@ -15,8 +15,8 @@ export function Card({ children, className = '', onClick, style }: CardProps) {
       } ${className}`}
       style={{
         boxShadow: onClick ? '0 1px 2px 0 rgba(0, 0, 0, 0.05)' : 'none',
+        ...style,
       }}
-      style={style}
       onClick={onClick}
       role={onClick ? 'button' : undefined}
       tabIndex={onClick ? 0 : undefined}

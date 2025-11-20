@@ -108,8 +108,6 @@ export function Modal({ isOpen, onClose, title, children, className = '', header
         className={`relative z-[101] w-full max-w-lg max-h-[90vh] rounded-lg bg-bg-card modal-enter flex flex-col ${className}`}
         style={{
           boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1)',
-        }}
-        style={{
           animation: 'scale-in 200ms cubic-bezier(0.0, 0.0, 0.2, 1)',
         }}
         onClick={(e) => e.stopPropagation()}
