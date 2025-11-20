@@ -124,8 +124,8 @@
   "regions": ["iad1"],
   "git": {
     "deploymentEnabled": {
-      "main": true
+      "main": true,
+      "beta": true
     }
   }
 }
-
