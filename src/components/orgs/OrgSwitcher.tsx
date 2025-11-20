@@ -121,7 +121,12 @@ function OrgSwitcherModal({
         aria-modal="true"
         aria-label="Organization switcher"
       >
-            <div className="mx-auto max-h-[70vh] w-full max-w-lg rounded-t-2xl bg-bg-card shadow-2xl overflow-hidden">
+            <div 
+              className="mx-auto max-h-[70vh] w-full max-w-lg rounded-t-2xl bg-bg-card overflow-hidden"
+              style={{
+                boxShadow: '0 -1px 3px 0 rgba(0, 0, 0, 0.1)',
+              }}
+            >
               <div className="flex items-center justify-between border-b border-neutral-200 px-lg py-md">
                 <div>
                   <p className="text-base font-semibold text-primary-text">Switch organization</p>

@@ -1,17 +1,18 @@
-import { useEffect, useState, useRef } from 'react'
-import { Link } from 'react-router-dom'
+import { useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { BellIcon } from '@heroicons/react/24/outline'
 import { getUnreadCount, getNotifications, markAsRead } from '../../lib/api/notifications'
 import type { Notification } from '../../lib/api/notifications'
 import { useAuth } from '../../contexts/AuthContext'
+import { Drawer } from '../ui/Drawer'
 
 export function NotificationBell() {
   const { user } = useAuth()
+  const navigate = useNavigate()
   const [unreadCount, setUnreadCount] = useState(0)
   const [recentNotifications, setRecentNotifications] = useState<Notification[]>([])
   const [isOpen, setIsOpen] = useState(false)
   const [loading, setLoading] = useState(false)
-  const dropdownRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     if (user) {
@@ -28,21 +29,6 @@ export function NotificationBell() {
     }
   }, [isOpen, user])
 
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-        setIsOpen(false)
-      }
-    }
-
-    if (isOpen) {
-      document.addEventListener('mousedown', handleClickOutside)
-    }
-
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside)
-    }
-  }, [isOpen])
 
   const loadUnreadCount = async () => {
     if (!user) return
@@ -85,14 +71,20 @@ export function NotificationBell() {
       }
     }
     setIsOpen(false)
+    navigate('/notifications')
+  }
+
+  const handleViewAll = () => {
+    setIsOpen(false)
+    navigate('/notifications')
   }
 
   if (!user) return null
 
   return (
-    <div className="relative" ref={dropdownRef}>
+    <>
       <button
-        onClick={() => setIsOpen(!isOpen)}
+        onClick={() => setIsOpen(true)}
         className="relative p-sm rounded-md hover:bg-neutral-100 transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center"
         aria-label="Notifications"
       >
@@ -104,53 +96,52 @@ export function NotificationBell() {
         )}
       </button>
 
-      {isOpen && (
-        <div className="absolute right-0 mt-sm w-80 max-w-[90vw] bg-bg-card border border-neutral-200 rounded-lg shadow-lg z-50 max-h-[400px] overflow-hidden flex flex-col">
-          <div className="flex items-center justify-between p-md border-b border-neutral-200">
-            <h3 className="text-base font-semibold text-primary-text">Notifications</h3>
-            <Link
-              to="/notifications"
-              onClick={() => setIsOpen(false)}
-              className="text-sm text-primary hover:underline"
-            >
-              View All
-            </Link>
+      <Drawer
+        isOpen={isOpen}
+        onClose={() => setIsOpen(false)}
+        title="Notifications"
+        headerAction={
+          <button
+            onClick={handleViewAll}
+            className="text-sm text-primary hover:underline font-normal"
+          >
+            View All
+          </button>
+        }
+      >
+        {loading ? (
+          <div className="p-md text-center text-secondary-text text-sm">Loading...</div>
+        ) : recentNotifications.length === 0 ? (
+          <div className="p-md text-center">
+            <p className="text-sm text-secondary-text">
+              No new notifications
+            </p>
           </div>
-
-          <div className="overflow-y-auto flex-1">
-            {loading ? (
-              <div className="p-md text-center text-secondary-text">Loading...</div>
-            ) : recentNotifications.length === 0 ? (
-              <div className="p-md text-center text-secondary-text">
-                No new notifications
-              </div>
-            ) : (
-              <div className="divide-y divide-neutral-200">
-                {recentNotifications.map((notification) => (
-                  <button
-                    key={notification.id}
-                    onClick={() => handleNotificationClick(notification)}
-                    className={`w-full text-left p-md hover:bg-neutral-50 transition-colors ${
-                      !notification.read_at ? 'bg-primary-light/10' : ''
-                    }`}
-                  >
-                    <p className="text-sm font-medium text-primary-text mb-xs">
-                      {notification.title}
-                    </p>
-                    <p className="text-xs text-secondary-text line-clamp-2">
-                      {notification.message}
-                    </p>
-                    <p className="text-xs text-muted-text mt-xs">
-                      {new Date(notification.created_at).toLocaleString()}
-                    </p>
-                  </button>
-                ))}
-              </div>
-            )}
+        ) : (
+          <div className="divide-y divide-neutral-200">
+            {recentNotifications.map((notification) => (
+              <button
+                key={notification.id}
+                onClick={() => handleNotificationClick(notification)}
+                className={`w-full text-left p-md hover:bg-neutral-50 transition-colors ${
+                  !notification.read_at ? 'bg-primary-light/10' : ''
+                }`}
+              >
+                <p className="text-sm font-normal text-primary-text mb-xs">
+                  {notification.title}
+                </p>
+                <p className="text-xs text-secondary-text line-clamp-2">
+                  {notification.message}
+                </p>
+                <p className="text-xs text-muted-text mt-xs">
+                  {new Date(notification.created_at).toLocaleString()}
+                </p>
+              </button>
+            ))}
           </div>
-        </div>
-      )}
-    </div>
+        )}
+      </Drawer>
+    </>
   )
 }
 

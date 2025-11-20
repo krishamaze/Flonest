@@ -10,9 +10,12 @@ interface CardProps {
 export function Card({ children, className = '', onClick, style }: CardProps) {
   return (
     <div
-      className={`bg-bg-card rounded-lg border border-neutral-200 overflow-hidden shadow-sm ${
-        onClick ? 'cursor-pointer hover:shadow-md transition-all duration-200' : ''
+      className={`bg-bg-card rounded-lg overflow-hidden ${
+        onClick ? 'cursor-pointer transition-all duration-200' : ''
       } ${className}`}
+      style={{
+        boxShadow: onClick ? '0 1px 2px 0 rgba(0, 0, 0, 0.05)' : 'none',
+      }}
       style={style}
       onClick={onClick}
       role={onClick ? 'button' : undefined}

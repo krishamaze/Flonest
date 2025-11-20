@@ -112,9 +112,9 @@ export function NotificationsPage() {
   return (
     <div className="space-y-md">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between px-md">
         <div>
-          <h1 className="text-xl font-semibold text-primary-text">Notifications</h1>
+          <h1 className="text-base font-normal text-primary-text">Notifications</h1>
           <p className="mt-xs text-sm text-secondary-text">
             {unreadCount > 0 ? `${unreadCount} unread notification${unreadCount > 1 ? 's' : ''}` : 'All caught up!'}
           </p>
@@ -174,7 +174,7 @@ export function NotificationsPage() {
       {notifications.length === 0 ? (
         <Card>
           <CardContent className="p-xl text-center">
-            <p className="text-secondary-text">
+            <p className="text-sm text-secondary-text">
               {filter === 'unread' ? 'No unread notifications.' : 'No notifications found.'}
             </p>
           </CardContent>
@@ -193,7 +193,7 @@ export function NotificationsPage() {
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-start justify-between gap-sm mb-xs">
-                      <h3 className="text-base font-semibold text-primary-text">
+                      <h3 className="text-base font-normal text-primary-text">
                         {notification.title}
                       </h3>
                       {!notification.read_at && (

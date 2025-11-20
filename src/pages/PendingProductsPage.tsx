@@ -202,7 +202,7 @@ export function PendingProductsPage() {
       {filteredProducts.length === 0 ? (
         <Card>
           <CardContent className="p-xl text-center">
-            <p className="text-secondary-text">
+            <p className="text-sm text-secondary-text">
               {searchQuery || statusFilter !== 'all'
                 ? 'No products found matching your filters.'
                 : 'No product submissions yet.'}

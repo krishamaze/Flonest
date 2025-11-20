@@ -18,7 +18,7 @@ export function Header() {
   const isPlatformAdmin = user?.platformAdmin
 
   return (
-    <header className="sticky top-0 z-40 border-b border-neutral-200 bg-white safe-top transition-all duration-200">
+    <header className="sticky top-0 z-40 border-b border-neutral-200 bg-white safe-top transition-all duration-200" style={{ backgroundColor: '#ffffff' }}>
       <div className="mx-auto flex h-12 items-center justify-between px-md">
         {isPlatformAdmin ? (
           <div className="flex items-center gap-sm -ml-sm px-sm py-1">

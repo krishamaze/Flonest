@@ -68,13 +68,13 @@ export function DCStockPage() {
 
         {/* Stock List */}
         {stock.length === 0 ? (
-          <Card className="shadow-sm">
+          <Card>
             <CardContent className="p-xl text-center">
               <CubeIcon className="h-12 w-12 text-text-muted mx-auto mb-md" />
-              <p className="text-text-secondary">
+              <p className="text-sm text-secondary-text">
                 No DC stock available yet
               </p>
-              <p className="text-sm text-text-muted mt-xs">
+              <p className="text-xs text-secondary-text mt-xs">
                 Accept delivery challans to receive stock
               </p>
               <Button

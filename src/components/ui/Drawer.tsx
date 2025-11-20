@@ -114,7 +114,7 @@ export function Drawer({
 
       {/* Drawer */}
       <div
-        className={`fixed bottom-0 left-0 right-0 safe-bottom ${
+        className={`fixed top-0 bottom-0 left-0 right-0 safe-top safe-bottom ${
           isOpen ? 'drawer-enter' : ''
         } ${className}`}
         style={{
@@ -123,7 +123,7 @@ export function Drawer({
           transition: isOpen
             ? 'transform 300ms cubic-bezier(0.0, 0.0, 0.2, 1)'
             : 'transform 250ms cubic-bezier(0.4, 0.0, 1, 1)',
-          backgroundColor: 'white', // Ensure solid background
+          backgroundColor: 'white',
         }}
         role="dialog"
         aria-modal="true"
@@ -131,11 +131,14 @@ export function Drawer({
       >
         <div 
           ref={drawerRef}
-          className="mx-auto max-h-[90vh] w-full max-w-lg rounded-t-2xl bg-bg-card shadow-2xl"
+          className="mx-auto h-full w-full max-w-lg bg-bg-card flex flex-col"
+          style={{
+            boxShadow: '0 -1px 3px 0 rgba(0, 0, 0, 0.1)',
+          }}
           onClick={(e) => e.stopPropagation()}
         >
           {/* Handle bar */}
-          <div className="flex justify-center pt-3 pb-2">
+          <div className="flex justify-center pt-3 pb-2 flex-shrink-0">
             <div 
               className="h-1 w-12 rounded-full bg-neutral-300 cursor-grab active:cursor-grabbing"
               onClick={onClose}
@@ -153,8 +156,8 @@ export function Drawer({
 
           {/* Header */}
           {(title || headerAction) && (
-            <div className="flex items-center justify-between border-b border-neutral-200 px-lg py-md">
-              {title && <h2 id="drawer-title" className="text-xl font-semibold text-primary-text">{title}</h2>}
+            <div className="flex items-center justify-between border-b border-neutral-200 px-md py-md flex-shrink-0">
+              {title && <h2 id="drawer-title" className="text-base font-normal text-primary-text">{title}</h2>}
               <div className="flex items-center gap-sm ml-auto">
                 {headerAction}
                 <button
@@ -169,7 +172,7 @@ export function Drawer({
           )}
 
           {/* Content */}
-          <div className="max-h-[calc(90vh-120px)] overflow-y-auto px-lg py-md safe-bottom">
+          <div className="flex-1 overflow-y-auto px-md py-md min-h-0">
             {children}
           </div>
         </div>

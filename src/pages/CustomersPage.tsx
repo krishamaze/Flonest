@@ -137,12 +137,12 @@ export function CustomersPage() {
 
       {/* Customers List */}
       {filteredCustomers.length === 0 ? (
-        <Card className="shadow-sm">
+        <Card>
           <CardContent className="py-12 text-center">
-            <p className="text-sm font-medium text-primary-text mb-sm">
+            <p className="text-sm text-secondary-text mb-sm">
               {searchQuery ? 'No customers found' : 'No customers yet'}
             </p>
-            <p className="text-sm text-secondary-text">
+            <p className="text-xs text-secondary-text">
               {searchQuery
                 ? 'Try adjusting your search criteria'
                 : 'Customers are created automatically when you add them to an invoice.'}

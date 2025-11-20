@@ -105,7 +105,10 @@ export function Modal({ isOpen, onClose, title, children, className = '', header
       {/* Modal */}
       <div
         ref={modalRef}
-        className={`relative z-[101] w-full max-w-lg max-h-[90vh] rounded-lg bg-bg-card shadow-xl modal-enter flex flex-col ${className}`}
+        className={`relative z-[101] w-full max-w-lg max-h-[90vh] rounded-lg bg-bg-card modal-enter flex flex-col ${className}`}
+        style={{
+          boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1)',
+        }}
         style={{
           animation: 'scale-in 200ms cubic-bezier(0.0, 0.0, 0.2, 1)',
         }}
@@ -113,8 +116,8 @@ export function Modal({ isOpen, onClose, title, children, className = '', header
       >
         {/* Header */}
         {(title || headerAction) && (
-          <div className="flex items-center justify-between border-b border-neutral-200 px-lg py-md flex-shrink-0">
-            {title && <h2 id="modal-title" className="text-xl font-semibold text-primary-text">{title}</h2>}
+          <div className="flex items-center justify-between border-b border-neutral-200 px-md py-md flex-shrink-0">
+            {title && <h2 id="modal-title" className="text-base font-normal text-primary-text">{title}</h2>}
             <div className="flex items-center gap-sm ml-auto">
               {headerAction}
               <button
@@ -129,7 +132,7 @@ export function Modal({ isOpen, onClose, title, children, className = '', header
         )}
 
         {/* Content */}
-        <div className="px-lg py-md overflow-y-auto flex-1 min-h-0">{children}</div>
+        <div className="px-md py-md overflow-y-auto flex-1 min-h-0">{children}</div>
       </div>
     </div>
   )

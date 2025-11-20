@@ -142,7 +142,7 @@ export function MoreMenu({ isOpen, onClose }: MoreMenuProps) {
 
       {/* Bottom Sheet */}
       <div
-        className={`fixed bottom-0 left-0 right-0 z-[101] transform transition-transform duration-300 ease-out safe-bottom ${
+        className={`fixed top-0 bottom-0 left-0 right-0 z-[101] transform transition-transform duration-300 ease-out safe-top safe-bottom ${
           isOpen ? 'translate-y-0' : 'translate-y-full'
         }`}
         role="dialog"
@@ -150,7 +150,10 @@ export function MoreMenu({ isOpen, onClose }: MoreMenuProps) {
         aria-labelledby="more-menu-title"
       >
         <div 
-          className="mx-auto max-h-[60vh] w-full max-w-lg rounded-t-2xl bg-bg-card shadow-2xl"
+          className="mx-auto h-full w-full max-w-lg bg-bg-card"
+          style={{
+            boxShadow: '0 -1px 3px 0 rgba(0, 0, 0, 0.1)',
+          }}
           onClick={(e) => e.stopPropagation()}
         >
           {/* Handle bar */}
@@ -171,8 +174,8 @@ export function MoreMenu({ isOpen, onClose }: MoreMenuProps) {
           </div>
 
           {/* Header */}
-          <div className="flex items-center justify-between border-b border-neutral-200 px-lg py-md">
-            <h2 id="more-menu-title" className="text-xl font-semibold text-primary-text">More</h2>
+          <div className="flex items-center justify-between border-b border-neutral-200 px-md py-md flex-shrink-0">
+            <h2 id="more-menu-title" className="text-base font-normal text-primary-text">More</h2>
             <button
               onClick={onClose}
               className="rounded-md p-sm min-w-[44px] min-h-[44px] flex items-center justify-center text-muted-text hover:bg-neutral-100 hover:text-secondary-text transition-colors"
@@ -183,7 +186,7 @@ export function MoreMenu({ isOpen, onClose }: MoreMenuProps) {
           </div>
 
           {/* Menu Items */}
-          <div className="max-h-[calc(60vh-120px)] overflow-y-auto px-lg py-md safe-bottom">
+          <div className="flex-1 overflow-y-auto px-md py-md min-h-0">
             <nav className="space-y-2" aria-label="More menu">
               {moreMenuItems.map((item) => {
                 const Icon = item.icon
