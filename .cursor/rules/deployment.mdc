@@ -1,7 +1,7 @@
-description: DEPLOYMENT / CI-CD / VERCEL. Apply when shipping builds, verifying deployments, handling build failures, service workers, caching, or user reports of "not live".
+description: DEPLOYMENT / CI-CD / VERCEL. Apply when shipping builds, verifying deployments, handling build failures, service workers, caching, local development, Vercel CLI, or user reports of "not live".
 alwaysApply: false
 globs: ["vercel.json", "**/api/**", "package.json"]
-lastReviewed: 2025-01-15
+lastReviewed: 2025-11-20
 
 # Deployment & Build Workflows
 
@@ -14,6 +14,17 @@ lastReviewed: 2025-01-15
   2.  Use `get_deployment` to check its state.
   3.  Wait until the state is `READY`. If it's `ERROR`, check logs with `get_deployment_build_logs`.
 - **Prevention**: Deployment is not complete until the state is `READY`.
+
+## Local Development (Vercel CLI)
+Use Vercel CLI to mirror production environment variables locally.
+
+1.  **Install CLI:** `npm i -g vercel`
+2.  **Link Project:** `vercel link` (Select team/project)
+3.  **Pull Env Vars:** `vercel env pull .env.local`
+4.  **Start Dev Server:** `vercel dev` (Runs at `localhost:3000` with injected env vars)
+
+**DO:** Use `vercel dev` instead of `vite` directly to ensure environment parity.
+**DO:** Add `"dev:vercel": "vercel dev"` to `package.json`.
 
 ## Update Detection System
 - A Service Worker automatically detects new builds by comparing bundle hashes.

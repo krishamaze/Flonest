@@ -1,7 +1,7 @@
-description: UI / UX DESIGN SYSTEM. Apply for UI components, CSS, Tailwind, tokens, layout, spacing, typography, accessibility, color, theming, responsiveness, headers, metrics, icons, quick actions, visual hierarchy, or when user mentions visual issues like "ugly", "misaligned", "wrong color", "mobile broken".
+description: UI / UX DESIGN SYSTEM. Apply for UI components, CSS, Tailwind, tokens, layout, spacing, typography, accessibility, color, theming, responsiveness, headers, metrics, icons, quick actions, visual hierarchy, identity navigation, sheet motion, or when user mentions visual issues like "ugly", "misaligned", "wrong color", "mobile broken".
 alwaysApply: false
 globs: ["**/*.css", "**/*.tsx", "**/*.ts", "**/components/**", "**/styles/**"]
-lastReviewed: 2025-01-15
+lastReviewed: 2025-11-20
 # Design System & UI Patterns
 
 ## CRITICAL: Design Token Usage
@@ -98,6 +98,20 @@ lastReviewed: 2025-01-15
 - **Card-based layouts**: Group related content in elevated cards.
 - **Icon-driven navigation**: Visual icons with labels for clarity.
 - **Bold CTAs**: Primary actions are unmissable.
+
+### Identity & Navigation Architecture
+- **Identity Hub Split**: The Identity Hub is separated into distinct logical components:
+  1.  `IdentityHubSheet`: Manages User Identity flow.
+  2.  `ContextSheet`: Manages Context Switching (Orgs/Roles).
+  3.  `BusinessSetupFlow`: Manages the Setup wizard.
+- **Rule**: Setup logic is **BANNED** from sheets. It must exist in its own flow.
+
+### Motion & Interaction
+- **Sheet Motion**: Identity and Context sheets MUST use:
+  -   Animation: `slide-up`
+  -   Duration: `motion-duration-medium` (300ms)
+  -   Ease: `motion-ease-out`
+  -   Why: Consistently smooth entrance/exit for modal interactions.
 
 ### Dashboard: Metric Cards (3-column grid)
 

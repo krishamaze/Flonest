@@ -8,7 +8,7 @@
  * and race-condition handling (now handled by React Query).
  */
 
-import { createContext, useContext, useEffect, useMemo, ReactNode } from 'react'
+import { createContext, useContext, useEffect, useMemo, useState, ReactNode } from 'react'
 import { Session } from '@supabase/supabase-js'
 import { useQueryClient } from '@tanstack/react-query'
 import { supabase } from '../lib/supabase'
@@ -109,6 +109,7 @@ async function redirectUnregisteredUser(authUser: { email?: string | null }) {
 export function AuthProvider({ children }: { children: ReactNode }) {
   const queryClient = useQueryClient()
   const invalidateAuth = useInvalidateAuth()
+  const [isInitialized, setIsInitialized] = useState(false)
 
   // React Query hooks - all state management delegated here
   const { data: session, isLoading: sessionLoading, error: sessionError } = useSessionQuery()
@@ -144,7 +145,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   )
 
   // Derive loading state
-  const loading = sessionLoading || authDataLoading
+  const loading = !isInitialized || sessionLoading || authDataLoading
 
   // Derive connection error state
   const connectionError = useMemo(() => {
@@ -207,6 +208,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // Update session in React Query cache immediately
       // This ensures session state is always synchronized with Supabase auth
       queryClient.setQueryData(['auth', 'session'], newSession)
+      
+      if (!isInitialized) {
+        setIsInitialized(true)
+      }
       
       if (newSession?.user) {
         stripSupabaseAuthHash()

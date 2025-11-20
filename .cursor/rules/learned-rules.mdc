@@ -1,6 +1,6 @@
-description: CODE QUALITY / PATTERNS. Apply when user requests refactoring, DRY enforcement, linting, testing discipline, best practices for code structure, duplication removal, or architecture simplification.
+description: CODE QUALITY / PATTERNS. Apply when user requests refactoring, DRY enforcement, linting, testing discipline, best practices for code structure, duplication removal, state management, context usage, or architecture simplification.
 alwaysApply: false
-lastReviewed: 2025-01-15
+lastReviewed: 2025-11-20
 # Primary Rules
 
 **Quality Standards:**
@@ -49,6 +49,11 @@ function validateEmail(email: string): boolean {
 - **Export Types:** Always export the Context Type from the provider file so consumers (hooks) can reference it.
 - **Sync Check:** When modifying a Provider's values, immediately update the Interface definition.
 - **No Hidden Props:** Never rely on `any` or implicit typing for context values; this causes build failures in strict mode.
+
+**State Management Patterns:**
+- **Identity Provider Ownership:** `IdentitySheetProvider` (and similar root providers) must strictly own all state, history logic, and transition locks. Child components must be pure consumers.
+- **Timestamp Lock:** Use `transitionUntil` timestamp refs (e.g., `useRef(Date.now())`) for interaction locking instead of boolean flags to prevent race conditions.
+- **History Sync:** Manual sheet closures or navigation events must use `history.back()` to stay in sync with the browser's `popstate` logic.
 
 **Verification (DRY applies here):**
 - Always verify the current state of the codebase, db, and backend before making changes
