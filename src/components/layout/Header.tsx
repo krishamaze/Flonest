@@ -17,23 +17,21 @@ export function Header() {
 
   return (
     <header 
-      className="sticky top-0 z-40 border-b border-neutral-200 bg-white safe-top transition-all duration-200" 
+      className="sticky top-0 z-40 bg-white safe-top transition-all duration-200" 
       style={{ 
         backgroundColor: '#ffffff',
         height: 'var(--size-appbar-height)',
       }}
     >
       <div 
-        className="mx-auto flex items-center justify-between"
+        className="mx-auto flex items-center justify-between px-md"
         style={{
           height: 'var(--size-appbar-height)',
-          paddingLeft: 'var(--padding-h-appbar)',
-          paddingRight: 'var(--padding-h-appbar)',
         }}
       >
         {/* Logo/Title */}
-        <div className="flex items-center gap-sm -ml-sm px-sm py-1">
-          <div className="flex h-7 w-7 items-center justify-center rounded-md bg-white shadow-sm p-0.5 border border-neutral-100">
+        <div className="flex items-center gap-sm">
+          <div className="flex h-9 w-9 items-center justify-center rounded-md bg-white shadow-sm p-0.5 border border-neutral-100">
             <img
               src="/pwa-192x192.png"
               alt="FineTune logo"
@@ -66,9 +64,9 @@ export function Header() {
           <RoleTag />
           <NotificationBell />
           
-          <div className="flex items-center gap-sm border-l border-neutral-200 pl-sm">
+          <div className="flex items-center gap-sm pl-sm">
             <div 
-              className="h-7 w-7 rounded-full bg-primary/10 border border-primary/20 flex items-center justify-center text-xs font-bold text-primary select-none"
+              className="h-9 w-9 min-h-[44px] min-w-[44px] rounded-full bg-primary/10 border border-primary/20 flex items-center justify-center text-xs font-bold text-primary select-none"
               title={user?.email || 'User'}
             >
               {userInitials}
@@ -85,7 +83,7 @@ export function Header() {
                   console.error('Error signing out:', error)
                 }
               }}
-              className="flex items-center justify-center h-7 w-7 p-0 rounded-full text-muted-text hover:text-error hover:bg-error/10"
+              className="flex items-center justify-center min-h-[44px] min-w-[44px] p-2 rounded-full text-muted-text hover:text-error hover:bg-error/10 transition-all duration-150 active:scale-[0.98]"
               aria-label="Sign out"
             >
               <ArrowRightOnRectangleIcon className="h-4 w-4" aria-hidden="true" />

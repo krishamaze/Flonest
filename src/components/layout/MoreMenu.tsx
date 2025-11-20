@@ -187,7 +187,7 @@ export function MoreMenu({ isOpen, onClose }: MoreMenuProps) {
 
           {/* Menu Items */}
           <div className="flex-1 overflow-y-auto px-md py-md min-h-0">
-            <nav className="space-y-2" aria-label="More menu">
+            <nav className="space-y-3" aria-label="More menu">
               {moreMenuItems.map((item) => {
                 const Icon = item.icon
                 return (
@@ -196,14 +196,14 @@ export function MoreMenu({ isOpen, onClose }: MoreMenuProps) {
                     to={item.to}
                     onClick={onClose}
                     className={({ isActive }) =>
-                      `flex items-center gap-md p-md rounded-md min-h-[56px] transition-colors ${
+                      `flex items-center gap-md p-md rounded-md min-h-[56px] transition-all duration-150 ${
                         isActive
-                          ? 'bg-primary-light text-primary font-semibold'
-                          : 'text-primary-text hover:bg-bg-hover'
+                          ? 'bg-primary/5 text-primary font-semibold border-l-2 border-primary'
+                          : 'text-primary-text hover:bg-neutral-50'
                       }`
                     }
                   >
-                    <div className="flex h-10 w-10 items-center justify-center rounded-md bg-neutral-100 flex-shrink-0">
+                    <div className="flex h-9 w-9 items-center justify-center rounded-md bg-neutral-100 flex-shrink-0">
                       <Icon className="h-5 w-5" aria-hidden="true" />
                     </div>
                     <div className="flex-1 min-w-0">

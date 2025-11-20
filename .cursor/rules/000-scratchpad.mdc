@@ -17,11 +17,7 @@ It contains architectural decisions, stack choices, and lessons learned that hav
 
 ## 📥 PENDING ATOMS (Decisions waiting for Librarian)
 
-- [2025-01-21] [UI/Design]: Header background changed from yellow/brand color to white (`bg-white`) to reduce visual weight. Brand yellow reserved for accent elements (active states, notification badges, hover states).
-- [2025-01-21] [UI/Design]: Metric typography hierarchy reversed - counts are now larger (`text-3xl font-bold`) and labels are smaller (`text-xs font-normal`) to prioritize numerical data over descriptive text.
-- [2025-01-21] [UI/Design]: Removed vertical separators (`divide-x`) between metric columns, relying purely on horizontal padding and white space for visual separation (hyper-minimalist approach).
-- [2025-01-21] [UI/Design]: Quick action icons reduced from `h-12 w-12` containers with `h-6 w-6` icons to `h-10 w-10` containers with `h-5 w-5` icons. Text reduced from `text-[11px]` to `text-[10px]`. Minimum width reduced from `72px` to `64px` to improve information density and reduce horizontal scrolling.
-- [2025-01-21] [UI/Design]: All icons standardized to use consistent stroke width (`strokeWidth={1.5}`) across quick actions and bottom navigation for cohesive visual style.
+_No pending atoms. All decisions have been processed and integrated into the rulebook._
 
 ## Related Rules
 - `@00-project-context.mdc` — Senior Dev identity that reads/writes this buffer.

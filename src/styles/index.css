@@ -138,13 +138,33 @@
 body {
   font-family: var(--font-primary);
   font-size: var(--font-size-base);
-  line-height: var(--line-height-normal);
+  line-height: var(--line-height-relaxed);
   color: var(--text-primary);
   background: var(--bg-page);
   /* Prevent scrolling on body - let individual pages handle it */
   overflow-x: hidden;
   /* Disable native pull-to-refresh to prevent height jumps in PWA */
   overscroll-behavior-y: contain;
+}
+
+/* Typography Hierarchy */
+h1, h2, h3, h4, h5, h6 {
+  line-height: var(--line-height-tight);
+}
+
+h1 {
+  font-size: var(--font-size-2xl);
+  font-weight: var(--font-weight-bold);
+}
+
+h2 {
+  font-size: var(--font-size-xl);
+  font-weight: var(--font-weight-semibold);
+}
+
+h3 {
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-semibold);
 }
 
 /* Use dynamic viewport height for consistent sizing across devices */

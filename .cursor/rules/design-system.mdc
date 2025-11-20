@@ -1,4 +1,4 @@
-description: UI / UX DESIGN SYSTEM. Apply for UI components, CSS, Tailwind, tokens, layout, spacing, typography, accessibility, color, theming, responsiveness, or when user mentions visual issues like "ugly", "misaligned", "wrong color", "mobile broken".
+description: UI / UX DESIGN SYSTEM. Apply for UI components, CSS, Tailwind, tokens, layout, spacing, typography, accessibility, color, theming, responsiveness, headers, metrics, icons, quick actions, visual hierarchy, or when user mentions visual issues like "ugly", "misaligned", "wrong color", "mobile broken".
 alwaysApply: false
 globs: ["**/*.css", "**/*.tsx", "**/*.ts", "**/components/**", "**/styles/**"]
 lastReviewed: 2025-01-15
@@ -100,11 +100,18 @@ lastReviewed: 2025-01-15
 - **Bold CTAs**: Primary actions are unmissable.
 
 ### Dashboard: Metric Cards (3-column grid)
+
+**Visual Hierarchy (DO):**
+- **Counts (Primary Data):** Use `text-3xl font-bold` to prioritize numerical data
+- **Labels (Secondary Data):** Use `text-xs font-normal` for descriptive text
+- **NO vertical separators:** Rely on horizontal padding and white space for visual separation (hyper-minimalist approach)
+
 ```css
 .dashboard-metrics {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: var(--spacing-md);
+  /* NO divide-x - minimalist approach */
 }
 .metric-card {
   background: var(--bg-card);
@@ -114,8 +121,12 @@ lastReviewed: 2025-01-15
   border: 1px solid var(--border-color);
 }
 .metric-card-value {
-  font-size: var(--font-size-3xl);
+  font-size: var(--font-size-3xl);  /* Large, bold for counts */
   font-weight: var(--font-weight-bold);
+}
+.metric-card-label {
+  font-size: var(--font-size-xs);  /* Small, normal for labels */
+  font-weight: var(--font-weight-normal);
 }
 ```
 
@@ -151,6 +162,22 @@ lastReviewed: 2025-01-15
   color: var(--color-primary);
 }
 ```
+
+### Header & Layout (DO / DO NOT)
+
+**Header Background:**
+- **DO:** Use white background (`bg-white`) to reduce visual weight
+- **DO NOT:** Use yellow/brand color as header background
+- **DO:** Reserve brand yellow for accent elements (active states, notification badges, hover states)
+
+**Quick Action Icons:**
+- **Container Size:** `h-10 w-10` (reduced from `h-12 w-12`)
+- **Icon Size:** `h-5 w-5` (reduced from `h-6 w-6`)
+- **Text Size:** `text-[10px]` (reduced from `text-[11px]`)
+- **Minimum Width:** `64px` (reduced from `72px`) to improve information density and reduce horizontal scrolling
+
+**Icon Stroke Width (DO):**
+- **Standardize:** All icons use consistent stroke width `strokeWidth={1.5}` across quick actions and bottom navigation for cohesive visual style
 
 ## Related Rules
 - `@learned-rules.mdc` — Reinforces DRY patterns and code quality expectations for UI components.

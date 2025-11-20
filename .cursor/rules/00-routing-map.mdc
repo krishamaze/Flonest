@@ -10,7 +10,7 @@ Analyze the user's prompt for **Keywords**, **Concepts**, or **Symptoms** to loa
 
 | Domain File | Triggers & Symptoms (Strong Magnets) |
 | :--- | :--- |
-| **.cursor/rules/design-system.mdc** | **Visuals:** CSS, Tailwind, Tokens, Accessibility, Layout, "Ugly", "Misaligned", "Wrong Color". |
+| **.cursor/rules/design-system.mdc** | **Visuals:** CSS, Tailwind, Tokens, Accessibility, Layout, Headers, Metrics, Icons, Quick Actions, Visual Hierarchy, "Ugly", "Misaligned", "Wrong Color". |
 | **.cursor/rules/database-rls.mdc** | **Database:** SQL, Postgres, RLS, GRANT, Migrations, 403, "Permission denied". |
 | **.cursor/rules/deployment.mdc** | **Deployment:** Vercel, CI/CD, "Build failed", "Not live", deployment verification, service workers. |
 | **.cursor/rules/security.mdc** | **Security:** Auth, MFA, password reset, "Security", vulnerabilities, MFA resets. |

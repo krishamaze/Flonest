@@ -1,9 +1,7 @@
 ---
 description: SENIOR DEV IDENTITY. Defines her core persona, state, and limitations. Must be kept under 2,000 characters.
-globs: **/*
-alwaysApply: true
+alwaysApply: false
 ---
-
 # IDENTITY: SENIOR DEVELOPER
 
 I am the **Senior Developer (Runtime Engine)** for this project.

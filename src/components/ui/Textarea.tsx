@@ -11,7 +11,7 @@ export const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(
     return (
       <div className="mb-md">
         {label && (
-          <label className="block text-sm font-medium text-secondary-text mb-xs">
+          <label className="block text-base font-medium text-secondary-text mb-xs">
             {label}
             {required && (
               <span className="text-error ml-xs" aria-label="required">*</span>
@@ -21,8 +21,8 @@ export const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(
         <textarea
           ref={ref}
           rows={rows}
-          className={`w-full min-h-[100px] px-md py-sm border rounded-md bg-bg-card text-base text-primary-text placeholder:text-muted-text focus:border-primary focus:outline-2 focus:outline-primary focus:outline-offset-2 disabled:bg-neutral-100 disabled:text-muted-text disabled:cursor-not-allowed transition-all duration-150 resize-vertical ${
-            error ? 'border-error focus:outline-error' : 'border-neutral-300'
+          className={`w-full min-h-[100px] px-md py-3 border rounded-md bg-bg-card text-base text-primary-text placeholder:text-muted-text focus:border-primary focus:bg-white focus:outline-1 focus:outline-primary focus:outline-offset-1 disabled:bg-neutral-100 disabled:text-muted-text disabled:cursor-not-allowed transition-all duration-150 resize-vertical ${
+            error ? 'border-error focus:outline-error' : 'border-neutral-400'
           } ${className}`}
           aria-invalid={error ? 'true' : undefined}
           aria-describedby={error ? `${props.id || 'textarea'}-error` : undefined}

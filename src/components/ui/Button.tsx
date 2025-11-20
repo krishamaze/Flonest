@@ -17,10 +17,10 @@ export function Button({
   ...props
 }: ButtonProps) {
   // Base classes using Tailwind with design tokens
-  const baseClasses = 'inline-flex items-center justify-center gap-sm rounded-md font-medium transition-all duration-200 min-h-[44px] min-w-[44px] focus-visible:outline-2 focus-visible:outline-primary focus-visible:outline-offset-2 disabled:opacity-50 disabled:cursor-not-allowed disabled:pointer-events-none'
+  const baseClasses = 'inline-flex items-center justify-center gap-sm rounded-md font-medium transition-all duration-150 min-h-[44px] min-w-[44px] focus-visible:outline-2 focus-visible:outline-primary focus-visible:outline-offset-2 disabled:opacity-50 disabled:cursor-not-allowed disabled:pointer-events-none active:scale-[0.98]'
   
   const variantClasses = {
-    primary: 'bg-primary text-on-primary font-semibold shadow-sm hover:bg-primary-hover hover:shadow-md hover:-translate-y-px active:translate-y-0 active:shadow-xs',
+    primary: 'bg-primary text-on-primary font-semibold shadow-sm hover:bg-primary-hover hover:shadow-md active:shadow-xs',
     secondary: 'bg-neutral-200 text-primary-text font-medium hover:bg-neutral-300',
     danger: 'bg-error text-on-dark font-semibold hover:bg-error-dark',
     ghost: 'bg-transparent text-secondary-text font-medium hover:bg-bg-hover',

@@ -108,8 +108,10 @@ export function BottomNav() {
               to={item.to}
               end={item.to === '/platform-admin' || item.to === '/'}
               className={({ isActive }) =>
-                `flex flex-1 flex-col items-center justify-center gap-xs py-sm min-h-[48px] transition-colors ${
-                  isActive ? 'text-primary font-semibold' : 'text-muted-text'
+                `flex flex-1 flex-col items-center justify-center gap-1 py-sm min-h-[56px] transition-all duration-150 ${
+                  isActive 
+                    ? 'text-primary font-semibold bg-primary/10 rounded-lg' 
+                    : 'text-muted-text'
                 }`
               }
               aria-label={item.label}
@@ -120,9 +122,9 @@ export function BottomNav() {
                 return (
                   <>
                     {/* Navigation icons: accent color only for active state, neutral/monochrome for inactive */}
-                    <Icon className={`h-6 w-6 ${isActive ? 'stroke-2 text-primary' : 'stroke-1.5 text-neutral-700'}`} aria-hidden="true" />
+                    <Icon className={`h-7 w-7 ${isActive ? 'stroke-2 text-primary' : 'stroke-1.5 text-neutral-700'}`} aria-hidden="true" />
                     {/* Labels: text-xs (12px) */}
-                    <span className="text-[10px] font-medium mt-1">{item.label}</span>
+                    <span className="text-xs font-medium">{item.label}</span>
                   </>
                 )
               }}
@@ -132,13 +134,15 @@ export function BottomNav() {
           {/* More Menu Button */}
           <button
             onClick={() => setIsMoreMenuOpen(true)}
-            className={`flex flex-1 flex-col items-center justify-center gap-xs py-sm min-h-[48px] transition-colors ${
-              isMoreMenuActive ? 'text-primary font-semibold' : 'text-muted-text'
+            className={`flex flex-1 flex-col items-center justify-center gap-1 py-sm min-h-[56px] transition-all duration-150 ${
+              isMoreMenuActive 
+                ? 'text-primary font-semibold bg-primary/10 rounded-lg' 
+                : 'text-muted-text'
             }`}
             aria-label="More options"
           >
-            <EllipsisHorizontalIcon className={`h-6 w-6 ${isMoreMenuActive ? 'stroke-2 text-primary' : 'stroke-1.5 text-neutral-700'}`} aria-hidden="true" />
-            <span className="text-[10px] font-medium mt-1">More</span>
+            <EllipsisHorizontalIcon className={`h-7 w-7 ${isMoreMenuActive ? 'stroke-2 text-primary' : 'stroke-1.5 text-neutral-700'}`} aria-hidden="true" />
+            <span className="text-xs font-medium">More</span>
           </button>
         </div>
       </nav>
