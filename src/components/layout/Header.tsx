@@ -1,15 +1,13 @@
 import { useAuth } from '../../contexts/AuthContext'
 import { useNavigate } from 'react-router-dom'
-import { ArrowRightOnRectangleIcon, ChevronDownIcon } from '@heroicons/react/24/outline'
+import { ArrowRightOnRectangleIcon } from '@heroicons/react/24/outline'
 import { Button } from '../ui/Button'
 import { NotificationBell } from '../notifications/NotificationBell'
-import { useOrgSwitcher } from '../orgs/OrgSwitcher'
+import { RoleTag } from './RoleTag'
 
 export function Header() {
   const { user, signOut } = useAuth()
   const navigate = useNavigate()
-  const { openSwitcher, getOrgDisplayInfo } = useOrgSwitcher()
-  const { label } = getOrgDisplayInfo()
 
   const userInitials = user?.email
     ? user.email.substring(0, 2).toUpperCase()
@@ -18,45 +16,54 @@ export function Header() {
   const isPlatformAdmin = user?.platformAdmin
 
   return (
-    <header className="sticky top-0 z-40 border-b border-neutral-200 bg-white safe-top transition-all duration-200" style={{ backgroundColor: '#ffffff' }}>
-      <div className="mx-auto flex h-12 items-center justify-between px-md">
-        {isPlatformAdmin ? (
-          <div className="flex items-center gap-sm -ml-sm px-sm py-1">
-            <div className="flex h-7 w-7 items-center justify-center rounded-md bg-white shadow-sm p-0.5 border border-neutral-100">
-              <img
-                src="/pwa-192x192.png"
-                alt="FineTune logo"
-                className="h-full w-full object-contain"
-              />
-            </div>
-            <span className="text-sm font-semibold text-primary-text leading-tight">
+    <header 
+      className="sticky top-0 z-40 border-b border-neutral-200 bg-white safe-top transition-all duration-200" 
+      style={{ 
+        backgroundColor: '#ffffff',
+        height: 'var(--size-appbar-height)',
+      }}
+    >
+      <div 
+        className="mx-auto flex items-center justify-between"
+        style={{
+          height: 'var(--size-appbar-height)',
+          paddingLeft: 'var(--padding-h-appbar)',
+          paddingRight: 'var(--padding-h-appbar)',
+        }}
+      >
+        {/* Logo/Title */}
+        <div className="flex items-center gap-sm -ml-sm px-sm py-1">
+          <div className="flex h-7 w-7 items-center justify-center rounded-md bg-white shadow-sm p-0.5 border border-neutral-100">
+            <img
+              src="/pwa-192x192.png"
+              alt="FineTune logo"
+              className="h-full w-full object-contain"
+            />
+          </div>
+          {isPlatformAdmin && (
+            <span 
+              className="text-sm leading-tight text-primary-text"
+              style={{
+                fontWeight: 'var(--font-weight-appbar-title)',
+                fontSize: 'var(--font-size-appbar-title)',
+              }}
+            >
               Platform Admin
             </span>
-          </div>
-        ) : (
-          <button
-            type="button"
-            onClick={openSwitcher}
-            aria-label="Switch organization"
-            className="group flex items-center gap-sm -ml-sm px-sm py-1 rounded-md hover:bg-neutral-50 transition-colors cursor-pointer focus:outline-none focus-visible:outline focus-visible:outline-offset-2 focus-visible:outline-primary"
-          >
-            <div className="flex h-7 w-7 items-center justify-center rounded-md bg-white shadow-sm p-0.5 border border-neutral-100">
-              <img
-                src="/pwa-192x192.png"
-                alt="FineTune logo"
-                className="h-full w-full object-contain"
-              />
-            </div>
-            <div className="flex items-center gap-xs">
-              <span className="text-sm font-semibold text-primary-text leading-tight truncate max-w-[160px]">
-                {label}
-              </span>
-              <ChevronDownIcon className="h-3 w-3 text-muted-text group-hover:text-primary transition-colors" strokeWidth={2.5} />
-            </div>
-          </button>
-        )}
+          )}
+        </div>
 
-        <div className="flex items-center gap-md">
+        {/* Spacer */}
+        <div className="flex-1" />
+
+        {/* Right-side actions: RoleTag → NotificationBell → ProfileMenu */}
+        <div 
+          className="flex items-center"
+          style={{
+            gap: 'var(--gap-appbar-actions)',
+          }}
+        >
+          <RoleTag />
           <NotificationBell />
           
           <div className="flex items-center gap-sm border-l border-neutral-200 pl-sm">

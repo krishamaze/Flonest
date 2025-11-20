@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { useAuth } from '../contexts/AuthContext'
+import { useOrgSwitcher } from '../components/orgs/OrgSwitcher'
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card'
 import { Button } from '../components/ui/Button'
 import { Input } from '../components/ui/Input'
@@ -38,7 +39,8 @@ import {
 } from '../hooks/useSubscription'
 
 export function SettingsPage() {
-  const { user } = useAuth()
+  const { user, memberships, agentRelationships } = useAuth()
+  const { openSwitcher } = useOrgSwitcher()
   const queryClient = useQueryClient()
   const [isEditing, setIsEditing] = useState(false)
   const [formData, setFormData] = useState({
@@ -504,6 +506,36 @@ export function SettingsPage() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Organization Switching */}
+      {(memberships.length > 1 || agentRelationships.length > 0) && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base font-medium flex items-center gap-sm">
+              <BuildingOfficeIcon className="h-5 w-5 text-primary" />
+              Organization
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="p-4 pt-0 space-y-md">
+            <div>
+              <p className="text-sm text-secondary-text mb-md">
+                {memberships.length > 1
+                  ? `You have access to ${memberships.length} organization${memberships.length > 1 ? 's' : ''}. Switch between them or manage agent contexts.`
+                  : agentRelationships.length > 0
+                  ? 'You can switch between your business and agent contexts.'
+                  : 'Switch between organizations or agent contexts.'}
+              </p>
+              <Button
+                variant="primary"
+                onClick={openSwitcher}
+                className="w-full sm:w-auto"
+              >
+                Switch Organization
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Organization Logo */}
       <Card>

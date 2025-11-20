@@ -127,9 +127,17 @@ function OrgSwitcherModal({
                 boxShadow: '0 -1px 3px 0 rgba(0, 0, 0, 0.1)',
               }}
             >
-              <div className="flex items-center justify-between border-b border-neutral-200 px-lg py-md">
+              <div className="flex items-center justify-between border-b border-neutral-200 px-md py-md">
                 <div>
-                  <p className="text-base font-semibold text-primary-text">Switch organization</p>
+                  <p 
+                    className="text-primary-text"
+                    style={{
+                      fontSize: 'var(--font-size-appbar-title)',
+                      fontWeight: 'var(--font-weight-appbar-title)',
+                    }}
+                  >
+                    Switch organization
+                  </p>
                   <p className="text-xs text-muted-text">
                     Choose a business or agent context to work in.
                   </p>
@@ -143,7 +151,7 @@ function OrgSwitcherModal({
                 </button>
               </div>
 
-              <div className="max-h-[calc(70vh-120px)] overflow-y-auto px-lg py-md space-y-lg">
+              <div className="max-h-[calc(70vh-120px)] overflow-y-auto px-md py-md space-y-lg">
                 <section aria-label="My businesses">
                   <header className="mb-sm flex items-center gap-sm text-xs font-semibold uppercase tracking-wide text-muted-text">
                     <BuildingOffice2Icon className="h-4 w-4" aria-hidden="true" />

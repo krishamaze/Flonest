@@ -50,14 +50,17 @@
   --bg-hover: #F9FAFB;
   --bg-selected: #FEF3C7;
 
-  /* Spacing Scale (8pt Grid) */
-  --spacing-xs: 4px;
-  --spacing-sm: 8px;
-  --spacing-md: 16px;
-  --spacing-lg: 24px;
-  --spacing-xl: 32px;
-  --spacing-2xl: 48px;
-  --spacing-3xl: 64px;
+  /* Base Unit - Foundation for spacing scale */
+  --base-unit: 8px;
+
+  /* Spacing Scale (8pt Grid) - All based on BASE_UNIT */
+  --spacing-xs: calc(var(--base-unit) * 1);    /* 8px */
+  --spacing-sm: calc(var(--base-unit) * 1.5);  /* 12px */
+  --spacing-md: calc(var(--base-unit) * 2);    /* 16px */
+  --spacing-lg: calc(var(--base-unit) * 3);    /* 24px */
+  --spacing-xl: calc(var(--base-unit) * 4);    /* 32px */
+  --spacing-2xl: calc(var(--base-unit) * 6);   /* 48px */
+  --spacing-3xl: calc(var(--base-unit) * 8);   /* 64px */
 
   /* Typography */
   --font-primary: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
@@ -113,5 +116,13 @@
   /* Touch Targets - Minimum 44px for accessibility */
   --touch-target-min: 44px;
   --touch-target-nav: 48px;
+
+  /* App Bar Tokens - Token-based spacing system */
+  --size-appbar-height: calc(var(--base-unit) * 7);     /* 56px */
+  --padding-h-appbar: var(--spacing-md);                /* 16px */
+  --padding-v-appbar: var(--spacing-sm);                /* 12px */
+  --gap-appbar-actions: var(--spacing-sm);              /* 12px */
+  --font-weight-appbar-title: var(--font-weight-medium); /* 500 */
+  --font-size-appbar-title: 1rem;                       /* 16px - never hardcode px */
 }
 
