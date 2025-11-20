@@ -6,7 +6,7 @@ import { AuthProvider, useAuth } from './contexts/AuthContext'
 import { VersionCheckProvider } from './contexts/VersionCheckContext'
 import { ServiceWorkerProvider } from './contexts/ServiceWorkerContext'
 import { OrgSwitcherProvider } from './components/orgs/OrgSwitcher'
-import { IdentitySheetProvider, useIdentitySheet } from './components/identity/IdentitySheet'
+import { IdentitySheetProvider, useIdentitySheet, IdentitySheets } from './components/identity/IdentitySheet'
 import { MainLayout } from './components/layout/MainLayout'
 import { LoadingSpinner } from './components/ui/LoadingSpinner'
 import { ConnectionError } from './components/ui/ConnectionError'
@@ -360,7 +360,12 @@ const queryClient = new QueryClient({
 
 function OrgSwitcherProviderWrapper({ children }: { children: ReactNode }) {
   const { openContextSheet } = useIdentitySheet()
-  return <OrgSwitcherProvider onOpenSwitcher={openContextSheet}>{children}</OrgSwitcherProvider>
+  return (
+    <OrgSwitcherProvider onOpenSwitcher={openContextSheet}>
+      {children}
+      <IdentitySheets />
+    </OrgSwitcherProvider>
+  )
 }
 
 function App() {

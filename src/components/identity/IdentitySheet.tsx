@@ -5,6 +5,10 @@ import { ContextSheet } from './ContextSheet'
 interface IdentitySheetContextType {
   openIdentitySheet: () => void
   openContextSheet: () => void
+  isHubOpen: boolean
+  closeHub: () => void
+  isContextOpen: boolean
+  closeContext: () => void
 }
 
 const IdentitySheetContext = createContext<IdentitySheetContextType | null>(null)
@@ -15,6 +19,24 @@ export function useIdentitySheet() {
     throw new Error('useIdentitySheet must be used within an IdentitySheetProvider')
   }
   return context
+}
+
+export function IdentitySheets() {
+  const { isHubOpen, closeHub, openContextSheet, isContextOpen, closeContext } = useIdentitySheet()
+  
+  return (
+    <>
+      <IdentityHubSheet 
+        isOpen={isHubOpen} 
+        onClose={closeHub} 
+        onOpenContextSheet={openContextSheet}
+      />
+      <ContextSheet 
+        isOpen={isContextOpen} 
+        onClose={closeContext} 
+      />
+    </>
+  )
 }
 
 export function IdentitySheetProvider({ children }: { children: ReactNode }) {
@@ -31,18 +53,18 @@ export function IdentitySheetProvider({ children }: { children: ReactNode }) {
   const closeHub = () => setIsHubOpen(false)
   const closeContext = () => setIsContextOpen(false)
 
+  const value: IdentitySheetContextType = {
+    openIdentitySheet,
+    openContextSheet,
+    isHubOpen,
+    closeHub,
+    isContextOpen,
+    closeContext
+  }
+
   return (
-    <IdentitySheetContext.Provider value={{ openIdentitySheet, openContextSheet }}>
+    <IdentitySheetContext.Provider value={value}>
       {children}
-      <IdentityHubSheet 
-        isOpen={isHubOpen} 
-        onClose={closeHub} 
-        onOpenContextSheet={openContextSheet}
-      />
-      <ContextSheet 
-        isOpen={isContextOpen} 
-        onClose={closeContext} 
-      />
     </IdentitySheetContext.Provider>
   )
 }
