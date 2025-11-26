@@ -585,6 +585,9 @@ export function SetupPage() {
               >
                 Confirm & Continue
               </Button>
+              <p className="text-xs text-secondary-text leading-normal mt-md text-center">
+                By continuing, you agree to our <a href="#" className="underline">Terms</a> and <a href="#" className="underline">Privacy Policy</a>.
+              </p>
             </div>
           )}
 
@@ -724,6 +727,9 @@ export function SetupPage() {
               >
                 Complete Setup
               </Button>
+              <p className="text-xs text-secondary-text leading-normal mt-md text-center">
+                By continuing, you agree to our <a href="#" className="underline">Terms</a> and <a href="#" className="underline">Privacy Policy</a>.
+              </p>
             </form>
           )}
         </div>
