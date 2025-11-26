@@ -34,7 +34,7 @@ export function Header() {
           <div className="flex h-9 w-9 items-center justify-center rounded-md bg-white shadow-sm p-0.5 border border-neutral-100">
             <img
               src="/pwa-192x192.png"
-              alt="FineTune logo"
+              alt="Flonest logo"
               className="h-full w-full object-contain"
             />
           </div>
