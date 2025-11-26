@@ -17,8 +17,8 @@ export default defineConfig({
       registerType: 'prompt',
       includeAssets: ['favicon.ico'],
       manifest: {
-        name: 'FineTune WorkHub',
-        short_name: 'WorkHub',
+        name: 'Flonest',
+        short_name: 'Flonest',
         description: 'Digital Infrastructure for Modern Business',
         theme_color: '#E2C33D',
         background_color: '#FFFFFF',

@@ -180,11 +180,11 @@ export function LoginPage() {
               <div className="mx-auto mb-lg flex h-24 w-24 items-center justify-center rounded-lg bg-white shadow-primary p-md">
                 <img 
                   src="/pwa-192x192.png" 
-                  alt="finetune logo" 
+                  alt="Flonest logo"
                   className="w-full h-full object-contain"
                 />
               </div>
-              <h1 className="text-3xl font-bold text-primary-text mb-xs">FineTune WorkHub</h1>
+              <h1 className="text-3xl font-bold text-primary-text mb-xs">Flonest</h1>
               <p className="text-base text-secondary-text">
                 {view === 'sign_up' 
                   ? 'Sign up to start managing your operations' 
