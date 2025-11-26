@@ -583,7 +583,7 @@ export function SetupPage() {
                 isLoading={isSubmitting}
                 disabled={isSubmitting}
               >
-                Confirm & Continue
+                {isSubmitting ? 'Processing...' : 'Confirm & Continue'}
               </Button>
               <p className="text-xs text-secondary-text leading-normal mt-md text-center">
                 By continuing, you agree to our <a href="#" className="underline">Terms</a> and <a href="#" className="underline">Privacy Policy</a>.
@@ -725,7 +725,7 @@ export function SetupPage() {
                 isLoading={isSubmitting}
                 disabled={isSubmitting}
               >
-                Complete Setup
+                {isSubmitting ? 'Processing...' : 'Complete Setup'}
               </Button>
               <p className="text-xs text-secondary-text leading-normal mt-md text-center">
                 By continuing, you agree to our <a href="#" className="underline">Terms</a> and <a href="#" className="underline">Privacy Policy</a>.
