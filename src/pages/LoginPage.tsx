@@ -218,10 +218,12 @@ export function LoginPage() {
                   label="Email"
                   placeholder="you@example.com"
                   value={email}
-                  onChange={(e) => setEmail(e.target.value)}
+                  onChange={(e) => setEmail(e.target.value.toLowerCase())}
                   required
                   disabled={loading}
                   autoComplete="email"
+                  autoFocus
+                  className="lowercase"
                   aria-describedby={error && view !== 'forgot_password' ? 'login-error' : undefined}
                 />
 

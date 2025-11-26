@@ -487,6 +487,7 @@ export function SetupPage() {
                 disabled={gstLoading || isSubmitting}
                 required
                 autoFocus
+                className="uppercase"
               />
 
               {gstLoading && (
