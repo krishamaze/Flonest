@@ -370,7 +370,7 @@ export function SetupPage() {
       >
         {/* Top Bar */}
         <div className="flex items-center justify-between px-lg py-md border-b border-neutral-200 flex-shrink-0">
-          <h1 className="text-xl font-bold text-primary-text">Finetune</h1>
+          <h1 className="text-xl font-bold text-primary-text">Flonest</h1>
           <button
             onClick={handleLogout}
             className="flex items-center gap-xs px-md py-sm rounded-md text-sm font-medium text-secondary-text hover:bg-neutral-100 hover:text-primary-text transition-colors min-h-[44px]"
@@ -403,7 +403,7 @@ export function SetupPage() {
             <div className="space-y-lg">
               <div className="text-center">
                 <h2 className="text-2xl font-bold text-primary-text mb-sm">
-                  Welcome to Finetune!
+                  Welcome to Flonest!
                 </h2>
                 <p className="text-secondary-text">
                   Let's set up your organization to get started.
