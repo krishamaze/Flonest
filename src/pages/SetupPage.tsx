@@ -489,6 +489,9 @@ export function SetupPage() {
                 autoFocus
                 className="uppercase"
               />
+              <p className="text-xs text-secondary-text">
+                Required for GST invoice generation
+              </p>
 
               {gstLoading && (
                 <div className="flex items-center gap-sm text-sm text-secondary-text">
