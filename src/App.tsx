@@ -16,6 +16,7 @@ import { UpdateNotification } from './components/pwa/UpdateNotification'
 import { FRONTEND_VERSION } from './lib/api/version'
 import { ProtectedRoute, PlatformAdminRoute } from './components/ProtectedRoute'
 import { RoleProtectedRoute } from './components/RoleProtectedRoute'
+import { RoleRedirect } from './components/RoleRedirect'
 import { MANAGE_PRODUCTS } from './lib/permissions'
 import { PlatformAdminSessionWatcher } from './components/security/PlatformAdminSessionWatcher'
 
@@ -175,7 +176,7 @@ function AppRoutes() {
                 </ProtectedRoute>
               }
             >
-            <Route index element={<DashboardPage />} />
+            <Route index element={<RoleRedirect />} />
             <Route 
               path="products" 
               element={
@@ -229,6 +230,40 @@ function AppRoutes() {
                 </RoleProtectedRoute>
               } 
             />
+          </Route>
+
+          {/* Canonical role landing routes */}
+          <Route
+            path="/owner"
+            element={
+              <ProtectedRoute>
+                <MainLayout />
+              </ProtectedRoute>
+            }
+          >
+            <Route index element={<DashboardPage />} />
+          </Route>
+
+          <Route
+            path="/branch"
+            element={
+              <ProtectedRoute>
+                <MainLayout />
+              </ProtectedRoute>
+            }
+          >
+            <Route index element={<DashboardPage />} />
+          </Route>
+
+          <Route
+            path="/advisor"
+            element={
+              <ProtectedRoute>
+                <MainLayout />
+              </ProtectedRoute>
+            }
+          >
+            <Route index element={<DashboardPage />} />
           </Route>
 
           {/* Role Selector - shown after login to pick context */}
