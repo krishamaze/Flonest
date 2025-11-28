@@ -10,8 +10,6 @@
 -- 1. Add FOR UPDATE to bill SELECT (mirrors post_sales_invoice pattern)
 -- 2. Add status='approved' predicate to UPDATE WHERE clause (defense in depth)
 
-BEGIN;
-
 CREATE OR REPLACE FUNCTION public.post_purchase_bill(
   p_bill_id uuid,
   p_org_id uuid,
@@ -184,14 +182,4 @@ $function$;
 
 -- Grant execute permission
 GRANT EXECUTE ON FUNCTION public.post_purchase_bill(uuid, uuid, uuid) TO authenticated;
-
-COMMENT ON FUNCTION public.post_purchase_bill(uuid, uuid, uuid) IS 
-'Post a purchase bill to inventory. 
-WORKFLOW: Only allows "approved" → "posted" transition. Rejects "draft" and other statuses.
-ATOMICITY: All operations (stock_ledger inserts + bill status update) succeed or fail together.
-CONCURRENCY: SELECT FOR UPDATE prevents race conditions on concurrent posting attempts.
-DEFENSE IN DEPTH: UPDATE WHERE status='approved' prevents double-posting even if lock is bypassed.
-EXCEPTION HANDLING: RAISE; in EXCEPTION block ensures hard rollback on any error.';
-
-COMMIT;
 

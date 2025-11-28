@@ -14,8 +14,6 @@
 --
 -- ATOMICITY: All operations succeed or fail together
 
-BEGIN;
-
 CREATE OR REPLACE FUNCTION public.approve_purchase_bill_with_hsn_validation(
   p_bill_id uuid,
   p_org_id uuid,
@@ -147,12 +145,4 @@ $function$;
 
 -- Grant execute permission
 GRANT EXECUTE ON FUNCTION public.approve_purchase_bill_with_hsn_validation(uuid, uuid, uuid) TO authenticated;
-
-COMMENT ON FUNCTION public.approve_purchase_bill_with_hsn_validation(uuid, uuid, uuid) IS 
-'Approve a purchase bill with HSN validation.
-COMPLIANCE: Checks HSN mismatches for all items before approval.
-WORKFLOW: Sets status to "flagged_hsn_mismatch" if mismatches found, "approved" if all match.
-ATOMICITY: All operations (item flag updates + bill status) succeed or fail together.';
-
-COMMIT;
 

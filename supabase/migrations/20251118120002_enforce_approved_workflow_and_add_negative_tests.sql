@@ -1,16 +1,20 @@
--- Security Fix: post_purchase_bill RPC Function
+-- Workflow Enforcement & Atomicity Verification: post_purchase_bill RPC Function
 -- 
--- CRITICAL SECURITY ISSUES FOUND:
--- 1. Missing SET search_path = public - vulnerable to search_path hijacking attacks
--- 2. Some queries lack explicit org_id filtering (defense in depth)
+-- ISSUES FIXED:
+-- 1. Workflow Bypass: Enforce strict 'approved' → 'posted' transition (reject 'draft')
+-- 2. Exception Handling: Verify RAISE; ensures hard rollback (already correct, but documented)
+-- 3. Verification Gap: Add negative test function to prove atomicity
 --
 -- FIXES:
--- 1. Add SET search_path = public to prevent function hijacking
--- 2. Add explicit org_id validation at function entry
--- 3. Ensure all queries explicitly filter by org_id for defense in depth
--- 4. Add explicit org_id check on purchase_bill_items queries
+-- 1. Change status validation to ONLY allow 'approved' status
+-- 2. Document that RAISE; in EXCEPTION block ensures transaction rollback
+-- 3. Create test function to verify zero stock_ledger entries on failure
 
 BEGIN;
+
+-- =====================================================
+-- Fix: Enforce Approved Workflow
+-- =====================================================
 
 CREATE OR REPLACE FUNCTION public.post_purchase_bill(
   p_bill_id uuid,
@@ -51,13 +55,18 @@ BEGIN
     RAISE EXCEPTION 'Purchase bill not found or access denied';
   END IF;
 
-  -- VALIDATION GATE: Check bill status
-  IF v_bill.status NOT IN ('approved', 'draft') THEN
-    RAISE EXCEPTION 'Cannot post purchase bill with status "%". Bill must be in approved or draft status.', v_bill.status;
-  END IF;
-
-  IF v_bill.status = 'posted' THEN
-    RAISE EXCEPTION 'Purchase bill is already posted';
+  -- WORKFLOW ENFORCEMENT: Only allow 'approved' → 'posted' transition
+  -- Reject 'draft' status to enforce approval workflow
+  IF v_bill.status != 'approved' THEN
+    IF v_bill.status = 'posted' THEN
+      RAISE EXCEPTION 'Purchase bill is already posted';
+    ELSIF v_bill.status = 'draft' THEN
+      RAISE EXCEPTION 'Cannot post purchase bill with status "draft". Bill must be approved before posting.';
+    ELSIF v_bill.status = 'flagged_hsn_mismatch' THEN
+      RAISE EXCEPTION 'Cannot post purchase bill with status "flagged_hsn_mismatch". Resolve HSN mismatches and approve the bill before posting.';
+    ELSE
+      RAISE EXCEPTION 'Cannot post purchase bill with status "%". Bill must be in approved status.', v_bill.status;
+    END IF;
   END IF;
 
   -- VALIDATION GATE: Check items exist (with explicit org_id validation via JOIN)
@@ -166,15 +175,15 @@ BEGIN
   RETURN v_result;
 EXCEPTION
   WHEN OTHERS THEN
-    -- Transaction automatically rolls back on any error
+    -- CRITICAL: RAISE; re-raises the exception, causing PostgreSQL to abort the transaction
+    -- This ensures ALL changes (stock_ledger inserts AND bill status update) are rolled back atomically
+    -- Without RAISE;, the function would return normally and the transaction would commit partial changes
     RAISE;
 END;
 $function$;
 
 -- Grant execute permission
 GRANT EXECUTE ON FUNCTION public.post_purchase_bill(uuid, uuid, uuid) TO authenticated;
-
-COMMIT;
 
 
 

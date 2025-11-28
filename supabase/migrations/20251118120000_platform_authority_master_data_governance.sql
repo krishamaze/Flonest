@@ -8,8 +8,6 @@
 -- 4. Create purchase_bills table with HSN mismatch tracking
 -- 5. Verify master_products verification workflow
 
-BEGIN;
-
 -- =====================================================
 -- 1. Master Categories: Friendly Abstraction Layer
 -- =====================================================
@@ -649,6 +647,4 @@ BEGIN
     NULL::text;
 END;
 $$;
-
-COMMIT;
 
