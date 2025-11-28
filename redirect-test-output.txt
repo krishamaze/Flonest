@@ -1,0 +1,7 @@
+
+=== ROLE REDIRECT RESULTS ===
+✗ owner@test.com → http://localhost:5173/ (expected: /owner)
+✗ branch@test.com → http://localhost:5173/login (expected: /branch)
+✗ advisor@test.com → http://localhost:5173/login (expected: /advisor)
+✗ agent@test.com → http://localhost:5173/login (expected: /agent)
+✗ internal@test.com → http://localhost:5173/admin-mfa (expected: /platform-admin)

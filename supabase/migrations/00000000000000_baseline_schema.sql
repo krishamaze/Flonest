@@ -332,7 +332,7 @@ CREATE TABLE public.master_products (
   base_unit text NOT NULL DEFAULT 'pcs',
   base_price numeric(12,2),
   gst_rate numeric(5,2),
-  gst_type text CHECK (gst_type IN ('goods','services')) DEFAULT 'goods',
+  gst_type text DEFAULT 'goods',
   status text NOT NULL DEFAULT 'active' CHECK (status IN ('active','inactive','discontinued','pending')),
   approval_status text NOT NULL DEFAULT 'pending' CHECK (approval_status IN ('pending','approved','rejected','auto_pass','migrated')),
   submitted_org_id uuid REFERENCES public.orgs(id) ON DELETE SET NULL,

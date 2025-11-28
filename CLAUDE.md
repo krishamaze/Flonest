@@ -3,8 +3,11 @@
 > **Last Updated**: November 27, 2025
 > **Repository**: bill.finetune.store
 > **Production URL**: https://bill.finetune.store
+> **Main Branch**: main
 
 This document provides comprehensive guidance for AI assistants working on the Flonest codebase. It explains the project structure, development workflows, coding conventions, and critical patterns to follow.
+
+**⚠️ IMPORTANT**: Before making any changes, read [.cursorrules](.cursorrules) for critical project-specific rules and constraints.
 
 ---
 
@@ -16,16 +19,66 @@ This document provides comprehensive guidance for AI assistants working on the F
 4. [Directory Structure](#directory-structure)
 5. [Development Workflows](#development-workflows)
 6. [Code Conventions & Patterns](#code-conventions--patterns)
-7. [Database Operations](#database-operations)
-8. [Deployment Process](#deployment-process)
-9. [Critical Rules & Constraints](#critical-rules--constraints)
-10. [Common Tasks](#common-tasks)
+7. [Authentication System](#authentication-system)
+8. [Testing & Mock Auth](#testing--mock-auth)
+9. [Database Operations](#database-operations)
+10. [Deployment Process](#deployment-process)
+11. [Critical Rules & Constraints](#critical-rules--constraints)
+12. [Common Tasks](#common-tasks)
+13. [Troubleshooting](#troubleshooting)
 
 ---
 
 ## Project Overview
 
 **Flonest** (bill.finetune.store) is a **mobile-first Progressive Web App (PWA)** for multi-tenant inventory & sales SaaS with GST invoicing and product governance.
+
+### Branding & Domain Strategy
+
+- **Brand Name**: Flonest (rebranded from FineTune)
+- **Current Production**: bill.finetune.store (legacy domain)
+- **Target Domain**: flonest.app (purchased, pending migration)
+- **First Tenant**: finetune.store — our own electronics store, powered by Flonest
+- **Future**: finetune.store becomes an e-commerce storefront; Flonest powers it as SaaS
+
+#### Target Users & Value Proposition
+
+**Target Customers**: Electronics retailers, multi-store franchises, gadget repair centers, wholesalers & distributors (later stage).
+
+**Industry Vertical**: Consumer electronics retail & service segment.
+
+**Primary Value Proposition**:
+- Unified platform for GST billing, inventory control, job sheets & e-commerce
+- One system to run offline and online business together
+- We power our own store (finetune.store) — customers use the same infrastructure
+
+This positions Flonest as a SaaS company, not just an internal tool.
+
+### Recent Changes (Nov 2025)
+
+#### Authentication System Refactor
+- **React Query Integration** - Migrated auth state management to React Query, achieving 70% code reduction
+- **Password Detection** - Added `check_user_has_password()` function to differentiate OAuth vs password-based users
+- **Mock Auth System** - Implemented comprehensive mock authentication for Playwright E2E testing
+- **Auth Contract Enforcement** - Type-safe auth client interface ensures consistency between real and mock implementations
+
+#### UI/UX Improvements
+- **Role-Based Routing** - Canonical landing paths for each role (/owner, /branch, /advisor)
+- **Input Normalization** - Auto-lowercase email, auto-uppercase GSTIN
+- **Autofocus** - Improved form UX with automatic field focusing
+- **Submission Protection** - Double-submit protection and loading states
+- **Branding** - Updated to "Flonest" throughout the app
+
+#### Database Schema Updates
+- Added `check_user_has_password()` RPC function (migration 20251126000000)
+- Enhanced RLS policies for agent relationships
+- Added org lifecycle state management
+- GST verification and tax status improvements
+
+#### Testing Infrastructure
+- Playwright configuration added
+- Mock auth system for E2E tests without network calls
+- Test user definitions for all roles
 
 ### Core Features
 - 📱 **Mobile-First Design** - Optimized for tablets and phones
@@ -83,13 +136,16 @@ This document provides comprehensive guidance for AI assistants working on the F
 - **Row Level Security (RLS)** - Database-enforced access control
 - **Membership-based access** - Users join orgs via memberships with roles
 - **Org context switching** - Users can switch between organizations
+- **Agent context support** - External agents can access specific org contexts
 
 ### Authentication Flow
-1. User signs in via Supabase Auth
-2. System checks for profile and memberships
-3. If no memberships → redirect to `/unregistered`
-4. If multiple orgs → user selects org (context stored in localStorage + server-side)
-5. RLS policies enforce org-scoped data access
+1. User signs in via Supabase Auth (or mock auth in test mode)
+2. System checks for profile and memberships via React Query
+3. If no profile → redirect to `/unregistered`
+4. If no memberships → redirect to setup flow
+5. If multiple orgs → user selects org (context stored in localStorage + server-side via `set_current_org_context` RPC)
+6. RLS policies enforce org-scoped data access
+7. Password check performed via `check_user_has_password()` function for OAuth vs password-based users
 
 ### Data Flow Pattern
 ```
@@ -107,10 +163,12 @@ UI Re-render
 ```
 
 ### State Management Strategy
-- **Server State**: React Query (queries, mutations, cache)
-- **Auth State**: AuthContext (with React Query hooks underneath)
+- **Server State**: React Query (queries, mutations, cache) - Primary state management
+- **Auth State**: AuthContext (React Query powered via `useAuthQuery` hooks - see [src/contexts/AuthContext.tsx](src/contexts/AuthContext.tsx))
 - **UI State**: React local state (useState, useReducer)
-- **Global UI State**: Context API (RefreshContext, ServiceWorkerContext, etc.)
+- **Global UI State**: Context API (RefreshContext, ServiceWorkerContext, VersionCheckContext)
+
+**CRITICAL**: AuthContext achieved ~70% code reduction by delegating to React Query. All auth operations (session, profile, memberships, agent relationships) are managed via React Query with automatic caching, deduplication, and race-condition handling.
 
 ---
 
@@ -238,10 +296,17 @@ npm run supabase:migration:new add_new_feature
 ### 3. Git Workflow & Deployment
 
 #### Branch Strategy
-- **`main`** - Production branch (auto-deploys to https://bill.finetune.store)
-- **`beta`** - Beta testing branch (auto-deploys to beta environment)
-- **`marketing`** - Marketing site (SEPARATE Vercel project - DO NOT MIX)
-- **`claude/*`** - Feature branches for AI assistant work
+- **`main`** — Production branch (auto-deploys to bill.finetune.store)
+- **`beta`** — Beta testing (auto-deploys to beta environment)
+- **`marketing`** — Marketing site (SEPARATE Vercel project — DO NOT MIX)
+
+**⚠️ Branch Cleanup Required**: Evaluate and merge/archive stale branches:
+- `ui_role_flow` — pending evaluation for merge to main
+- `flonest_branding` — pending evaluation
+- `dev_db_testing` — experimental, evaluate for deletion
+- `solid_refactor` — evaluate for merge or archive
+
+**Active Development**: Trunk-based on `main` after branch cleanup. Use short-lived `claude/*` branches for AI-assisted features.
 
 #### Deployment Process
 
@@ -423,7 +488,7 @@ export const ProductsPage = () => {
 
 **Colors:**
 ```css
---color-primary: #E2C33D;       /* FineTune yellow */
+--color-primary: #E2C33D;       /* Flonest yellow */
 --color-secondary: #1F2937;     /* Dark slate */
 --text-primary: #000000;
 --text-secondary: #374151;
@@ -558,6 +623,198 @@ async function getProducts(orgId: string) {
 - **Avoid XSS** - Use React's built-in escaping (don't use `dangerouslySetInnerHTML`)
 - **Avoid SQL injection** - Use Supabase query builder (parameterized queries)
 - **No command injection** - Never execute user input as shell commands
+
+---
+
+## Authentication System
+
+### React Query-Powered Auth
+
+The authentication system is built on React Query for optimal performance and reliability. See [src/contexts/AuthContext.tsx](src/contexts/AuthContext.tsx:1-459).
+
+#### Key Features
+- **70% code reduction** from manual state management
+- **Automatic deduplication** - Multiple components requesting auth data trigger single query
+- **Race condition prevention** - React Query handles concurrent requests
+- **Optimistic updates** - UI updates immediately with server sync
+- **Automatic retry** - Failed requests retry with exponential backoff
+- **Cache invalidation** - Auth state updates propagate automatically
+
+#### Auth Query Hooks
+
+Located in [src/hooks/useAuthQuery.ts](src/hooks/useAuthQuery.ts):
+
+```typescript
+// Session query - tracks Supabase session
+useSessionQuery()
+
+// Auth data query - loads profile, memberships, agent relationships
+useAuthDataQuery(session)
+
+// Admin MFA requirement check
+useAdminMfaRequirementQuery(user)
+
+// Password check - determines if user has password vs OAuth-only
+useUserPasswordCheck(userId, enabled)
+```
+
+#### Authentication Bridge
+
+The `onAuthStateChange` listener in AuthContext bridges Supabase auth events to React Query:
+
+```typescript
+supabase.auth.onAuthStateChange((event, newSession) => {
+  // Update session in React Query cache
+  queryClient.setQueryData(['auth', 'session'], newSession)
+
+  // Invalidate auth data to refetch profile/memberships
+  if (newSession?.user) {
+    queryClient.invalidateQueries({ queryKey: ['auth', 'data'] })
+  } else {
+    queryClient.removeQueries({ queryKey: ['auth'] })
+  }
+})
+```
+
+#### Password vs OAuth Users
+
+The system differentiates between password-based and OAuth-only users:
+
+**Database Function**: `check_user_has_password()` ([migration](supabase/migrations/20251126000000_add_check_user_has_password_function.sql:1-32))
+- Checks `auth.users.encrypted_password` field
+- Returns `true` if user has password, `false` for OAuth-only
+- Used by ProtectedRoute for password reset flows
+
+**Usage**:
+```typescript
+const { hasPassword, checkingPassword } = useAuth()
+
+if (hasPassword === false) {
+  // OAuth user - redirect to set password
+}
+```
+
+#### Context Switching
+
+**Organization Context**:
+```typescript
+// Switch to different org
+await switchToOrg(orgId)
+// Updates localStorage + server-side via set_current_org_context RPC
+```
+
+**Agent Context**:
+```typescript
+// Switch to agent mode for external agent portal
+await switchToAgentMode(senderOrgId)
+// Updates context mode and agent relationship
+```
+
+#### Auth State Flow
+
+```
+Initial Load
+  ↓
+useSessionQuery → Load session from Supabase
+  ↓
+useAuthDataQuery → Load profile + memberships (if session exists)
+  ↓
+Org Selection → Set currentOrg via switchToOrg
+  ↓
+RLS Policies → Database enforces org-scoped access
+  ↓
+React Query Cache → All components get consistent auth state
+```
+
+---
+
+## Testing & Mock Auth
+
+### Mock Authentication System
+
+For E2E testing with Playwright, the app supports mock authentication mode that bypasses Supabase entirely.
+
+#### Enabling Mock Mode
+
+Set environment variable:
+```bash
+VITE_USE_MOCK=true
+```
+
+#### Mock Auth Architecture
+
+**Files**:
+- [src/lib/mockAuth.ts](src/lib/mockAuth.ts:1-145) - Mock auth implementation
+- [src/contexts/MockAuthProvider.tsx](src/contexts/MockAuthProvider.tsx) - Mock auth provider
+- [src/contexts/AuthProviderSwitch.tsx](src/contexts/AuthProviderSwitch.tsx) - Switches between real/mock auth
+
+**Mock Users** (defined in mockAuth.ts):
+```typescript
+'owner@test.com'    → org_owner role
+'branch@test.com'   → branch_head role
+'advisor@test.com'  → advisor role
+'agent@test.com'    → agent role
+'internal@test.com' → platform_admin role
+```
+
+#### How Mock Auth Works
+
+1. **Environment Detection**: Check `VITE_USE_MOCK === 'true'`
+2. **Provider Switch**: AuthProviderSwitch selects MockAuthProvider or real AuthProvider
+3. **Mock Session**: Stores session in localStorage (`mock_auth_session`)
+4. **Deterministic IDs**: User IDs generated from email (e.g., `mock-owner-test-com`)
+5. **Client Contract**: MockAuthProvider implements same interface as AuthContext
+
+#### Mock Auth Contract
+
+The mock system enforces the auth client contract via `AuthClientType`:
+
+```typescript
+// Both real and mock auth clients must implement this interface
+interface AuthClientType {
+  auth: {
+    signInWithPassword: (credentials: { email: string; password: string }) => Promise<AuthResponse>
+    signOut: (options?: { scope?: 'global' | 'local' }) => Promise<{ error: Error | null }>
+    onAuthStateChange: (callback: AuthChangeCallback) => { data: { subscription: { unsubscribe: () => void } } }
+    // ... other methods
+  }
+}
+```
+
+#### Usage in Tests
+
+```typescript
+// Playwright test
+test('owner can create product', async ({ page }) => {
+  // Set mock mode env var before starting app
+  process.env.VITE_USE_MOCK = 'true'
+
+  await page.goto('/')
+  await page.fill('[name="email"]', 'owner@test.com')
+  await page.fill('[name="password"]', 'any-password')
+  await page.click('button[type="submit"]')
+
+  // Now authenticated as mock owner
+})
+```
+
+#### Mock vs Real Auth
+
+| Feature | Real Auth | Mock Auth |
+|---------|-----------|-----------|
+| Backend | Supabase | localStorage |
+| Network | Required | None |
+| User Database | PostgreSQL | In-memory map |
+| Speed | ~100-500ms | ~1-5ms |
+| Use Case | Production, Development | E2E Tests |
+
+#### Playwright Test Setup
+
+The repository includes Playwright configuration:
+- [playwright.config.ts](playwright.config.ts) - Playwright configuration
+- [tests/](tests/) - E2E test files
+
+**IMPORTANT**: Mock auth is for testing only. Never enable in production.
 
 ---
 
@@ -919,6 +1176,203 @@ When working on this codebase:
 9. ✅ **Follow existing patterns** - Consistency is key
 
 **When in doubt, ask the user for clarification before proceeding.**
+
+---
+
+## Troubleshooting
+
+### Common Issues
+
+#### 1. Local Supabase Issues
+
+**Problem**: Storage container fails with "Migration iceberg-catalog-ids not found"
+
+**Solution**: See [docs/LOCAL_SUPABASE_POSTMORTEM.md](docs/LOCAL_SUPABASE_POSTMORTEM.md) for complete analysis.
+
+**Quick Fix**:
+```bash
+# Stop and clean Docker state
+npx supabase stop
+docker rm -f $(docker ps -aq --filter "name=supabase")
+docker volume rm $(docker volume ls -q --filter label=com.supabase.cli.project=Flonest)
+
+# Start fresh with latest CLI
+npx supabase start
+```
+
+**Root Cause**: CLI version mismatch or corrupted Docker volumes
+
+#### 2. Authentication Errors
+
+**Problem**: `profile_not_found` error after login
+
+**Cause**: User exists in auth.users but not in profiles table
+
+**Solution**: Profile should be auto-created via trigger. Check:
+```sql
+-- Verify trigger exists
+SELECT * FROM pg_trigger WHERE tgname = 'on_auth_user_created';
+
+-- Manually create profile if needed
+INSERT INTO profiles (id, email, is_internal)
+VALUES ('user-id', 'user@email.com', false);
+```
+
+**Problem**: `profile_access_denied` error
+
+**Cause**: RLS policy denying access to profile
+
+**Solution**: Check RLS policies on profiles table
+
+#### 3. Build Errors
+
+**Problem**: TypeScript errors about missing types
+
+**Solution**: Regenerate types from Supabase schema
+```bash
+npm run supabase:types
+# Or use Supabase MCP: "Generate TypeScript types"
+```
+
+**Problem**: Vite build fails with dependency errors
+
+**Solution**: Clean install
+```bash
+rm -rf node_modules package-lock.json
+npm install
+```
+
+#### 4. Deployment Issues
+
+**Problem**: Vercel deployment stuck in BUILDING state
+
+**Solution**:
+1. Check build logs via Vercel MCP: `get_deployment_build_logs`
+2. Look for errors in build output
+3. Fix errors and push again
+
+**Problem**: Deployment succeeds but app doesn't work
+
+**Check**:
+- Environment variables set correctly in Vercel dashboard
+- `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` are production values
+- Database migrations applied successfully
+
+#### 5. React Query Issues
+
+**Problem**: Stale data showing after mutation
+
+**Solution**: Ensure mutation invalidates correct query keys
+```typescript
+onSuccess: () => {
+  queryClient.invalidateQueries({ queryKey: ['products', orgId] })
+}
+```
+
+**Problem**: Infinite re-renders or request loops
+
+**Cause**: Query key changing on every render
+
+**Solution**: Stabilize query keys with useMemo or move to constants
+```typescript
+// ❌ BAD - creates new object every render
+queryKey: ['products', { status: 'active' }]
+
+// ✅ GOOD - stable reference
+const params = useMemo(() => ({ status: 'active' }), [])
+queryKey: ['products', orgId, params]
+```
+
+#### 6. Git/Deployment Workflow
+
+**Problem**: Push rejected or conflicts
+
+**Solution**:
+```bash
+git pull origin main
+# Resolve conflicts
+git add .
+git commit -m "fix: resolve conflicts"
+git push origin main
+```
+
+**Problem**: Accidentally merged wrong branches
+
+**CRITICAL**: Never merge `marketing` ↔ `main`
+
+**Recovery**:
+```bash
+# Reset to before merge
+git reset --hard HEAD~1
+# Or revert merge commit
+git revert -m 1 <merge-commit-hash>
+```
+
+#### 7. Mock Auth Not Working
+
+**Problem**: Tests still hitting Supabase
+
+**Check**:
+1. `VITE_USE_MOCK=true` is set before app starts
+2. Check console logs: `[mockAuth] MOCK_ENABLED: true`
+3. Verify AuthProviderSwitch is using MockAuthProvider
+
+**Problem**: Mock user not recognized
+
+**Cause**: Email not in MOCK_USERS map
+
+**Solution**: Use exact test emails from mockAuth.ts:
+- owner@test.com
+- branch@test.com
+- advisor@test.com
+- agent@test.com
+- internal@test.com
+
+### Debug Tools
+
+#### React Query Devtools
+
+Not currently enabled, but can be added:
+```typescript
+import { ReactQueryDevtools } from '@tanstack/react-query-devtools'
+
+// Add to App.tsx
+<ReactQueryDevtools initialIsOpen={false} />
+```
+
+#### Browser DevTools
+
+**Check Auth State**:
+```javascript
+// Console
+localStorage.getItem('currentOrgId')
+localStorage.getItem('mock_auth_session')
+```
+
+**Check React Query Cache**:
+```javascript
+// In React DevTools
+// Find QueryClientProvider context
+// Inspect queryClient.getQueryCache()
+```
+
+#### Supabase Logs
+
+**Via MCP**: "Show Supabase logs"
+
+**Via CLI**:
+```bash
+npx supabase logs --db
+npx supabase logs --api
+```
+
+### Getting Help
+
+1. **Check existing documentation** in `/docs/`
+2. **Search codebase** for similar patterns
+3. **Read .cursorrules** for project-specific rules
+4. **Check recent commits** for context: `git log --oneline -20`
+5. **Review migration history**: Use Supabase MCP `list_migrations`
 
 ---
 

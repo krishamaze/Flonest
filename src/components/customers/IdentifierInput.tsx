@@ -123,7 +123,7 @@ export function IdentifierInput({
           type="text"
           required
           autoFocus={autoFocus}
-          className="pr-[5.5rem]" // Add padding for icons (clear + search + gap)
+          className="pr-22" // Add padding for icons (clear + search + gap)
         />
         {/* Icons container - right side, positioned inside input field */}
         <div className="absolute right-md top-[calc(1.5rem+0.25rem+11px)] flex items-center gap-xs" style={{ transform: 'translateY(-50%)' }}>
@@ -163,9 +163,12 @@ export function IdentifierInput({
           </button>
         </div>
       </div>
-      {!value && (
+      {error && (
+        <p className="mt-1 text-xs text-error" role="alert">{error}</p>
+      )}
+      {!error && !value && (
         <p className="mt-1 text-xs text-secondary-text" role="status">
-          Enter Mobile No (10 digits) or GSTIN (15 chars)
+          {placeholder}
         </p>
       )}
       {!error && type !== 'invalid' && value && (

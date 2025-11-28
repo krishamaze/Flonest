@@ -437,12 +437,9 @@ export function InvoiceForm({
     // Validate form - all fields optional except: at least one identifier OR legal_name
     const formErrors: Record<string, string> = {}
     
-    // Check if we have at least one identifier or legal_name
-    const hasIdentifier = identifierValid && identifier.trim().length > 0
     const hasLegalName = masterFormData.customer_name.trim().length >= 2
-    
-    if (!hasIdentifier && !hasLegalName) {
-      formErrors.customer_name = 'Please provide at least a customer name or valid mobile/GSTIN'
+    if (!hasLegalName) {
+      formErrors.customer_name = 'Customer name is required'
     }
     
     // Validate email format if provided
@@ -484,15 +481,17 @@ export function InvoiceForm({
         : undefined
 
       const masterData: any = {
-        legal_name: masterFormData.customer_name.trim() || 'Customer',
+        legal_name: masterFormData.customer_name.trim(),
         address: masterFormData.address.trim() || undefined,
         email: masterFormData.email.trim() || undefined,
       }
 
-      if (identifierType === 'mobile' && additionalNormalized) {
-        masterData.gstin = additionalNormalized
-      } else if (identifierType === 'gstin' && additionalNormalized) {
-        masterData.mobile = additionalNormalized
+      if (identifierType === 'mobile') {
+        masterData.mobile = normalizeIdentifier(identifier, 'mobile')
+        if (additionalNormalized) masterData.gstin = additionalNormalized
+      } else if (identifierType === 'gstin') {
+        masterData.gstin = normalizeIdentifier(identifier, 'gstin')
+        if (additionalNormalized) masterData.mobile = additionalNormalized
       }
 
       const result = await lookupOrCreateCustomer(
@@ -1131,110 +1130,27 @@ export function InvoiceForm({
         <div className="space-y-4">
           <div>
             <h3 className="text-lg font-semibold text-primary-text mb-md">Step 1: Select Customer</h3>
-            <IdentifierInput
-              value={identifier}
-              onChange={setIdentifier}
-              onValidationChange={(isValid, type) => {
-                setIdentifierValid(isValid)
-                setIdentifierType(type)
-              }}
-              onSearch={handleLookupCustomer}
-              onClear={() => {
-                setSelectedCustomer(null)
-                setLookupPerformed(false)
-                setShowAddNewForm(false)
-              }}
-              autoFocus={isOpen && currentStep === 1}
-              disabled={isSubmitting}
-              searching={searching}
-            />
-
-            {/* Horizontal swipeable customer selection area - show after lookup completes */}
-            {lookupPerformed && !searching && identifierValid && (
-              <div className="mt-4">
-                <div 
-                  className="flex gap-md overflow-x-auto pb-sm -mx-md px-md"
-                  style={{
-                    scrollSnapType: 'x mandatory',
-                    WebkitOverflowScrolling: 'touch',
-                    scrollbarWidth: 'thin',
-                  }}
-                >
-                  {selectedCustomer && (
-                    <div className="flex-shrink-0" style={{ minWidth: '280px', scrollSnapAlign: 'start' }}>
-                      <CustomerResultCard
-                        customer={selectedCustomer}
-                        onSelect={() => setCurrentStep(2)}
-                      />
-                    </div>
-                  )}
-                  
-                  {/* Add New Customer Card */}
-                  <div className="flex-shrink-0" style={{ minWidth: '280px', scrollSnapAlign: 'start' }}>
-                    <Card 
-                      className="border-2 border-success-light shadow-sm"
-                    >
-                      <CardContent className="p-md">
-                        <div className="space-y-md">
-                          {/* Icon and Title */}
-                          <div>
-                            <div className="flex items-center gap-sm mb-xs">
-                              <div className="w-8 h-8 rounded-md bg-success-light flex items-center justify-center flex-shrink-0">
-                                <PlusIcon className="h-4 w-4 text-success" />
-                              </div>
-                              <h3 className="text-base font-semibold text-primary-text">Add New Customer</h3>
-                            </div>
-                            <p className="text-xs text-secondary-text">
-                              Create a new customer record
-                            </p>
-                          </div>
-
-                          {/* Placeholder content to match height */}
-                          <div className="space-y-xs text-xs text-secondary-text opacity-50">
-                            <div>Enter customer details</div>
-                            <div>Mobile or GSTIN required</div>
-                          </div>
-
-                          {/* Actions */}
-                          <div className="flex gap-sm pt-sm">
-                            <Button 
-                              variant="primary" 
-                              size="sm" 
-                              onClick={() => {
-                                setShowAddNewForm(true)
-                              }}
-                              className="flex-1 min-h-[44px]"
-                              aria-label="Add new customer"
-                            >
-                              Add New Customer
-                            </Button>
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Add New Customer Form */}
-            {showAddNewForm && (
+            
+            {/* Show "Add New Customer" form inline when activated */}
+            {showAddNewForm ? (
               <div className="mt-md space-y-md p-md border border-neutral-200 rounded-md bg-neutral-50">
                 <h4 className="text-sm font-semibold text-primary-text">Add New Customer</h4>
                 <p className="text-xs text-secondary-text">
-                  Please provide customer details to create a new customer record.
+                  You are creating a new customer record based on the identifier: <span className="font-semibold">{identifier}</span>
                 </p>
 
                 <Input
-                  label="Customer Name (Optional)"
+                  label="Legal Name *"
                   type="text"
                   value={masterFormData.customer_name}
                   onChange={(e) =>
                     setMasterFormData({ ...masterFormData, customer_name: e.target.value })
                   }
                   disabled={isSubmitting || searching}
-                  placeholder="Enter customer name (optional)"
+                  placeholder="Enter customer's legal name"
                   error={errors.customer_name}
+                  required
+                  autoFocus
                 />
 
                 {/* Dynamic Identifier Field */}
@@ -1253,20 +1169,20 @@ export function InvoiceForm({
                 )}
 
                 <Input
-                  label="Email"
+                  label="Email (Optional)"
                   type="email"
                   value={masterFormData.email}
                   onChange={(e) =>
                     setMasterFormData({ ...masterFormData, email: e.target.value })
                   }
                   disabled={isSubmitting || searching}
-                  placeholder="Enter email address (optional)"
+                  placeholder="Enter email address"
                   error={errors.email}
                 />
 
                 <div>
                   <label className="block text-sm font-medium text-secondary-text mb-xs">
-                    Address
+                    Address (Optional)
                   </label>
                   <textarea
                     value={masterFormData.address}
@@ -1274,7 +1190,7 @@ export function InvoiceForm({
                       setMasterFormData({ ...masterFormData, address: e.target.value })
                     }
                     disabled={isSubmitting || searching}
-                    placeholder="Enter address (optional)"
+                    placeholder="Enter customer's address"
                     rows={3}
                     className="w-full px-md py-sm border border-neutral-300 rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary disabled:bg-neutral-100 disabled:cursor-not-allowed"
                   />
@@ -1302,10 +1218,87 @@ export function InvoiceForm({
                     disabled={isSubmitting || searching}
                     className="flex-1"
                   >
-                    Create Customer
+                    Create & Select Customer
                   </Button>
                 </div>
               </div>
+            ) : (
+              <>
+                {/* "Add New" card and Identifier Input */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-md items-start">
+                  {/* Add New Customer Card */}
+                  <Card 
+                    className="border-2 border-dashed border-neutral-300 hover:border-success-light hover:bg-success-light/10 transition-colors cursor-pointer"
+                    onClick={() => {
+                      if (identifierValid) {
+                        setShowAddNewForm(true)
+                      } else {
+                        setErrors({ identifier: 'Enter a valid Mobile or GSTIN to create a new customer.' })
+                      }
+                    }}
+                    role="button"
+                    aria-label="Add new customer"
+                  >
+                    <CardContent className="p-md flex items-center justify-center h-full">
+                      <div className="text-center">
+                        <div className="w-10 h-10 rounded-full bg-success-light flex items-center justify-center mx-auto mb-sm">
+                          <PlusIcon className="h-5 w-5 text-success" />
+                        </div>
+                        <h3 className="text-sm font-semibold text-primary-text">Add New Customer</h3>
+                        <p className="text-xs text-secondary-text mt-1">
+                          Enter Mobile/GSTIN below, then click here to add details.
+                        </p>
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  {/* Identifier Input */}
+                  <IdentifierInput
+                    value={identifier}
+                    onChange={setIdentifier}
+                    onValidationChange={(isValid, type) => {
+                      setIdentifierValid(isValid)
+                      setIdentifierType(type)
+                      if (errors.identifier) {
+                        setErrors({}) // Clear error when user starts typing
+                      }
+                    }}
+                    onSearch={handleLookupCustomer}
+                    onClear={() => {
+                      setSelectedCustomer(null)
+                      setLookupPerformed(false)
+                      setShowAddNewForm(false)
+                    }}
+                    autoFocus={isOpen && currentStep === 1}
+                    disabled={isSubmitting}
+                    searching={searching}
+                  />
+                </div>
+
+                {/* Search Result */}
+                {lookupPerformed && !searching && selectedCustomer && (
+                  <div className="mt-4">
+                    <h4 className="text-sm font-semibold text-primary-text mb-sm">Existing Customer Found</h4>
+                    <CustomerResultCard
+                      customer={selectedCustomer}
+                      onSelect={() => setCurrentStep(2)}
+                    />
+                  </div>
+                )}
+                
+                {lookupPerformed && !searching && !selectedCustomer && (
+                  <div className="mt-4 text-center p-md bg-neutral-50 rounded-md">
+                    <p className="text-sm text-secondary-text">No existing customer found with this identifier.</p>
+                    <Button 
+                      variant="link" 
+                      onClick={() => setShowAddNewForm(true)}
+                      className="mt-xs"
+                    >
+                      Click here to add them as a new customer.
+                    </Button>
+                  </div>
+                )}
+              </>
             )}
 
             {errors.identifier && (

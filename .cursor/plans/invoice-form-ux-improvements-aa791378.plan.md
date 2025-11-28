@@ -1,6 +1,8 @@
 <!-- aa791378-ef75-4cb9-8329-77d51208b9de aeaa1152-7d64-4cd9-8893-1787d9b466f7 -->
 # Invoice Form UX Improvements
 
+**Branch:** invoice-form-ux
+
 ## Fix 1: Smart Input Handling for Mobile/GSTIN
 
 ### Changes to `src/components/customers/IdentifierInput.tsx`
@@ -95,8 +97,8 @@
 
 ### To-dos
 
-- [ ] Remove inputMode='numeric' from IdentifierInput and add helper text
-- [ ] Add 'Add New Customer' card UI in InvoiceForm Step 1
-- [ ] Implement dynamic identifier field (mobile/GSTIN) based on entered identifier
-- [ ] Update lookupOrCreateCustomer to accept both mobile and GSTIN in masterData
-- [ ] Wire new customer form submission to create customer with both identifiers and auto-advance
+- [x] Remove inputMode='numeric' from IdentifierInput and add helper text
+- [x] Add 'Add New Customer' card UI in InvoiceForm Step 1
+- [x] Implement dynamic identifier field (mobile/GSTIN) based on entered identifier
+- [x] Update lookupOrCreateCustomer to accept both mobile and GSTIN in masterData
+- [x] Wire new customer form submission to create customer with both identifiers and auto-advance

@@ -55,25 +55,29 @@ CREATE INDEX IF NOT EXISTS idx_inventory_org ON public.inventory(org_id);
 ALTER TABLE public.notifications ENABLE ROW LEVEL SECURITY;
 
 -- SELECT own notifications
-CREATE POLICY IF NOT EXISTS "Users see own notifications"
+DROP POLICY IF EXISTS "Users see own notifications" ON public.notifications;
+CREATE POLICY "Users see own notifications"
   ON public.notifications
   FOR SELECT
   USING (auth.uid() = user_id);
 
 -- UPDATE own notifications (e.g., mark read)
-CREATE POLICY IF NOT EXISTS "Users update own notifications"
+DROP POLICY IF EXISTS "Users update own notifications" ON public.notifications;
+CREATE POLICY "Users update own notifications"
   ON public.notifications
   FOR UPDATE
   USING (auth.uid() = user_id);
 
 -- INSERT own notifications (needed for existing frontend create flows)
-CREATE POLICY IF NOT EXISTS "Users insert own notifications"
+DROP POLICY IF EXISTS "Users insert own notifications" ON public.notifications;
+CREATE POLICY "Users insert own notifications"
   ON public.notifications
   FOR INSERT
   WITH CHECK (auth.uid() = user_id);
 
 -- DELETE own notifications
-CREATE POLICY IF NOT EXISTS "Users delete own notifications"
+DROP POLICY IF EXISTS "Users delete own notifications" ON public.notifications;
+CREATE POLICY "Users delete own notifications"
   ON public.notifications
   FOR DELETE
   USING (auth.uid() = user_id);

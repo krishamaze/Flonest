@@ -6,7 +6,12 @@ import { useAuth } from '../contexts/AuthContext'
  * Placed at "/" index route to enforce explicit role routing.
  */
 export function RoleRedirect() {
-  const { user } = useAuth()
+  const { user, loading } = useAuth()
+
+  // Wait for auth to load
+  if (loading) {
+    return null
+  }
 
   // Platform admin handled by InternalUserRedirect, but include for completeness
   if (user?.platformAdmin) {

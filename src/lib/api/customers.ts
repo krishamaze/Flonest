@@ -83,14 +83,14 @@ export async function lookupOrCreateCustomer(
     // Use provided legal_name, or fallback to 'Customer' if we have at least one identifier
     const p_legal_name = masterData?.legal_name || (p_mobile || p_gstin ? 'Customer' : null)
     
-    if (!p_legal_name && !p_mobile && !p_gstin) {
-      throw new Error('At least one identifier (mobile/GSTIN) or legal name is required')
+    if (!p_legal_name) {
+      throw new Error('Legal name is required to create a new customer')
     }
 
     const { data: rpcData, error: rpcError } = await supabase.rpc('upsert_master_customer' as any, {
       p_mobile,
       p_gstin,
-      p_legal_name: p_legal_name || 'Customer',
+      p_legal_name: p_legal_name,
       p_address: masterData?.address || null,
       p_email: masterData?.email || null,
     })

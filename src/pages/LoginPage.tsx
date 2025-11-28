@@ -2,6 +2,8 @@ import { useState, FormEvent, useEffect } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { EyeIcon, EyeSlashIcon } from '@heroicons/react/24/outline'
 import { supabase } from '../lib/supabase'
+import { useAuth } from '../contexts/AuthContext'
+import { MOCK_ENABLED } from '../lib/mockAuth'
 import { Button } from '../components/ui/Button'
 import { Input } from '../components/ui/Input'
 import { PullToRefresh } from '../components/ui/PullToRefresh'
@@ -19,6 +21,7 @@ const resolveViewParam = (value: string | null): AuthView | null => {
 
 export function LoginPage() {
   const navigate = useNavigate()
+  const { signIn: authSignIn } = useAuth()
   const [searchParams, setSearchParams] = useSearchParams()
   const initialViewParam = resolveViewParam(searchParams.get('view'))
   const [view, setView] = useState<AuthView>(initialViewParam ?? 'sign_in')
@@ -115,17 +118,22 @@ export function LoginPage() {
 
     try {
       if (view === 'sign_in') {
-        // Try password authentication first
-        // Note: We can't check admin status before sign-in (anon access removed for security)
-        const { error: signInError } = await supabase.auth.signInWithPassword({
-          email,
-          password: trimmedPassword,
-        })
-        
-        if (signInError) throw signInError
-        
-        // Regular user - navigation will happen automatically via AuthContext
-        navigate('/')
+        if (MOCK_ENABLED) {
+          // Mock mode: use auth context's signIn
+          await authSignIn(email, trimmedPassword)
+          navigate('/')
+        } else {
+          // Real mode: use Supabase directly
+          const { error: signInError } = await supabase.auth.signInWithPassword({
+            email,
+            password: trimmedPassword,
+          })
+
+          if (signInError) throw signInError
+
+          // Regular user - navigation will happen automatically via AuthContext
+          navigate('/')
+        }
       } else if (view === 'sign_up') {
         const { data, error } = await supabase.auth.signUp({
           email,
