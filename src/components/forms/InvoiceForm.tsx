@@ -1227,9 +1227,8 @@ export function InvoiceForm({
                 {/* "Add New" card and Identifier Input */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-md items-start">
                   {/* Add New Customer Card */}
-                  <Card 
+                  <Card
                     className="border-2 border-success-light shadow-sm h-full"
-                    role="button"
                     onClick={() => {
                       if (identifierValid) {
                         setShowAddNewForm(true)
@@ -1307,8 +1306,8 @@ export function InvoiceForm({
                 {lookupPerformed && !searching && !selectedCustomer && (
                   <div className="mt-4 text-center p-md bg-neutral-50 rounded-md">
                     <p className="text-sm text-secondary-text">No existing customer found with this identifier.</p>
-                    <Button 
-                      variant="link" 
+                    <Button
+                      variant="ghost"
                       onClick={() => setShowAddNewForm(true)}
                       className="mt-xs"
                     >
