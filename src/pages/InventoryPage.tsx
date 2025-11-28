@@ -189,62 +189,65 @@ export function InventoryPage() {
         </div>
 
       {/* Invoice Stats Cards - interactive filter cards */}
-      <div className="flex gap-2 overflow-x-auto pb-1">
+      <div className="grid grid-cols-3 sm:grid-cols-3 gap-2">
         <Card 
-          className={`shadow-xs rounded-md flex-shrink-0 cursor-pointer transition-all ${
+          className={`shadow-xs rounded-lg flex-shrink-0 cursor-pointer transition-all ${
             filter === 'finalized'
               ? 'bg-primary border-2 border-primary shadow-md scale-105'
               : 'bg-success-light border-success border hover:shadow-md hover:border-success-dark'
           }`}
-          style={{ minWidth: '120px', maxWidth: '140px' }}
           onClick={() => setFilter('finalized')}
         >
-          <CardContent className="flex flex-col items-center gap-1 p-2">
-            <DocumentTextIcon className={`h-3 w-3 ${filter === 'finalized' ? 'text-text-on-primary' : 'text-success'}`} />
-            <p className={`text-[9px] font-medium leading-tight text-center ${filter === 'finalized' ? 'text-text-on-primary' : 'text-secondary-text'}`}>
-              Finalized
-            </p>
-            <p className={`text-sm font-semibold ${filter === 'finalized' ? 'text-text-on-primary' : 'text-primary-text'}`}>
+          <CardContent className="flex flex-col items-start gap-1 p-3">
+            <div className="flex items-center gap-xs mb-xs">
+              <DocumentTextIcon className={`h-4 w-4 ${filter === 'finalized' ? 'text-text-on-primary' : 'text-success'}`} />
+              <p className={`text-[10px] font-medium leading-tight ${filter === 'finalized' ? 'text-text-on-primary' : 'text-secondary-text'}`}>
+                Finalized
+              </p>
+            </div>
+            <p className={`text-lg font-semibold ${filter === 'finalized' ? 'text-text-on-primary' : 'text-primary-text'}`}>
               {invoiceStats.finalized}
             </p>
           </CardContent>
         </Card>
 
         <Card 
-          className={`shadow-xs rounded-md flex-shrink-0 cursor-pointer transition-all ${
+          className={`shadow-xs rounded-lg flex-shrink-0 cursor-pointer transition-all ${
             filter === 'draft'
               ? 'bg-primary border-2 border-primary shadow-md scale-105'
               : 'bg-warning-light border-warning border hover:shadow-md hover:border-warning-dark'
           }`}
-          style={{ minWidth: '120px', maxWidth: '140px' }}
           onClick={() => setFilter('draft')}
         >
-          <CardContent className="flex flex-col items-center gap-1 p-2">
-            <DocumentTextIcon className={`h-3 w-3 ${filter === 'draft' ? 'text-text-on-primary' : 'text-warning'}`} />
-            <p className={`text-[9px] font-medium leading-tight text-center ${filter === 'draft' ? 'text-text-on-primary' : 'text-secondary-text'}`}>
-              Drafts
-            </p>
-            <p className={`text-sm font-semibold ${filter === 'draft' ? 'text-text-on-primary' : 'text-primary-text'}`}>
+          <CardContent className="flex flex-col items-start gap-1 p-3">
+            <div className="flex items-center gap-xs mb-xs">
+              <DocumentTextIcon className={`h-4 w-4 ${filter === 'draft' ? 'text-text-on-primary' : 'text-warning'}`} />
+              <p className={`text-[10px] font-medium leading-tight ${filter === 'draft' ? 'text-text-on-primary' : 'text-secondary-text'}`}>
+                Drafts
+              </p>
+            </div>
+            <p className={`text-lg font-semibold ${filter === 'draft' ? 'text-text-on-primary' : 'text-primary-text'}`}>
               {invoiceStats.drafts}
             </p>
           </CardContent>
         </Card>
 
         <Card 
-          className={`shadow-xs rounded-md flex-shrink-0 cursor-pointer transition-all ${
+          className={`shadow-xs rounded-lg flex-shrink-0 cursor-pointer transition-all ${
             filter === 'all'
               ? 'bg-primary border-2 border-primary shadow-md scale-105'
               : 'bg-neutral-50 border-neutral-200 border hover:shadow-md hover:border-neutral-300'
           }`}
-          style={{ minWidth: '120px', maxWidth: '140px' }}
           onClick={() => setFilter('all')}
         >
-          <CardContent className="flex flex-col items-center gap-1 p-2">
-            <DocumentTextIcon className={`h-3 w-3 ${filter === 'all' ? 'text-text-on-primary' : 'text-secondary-text'}`} />
-            <p className={`text-[9px] font-medium leading-tight text-center ${filter === 'all' ? 'text-text-on-primary' : 'text-secondary-text'}`}>
-              Total
-            </p>
-            <p className={`text-sm font-semibold ${filter === 'all' ? 'text-text-on-primary' : 'text-primary-text'}`}>
+          <CardContent className="flex flex-col items-start gap-1 p-3">
+            <div className="flex items-center gap-xs mb-xs">
+              <DocumentTextIcon className={`h-4 w-4 ${filter === 'all' ? 'text-text-on-primary' : 'text-secondary-text'}`} />
+              <p className={`text-[10px] font-medium leading-tight ${filter === 'all' ? 'text-text-on-primary' : 'text-secondary-text'}`}>
+                Total
+              </p>
+            </div>
+            <p className={`text-lg font-semibold ${filter === 'all' ? 'text-text-on-primary' : 'text-primary-text'}`}>
               {invoiceStats.total}
             </p>
           </CardContent>

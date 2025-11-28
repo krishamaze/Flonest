@@ -1,6 +1,8 @@
 <!-- c755cfc1-5794-4b29-aed9-e5d6618455eb f31a01b5-ecec-4c79-a509-ee677c5db53f -->
 # Invoice Cards and Metric Cards Layout Improvements
 
+**Branch:** ui-layout-polish
+
 ## 1. Standardize Customer Cards in Invoice Flow
 
 **File: `src/components/customers/CustomerResultCard.tsx`**

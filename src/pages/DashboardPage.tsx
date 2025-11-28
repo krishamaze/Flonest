@@ -144,62 +144,62 @@ export function DashboardPage() {
       )}
 
       {/* Stats Cards - compact horizontal layout */}
-      <div className="flex gap-2 overflow-x-auto pb-1">
-        <Card className="shadow-sm rounded-xl flex-shrink-0" style={{ minWidth: '140px', maxWidth: '160px' }}>
-          <CardContent className="flex flex-col items-center gap-1 p-3">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary-light">
+      <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-2">
+        <Card className="shadow-sm rounded-xl">
+          <CardContent className="flex flex-col items-start gap-1 p-3">
+            <div className="flex h-6 w-6 items-center justify-center rounded-lg bg-primary-light mb-xs">
               <CubeIcon className="h-4 w-4 text-primary" />
             </div>
-            <p className="text-xs font-medium text-secondary-text leading-tight text-center">Total Products</p>
-            <p className="text-base font-bold text-primary-text">
+            <p className="text-[10px] font-medium text-secondary-text leading-tight">Total Products</p>
+            <p className="text-lg font-bold text-primary-text">
               {stats?.totalProducts || 0}
             </p>
           </CardContent>
         </Card>
 
-        <Card className="shadow-sm rounded-xl flex-shrink-0" style={{ minWidth: '140px', maxWidth: '160px' }}>
-          <CardContent className="flex flex-col items-center gap-1 p-3">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-warning-light">
+        <Card className="shadow-sm rounded-xl">
+          <CardContent className="flex flex-col items-start gap-1 p-3">
+            <div className="flex h-6 w-6 items-center justify-center rounded-lg bg-warning-light mb-xs">
               <ExclamationTriangleIcon className="h-4 w-4 text-warning" />
             </div>
-            <p className="text-xs font-medium text-secondary-text leading-tight text-center">Low Stock</p>
-            <p className="text-base font-bold text-primary-text">
+            <p className="text-[10px] font-medium text-secondary-text leading-tight">Low Stock</p>
+            <p className="text-lg font-bold text-primary-text">
               {stats?.lowStockItems || 0}
             </p>
           </CardContent>
         </Card>
 
-        <Card className="shadow-sm rounded-xl flex-shrink-0" style={{ minWidth: '140px', maxWidth: '160px' }}>
-          <CardContent className="flex flex-col items-center gap-1 p-3">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-success-light">
+        <Card className="shadow-sm rounded-xl">
+          <CardContent className="flex flex-col items-start gap-1 p-3">
+            <div className="flex h-6 w-6 items-center justify-center rounded-lg bg-success-light mb-xs">
               <ArrowTrendingUpIcon className="h-4 w-4 text-success" />
             </div>
-            <p className="text-xs font-medium text-secondary-text leading-tight text-center">Total Value</p>
-            <p className="text-base font-bold text-primary-text">
+            <p className="text-[10px] font-medium text-secondary-text leading-tight">Total Value</p>
+            <p className="text-lg font-bold text-primary-text">
               ${stats?.totalValue ? stats.totalValue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '0.00'}
             </p>
           </CardContent>
         </Card>
 
-        <Card className="shadow-sm rounded-xl flex-shrink-0" style={{ minWidth: '140px', maxWidth: '160px' }}>
-          <CardContent className="flex flex-col items-center gap-1 p-3">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-neutral-100">
+        <Card className="shadow-sm rounded-xl">
+          <CardContent className="flex flex-col items-start gap-1 p-3">
+            <div className="flex h-6 w-6 items-center justify-center rounded-lg bg-neutral-100 mb-xs">
               <ArrowTrendingDownIcon className="h-4 w-4 text-secondary-text" />
             </div>
-            <p className="text-xs font-medium text-secondary-text leading-tight text-center">Total Invoices</p>
-            <p className="text-base font-bold text-primary-text">
+            <p className="text-[10px] font-medium text-secondary-text leading-tight">Total Invoices</p>
+            <p className="text-lg font-bold text-primary-text">
               {stats?.totalInvoices || 0}
             </p>
           </CardContent>
         </Card>
 
-        <Card className="shadow-sm rounded-xl flex-shrink-0" style={{ minWidth: '140px', maxWidth: '160px' }}>
-          <CardContent className="flex flex-col items-center gap-1 p-3">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-success-light">
+        <Card className="shadow-sm rounded-xl">
+          <CardContent className="flex flex-col items-start gap-1 p-3">
+            <div className="flex h-6 w-6 items-center justify-center rounded-lg bg-success-light mb-xs">
               <ArrowTrendingUpIcon className="h-4 w-4 text-success" />
             </div>
-            <p className="text-xs font-medium text-secondary-text leading-tight text-center">Finalized Drafts</p>
-            <p className="text-base font-bold text-primary-text">
+            <p className="text-[10px] font-medium text-secondary-text leading-tight">Finalized Drafts</p>
+            <p className="text-lg font-bold text-primary-text">
               {stats?.finalizedDrafts || 0}
             </p>
           </CardContent>

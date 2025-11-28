@@ -1228,7 +1228,8 @@ export function InvoiceForm({
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-md items-start">
                   {/* Add New Customer Card */}
                   <Card 
-                    className="border-2 border-dashed border-neutral-300 hover:border-success-light hover:bg-success-light/10 transition-colors cursor-pointer"
+                    className="border-2 border-success-light shadow-sm h-full"
+                    role="button"
                     onClick={() => {
                       if (identifierValid) {
                         setShowAddNewForm(true)
@@ -1236,18 +1237,35 @@ export function InvoiceForm({
                         setErrors({ identifier: 'Enter a valid Mobile or GSTIN to create a new customer.' })
                       }
                     }}
-                    role="button"
-                    aria-label="Add new customer"
                   >
-                    <CardContent className="p-md flex items-center justify-center h-full">
-                      <div className="text-center">
-                        <div className="w-10 h-10 rounded-full bg-success-light flex items-center justify-center mx-auto mb-sm">
-                          <PlusIcon className="h-5 w-5 text-success" />
+                    <CardContent className="p-md">
+                      <div className="space-y-md">
+                        <div>
+                          <div className="flex items-center gap-sm mb-xs">
+                            <div className="w-8 h-8 rounded-md bg-success-light flex items-center justify-center flex-shrink-0">
+                              <PlusIcon className="h-4 w-4 text-success" />
+                            </div>
+                            <h3 className="text-base font-semibold text-primary-text">Add New Customer</h3>
+                          </div>
+                          <p className="text-xs text-secondary-text">
+                            Create a new customer record.
+                          </p>
                         </div>
-                        <h3 className="text-sm font-semibold text-primary-text">Add New Customer</h3>
-                        <p className="text-xs text-secondary-text mt-1">
-                          Enter Mobile/GSTIN below, then click here to add details.
-                        </p>
+                        <div className="space-y-xs text-xs text-secondary-text opacity-50">
+                          <div>Enter customer details</div>
+                          <div>Mobile or GSTIN required</div>
+                        </div>
+                        <div className="flex gap-sm pt-sm">
+                          <Button 
+                            variant="primary" 
+                            size="sm" 
+                            className="flex-1 min-h-[44px]"
+                            aria-label="Add new customer"
+                            tabIndex={-1} // Make it non-focusable, card is the target
+                          >
+                            Add New Customer
+                          </Button>
+                        </div>
                       </div>
                     </CardContent>
                   </Card>
