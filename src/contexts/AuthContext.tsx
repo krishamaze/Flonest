@@ -19,6 +19,7 @@ import {
   saveAgentContextMode,
   type AgentContextInfo,
 } from '../lib/agentContext'
+import { MOCK_ENABLED, mockSignIn, createMockSupabaseSession } from '../lib/mockAuth'
 
 type OrgContextSummary = OrgMembershipSummary | null
 
@@ -240,12 +241,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // Sign in handler
   const signIn = async (email: string, password: string) => {
-    const { error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    })
-    if (error) throw error
-    // onAuthStateChange will handle invalidation
+    if (MOCK_ENABLED) {
+      const { error } = await mockSignIn(email, password)
+      if (error) throw error
+      // Manually update session in React Query cache to trigger re-render
+      const mockSession = createMockSupabaseSession(email)
+      queryClient.setQueryData(['auth', 'session'], mockSession)
+      // Invalidate auth data to refetch profile, memberships, etc.
+      await queryClient.invalidateQueries({ queryKey: ['auth', 'data'] })
+    } else {
+      const { error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      })
+      if (error) throw error
+      // onAuthStateChange will handle invalidation for real auth
+    }
   }
 
   // Sign up handler
