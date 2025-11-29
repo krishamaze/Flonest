@@ -151,6 +151,6 @@ export async function adjustStockLevel(
     throw new Error(`Failed to adjust stock: ${error.message}`)
   }
 
-  return data as { success: boolean; product_id: string; delta: number }
+  return data
 }
 

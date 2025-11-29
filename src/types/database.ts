@@ -2387,7 +2387,11 @@ export type Database = {
           p_delta_qty: number
           p_notes: string
         }
-        Returns: Json
+        Returns: {
+          success: boolean
+          product_id: string
+          delta: number
+        }
       }
       approve_purchase_bill_with_hsn_validation: {
         Args: { p_bill_id: string; p_org_id: string; p_user_id: string }
