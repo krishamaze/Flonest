@@ -130,3 +130,27 @@ export async function getStockLedgerWithProducts(
   }))
 }
 
+/**
+ * Adjust stock level manually using the RPC
+ * Supports positive (add) and negative (remove) delta
+ */
+export async function adjustStockLevel(
+  orgId: string,
+  productId: string,
+  delta: number,
+  notes: string
+): Promise<{ success: boolean; product_id: string; delta: number }> {
+  const { data, error } = await supabase.rpc('adjust_stock_level', {
+    p_org_id: orgId,
+    p_product_id: productId,
+    p_delta_qty: delta,
+    p_notes: notes,
+  })
+
+  if (error) {
+    throw new Error(`Failed to adjust stock: ${error.message}`)
+  }
+
+  return data
+}
+
