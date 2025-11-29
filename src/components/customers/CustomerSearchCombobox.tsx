@@ -1,6 +1,5 @@
 import { useState, useEffect, useRef, KeyboardEvent, ChangeEvent } from 'react'
 import { PlusIcon } from '@heroicons/react/24/outline'
-import { detectIdentifierType, type IdentifierType } from '../../lib/utils/identifierValidation'
 import { searchCustomersByPartialIdentifier } from '../../lib/api/customers'
 import type { CustomerWithMaster } from '../../types'
 import { LoadingSpinner } from '../ui/LoadingSpinner'
