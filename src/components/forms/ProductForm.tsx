@@ -107,7 +107,7 @@ export function ProductForm({ isOpen, onClose, onSubmit, product, title, orgId, 
     setSelectedMasterProduct(masterProduct)
     setMasterSearchQuery('')
     setMasterSearchResults([])
-    
+
     // Prefill form with master product defaults
     setFormData({
       name: masterProduct.name,
@@ -169,17 +169,17 @@ export function ProductForm({ isOpen, onClose, onSubmit, product, title, orgId, 
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault()
-    
+
     // Reset errors
     setErrors({})
 
     // Validation
     const newErrors: Partial<Record<keyof ProductFormData, string>> = {}
-    
+
     if (!formData.name.trim()) {
       newErrors.name = 'Product name is required'
     }
-    
+
     if (!formData.sku.trim()) {
       newErrors.sku = 'SKU is required'
     }
@@ -209,11 +209,13 @@ export function ProductForm({ isOpen, onClose, onSubmit, product, title, orgId, 
     }
 
     setIsSubmitting(true)
+    console.log('[ProductForm] Submitting product:', formData)
     try {
       let createdProduct: Product | undefined
-      
+
       // If creating from master product, use createProductFromMaster
       if (canUseMaster && sourceType === 'master' && selectedMasterProduct && orgId) {
+        console.log('[ProductForm] Creating from master product:', selectedMasterProduct.id)
         createdProduct = await createProductFromMaster(orgId, {
           master_product_id: selectedMasterProduct.id,
           alias_name: formData.name !== selectedMasterProduct.name ? formData.name : undefined,
@@ -225,7 +227,7 @@ export function ProductForm({ isOpen, onClose, onSubmit, product, title, orgId, 
           barcode_ean: formData.ean !== selectedMasterProduct.barcode_ean ? formData.ean : undefined,
           category: formData.category !== selectedMasterProduct.category ? formData.category : undefined,
         }, userId)
-        
+
         // Also call parent's onSubmit with the created product data so parent can handle it
         // This ensures the parent (PurchaseBillsPage) can add it to the bill
         if (createdProduct) {
@@ -245,12 +247,16 @@ export function ProductForm({ isOpen, onClose, onSubmit, product, title, orgId, 
         }
       } else {
         // Use regular create/update flow - onSubmit may return Product
+        console.log('[ProductForm] Calling onSubmit with formData')
         const result = await onSubmit(formData)
+        console.log('[ProductForm] onSubmit result:', result)
         if (result) {
           createdProduct = result as Product
         }
       }
-      
+
+      console.log('[ProductForm] Product created/updated successfully:', createdProduct)
+
       // Reset form before closing
       setFormData({
         name: '',
@@ -269,14 +275,18 @@ export function ProductForm({ isOpen, onClose, onSubmit, product, title, orgId, 
       setSourceType('master')
       setMasterSearchQuery('')
       setMasterSearchResults([])
-      
+
       onClose()
-      
+
       // Return created product for parent to use (if needed)
       return createdProduct
     } catch (error) {
-      console.error('Error submitting product form:', error)
-      // Handle error (could show toast notification)
+      console.error('[ProductForm] Error submitting product form:', error)
+      // Show error to user
+      const errorMessage = error instanceof Error ? error.message : 'Failed to save product'
+      alert(`Error: ${errorMessage}`)
+
+      // Handle error (set field-specific errors)
       if (error instanceof Error) {
         if (error.message.includes('SKU')) {
           setErrors({ sku: error.message })
@@ -319,11 +329,10 @@ export function ProductForm({ isOpen, onClose, onSubmit, product, title, orgId, 
                   hsn_sac_code: null,
                 })
               }}
-              className={`flex-1 rounded-md px-md py-sm min-h-[44px] text-sm font-medium transition-colors ${
-                sourceType === 'master'
+              className={`flex-1 rounded-md px-md py-sm min-h-[44px] text-sm font-medium transition-colors ${sourceType === 'master'
                   ? 'bg-primary text-on-primary font-semibold'
                   : 'bg-neutral-100 text-secondary-text hover:bg-neutral-200'
-              }`}
+                }`}
             >
               Search Master Catalog
             </button>
@@ -348,11 +357,10 @@ export function ProductForm({ isOpen, onClose, onSubmit, product, title, orgId, 
                   hsn_sac_code: null,
                 })
               }}
-              className={`flex-1 rounded-md px-md py-sm min-h-[44px] text-sm font-medium transition-colors ${
-                sourceType === 'new'
+              className={`flex-1 rounded-md px-md py-sm min-h-[44px] text-sm font-medium transition-colors ${sourceType === 'new'
                   ? 'bg-primary text-on-primary font-semibold'
                   : 'bg-neutral-100 text-secondary-text hover:bg-neutral-200'
-              }`}
+                }`}
             >
               Create New Product
             </button>
@@ -376,7 +384,7 @@ export function ProductForm({ isOpen, onClose, onSubmit, product, title, orgId, 
               aria-label="Search master products"
             />
           </div>
-          
+
           {/* Master Product Results */}
           {masterSearchResults.length > 0 && (
             <div className="max-h-48 overflow-y-auto rounded-md border border-neutral-200 bg-bg-card">
@@ -385,9 +393,8 @@ export function ProductForm({ isOpen, onClose, onSubmit, product, title, orgId, 
                   key={mp.id}
                   type="button"
                   onClick={() => handleSelectMasterProduct(mp)}
-                  className={`w-full px-md py-md min-h-[44px] text-left hover:bg-neutral-50 transition-colors ${
-                    selectedMasterProduct?.id === mp.id ? 'bg-primary-light border-l-4 border-primary' : ''
-                  }`}
+                  className={`w-full px-md py-md min-h-[44px] text-left hover:bg-neutral-50 transition-colors ${selectedMasterProduct?.id === mp.id ? 'bg-primary-light border-l-4 border-primary' : ''
+                    }`}
                 >
                   <div className="font-medium text-sm text-primary-text">{mp.name}</div>
                   <div className="text-xs text-secondary-text mt-xs">
@@ -417,7 +424,7 @@ export function ProductForm({ isOpen, onClose, onSubmit, product, title, orgId, 
       {/* Product Information Group */}
       <div className="space-y-4">
         <h3 className="text-sm font-semibold text-primary-text border-b border-neutral-200 pb-sm">Product Information</h3>
-        
+
         <Input
           label="Product Name"
           value={formData.name}
@@ -490,7 +497,7 @@ export function ProductForm({ isOpen, onClose, onSubmit, product, title, orgId, 
       {/* Pricing & Inventory Group */}
       <div className="space-y-4">
         <h3 className="text-sm font-semibold text-primary-text border-b border-neutral-200 pb-sm">Pricing & Inventory</h3>
-        
+
         <div className="grid grid-cols-2 gap-4">
           <Input
             label="Cost Price"
@@ -547,7 +554,7 @@ export function ProductForm({ isOpen, onClose, onSubmit, product, title, orgId, 
       {/* Tax & HSN/SAC Group */}
       <div className="space-y-4">
         <h3 className="text-sm font-semibold text-primary-text border-b border-neutral-200 pb-sm">Tax & Classification</h3>
-        
+
         <div className="grid grid-cols-2 gap-4">
           <Select
             label="Tax Rate (%)"

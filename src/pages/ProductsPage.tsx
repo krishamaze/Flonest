@@ -289,7 +289,16 @@ export function ProductsPage() {
   })
 
   const handleCreateProduct = async (data: ProductFormData) => {
-    return await createProductMutation.mutateAsync(data)
+    console.log('[ProductsPage] Creating product:', data)
+    try {
+      const result = await createProductMutation.mutateAsync(data)
+      console.log('[ProductsPage] Product created successfully:', result)
+      return result
+    } catch (error) {
+      console.error('[ProductsPage] Error creating product:', error)
+      // Re-throw so ProductForm can handle it
+      throw error
+    }
   }
 
   const handleUpdateProduct = async (data: ProductFormData) => {
@@ -393,8 +402,8 @@ export function ProductsPage() {
             <button
               onClick={() => setCategoryFilter('')}
               className={`whitespace-nowrap rounded-md px-md py-sm min-h-[44px] text-sm font-medium transition-colors.duration-200 ${categoryFilter === ''
-                  ? 'bg-primary text-on-primary font-semibold'
-                  : 'bg-neutral-100 text-secondary-text hover:bg-neutral-200'
+                ? 'bg-primary text-on-primary font-semibold'
+                : 'bg-neutral-100 text-secondary-text hover:bg-neutral-200'
                 }`}
               aria-label="Show all categories"
               aria-pressed={categoryFilter === ''}
@@ -408,8 +417,8 @@ export function ProductsPage() {
                   setCategoryFilter(category)
                 }}
                 className={`whitespace-nowrap rounded-md px-md py-sm min-h-[44px] text-sm font-medium transition-colors.duration-200 ${categoryFilter === category
-                    ? 'bg-primary text-on-primary font-semibold'
-                    : 'bg-neutral-100 text-secondary-text hover:bg-neutral-200'
+                  ? 'bg-primary text-on-primary font-semibold'
+                  : 'bg-neutral-100 text-secondary-text hover:bg-neutral-200'
                   }`}
                 aria-label={`Filter by ${category}`}
                 aria-pressed={categoryFilter === category}
