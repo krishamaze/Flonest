@@ -117,6 +117,9 @@ export function OwnerSignupPage() {
           throw new Error('Missing access token for authenticated owner signup. Please sign in again.')
         }
 
+        // Show loading message for Edge Function call
+        setMessage('Confirming your email...')
+
         const edgeResponse = await fetch(`${SUPABASE_URL}/functions/v1/admin-auto-confirm-email`, {
           method: 'POST',
           headers: {
@@ -127,6 +130,7 @@ export function OwnerSignupPage() {
         })
 
         if (!edgeResponse.ok) {
+          setMessage(null) // Clear loading message on error
           let errorMessage = 'Failed to confirm email for owner account.'
           try {
             const payload = await edgeResponse.json()
