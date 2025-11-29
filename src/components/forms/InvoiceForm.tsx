@@ -6,6 +6,7 @@ import { Drawer } from '../ui/Drawer'
 import { Select } from '../ui/Select'
 import { isMobileDevice } from '../../lib/deviceDetection'
 import { IdentifierInput } from '../customers/IdentifierInput'
+import { CustomerSearchCombobox } from '../customers/CustomerSearchCombobox'
 import { CustomerResultCard } from '../customers/CustomerResultCard'
 import { Card, CardContent } from '../ui/Card'
 import { ProductSearchCombobox } from '../invoice/ProductSearchCombobox'
@@ -1241,95 +1242,34 @@ export function InvoiceForm({
               </div>
             ) : (
               <>
-                {/* "Add New" card and Identifier Input */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-md items-start">
-                  {/* Add New Customer Card */}
-                  <Card
-                    className="border-2 border-success-light shadow-sm h-full"
-                    onClick={() => {
-                      if (identifierValid) {
-                        setShowAddNewForm(true)
-                      } else {
-                        setErrors({ identifier: 'Enter a valid Mobile or GSTIN to create a new customer.' })
-                      }
-                    }}
-                  >
-                    <CardContent className="p-md">
-                      <div className="space-y-md">
-                        <div>
-                          <div className="flex items-center gap-sm mb-xs">
-                            <div className="w-8 h-8 rounded-md bg-success-light flex items-center justify-center flex-shrink-0">
-                              <PlusIcon className="h-4 w-4 text-success" />
-                            </div>
-                            <h3 className="text-base font-semibold text-primary-text">Add New Customer</h3>
-                          </div>
-                          <p className="text-xs text-secondary-text">
-                            Create a new customer record.
-                          </p>
-                        </div>
-                        <div className="space-y-xs text-xs text-secondary-text opacity-50">
-                          <div>Enter customer details</div>
-                          <div>Mobile or GSTIN required</div>
-                        </div>
-                        <div className="flex gap-sm pt-sm">
-                          <Button
-                            variant="primary"
-                            size="sm"
-                            className="flex-1 min-h-[44px]"
-                            aria-label="Add new customer"
-                            tabIndex={-1} // Make it non-focusable, card is the target
-                          >
-                            Add New Customer
-                          </Button>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
+                {/* Customer Search Combobox - TASKS 2 & 3 */}
+                <CustomerSearchCombobox
+                  orgId={orgId}
+                  value={identifier}
+                  onChange={setIdentifier}
+                  onCustomerSelect={(customer) => {
+                    setSelectedCustomer(customer)
+                    if (customer) {
+                      setCurrentStep(2)
+                    }
+                  }}
+                  onAddNewPartyClick={() => {
+                    if (identifier.trim().length >= 3) {
+                      setShowAddNewForm(true)
+                    }
+                  }}
+                  autoFocus={isOpen && currentStep === 1}
+                  disabled={isSubmitting}
+                />
 
-                  {/* Identifier Input */}
-                  <IdentifierInput
-                    value={identifier}
-                    onChange={setIdentifier}
-                    onValidationChange={(isValid, type) => {
-                      setIdentifierValid(isValid)
-                      setIdentifierType(type)
-                      if (errors.identifier) {
-                        setErrors({}) // Clear error when user starts typing
-                      }
-                    }}
-                    onSearch={handleLookupCustomer}
-                    onClear={() => {
-                      setSelectedCustomer(null)
-                      setLookupPerformed(false)
-                      setShowAddNewForm(false)
-                    }}
-                    autoFocus={isOpen && currentStep === 1}
-                    disabled={isSubmitting}
-                    searching={searching}
-                  />
-                </div>
-
-                {/* Search Result */}
-                {lookupPerformed && !searching && selectedCustomer && (
+                {/* Selected Customer Display */}
+                {selectedCustomer && !showAddNewForm && (
                   <div className="mt-4">
-                    <h4 className="text-sm font-semibold text-primary-text mb-sm">Existing Customer Found</h4>
+                    <h4 className="text-sm font-semibold text-primary-text mb-sm">Selected Customer</h4>
                     <CustomerResultCard
                       customer={selectedCustomer}
                       onSelect={() => setCurrentStep(2)}
                     />
-                  </div>
-                )}
-
-                {lookupPerformed && !searching && !selectedCustomer && (
-                  <div className="mt-4 text-center p-md bg-neutral-50 rounded-md">
-                    <p className="text-sm text-secondary-text">No existing customer found with this identifier.</p>
-                    <Button
-                      variant="ghost"
-                      onClick={() => setShowAddNewForm(true)}
-                      className="mt-xs"
-                    >
-                      Click here to add them as a new customer.
-                    </Button>
                   </div>
                 )}
               </>
