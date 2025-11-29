@@ -327,6 +327,31 @@ export function ProductsPage() {
     )
   }
 
+  // Show error state if products query failed
+  if (productsQuery.isError) {
+    return (
+      <div className="flex h-64 items-center justify-center">
+        <div className="text-center space-y-md max-w-md">
+          <div className="text-error text-4xl mb-md">⚠️</div>
+          <h3 className="text-lg font-semibold text-primary-text">Failed to load products</h3>
+          <p className="text-sm text-secondary-text">
+            {productsQuery.error instanceof Error
+              ? productsQuery.error.message
+              : 'An unexpected error occurred. Please try again.'}
+          </p>
+          <Button
+            variant="primary"
+            size="sm"
+            onClick={() => productsQuery.refetch()}
+            className="mt-md"
+          >
+            Try Again
+          </Button>
+        </div>
+      </div>
+    )
+  }
+
   const loading = productsQuery.isFetching && !productsQuery.isLoading
 
   return (
@@ -367,11 +392,10 @@ export function ProductsPage() {
           <div className="flex gap-2 overflow-x-auto pb-2">
             <button
               onClick={() => setCategoryFilter('')}
-              className={`whitespace-nowrap rounded-md px-md py-sm min-h-[44px] text-sm font-medium transition-colors.duration-200 ${
-                categoryFilter === ''
+              className={`whitespace-nowrap rounded-md px-md py-sm min-h-[44px] text-sm font-medium transition-colors.duration-200 ${categoryFilter === ''
                   ? 'bg-primary text-on-primary font-semibold'
                   : 'bg-neutral-100 text-secondary-text hover:bg-neutral-200'
-              }`}
+                }`}
               aria-label="Show all categories"
               aria-pressed={categoryFilter === ''}
             >
@@ -383,11 +407,10 @@ export function ProductsPage() {
                 onClick={() => {
                   setCategoryFilter(category)
                 }}
-                className={`whitespace-nowrap rounded-md px-md py-sm min-h-[44px] text-sm font-medium transition-colors.duration-200 ${
-                  categoryFilter === category
+                className={`whitespace-nowrap rounded-md px-md py-sm min-h-[44px] text-sm font-medium transition-colors.duration-200 ${categoryFilter === category
                     ? 'bg-primary text-on-primary font-semibold'
                     : 'bg-neutral-100 text-secondary-text hover:bg-neutral-200'
-                }`}
+                  }`}
                 aria-label={`Filter by ${category}`}
                 aria-pressed={categoryFilter === category}
               >
@@ -432,8 +455,8 @@ export function ProductsPage() {
                 product.current_stock === 0
                   ? { label: 'Out of Stock', color: 'text-error bg-error-light' }
                   : product.current_stock < (product.min_stock_level || 0)
-                  ? { label: 'Low Stock', color: 'text-warning bg-warning-light' }
-                  : { label: 'In Stock', color: 'text-success bg-success-light' }
+                    ? { label: 'Low Stock', color: 'text-warning bg-warning-light' }
+                    : { label: 'In Stock', color: 'text-success bg-success-light' }
               return (
                 <Card key={product.id} className="shadow-sm hover:shadow-md transition-shadow">
                   <CardContent className="p-4">
