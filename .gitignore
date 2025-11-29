@@ -112,3 +112,8 @@ bin/
 *.tsbuildinfo
 .tsbuildinfo
 .vercel
+
+# Playwright
+playwright-report/
+test-results/
+tests/screenshots/

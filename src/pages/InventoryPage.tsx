@@ -2,6 +2,7 @@ import { useEffect, useState, useMemo, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { useRefresh } from '../contexts/RefreshContext'
+import { useIsMobile } from '../hooks/useIsMobile'
 import { supabase } from '../lib/supabase'
 import type { Invoice, Org } from '../types'
 import { Card, CardContent } from '../components/ui/Card'
@@ -29,6 +30,7 @@ export function InventoryPage() {
 
   // Toast deduplication hook
   const { showToast } = useToastDedupe()
+  const isMobile = useIsMobile()
 
   const loadOrg = useCallback(async () => {
     if (!user || !user.orgId) return
@@ -138,6 +140,16 @@ export function InventoryPage() {
     }
   }
 
+  const handleNewInvoice = () => {
+    if (isMobile) {
+      // Mobile: Navigate to full-page route
+      navigate('/invoices/new')
+    } else {
+      // Desktop: Open modal
+      setIsInvoiceFormOpen(true)
+    }
+  }
+
   const getStatusColor = (status: string | null) => {
     if (!status) return 'bg-neutral-50 border-neutral-200 text-secondary-text'
     switch (status) {
@@ -181,7 +193,7 @@ export function InventoryPage() {
             variant="primary"
             size="sm"
             className="flex items-center gap-1.5"
-            onClick={() => setIsInvoiceFormOpen(true)}
+            onClick={handleNewInvoice}
           >
             <PlusIcon className="h-4 w-4" />
             <span className="hidden sm:inline text-sm">New Invoice</span>
@@ -192,8 +204,8 @@ export function InventoryPage() {
         <div className="grid grid-cols-3 sm:grid-cols-3 gap-2">
           <Card
             className={`shadow-xs rounded-lg flex-shrink-0 cursor-pointer transition-all ${filter === 'finalized'
-                ? 'bg-primary border-2 border-primary shadow-md scale-105'
-                : 'bg-success-light border-success border hover:shadow-md hover:border-success-dark'
+              ? 'bg-primary border-2 border-primary shadow-md scale-105'
+              : 'bg-success-light border-success border hover:shadow-md hover:border-success-dark'
               }`}
             onClick={() => setFilter('finalized')}
           >
@@ -212,8 +224,8 @@ export function InventoryPage() {
 
           <Card
             className={`shadow-xs rounded-lg flex-shrink-0 cursor-pointer transition-all ${filter === 'draft'
-                ? 'bg-primary border-2 border-primary shadow-md scale-105'
-                : 'bg-warning-light border-warning border hover:shadow-md hover:border-warning-dark'
+              ? 'bg-primary border-2 border-primary shadow-md scale-105'
+              : 'bg-warning-light border-warning border hover:shadow-md hover:border-warning-dark'
               }`}
             onClick={() => setFilter('draft')}
           >
@@ -232,8 +244,8 @@ export function InventoryPage() {
 
           <Card
             className={`shadow-xs rounded-lg flex-shrink-0 cursor-pointer transition-all ${filter === 'all'
-                ? 'bg-primary border-2 border-primary shadow-md scale-105'
-                : 'bg-neutral-50 border-neutral-200 border hover:shadow-md hover:border-neutral-300'
+              ? 'bg-primary border-2 border-primary shadow-md scale-105'
+              : 'bg-neutral-50 border-neutral-200 border hover:shadow-md hover:border-neutral-300'
               }`}
             onClick={() => setFilter('all')}
           >
@@ -262,7 +274,7 @@ export function InventoryPage() {
               <Button
                 variant="primary"
                 size="sm"
-                onClick={() => setIsInvoiceFormOpen(true)}
+                onClick={handleNewInvoice}
                 className="min-h-[44px]"
               >
                 <PlusIcon className="h-4 w-4 mr-2" />

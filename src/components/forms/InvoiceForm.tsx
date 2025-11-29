@@ -37,6 +37,8 @@ interface InvoiceFormProps {
   org: Org
   title?: string
   draftInvoiceId?: string
+  mode?: 'modal' | 'page' // Modal/Drawer (default) or Full-page
+  onFormChange?: (hasChanges: boolean) => void  // Track form changes
 }
 
 type Step = 1 | 2 | 3 | 4
@@ -50,6 +52,8 @@ export function InvoiceForm({
   org,
   title,
   draftInvoiceId,
+  mode = 'modal',
+  onFormChange,
 }: InvoiceFormProps) {
   const [currentStep, setCurrentStep] = useState<Step>(1)
   const [identifier, setIdentifier] = useState('')
@@ -121,6 +125,14 @@ export function InvoiceForm({
       }
     }
   }, [isOpen, draftInvoiceId])
+
+  // Track form changes for unsaved data warning
+  useEffect(() => {
+    if (onFormChange) {
+      const hasChanges = selectedCustomer !== null || items.length > 0
+      onFormChange(hasChanges)
+    }
+  }, [selectedCustomer, items, onFormChange])
 
   // Helper function to classify errors as retry-able or permanent
   const isRetryableError = (error: any): boolean => {
@@ -1378,8 +1390,8 @@ export function InvoiceForm({
                     <div
                       key={index}
                       className={`border rounded-md p-md space-y-md ${isInvalid
-                          ? 'border-error bg-error-light/10'
-                          : 'border-neutral-200'
+                        ? 'border-error bg-error-light/10'
+                        : 'border-neutral-200'
                         }`}
                     >
                       <div className="flex items-center justify-between">
@@ -1432,8 +1444,8 @@ export function InvoiceForm({
                                   <div
                                     key={serialIndex}
                                     className={`flex items-center justify-between p-sm rounded-md ${isInvalidSerial
-                                        ? 'bg-error-light border border-error'
-                                        : 'bg-neutral-50'
+                                      ? 'bg-error-light border border-error'
+                                      : 'bg-neutral-50'
                                       }`}
                                   >
                                     <div className="flex items-center gap-xs">
@@ -1791,14 +1803,20 @@ export function InvoiceForm({
           onClose={() => setToast(null)}
         />
       )}
-      {isMobileDevice() ? (
-        <Drawer isOpen={isOpen} onClose={onClose} title={formTitle} headerAction={headerAction}>
-          {FormContent}
-        </Drawer>
+      {mode === 'page' ? (
+        // Page mode: render form content directly without modal/drawer wrapper
+        FormContent
       ) : (
-        <Modal isOpen={isOpen} onClose={onClose} title={formTitle} headerAction={headerAction}>
-          {FormContent}
-        </Modal>
+        // Modal mode: wrap in Drawer (mobile) or Modal (desktop)
+        isMobileDevice() ? (
+          <Drawer isOpen={isOpen} onClose={onClose} title={formTitle} headerAction={headerAction}>
+            {FormContent}
+          </Drawer>
+        ) : (
+          <Modal isOpen={isOpen} onClose={onClose} title={formTitle} headerAction={headerAction}>
+            {FormContent}
+          </Modal>
+        )
       )}
 
       {/* Camera Scanner - Continuous Mode */}

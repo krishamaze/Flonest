@@ -363,3 +363,40 @@ export async function searchCustomersByIdentifier(
   }
 }
 
+/**
+ * Search customers by partial identifier (autocomplete-style search)
+ * Searches in mobile and GSTIN fields with partial matching
+ * Returns results sorted by recently invoiced (last 30 days preferred), then alphabetically
+ * Limit: 10 results
+ */
+export async function searchCustomersByPartialIdentifier(
+  orgId: string,
+  query: string
+): Promise<CustomerWithMaster[]> {
+  if (!query || query.trim().length < 3) {
+    return []
+  }
+
+  const searchQuery = query.trim()
+
+  // Search for customers where mobile starts with query OR gstin contains query
+  const { data, error } = await supabase
+    .from('customers')
+    .select(`
+      *,
+      master_customer:master_customers(*)
+    `)
+    .eq('org_id', orgId)
+    .or(`master_customer.mobile.ilike.${searchQuery}%,master_customer.gstin.ilike.%${searchQuery}%`)
+    .order('last_invoice_date', { ascending: false, nullsFirst: false })
+    .limit(10)
+
+  if (error) {
+    console.error('Error searching customers:', error)
+    return []
+  }
+
+  return (data || []) as CustomerWithMaster[]
+}
+
+
