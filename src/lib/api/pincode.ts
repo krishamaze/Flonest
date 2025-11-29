@@ -34,21 +34,20 @@ export async function fetchPincodeData(pincode: string): Promise<PincodeData | n
   // 1. Try DB Lookup
   try {
     const { data, error } = await supabase
-      .from('pincodes' as any)
+      .from('pincodes')
       .select('*')
       .eq('pincode', pincode)
       .maybeSingle()
 
     if (data && !error) {
-      const row = data as any
       return {
-        state: row.state_name,
-        district: row.district,
-        city: row.city,
-        postOffice: row.city, // Defaulting PO to city for DB records
-        circle: row.state_name, 
-        region: row.district, 
-        division: row.district, 
+        state: data.state_name,
+        district: data.district,
+        city: data.city,
+        postOffice: data.city, // Defaulting PO to city for DB records
+        circle: data.state_name, 
+        region: data.district, 
+        division: data.district, 
       }
     }
   } catch (err) {

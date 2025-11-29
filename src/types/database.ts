@@ -12,6 +12,31 @@ export type Database = {
   __InternalSupabase: {
     PostgrestVersion: "13.0.5"
   }
+  graphql_public: {
+    Tables: {
+      [_ in never]: never
+    }
+    Views: {
+      [_ in never]: never
+    }
+    Functions: {
+      graphql: {
+        Args: {
+          extensions?: Json
+          operationName?: string
+          query?: string
+          variables?: Json
+        }
+        Returns: Json
+      }
+    }
+    Enums: {
+      [_ in never]: never
+    }
+    CompositeTypes: {
+      [_ in never]: never
+    }
+  }
   public: {
     Tables: {
       agent_cash_ledger: {
@@ -731,6 +756,33 @@ export type Database = {
           id?: string
           is_active?: boolean
           updated_at?: string
+        }
+        Relationships: []
+      }
+      pincodes: {
+        Row: {
+          id: number
+          pincode: string
+          city: string
+          district: string
+          state_name: string
+          created_at: string
+        }
+        Insert: {
+          id?: number
+          pincode: string
+          city: string
+          district: string
+          state_name: string
+          created_at?: string
+        }
+        Update: {
+          id?: number
+          pincode?: string
+          city?: string
+          district?: string
+          state_name?: string
+          created_at?: string
         }
         Relationships: []
       }
@@ -2328,6 +2380,15 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      adjust_stock_level: {
+        Args: {
+          p_org_id: string
+          p_product_id: string
+          p_delta_qty: number
+          p_notes: string
+        }
+        Returns: Json
+      }
       approve_purchase_bill_with_hsn_validation: {
         Args: { p_bill_id: string; p_org_id: string; p_user_id: string }
         Returns: Json
@@ -2653,6 +2714,9 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
+  graphql_public: {
+    Enums: {},
+  },
   public: {
     Enums: {
       tax_status: [
