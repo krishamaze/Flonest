@@ -154,8 +154,11 @@ export function ManualAdjustmentModal({
         required
         disabled={isSubmitting}
         placeholder="e.g. 5 or -2"
-        helperText="Positive to add stock, negative to remove"
+        placeholder="e.g. 5 or -2"
       />
+      <p className="mt-xs text-sm text-secondary-text">
+        Positive to add stock, negative to remove
+      </p>
 
       {/* Predicted Stock Preview */}
       {currentStock !== null && formData.delta !== 0 && (
