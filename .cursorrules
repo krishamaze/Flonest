@@ -1,4 +1,4 @@
-# FineTune Business Application - Development Rules
+# Flonest - Development Rules
 
 ## Project Structure - TWO SEPARATE VERCEL PROJECTS
 
@@ -193,7 +193,7 @@ All marketing pages MUST display complete Cashfree-compliant business informatio
 ### Color Palette
 
 ```css
---color-primary: #E2C33D;       /* FineTune yellow */
+--color-primary: #E2C33D;       /* Flonest yellow */
 --color-secondary: #1F2937;     /* Dark slate */
 --text-primary: #000000;
 --text-secondary: #374151;

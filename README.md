@@ -224,5 +224,5 @@ MIT
 
 ---
 
-**Built with ❤️ by FineTune**  
-**Last Updated:** November 13, 2025
+**Built with ❤️ by Flonest Team**  
+**Last Updated:** November 29, 2025
