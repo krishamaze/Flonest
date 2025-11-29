@@ -26,7 +26,7 @@ export function InventoryPage() {
   const [org, setOrg] = useState<Org | null>(null)
   const [selectedDraftId, setSelectedDraftId] = useState<string | null>(null)
   const [filter, setFilter] = useState<'all' | 'draft' | 'finalized'>('all')
-  
+
   // Toast deduplication hook
   const { showToast } = useToastDedupe()
 
@@ -82,7 +82,7 @@ export function InventoryPage() {
     const finalizedDrafts = invoices.filter(
       (inv: any) => inv.status === 'finalized' && (inv as any).draft_data !== null
     ).length
-    
+
     return {
       finalized: invoices.filter((inv) => inv.status === 'finalized').length,
       drafts: invoices.filter((inv) => inv.status === 'draft').length,
@@ -101,7 +101,7 @@ export function InventoryPage() {
 
   const handleDraftClick = async (invoiceId: string) => {
     if (!user || !user.orgId) return
-    
+
     try {
       // Re-validate draft before opening
       const revalidation = await revalidateDraftInvoice(invoiceId, user.orgId)
@@ -109,11 +109,11 @@ export function InventoryPage() {
         // Show toast if items are now valid
         // Toast will be shown in InvoiceForm when it loads
       }
-      
+
       // Open form with draft
       setSelectedDraftId(invoiceId)
       setIsInvoiceFormOpen(true)
-      
+
       // Reload invoices to reflect any status changes
       await loadInvoices()
     } catch (error) {
@@ -188,145 +188,142 @@ export function InventoryPage() {
           </Button>
         </div>
 
-      {/* Invoice Stats Cards - interactive filter cards */}
-      <div className="grid grid-cols-3 sm:grid-cols-3 gap-2">
-        <Card 
-          className={`shadow-xs rounded-lg flex-shrink-0 cursor-pointer transition-all ${
-            filter === 'finalized'
-              ? 'bg-primary border-2 border-primary shadow-md scale-105'
-              : 'bg-success-light border-success border hover:shadow-md hover:border-success-dark'
-          }`}
-          onClick={() => setFilter('finalized')}
-        >
-          <CardContent className="flex flex-col items-start gap-1 p-3">
-            <div className="flex items-center gap-xs mb-xs">
-              <DocumentTextIcon className={`h-4 w-4 ${filter === 'finalized' ? 'text-text-on-primary' : 'text-success'}`} />
-              <p className={`text-[10px] font-medium leading-tight ${filter === 'finalized' ? 'text-text-on-primary' : 'text-secondary-text'}`}>
-                Finalized
+        {/* Invoice Stats Cards - interactive filter cards */}
+        <div className="grid grid-cols-3 sm:grid-cols-3 gap-2">
+          <Card
+            className={`shadow-xs rounded-lg flex-shrink-0 cursor-pointer transition-all ${filter === 'finalized'
+                ? 'bg-primary border-2 border-primary shadow-md scale-105'
+                : 'bg-success-light border-success border hover:shadow-md hover:border-success-dark'
+              }`}
+            onClick={() => setFilter('finalized')}
+          >
+            <CardContent className="flex flex-col items-start gap-1 p-3">
+              <div className="flex items-center gap-xs mb-xs">
+                <DocumentTextIcon className={`h-4 w-4 ${filter === 'finalized' ? 'text-text-on-primary' : 'text-success'}`} />
+                <p className={`text-[10px] font-medium leading-tight ${filter === 'finalized' ? 'text-text-on-primary' : 'text-secondary-text'}`}>
+                  Finalized
+                </p>
+              </div>
+              <p className={`text-lg font-semibold ${filter === 'finalized' ? 'text-text-on-primary' : 'text-primary-text'}`}>
+                {invoiceStats.finalized}
               </p>
-            </div>
-            <p className={`text-lg font-semibold ${filter === 'finalized' ? 'text-text-on-primary' : 'text-primary-text'}`}>
-              {invoiceStats.finalized}
-            </p>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
 
-        <Card 
-          className={`shadow-xs rounded-lg flex-shrink-0 cursor-pointer transition-all ${
-            filter === 'draft'
-              ? 'bg-primary border-2 border-primary shadow-md scale-105'
-              : 'bg-warning-light border-warning border hover:shadow-md hover:border-warning-dark'
-          }`}
-          onClick={() => setFilter('draft')}
-        >
-          <CardContent className="flex flex-col items-start gap-1 p-3">
-            <div className="flex items-center gap-xs mb-xs">
-              <DocumentTextIcon className={`h-4 w-4 ${filter === 'draft' ? 'text-text-on-primary' : 'text-warning'}`} />
-              <p className={`text-[10px] font-medium leading-tight ${filter === 'draft' ? 'text-text-on-primary' : 'text-secondary-text'}`}>
-                Drafts
+          <Card
+            className={`shadow-xs rounded-lg flex-shrink-0 cursor-pointer transition-all ${filter === 'draft'
+                ? 'bg-primary border-2 border-primary shadow-md scale-105'
+                : 'bg-warning-light border-warning border hover:shadow-md hover:border-warning-dark'
+              }`}
+            onClick={() => setFilter('draft')}
+          >
+            <CardContent className="flex flex-col items-start gap-1 p-3">
+              <div className="flex items-center gap-xs mb-xs">
+                <DocumentTextIcon className={`h-4 w-4 ${filter === 'draft' ? 'text-text-on-primary' : 'text-warning'}`} />
+                <p className={`text-[10px] font-medium leading-tight ${filter === 'draft' ? 'text-text-on-primary' : 'text-secondary-text'}`}>
+                  Drafts
+                </p>
+              </div>
+              <p className={`text-lg font-semibold ${filter === 'draft' ? 'text-text-on-primary' : 'text-primary-text'}`}>
+                {invoiceStats.drafts}
               </p>
-            </div>
-            <p className={`text-lg font-semibold ${filter === 'draft' ? 'text-text-on-primary' : 'text-primary-text'}`}>
-              {invoiceStats.drafts}
-            </p>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
 
-        <Card 
-          className={`shadow-xs rounded-lg flex-shrink-0 cursor-pointer transition-all ${
-            filter === 'all'
-              ? 'bg-primary border-2 border-primary shadow-md scale-105'
-              : 'bg-neutral-50 border-neutral-200 border hover:shadow-md hover:border-neutral-300'
-          }`}
-          onClick={() => setFilter('all')}
-        >
-          <CardContent className="flex flex-col items-start gap-1 p-3">
-            <div className="flex items-center gap-xs mb-xs">
-              <DocumentTextIcon className={`h-4 w-4 ${filter === 'all' ? 'text-text-on-primary' : 'text-secondary-text'}`} />
-              <p className={`text-[10px] font-medium leading-tight ${filter === 'all' ? 'text-text-on-primary' : 'text-secondary-text'}`}>
-                Total
+          <Card
+            className={`shadow-xs rounded-lg flex-shrink-0 cursor-pointer transition-all ${filter === 'all'
+                ? 'bg-primary border-2 border-primary shadow-md scale-105'
+                : 'bg-neutral-50 border-neutral-200 border hover:shadow-md hover:border-neutral-300'
+              }`}
+            onClick={() => setFilter('all')}
+          >
+            <CardContent className="flex flex-col items-start gap-1 p-3">
+              <div className="flex items-center gap-xs mb-xs">
+                <DocumentTextIcon className={`h-4 w-4 ${filter === 'all' ? 'text-text-on-primary' : 'text-secondary-text'}`} />
+                <p className={`text-[10px] font-medium leading-tight ${filter === 'all' ? 'text-text-on-primary' : 'text-secondary-text'}`}>
+                  Total
+                </p>
+              </div>
+              <p className={`text-lg font-semibold ${filter === 'all' ? 'text-text-on-primary' : 'text-primary-text'}`}>
+                {invoiceStats.total}
               </p>
-            </div>
-            <p className={`text-lg font-semibold ${filter === 'all' ? 'text-text-on-primary' : 'text-primary-text'}`}>
-              {invoiceStats.total}
-            </p>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Invoices List */}
-      {invoices.length === 0 ? (
-        <Card className="shadow-sm">
-          <CardContent className="py-12 text-center">
-            <p className="text-sm font-medium text-primary-text mb-sm">No invoices yet</p>
-            <p className="text-sm text-secondary-text mb-md">
-              Create your first invoice to get started with billing and invoicing.
-            </p>
-            <Button
-              variant="primary"
-              size="sm"
-              onClick={() => setIsInvoiceFormOpen(true)}
-              className="min-h-[44px]"
-            >
-              <PlusIcon className="h-4 w-4 mr-2" />
-              Create First Invoice
-            </Button>
-          </CardContent>
-        </Card>
-      ) : (
-        <div className="space-y-3">
-          {/* Invoice List */}
-          {filteredInvoices.map((invoice) => {
-            const isDraft = invoice.status === 'draft'
-            
-            // Use SwipeableDraftItem for drafts (swipe to delete)
-            if (isDraft) {
-              return (
-                <SwipeableDraftItem
-                  key={invoice.id}
-                  invoice={invoice}
-                  onDelete={handleDeleteDraft}
-                  onClick={() => handleDraftClick(invoice.id)}
-                  getStatusColor={getStatusColor}
-                  formatDate={formatDate}
-                />
-              )
-            }
-            
-            // Use regular Card for finalized invoices (clickable to view details)
-            return (
-              <Card
-                key={invoice.id}
-                className={`border shadow-sm cursor-pointer hover:shadow-md transition-shadow ${getStatusColor(invoice.status)}`}
-                onClick={() => navigate(`/invoices/${invoice.id}`)}
-              >
-                <CardContent className="p-4">
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-xs">
-                        <h3 className="text-base font-medium text-primary-text">
-                          Invoice #{invoice.invoice_number}
-                        </h3>
-                      </div>
-                      <p className="text-xs text-muted-text mt-xs">
-                        {formatDate(invoice.created_at)}
-                      </p>
-                    </div>
-                    <div className="text-right shrink-0">
-                      <p className="text-base font-semibold text-primary-text">
-                        ₹{((invoice.total_amount ?? 0) as number).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                      </p>
-                      <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium capitalize mt-1 ${getStatusColor(invoice.status)}`}>
-                        {invoice.status}
-                      </span>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            )
-          })}
+            </CardContent>
+          </Card>
         </div>
-      )}
+
+        {/* Invoices List */}
+        {invoices.length === 0 ? (
+          <Card className="shadow-sm">
+            <CardContent className="py-12 text-center">
+              <p className="text-sm font-medium text-primary-text mb-sm">No invoices yet</p>
+              <p className="text-sm text-secondary-text mb-md">
+                Create your first invoice to get started with billing and invoicing.
+              </p>
+              <Button
+                variant="primary"
+                size="sm"
+                onClick={() => setIsInvoiceFormOpen(true)}
+                className="min-h-[44px]"
+              >
+                <PlusIcon className="h-4 w-4 mr-2" />
+                Create First Invoice
+              </Button>
+            </CardContent>
+          </Card>
+        ) : (
+          <div className="space-y-3">
+            {/* Invoice List */}
+            {filteredInvoices.map((invoice) => {
+              const isDraft = invoice.status === 'draft'
+
+              // Use SwipeableDraftItem for drafts (swipe to delete)
+              if (isDraft) {
+                return (
+                  <SwipeableDraftItem
+                    key={invoice.id}
+                    invoice={invoice}
+                    onDelete={handleDeleteDraft}
+                    onClick={() => handleDraftClick(invoice.id)}
+                    getStatusColor={getStatusColor}
+                    formatDate={formatDate}
+                  />
+                )
+              }
+
+              // Use regular Card for finalized invoices (clickable to view details)
+              return (
+                <Card
+                  key={invoice.id}
+                  className={`border shadow-sm cursor-pointer hover:shadow-md transition-shadow ${getStatusColor(invoice.status)}`}
+                  onClick={() => navigate(`/invoices/${invoice.id}`)}
+                >
+                  <CardContent className="p-4">
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-xs">
+                          <h3 className="text-base font-medium text-primary-text">
+                            Invoice #{invoice.invoice_number}
+                          </h3>
+                        </div>
+                        <p className="text-xs text-muted-text mt-xs">
+                          {formatDate(invoice.created_at)}
+                        </p>
+                      </div>
+                      <div className="text-right shrink-0">
+                        <p className="text-base font-semibold text-primary-text">
+                          ₹{((invoice.total_amount ?? 0) as number).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        </p>
+                        <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium capitalize mt-1 ${getStatusColor(invoice.status)}`}>
+                          {invoice.status}
+                        </span>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              )
+            })}
+          </div>
+        )}
       </div>
 
       {/* Invoice Form */}

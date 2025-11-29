@@ -86,9 +86,8 @@ export function SwipeableDraftItem({
         whileTap={{ scale: 0.98 }} // Subtle press feedback
       >
         <Card
-          className={`border shadow-sm ${getStatusColor(invoice.status)} ${
-            isDraft ? 'cursor-pointer hover:shadow-md transition-shadow' : ''
-          }`}
+          className={`border shadow-sm ${getStatusColor(invoice.status)} ${isDraft ? 'cursor-pointer hover:shadow-md transition-shadow' : ''
+            }`}
           onClick={isDraft ? () => handleCardClick() : undefined}
         >
           <CardContent className="p-4">
@@ -110,7 +109,7 @@ export function SwipeableDraftItem({
               </div>
               <div className="text-right shrink-0">
                 <p className="text-base font-semibold text-primary-text">
-                  ₹{((invoice.total_amount ?? 0) as number).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  ₹{((invoice.total_amount ?? 0) as number).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                 </p>
                 <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium capitalize mt-1 ${getStatusColor(invoice.status)}`}>
                   {invoice.status}

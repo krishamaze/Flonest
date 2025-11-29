@@ -176,7 +176,7 @@ export function DashboardPage() {
             </div>
             <p className="text-[10px] font-medium text-secondary-text leading-tight">Total Value</p>
             <p className="text-lg font-bold text-primary-text">
-              ${stats?.totalValue ? stats.totalValue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '0.00'}
+              ₹{stats?.totalValue ? stats.totalValue.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '0.00'}
             </p>
           </CardContent>
         </Card>
@@ -253,7 +253,7 @@ export function DashboardPage() {
         </CardHeader>
         <CardContent className="p-md pt-0">
           <div className="grid gap-md sm:grid-cols-2">
-            <button 
+            <button
               className="flex items-center gap-md rounded-md border border-neutral-200 p-md text-left min-h-[44px] transition-all duration-200 hover:bg-neutral-50 hover:border-neutral-300 active:scale-[0.98]"
               aria-label="Add Product"
             >
@@ -263,7 +263,7 @@ export function DashboardPage() {
                 <p className="text-xs text-secondary-text">Create new inventory item</p>
               </div>
             </button>
-            <button 
+            <button
               className="flex items-center gap-md rounded-md border border-neutral-200 p-md text-left min-h-[44px] transition-all duration-200 hover:bg-neutral-50 hover:border-neutral-300 active:scale-[0.98]"
               aria-label="Add Stock"
             >
@@ -274,7 +274,7 @@ export function DashboardPage() {
               </div>
             </button>
             {canManageUsers(user) && (
-              <button 
+              <button
                 onClick={() => setShowAddAdvisorForm(true)}
                 className="flex items-center gap-md rounded-md border border-neutral-200 p-md text-left min-h-[44px] transition-all duration-200 hover:bg-neutral-50 hover:border-neutral-300 active:scale-[0.98]"
                 aria-label="Add Staff"

@@ -330,8 +330,8 @@ export function ProductForm({ isOpen, onClose, onSubmit, product, title, orgId, 
                 })
               }}
               className={`flex-1 rounded-md px-md py-sm min-h-[44px] text-sm font-medium transition-colors ${sourceType === 'master'
-                  ? 'bg-primary text-on-primary font-semibold'
-                  : 'bg-neutral-100 text-secondary-text hover:bg-neutral-200'
+                ? 'bg-primary text-on-primary font-semibold'
+                : 'bg-neutral-100 text-secondary-text hover:bg-neutral-200'
                 }`}
             >
               Search Master Catalog
@@ -358,8 +358,8 @@ export function ProductForm({ isOpen, onClose, onSubmit, product, title, orgId, 
                 })
               }}
               className={`flex-1 rounded-md px-md py-sm min-h-[44px] text-sm font-medium transition-colors ${sourceType === 'new'
-                  ? 'bg-primary text-on-primary font-semibold'
-                  : 'bg-neutral-100 text-secondary-text hover:bg-neutral-200'
+                ? 'bg-primary text-on-primary font-semibold'
+                : 'bg-neutral-100 text-secondary-text hover:bg-neutral-200'
                 }`}
             >
               Create New Product
@@ -483,12 +483,12 @@ export function ProductForm({ isOpen, onClose, onSubmit, product, title, orgId, 
 
           <Input
             label="Unit"
-            value={formData.unit || 'pcs'}
+            value={formData.unit}
             onChange={(e) => setFormData({ ...formData, unit: e.target.value })}
             error={errors.unit}
             required
             disabled={isSubmitting}
-            placeholder="pcs, kg, liters"
+            placeholder="pcs, kg, liters, etc."
             type="text"
           />
         </div>

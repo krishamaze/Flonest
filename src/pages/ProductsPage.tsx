@@ -498,7 +498,7 @@ export function ProductsPage() {
                       <div className="text-right shrink-0">
                         {product.selling_price && (
                           <p className="text-base font-semibold text-primary-text">
-                            ${product.selling_price.toLocaleString('en-US', {
+                            ₹{product.selling_price.toLocaleString('en-IN', {
                               minimumFractionDigits: 2,
                               maximumFractionDigits: 2,
                             })}
@@ -506,7 +506,7 @@ export function ProductsPage() {
                         )}
                         {product.cost_price && (
                           <p className="text-xs text-muted-text mt-xs">
-                            Cost: ${product.cost_price.toLocaleString('en-US', {
+                            Cost: ₹{product.cost_price.toLocaleString('en-IN', {
                               minimumFractionDigits: 2,
                               maximumFractionDigits: 2,
                             })}
