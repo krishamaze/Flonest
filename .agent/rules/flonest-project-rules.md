@@ -10,6 +10,7 @@ trigger: always_on
 * do match return types to actual Remote Procedure Call (RPC) responses
 * do use existing UI components from `src/components/ui/`
 * do link the CLI only to the preview project using npx supabase link --project-ref evbbdlzwfqhvcuojlahr
+* do ensure migration files are committed properly before applying them via MCP.
 
 ### Negative Rules
 * do not deploy to main without preview verification

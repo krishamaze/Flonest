@@ -6,22 +6,37 @@
 
 const { execSync } = require('child_process');
 require('dotenv').config();
+require('dotenv').config({ path: '.env.local', override: true });
 
-const PROJECT_REF = 'yzrwkznkfisfpnwzbwfw';
+const PROJECT_REF = 'evbbdlzwfqhvcuojlahr';
 
 function checkEnvVars() {
+  // Try to extract password from DATABASE_URL if not set explicitly
+  if (!process.env.SUPABASE_DB_PASSWORD && process.env.DATABASE_URL) {
+    try {
+      const url = new URL(process.env.DATABASE_URL);
+      if (url.password) {
+        process.env.SUPABASE_DB_PASSWORD = url.password;
+        console.log('🔑 Extracted password from DATABASE_URL');
+      }
+    } catch (e) {
+      console.warn('⚠️  Could not parse DATABASE_URL');
+    }
+  }
+
   const missing = [];
   if (!process.env.SUPABASE_DB_PASSWORD) missing.push('SUPABASE_DB_PASSWORD');
-  if (!process.env.SUPABASE_ACCESS_TOKEN) missing.push('SUPABASE_ACCESS_TOKEN');
-  
+
+  // SUPABASE_ACCESS_TOKEN is optional if user is logged in via CLI
+  if (!process.env.SUPABASE_ACCESS_TOKEN) {
+    console.warn('⚠️  SUPABASE_ACCESS_TOKEN not set. Assuming you are logged in via "npx supabase login".');
+  }
+
   if (missing.length > 0) {
     console.error('❌ Missing required environment variables:', missing.join(', '));
     console.error('\nPlease set these in your .env file:');
     console.error('  SUPABASE_DB_PASSWORD=your-database-password');
-    console.error('  SUPABASE_ACCESS_TOKEN=your-access-token');
-    console.error('\nGet these from:');
-    console.error('  - SUPABASE_DB_PASSWORD: Supabase Dashboard → Project Settings → Database');
-    console.error('  - SUPABASE_ACCESS_TOKEN: Run "npx supabase login"');
+    console.error('  OR set DATABASE_URL with the password included');
     process.exit(1);
   }
 }
@@ -29,7 +44,7 @@ function checkEnvVars() {
 function linkProject() {
   console.log('🔗 Linking to Supabase project:', PROJECT_REF);
   console.log('📡 Using direct connection (--skip-pooler)\n');
-  
+
   checkEnvVars();
   console.log('Linking project...\n');
 
