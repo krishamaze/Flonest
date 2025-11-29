@@ -140,7 +140,7 @@ export async function adjustStockLevel(
   delta: number,
   notes: string
 ): Promise<{ success: boolean; product_id: string; delta: number }> {
-  const { data, error } = await supabase.rpc('adjust_stock_level', {
+  const { data, error } = await supabase.rpc('adjust_stock_level' as any, {
     p_org_id: orgId,
     p_product_id: productId,
     p_delta_qty: delta,
@@ -151,6 +151,6 @@ export async function adjustStockLevel(
     throw new Error(`Failed to adjust stock: ${error.message}`)
   }
 
-  return data
+  return data as unknown as { success: boolean; product_id: string; delta: number }
 }
 
