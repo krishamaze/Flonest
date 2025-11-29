@@ -317,6 +317,11 @@ npm run build
 - Check Supabase Auth settings
 - Look for errors in browser console
 
+**Blank Screen on Navigation:**
+- Check for unhandled loading states in routing components
+- Ensure `RoleRedirect` and protected routes return a loading spinner (not `null`) while auth is initializing
+- Verify `AuthContext` state using React DevTools
+
 ### PWA Issues
 
 **Service worker not registering:**
