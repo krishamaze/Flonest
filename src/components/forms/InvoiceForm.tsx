@@ -72,27 +72,27 @@ export function InvoiceForm({
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [internalDraftInvoiceId, setInternalDraftInvoiceId] = useState<string | null>(null)
   const [serialInputs, setSerialInputs] = useState<Record<number, string>>({})
-  
+
   // Scanner and confirmation state
   type ScannerMode = 'closed' | 'scanning' | 'confirming'
   const [scannerMode, setScannerMode] = useState<ScannerMode>('closed')
   const [showConfirmSheet, setShowConfirmSheet] = useState(false)
   const [pendingProduct, setPendingProduct] = useState<ProductWithMaster | null>(null)
   const [pendingQuantity, setPendingQuantity] = useState(1)
-  
+
   // Draft loading state
   const [loadingDraft, setLoadingDraft] = useState(false)
   const [draftLoadError, setDraftLoadError] = useState<string | null>(null)
   const [isRetrying, setIsRetrying] = useState(false)
   const draftLoadRetries = useRef(0)
   const MAX_RETRIES = 1
-  
+
   // Draft session ID ref - persists across re-renders
   const draftSessionId = useRef<string | null>(null)
-  
+
   // Use prop if provided, otherwise use internal state
   const currentDraftInvoiceId = draftInvoiceId || internalDraftInvoiceId
-  
+
   // Toast deduplication hook
   const { showToast } = useToastDedupe()
 
@@ -125,21 +125,21 @@ export function InvoiceForm({
   // Helper function to classify errors as retry-able or permanent
   const isRetryableError = (error: any): boolean => {
     if (!error) return false
-    
+
     const errorMessage = error.message?.toLowerCase() || ''
     const errorCode = error.code?.toLowerCase() || ''
-    
+
     // Schema cache errors are retry-able (will be handled with cache reload)
-    const isSchemaCacheError = 
-      errorCode === 'pgrst200' || 
+    const isSchemaCacheError =
+      errorCode === 'pgrst200' ||
       errorMessage.includes('could not find a relationship') ||
       errorMessage.includes('schema cache') ||
       (errorMessage.includes('relationship') && errorMessage.includes('schema'))
-    
+
     if (isSchemaCacheError) {
       return true
     }
-    
+
     // Retry-able errors: network issues, RLS policy errors, timeouts
     const retryablePatterns = [
       'network',
@@ -153,7 +153,7 @@ export function InvoiceForm({
       'networkerror',
       'pgrst',
     ]
-    
+
     // Permanent errors: not found, deleted, invalid
     const permanentPatterns = [
       'not found',
@@ -166,17 +166,17 @@ export function InvoiceForm({
       'permission denied',
       'draft data not found',
     ]
-    
+
     // Check for permanent errors first
     if (permanentPatterns.some(pattern => errorMessage.includes(pattern) || errorCode.includes(pattern))) {
       return false
     }
-    
+
     // Check for retry-able errors
     if (retryablePatterns.some(pattern => errorMessage.includes(pattern) || errorCode.includes(pattern))) {
       return true
     }
-    
+
     // Default: retry on unknown errors (might be transient)
     return true
   }
@@ -187,22 +187,22 @@ export function InvoiceForm({
       setLoadingDraft(true)
       setDraftLoadError(null)
       setIsRetrying(retryCount > 0)
-      
+
       const draftData = await loadDraftInvoiceData(invoiceId)
-      
+
       if (draftData) {
         // Restore draft session ID from database
         if (draftData.draft_session_id) {
           draftSessionId.current = draftData.draft_session_id
           setDraftSessionId(invoiceId, draftData.draft_session_id)
         }
-        
+
         // Load customer
         const draftInvoice = await getInvoiceById(invoiceId)
         if (draftInvoice.customer) {
           setSelectedCustomer(draftInvoice.customer as any)
         }
-        
+
         // Load products and restore items
         const allProducts = await getAllProducts(orgId, { status: 'active' })
         const restoredItems: InvoiceItemFormData[] = draftData.items.map((draftItem: any) => {
@@ -223,11 +223,11 @@ export function InvoiceForm({
         setInternalDraftInvoiceId(invoiceId)
         // Only advance to step 2 on successful load - don't auto-advance on error
         setCurrentStep(2)
-        
+
         // Reset retry counter on success
         draftLoadRetries.current = 0
         setIsRetrying(false)
-        
+
         // Re-validate draft
         try {
           const revalidation = await revalidateDraftInvoice(invoiceId, orgId)
@@ -251,15 +251,15 @@ export function InvoiceForm({
       }
     } catch (error) {
       console.error('Error loading draft:', error)
-      
+
       // Check if error is retry-able and we haven't exceeded max retries
       if (isRetryableError(error) && retryCount < MAX_RETRIES) {
         draftLoadRetries.current = retryCount + 1
         setIsRetrying(true)
-        
+
         // Wait 500ms before retrying
         await new Promise(resolve => setTimeout(resolve, 500))
-        
+
         // Retry
         return loadDraftWithRetry(invoiceId, retryCount + 1)
       } else {
@@ -283,7 +283,7 @@ export function InvoiceForm({
       draftLoadRetries.current = 0
       setDraftLoadError(null)
       setIsRetrying(false)
-      
+
       // Load draft with retry
       loadDraftWithRetry(draftInvoiceId)
     }
@@ -333,11 +333,11 @@ export function InvoiceForm({
     try {
       // First, check if org customer exists (master + org link)
       const orgCustomer = await searchCustomersByIdentifier(identifier, orgId)
-      
+
       if (orgCustomer) {
         // Customer exists with org link - show details
         setSelectedCustomer(orgCustomer)
-        
+
         // Check for existing draft for this customer
         try {
           const existingDraft = await getDraftInvoiceByCustomer(orgId, orgCustomer.id)
@@ -346,14 +346,14 @@ export function InvoiceForm({
             const continueDraft = window.confirm(
               'A draft invoice already exists for this customer. Continue?'
             )
-            
+
             if (continueDraft) {
               // Load draft data
               const draftData = await loadDraftInvoiceData(existingDraft.id)
               if (draftData) {
                 // Restore items from draft
                 setInternalDraftInvoiceId(existingDraft.id)
-                
+
                 // Load products to restore full item data
                 const allProducts = await getAllProducts(orgId, { status: 'active' })
                 const restoredItems: InvoiceItemFormData[] = draftData.items.map((draftItem: any) => {
@@ -371,14 +371,14 @@ export function InvoiceForm({
                   }
                 })
                 setItems(restoredItems)
-                
+
                 // Re-validate draft
                 try {
                   const revalidation = await revalidateDraftInvoice(existingDraft.id, orgId)
                   if (revalidation.updated) {
-                    setToast({ 
-                      message: 'Draft revalidated — missing items are now available.', 
-                      type: 'success' 
+                    setToast({
+                      message: 'Draft revalidated — missing items are now available.',
+                      type: 'success'
                     })
                     // Clear invalid serials/errors if now valid
                     if (revalidation.valid) {
@@ -393,7 +393,7 @@ export function InvoiceForm({
                 } catch (revalError) {
                   console.error('Error re-validating draft:', revalError)
                 }
-                
+
                 showToast('success', 'Draft loaded', { autoClose: 3000 })
                 setCurrentStep(2)
                 return
@@ -404,13 +404,13 @@ export function InvoiceForm({
           console.error('Error checking for draft:', draftError)
           // Continue with normal flow if draft check fails
         }
-        
+
         return
       }
 
       // Check if master customer exists (but no org link)
       const master = await checkCustomerExists(identifier)
-      
+
       if (master) {
         // Master exists but no org link - create org link and show
         const result = await lookupOrCreateCustomer(identifier, orgId, userId)
@@ -436,12 +436,12 @@ export function InvoiceForm({
   const handleCreateMasterCustomer = async () => {
     // Validate form - all fields optional except: at least one identifier OR legal_name
     const formErrors: Record<string, string> = {}
-    
+
     const hasLegalName = masterFormData.customer_name.trim().length >= 2
     if (!hasLegalName) {
       formErrors.customer_name = 'Customer name is required'
     }
-    
+
     // Validate email format if provided
     if (masterFormData.email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(masterFormData.email.trim())) {
       formErrors.email = 'Please enter a valid email address'
@@ -452,11 +452,11 @@ export function InvoiceForm({
       const additionalType = identifierType === 'mobile' ? 'gstin' : 'mobile'
       const detected = detectIdentifierType(masterFormData.additionalIdentifier.trim())
       if (detected !== additionalType) {
-        formErrors.additionalIdentifier = additionalType === 'mobile' 
+        formErrors.additionalIdentifier = additionalType === 'mobile'
           ? 'Please enter a valid 10-digit mobile number'
           : 'Please enter a valid 15-character GSTIN'
       } else {
-        const isValid = additionalType === 'mobile' 
+        const isValid = additionalType === 'mobile'
           ? validateMobile(masterFormData.additionalIdentifier.trim())
           : validateGSTIN(masterFormData.additionalIdentifier.trim())
         if (!isValid) {
@@ -466,7 +466,7 @@ export function InvoiceForm({
         }
       }
     }
-    
+
     if (Object.keys(formErrors).length > 0) {
       setErrors(formErrors)
       return
@@ -510,8 +510,13 @@ export function InvoiceForm({
       setCurrentStep(2)
     } catch (error) {
       console.error('Error creating customer:', error)
+      const errorMessage = error instanceof Error ? error.message : 'Failed to create customer'
       setErrors({
-        submit: error instanceof Error ? error.message : 'Failed to create customer',
+        submit: errorMessage,
+      })
+      setToast({
+        message: errorMessage,
+        type: 'error'
       })
     } finally {
       setSearching(false)
@@ -550,7 +555,7 @@ export function InvoiceForm({
   const handleProductChange = (index: number, productId: string) => {
     const updated = [...items]
     const selectedProduct = products.find((p) => p.id === productId)
-    
+
     updated[index] = {
       ...updated[index],
       product_id: productId,
@@ -559,7 +564,7 @@ export function InvoiceForm({
       serials: selectedProduct?.serial_tracked ? (updated[index].serials || []) : undefined,
       quantity: selectedProduct?.serial_tracked ? (updated[index].serials?.length || 0) : updated[index].quantity || 1,
     }
-    
+
     // Recalculate line_total
     updated[index].line_total = (updated[index].quantity || 0) * updated[index].unit_price
 
@@ -588,14 +593,14 @@ export function InvoiceForm({
     try {
       // Validate single code
       const results = await validateScannerCodes(orgId, [code])
-      
+
       if (results.length === 0) {
         showToast('error', 'Product not found. Ask your branch head to add this product.', { autoClose: 3000 })
         return
       }
 
       const result = results[0]
-      
+
       if (result.status === 'valid' && result.product_id) {
         const product = products.find((p) => p.id === result.product_id)
         if (product) {
@@ -623,10 +628,10 @@ export function InvoiceForm({
     if (!pendingProduct) return
 
     const updatedItems = [...items]
-    
+
     // Check if item already exists for this product
     const existingIndex = updatedItems.findIndex((item) => item.product_id === pendingProduct.id)
-    
+
     if (existingIndex >= 0) {
       // Update existing item
       const existingItem = updatedItems[existingIndex]
@@ -659,7 +664,7 @@ export function InvoiceForm({
     setItems(updatedItems)
     setShowConfirmSheet(false)
     setPendingProduct(null)
-    
+
     // If scanner was open, continue scanning
     if (scannerMode === 'confirming') {
       setScannerMode('scanning')
@@ -670,7 +675,7 @@ export function InvoiceForm({
   const handleCancelConfirm = () => {
     setShowConfirmSheet(false)
     setPendingProduct(null)
-    
+
     // If scanner was open, continue scanning
     if (scannerMode === 'confirming') {
       setScannerMode('scanning')
@@ -725,7 +730,7 @@ export function InvoiceForm({
         console.error('Auto-save failed:', error)
       }
     },
-    { 
+    {
       localDebounce: 1500,  // 1.5s debounce for localStorage
       rpcInterval: 5000,     // 5s interval for RPC calls
       enabled: selectedCustomer !== null && draftSessionId.current !== null
@@ -736,7 +741,7 @@ export function InvoiceForm({
     if (!selectedCustomer) return
     try {
       await manualSave()
-      const hasInvalidItems = items.some(item => 
+      const hasInvalidItems = items.some(item =>
         (item.invalid_serials && item.invalid_serials.length > 0) ||
         (item.validation_errors && item.validation_errors.length > 0)
       )
@@ -755,7 +760,7 @@ export function InvoiceForm({
   const handleAddSerial = async (itemIndex: number, serial: string) => {
     const updated = [...items]
     const item = updated[itemIndex]
-    
+
     if (!item.serials) {
       item.serials = []
     }
@@ -768,22 +773,22 @@ export function InvoiceForm({
     // Validate serial before adding
     try {
       const serialStatus = await checkSerialStatus(orgId, serial.trim())
-      
+
       if (!serialStatus.found) {
         // Serial not found - allow adding but mark as invalid
         if (!item.invalid_serials) {
           item.invalid_serials = []
         }
         item.invalid_serials.push(serial.trim())
-        setToast({ 
-          message: 'Serial not found in stock. Saved as draft for branch head review.', 
-          type: 'error' 
+        setToast({
+          message: 'Serial not found in stock. Saved as draft for branch head review.',
+          type: 'error'
         })
       } else if (serialStatus.product_id !== item.product_id) {
         // Serial belongs to different product
-        setToast({ 
-          message: `Serial belongs to a different product.`, 
-          type: 'error' 
+        setToast({
+          message: `Serial belongs to a different product.`,
+          type: 'error'
         })
         return
       } else if (serialStatus.status !== 'available') {
@@ -792,9 +797,9 @@ export function InvoiceForm({
           item.invalid_serials = []
         }
         item.invalid_serials.push(serial.trim())
-        setToast({ 
-          message: 'Serial not available in stock. Saved as draft for branch head review.', 
-          type: 'error' 
+        setToast({
+          message: 'Serial not available in stock. Saved as draft for branch head review.',
+          type: 'error'
         })
       }
 
@@ -818,9 +823,9 @@ export function InvoiceForm({
         item.line_total = item.quantity * item.unit_price
       }
       setItems(updated)
-      setToast({ 
-        message: 'Error validating serial. Saved as draft for branch head review.', 
-        type: 'error' 
+      setToast({
+        message: 'Error validating serial. Saved as draft for branch head review.',
+        type: 'error'
       })
     }
   }
@@ -829,16 +834,16 @@ export function InvoiceForm({
   const handleRemoveSerial = (itemIndex: number, serialIndex: number) => {
     const updated = [...items]
     const item = updated[itemIndex]
-    
+
     if (item.serials) {
       const removedSerial = item.serials[serialIndex]
       item.serials.splice(serialIndex, 1)
-      
+
       // Also remove from invalid_serials if present
       if (item.invalid_serials && item.invalid_serials.includes(removedSerial)) {
         item.invalid_serials = item.invalid_serials.filter(s => s !== removedSerial)
       }
-      
+
       if (item.serial_tracked) {
         item.quantity = item.serials.length
         item.line_total = item.quantity * item.unit_price
@@ -850,7 +855,7 @@ export function InvoiceForm({
   // Calculate totals using new Tax Calculation Service
   const totals = useMemo(() => {
     const subtotal = items.reduce((sum, item) => sum + (item.line_total || 0), 0)
-    
+
     // If no customer selected or no items, return zero tax
     if (!selectedCustomer || items.length === 0) {
       return {
@@ -873,7 +878,7 @@ export function InvoiceForm({
       // Use product.tax_rate (org-specific) if available, otherwise fallback to master_product.gst_rate
       const taxRate = product?.tax_rate ?? product?.master_product?.gst_rate ?? null
       const hsnSacCode = product?.hsn_sac_code ?? product?.master_product?.hsn_code ?? null
-      
+
       return productToLineItem(
         item.line_total,
         taxRate,
@@ -915,16 +920,16 @@ export function InvoiceForm({
     // Validate all items
     const invalidItems = items.some((item) => {
       if (!item.product_id || item.unit_price <= 0) return true
-      
+
       // For serial-tracked products, check serials instead of quantity
       if (item.serial_tracked) {
         return !item.serials || item.serials.length === 0
       }
-      
+
       // For non-serial products, check quantity
       return item.quantity <= 0
     })
-    
+
     if (invalidItems) {
       setErrors({ items: 'Please fill all item fields correctly (serials for serial-tracked products, quantity for others)' })
       setCurrentStep(2)
@@ -951,8 +956,8 @@ export function InvoiceForm({
         const productErrors = validation.errors.filter(e => e.type === 'product_not_found')
         const serialErrors = validation.errors.filter(e => e.type === 'serial_not_found')
         const stockErrors = validation.errors.filter(e => e.type === 'insufficient_stock')
-        const masterProductErrors = validation.errors.filter(e => 
-          e.type === 'master_product_not_approved' || 
+        const masterProductErrors = validation.errors.filter(e =>
+          e.type === 'master_product_not_approved' ||
           e.type === 'master_product_missing_hsn' ||
           e.type === 'master_product_not_linked' ||
           e.type === 'master_product_invalid_hsn'
@@ -962,13 +967,13 @@ export function InvoiceForm({
         const updatedItems = items.map((item, index) => {
           const itemErrors = validation.errors.filter(e => e.item_index === index + 1)
           const stockError = itemErrors.find(e => e.type === 'insufficient_stock')
-          const masterProductError = itemErrors.find(e => 
-            e.type === 'master_product_not_approved' || 
+          const masterProductError = itemErrors.find(e =>
+            e.type === 'master_product_not_approved' ||
             e.type === 'master_product_missing_hsn' ||
             e.type === 'master_product_not_linked' ||
             e.type === 'master_product_invalid_hsn'
           )
-          
+
           return {
             ...item,
             validation_errors: itemErrors.map(e => e.message),
@@ -1002,7 +1007,7 @@ export function InvoiceForm({
         setToast({ message: errorMessage.trim(), type: 'error' })
 
         // Set form errors
-        setErrors({ 
+        setErrors({
           items: 'Some items have validation errors. Please fix them before finalizing.',
           submit: 'Cannot create invoice with invalid items'
         })
@@ -1042,9 +1047,9 @@ export function InvoiceForm({
       setErrors({
         submit: error instanceof Error ? error.message : 'Failed to create invoice',
       })
-      setToast({ 
-        message: error instanceof Error ? error.message : 'Failed to create invoice', 
-        type: 'error' 
+      setToast({
+        message: error instanceof Error ? error.message : 'Failed to create invoice',
+        type: 'error'
       })
     } finally {
       setIsSubmitting(false)
@@ -1130,7 +1135,7 @@ export function InvoiceForm({
         <div className="space-y-4">
           <div>
             <h3 className="text-lg font-semibold text-primary-text mb-md">Step 1: Select Customer</h3>
-            
+
             {/* Show "Add New Customer" form inline when activated */}
             {showAddNewForm ? (
               <div className="mt-md space-y-md p-md border border-neutral-200 rounded-md bg-neutral-50">
@@ -1255,9 +1260,9 @@ export function InvoiceForm({
                           <div>Mobile or GSTIN required</div>
                         </div>
                         <div className="flex gap-sm pt-sm">
-                          <Button 
-                            variant="primary" 
-                            size="sm" 
+                          <Button
+                            variant="primary"
+                            size="sm"
                             className="flex-1 min-h-[44px]"
                             aria-label="Add new customer"
                             tabIndex={-1} // Make it non-focusable, card is the target
@@ -1302,7 +1307,7 @@ export function InvoiceForm({
                     />
                   </div>
                 )}
-                
+
                 {lookupPerformed && !searching && !selectedCustomer && (
                   <div className="mt-4 text-center p-md bg-neutral-50 rounded-md">
                     <p className="text-sm text-secondary-text">No existing customer found with this identifier.</p>
@@ -1345,9 +1350,9 @@ export function InvoiceForm({
 
             {/* Create New Item Button */}
             <div className="mb-md">
-              <Button 
-                type="button" 
-                variant="primary" 
+              <Button
+                type="button"
+                variant="primary"
                 onClick={handleAddItem}
                 disabled={isSubmitting || !selectedCustomer}
               >
@@ -1370,13 +1375,12 @@ export function InvoiceForm({
                   const isInvalid = hasInvalidSerials || hasValidationErrors
 
                   return (
-                    <div 
-                      key={index} 
-                      className={`border rounded-md p-md space-y-md ${
-                        isInvalid 
-                          ? 'border-error bg-error-light/10' 
+                    <div
+                      key={index}
+                      className={`border rounded-md p-md space-y-md ${isInvalid
+                          ? 'border-error bg-error-light/10'
                           : 'border-neutral-200'
-                      }`}
+                        }`}
                     >
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-sm">
@@ -1427,11 +1431,10 @@ export function InvoiceForm({
                                 return (
                                   <div
                                     key={serialIndex}
-                                    className={`flex items-center justify-between p-sm rounded-md ${
-                                      isInvalidSerial 
-                                        ? 'bg-error-light border border-error' 
+                                    className={`flex items-center justify-between p-sm rounded-md ${isInvalidSerial
+                                        ? 'bg-error-light border border-error'
                                         : 'bg-neutral-50'
-                                    }`}
+                                      }`}
                                   >
                                     <div className="flex items-center gap-xs">
                                       <span className="text-sm text-primary-text font-mono">
@@ -1582,13 +1585,12 @@ export function InvoiceForm({
                 const hasInvalidSerials = item.invalid_serials && item.invalid_serials.length > 0
                 const hasValidationErrors = item.validation_errors && item.validation_errors.length > 0
                 const isInvalid = hasInvalidSerials || hasValidationErrors
-                
+
                 return (
-                  <div 
-                    key={index} 
-                    className={`border-b last:border-0 pb-sm mb-sm ${
-                      isInvalid ? 'border-error bg-error-light/10' : 'border-neutral-200'
-                    }`}
+                  <div
+                    key={index}
+                    className={`border-b last:border-0 pb-sm mb-sm ${isInvalid ? 'border-error bg-error-light/10' : 'border-neutral-200'
+                      }`}
                   >
                     <div className="flex justify-between text-sm">
                       <div className="flex-1">
@@ -1656,7 +1658,7 @@ export function InvoiceForm({
               {/* Zero-rated or Exempt indicator */}
               {(totals.supply_type === 'zero_rated' || totals.supply_type === 'exempt') && totals.cgst_amount === 0 && totals.sgst_amount === 0 && totals.igst_amount === 0 && (
                 <div className="text-xs text-secondary-text py-xs">
-                  {totals.supply_type === 'zero_rated' 
+                  {totals.supply_type === 'zero_rated'
                     ? 'Zero-Rated Supply - No Tax Applicable'
                     : 'Exempt Supply - No Tax Applicable'}
                 </div>
@@ -1665,19 +1667,19 @@ export function InvoiceForm({
                 <span className="text-primary-text">Total</span>
                 <span className="text-primary-text">${totals.total_amount.toFixed(2)}</span>
               </div>
-              {items.some(item => 
+              {items.some(item =>
                 (item.invalid_serials && item.invalid_serials.length > 0) ||
                 (item.validation_errors && item.validation_errors.length > 0)
               ) && (
-                <div className="mt-md p-md bg-warning-light border border-warning rounded-md">
-                  <p className="text-sm font-medium text-warning-dark">
-                    ⚠️ This invoice contains items that need branch head review
-                  </p>
-                  <p className="text-xs text-warning-dark mt-xs">
-                    Please fix validation errors before finalizing the invoice.
-                  </p>
-                </div>
-              )}
+                  <div className="mt-md p-md bg-warning-light border border-warning rounded-md">
+                    <p className="text-sm font-medium text-warning-dark">
+                      ⚠️ This invoice contains items that need branch head review
+                    </p>
+                    <p className="text-xs text-warning-dark mt-xs">
+                      Please fix validation errors before finalizing the invoice.
+                    </p>
+                  </div>
+                )}
             </div>
           </div>
         </div>
@@ -1726,22 +1728,22 @@ export function InvoiceForm({
 
           {currentStep === 3 && (
             <>
-              <Button 
-                type="button" 
-                variant="secondary" 
-                onClick={onClose} 
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={onClose}
                 disabled={isSubmitting}
                 className="flex-1"
               >
                 Cancel
               </Button>
-              <Button 
-                type="submit" 
-                variant="primary" 
+              <Button
+                type="submit"
+                variant="primary"
                 isLoading={isSubmitting}
                 className="flex-1"
                 disabled={
-                  items.some(item => 
+                  items.some(item =>
                     (item.invalid_serials && item.invalid_serials.length > 0) ||
                     (item.validation_errors && item.validation_errors.length > 0)
                   )
@@ -1813,7 +1815,7 @@ export function InvoiceForm({
 
       {/* Backdrop - z-index 9999, dims content but NOT scanner */}
       {scannerMode === 'confirming' && (
-        <div 
+        <div
           className="fixed inset-0 bg-black/40"
           style={{ zIndex: 9999 }}
           onClick={handleCancelConfirm}

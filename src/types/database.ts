@@ -2560,6 +2560,16 @@ export type Database = {
           test_name: string
         }[]
       }
+      upsert_master_customer: {
+        Args: {
+          p_address?: string
+          p_email?: string
+          p_gstin: string
+          p_legal_name: string
+          p_mobile: string
+        }
+        Returns: string
+      }
     }
     Enums: {
       tax_status:

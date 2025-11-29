@@ -88,8 +88,8 @@ export async function lookupOrCreateCustomer(
     }
 
     const { data: rpcData, error: rpcError } = await supabase.rpc('upsert_master_customer' as any, {
-      p_mobile,
-      p_gstin,
+      p_mobile: p_mobile as string,
+      p_gstin: p_gstin as string,
       p_legal_name: p_legal_name,
       p_address: masterData?.address || null,
       p_email: masterData?.email || null,
@@ -128,8 +128,8 @@ export async function lookupOrCreateCustomer(
       if ((type === 'mobile' && !master.gstin && masterData?.gstin) || 
           (type === 'gstin' && !master.mobile && masterData?.mobile)) {
         await supabase.rpc('upsert_master_customer' as any, {
-          p_mobile,
-          p_gstin,
+          p_mobile: p_mobile as string,
+          p_gstin: p_gstin as string,
           p_legal_name: masterData?.legal_name || master.legal_name || 'Customer',
           p_address: masterData?.address || master.address || null,
           p_email: masterData?.email || master.email || null,
