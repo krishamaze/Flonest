@@ -154,7 +154,6 @@ export function ManualAdjustmentModal({
         required
         disabled={isSubmitting}
         placeholder="e.g. 5 or -2"
-        placeholder="e.g. 5 or -2"
       />
       <p className="mt-xs text-sm text-secondary-text">
         Positive to add stock, negative to remove
@@ -162,14 +161,14 @@ export function ManualAdjustmentModal({
 
       {/* Predicted Stock Preview */}
       {currentStock !== null && formData.delta !== 0 && (
-         <div className="rounded-md border border-primary-light bg-primary-light p-md">
-           <div className="flex items-center justify-between">
-             <span className="text-sm font-medium text-primary-text">New Stock Level:</span>
-             <span className="text-base font-semibold text-primary-text">
-               {currentStock + formData.delta} {selectedProduct?.unit || 'pcs'}
-             </span>
-           </div>
-         </div>
+        <div className="rounded-md border border-primary-light bg-primary-light p-md">
+          <div className="flex items-center justify-between">
+            <span className="text-sm font-medium text-primary-text">New Stock Level:</span>
+            <span className="text-base font-semibold text-primary-text">
+              {currentStock + formData.delta} {selectedProduct?.unit || 'pcs'}
+            </span>
+          </div>
+        </div>
       )}
 
       <Textarea
