@@ -217,7 +217,7 @@ export function OwnerSignupPage() {
               </div>
               <h1 className="text-3xl font-bold text-primary-text mb-xs">Onboard your business</h1>
               <p className="text-base text-secondary-text">
-                Create a secure owner account to manage your PerBook business.
+                Create a secure owner account to manage your Flonest business.
               </p>
             </div>
 
@@ -340,7 +340,7 @@ export function OwnerSignupPage() {
             </div>
 
             <p className="mt-lg text-center text-xs text-muted-text">
-              This owner account will be used to create and manage your PerBook business.
+              This owner account will be used to create and manage your Flonest business.
             </p>
           </div>
         </div>
