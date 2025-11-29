@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { NavLink, useLocation } from 'react-router-dom'
 import {
   HomeIcon,
@@ -66,6 +66,10 @@ export function BottomNav() {
   const location = useLocation()
   const { user } = useAuth()
 
+  // BUGFIX: Prevent rapid concurrent navigation that causes blank screen
+  const isNavigatingRef = useRef(false)
+  const lastNavigationRef = useRef<number>(0)
+
   // Determine visible nav items based on role
   let visibleNavItems = []
 
@@ -87,16 +91,46 @@ export function BottomNav() {
   // For platform admin, check admin-specific sub-routes that are in the More menu
   const platformAdminMoreRoutes = ['/platform-admin/hsn', '/platform-admin/gst-verification', '/platform-admin/blocked-invoices']
   const orgMoreRoutes = ['/stock-ledger', '/customers', '/pending-products', '/settings']
-  
+
   const moreRoutes = user?.platformAdmin ? platformAdminMoreRoutes : orgMoreRoutes
-  
-  const isMoreMenuActive = moreRoutes.some(path => 
+
+  const isMoreMenuActive = moreRoutes.some(path =>
     location.pathname.startsWith(path)
   )
 
+  /**
+   * BUGFIX: Debounced navigation handler to prevent blank screen
+   * Prevents multiple concurrent navigations within 300ms
+   */
+  const handleNavigation = (e: React.MouseEvent<HTMLAnchorElement>, path: string) => {
+    const now = Date.now()
+    const timeSinceLastNav = now - lastNavigationRef.current
+
+    // If we're currently navigating or last navigation was < 300ms ago, prevent this click
+    if (isNavigatingRef.current || timeSinceLastNav < 300) {
+      e.preventDefault()
+      return
+    }
+
+    // If already on this path, prevent navigation
+    if (location.pathname === path) {
+      e.preventDefault()
+      return
+    }
+
+    // Mark as navigating
+    isNavigatingRef.current = true
+    lastNavigationRef.current = now
+
+    // Reset navigation lock after transition completes (300ms)
+    setTimeout(() => {
+      isNavigatingRef.current = false
+    }, 300)
+  }
+
   return (
     <>
-      <nav 
+      <nav
         className="fixed bottom-0 left-0 right-0 z-40 border-t border-neutral-200 bg-bg-card shadow-sm safe-bottom"
         role="navigation"
         aria-label="Main navigation"
@@ -107,18 +141,18 @@ export function BottomNav() {
               key={item.to}
               to={item.to}
               end={item.to === '/platform-admin' || item.to === '/'}
+              onClick={(e) => handleNavigation(e, item.to)}
               className={({ isActive }) =>
-                `flex flex-1 flex-col items-center justify-center gap-1 py-sm min-h-[56px] transition-all duration-150 ${
-                  isActive 
-                    ? 'text-primary font-semibold bg-primary/10 rounded-lg' 
-                    : 'text-muted-text'
+                `flex flex-1 flex-col items-center justify-center gap-1 py-sm min-h-[56px] transition-all duration-150 ${isActive
+                  ? 'text-primary font-semibold bg-primary/10 rounded-lg'
+                  : 'text-muted-text'
                 }`
               }
               aria-label={item.label}
             >
               {({ isActive }) => {
-                const Icon = item.icon 
-                
+                const Icon = item.icon
+
                 return (
                   <>
                     {/* Navigation icons: accent color only for active state, neutral/monochrome for inactive */}
@@ -130,15 +164,14 @@ export function BottomNav() {
               }}
             </NavLink>
           ))}
-          
+
           {/* More Menu Button */}
           <button
             onClick={() => setIsMoreMenuOpen(true)}
-            className={`flex flex-1 flex-col items-center justify-center gap-1 py-sm min-h-[56px] transition-all duration-150 ${
-              isMoreMenuActive 
-                ? 'text-primary font-semibold bg-primary/10 rounded-lg' 
+            className={`flex flex-1 flex-col items-center justify-center gap-1 py-sm min-h-[56px] transition-all duration-150 ${isMoreMenuActive
+                ? 'text-primary font-semibold bg-primary/10 rounded-lg'
                 : 'text-muted-text'
-            }`}
+              }`}
             aria-label="More options"
           >
             <EllipsisHorizontalIcon className={`h-7 w-7 ${isMoreMenuActive ? 'stroke-2 text-primary' : 'stroke-1.5 text-neutral-700'}`} aria-hidden="true" />
@@ -152,5 +185,3 @@ export function BottomNav() {
     </>
   )
 }
-
-

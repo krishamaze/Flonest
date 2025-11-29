@@ -95,6 +95,21 @@ export function DashboardPage() {
     setShowTrialBanner(false)
   }
 
+  // BUGFIX: Ensure page is visible on mount (prevent blank screen from stuck transitions)
+  useEffect(() => {
+    // Reset any stuck CSS states that might cause blank screen
+    const resetVisibility = () => {
+      document.body.style.display = 'block'
+      document.body.style.visibility = 'visible'
+    }
+
+    resetVisibility()
+
+    // Also reset after a brief delay to catch any late-applying styles
+    const timer = setTimeout(resetVisibility, 100)
+    return () => clearTimeout(timer)
+  }, [])
+
   const loading = statsLoading || membershipsLoading
 
   if (loading) {
