@@ -25,13 +25,11 @@
 ### Welcome / Offer Panel
 - **Component:** `WelcomeOfferPanel`
 - **Location:** `src/components/dashboard/WelcomeOfferPanel.tsx`
-- **Purpose:** Onboarding, trial status, and upgrade CTAs.
+- **Purpose:** Persistent announcement banner for trials, updates, and alerts.
 - **Props:**
-  - `userEmail`: For personalization.
   - `tenantName`: For context (optional).
-  - `isOrgOwner`: To conditionally show upgrade CTAs.
   - `onUpgrade`: Callback for upgrade action.
-- **Design:** Mobile-first, gradient background, distinct from standard cards.
+- **Design:** Slim, persistent banner, mobile-first.
 
 ### Logos
 - **Default Logo:** `/pwa-192x192.png`

@@ -114,9 +114,7 @@ export function DashboardPage() {
       {/* Welcome Offer Panel - Only show for org owners */}
       {user && !user.platformAdmin && user.role === 'org_owner' && (
         <WelcomeOfferPanel
-          userEmail={user.email}
           tenantName={currentOrg?.orgName}
-          isOrgOwner={true}
           onUpgrade={() => navigate('/settings?tab=billing')}
         />
       )}
