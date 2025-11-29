@@ -1,3 +1,5 @@
+import { supabase } from '../supabase'
+
 /**
  * Pincode API Utilities
  * Handles pincode lookup and address data fetching
@@ -15,7 +17,10 @@ export interface PincodeData {
 }
 
 /**
- * Fetch address data from pincode using PostalPinCode.in API
+ * Fetch address data from pincode.
+ * Priority:
+ * 1. Supabase 'pincodes' table (Hotfix/Override)
+ * 2. PostalPinCode.in API (External)
  * 
  * @param pincode - 6-digit Indian pincode
  * @returns Pincode data or null if not found/invalid
@@ -26,6 +31,30 @@ export async function fetchPincodeData(pincode: string): Promise<PincodeData | n
     return null
   }
 
+  // 1. Try DB Lookup
+  try {
+    const { data, error } = await supabase
+      .from('pincodes')
+      .select('*')
+      .eq('pincode', pincode)
+      .maybeSingle()
+
+    if (data && !error) {
+      return {
+        state: data.state_name,
+        district: data.district,
+        city: data.city,
+        postOffice: data.city, // Defaulting PO to city for DB records
+        circle: data.state_name, 
+        region: data.district, 
+        division: data.district, 
+      }
+    }
+  } catch (err) {
+    console.warn('DB Pincode lookup failed, falling back to API', err)
+  }
+
+  // 2. Fallback to API
   try {
     const response = await fetch(`https://api.postalpincode.in/pincode/${pincode}`)
     
@@ -65,4 +94,3 @@ export async function fetchPincodeData(pincode: string): Promise<PincodeData | n
 export function validatePincode(pincode: string): boolean {
   return /^\d{6}$/.test(pincode)
 }
-

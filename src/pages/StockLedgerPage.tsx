@@ -6,6 +6,7 @@ import { Card, CardContent } from '../components/ui/Card'
 import { LoadingSpinner } from '../components/ui/LoadingSpinner'
 import { Button } from '../components/ui/Button'
 import { StockTransactionForm } from '../components/forms/StockTransactionForm'
+import { ManualAdjustmentModal } from '../components/forms/ManualAdjustmentModal'
 import {
   PlusIcon,
   ArrowDownTrayIcon,
@@ -20,6 +21,7 @@ export function StockLedgerPage() {
   const { user } = useAuth()
   const { registerRefreshHandler, unregisterRefreshHandler } = useRefresh()
   const [isTransactionFormOpen, setIsTransactionFormOpen] = useState(false)
+  const [isAdjustmentModalOpen, setIsAdjustmentModalOpen] = useState(false)
   const [filterType, setFilterType] = useState<'all' | 'in' | 'out' | 'adjustment'>('all')
   const queryClient = useQueryClient()
   const stockLedgerQueryKey = useMemo(
@@ -179,15 +181,24 @@ export function StockLedgerPage() {
       {/* Page Header */}
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-semibold text-primary-text">Stock Ledger</h1>
-        <Button
-          variant="primary"
-          size="sm"
-          className="flex items-center gap-1.5"
-          onClick={() => setIsTransactionFormOpen(true)}
-        >
-          <PlusIcon className="h-4 w-4" />
-          <span className="hidden sm:inline text-sm">New Transaction</span>
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={() => setIsAdjustmentModalOpen(true)}
+          >
+            Manual Adjustment
+          </Button>
+          <Button
+            variant="primary"
+            size="sm"
+            className="flex items-center gap-1.5"
+            onClick={() => setIsTransactionFormOpen(true)}
+          >
+            <PlusIcon className="h-4 w-4" />
+            <span className="hidden sm:inline text-sm">New Transaction</span>
+          </Button>
+        </div>
       </div>
 
       {/* Filter Buttons */}
@@ -321,6 +332,16 @@ export function StockLedgerPage() {
           isOpen={isTransactionFormOpen}
           onClose={() => setIsTransactionFormOpen(false)}
           onSubmit={handleCreateTransaction}
+          orgId={user.orgId!}
+        />
+      )}
+
+      {/* Manual Adjustment Modal */}
+      {user && (
+        <ManualAdjustmentModal
+          isOpen={isAdjustmentModalOpen}
+          onClose={() => setIsAdjustmentModalOpen(false)}
+          onSuccess={loadLatestLedger}
           orgId={user.orgId!}
         />
       )}

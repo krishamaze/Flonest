@@ -46,6 +46,9 @@ lerna-debug.log*
 # Cursor MCP configuration (contains sensitive tokens)
 .cursor/mcp.json
 
+# Claude local settings
+.claude/settings.local.json
+
 # OS
 .DS_Store
 .DS_Store?
