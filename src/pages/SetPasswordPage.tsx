@@ -12,7 +12,7 @@ export function SetPasswordPage() {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const { user } = useAuth()
-  
+
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
   const [loading, setLoading] = useState(false)
@@ -62,7 +62,7 @@ export function SetPasswordPage() {
     try {
       await setUserPassword(trimmedPassword)
       toast.success('Password set successfully!', { autoClose: 2000 })
-      
+
       // Redirect to the intended destination
       navigate(redirectTo, { replace: true })
     } catch (err: any) {
@@ -113,7 +113,7 @@ export function SetPasswordPage() {
             <div className="mx-auto mb-lg flex h-24 w-24 items-center justify-center rounded-lg bg-white shadow-primary p-md">
               <img
                 src="/pwa-192x192.png"
-                alt="finetune logo"
+                alt="Flonest logo"
                 className="w-full h-full object-contain"
               />
             </div>

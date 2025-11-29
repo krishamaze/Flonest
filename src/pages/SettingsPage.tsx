@@ -6,8 +6,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card'
 import { Button } from '../components/ui/Button'
 import { Input } from '../components/ui/Input'
 import { LoadingSpinner } from '../components/ui/LoadingSpinner'
-import { 
-  UserCircleIcon, 
+import {
+  UserCircleIcon,
   BuildingOfficeIcon,
   PhotoIcon,
   ArrowUpTrayIcon,
@@ -305,7 +305,7 @@ export function SettingsPage() {
       // Update org state/pincode if needed from GST data
       const gstStateCode = extractStateCodeFromGSTIN(gstinInput)
       const stateName = gstStateCode ? getStateNameFromGSTCode(gstStateCode) : null
-      
+
       if (stateName && orgSettings) {
         await supabase
           .from('orgs')
@@ -339,7 +339,7 @@ export function SettingsPage() {
 
   const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!user?.orgId || !isAdmin) return
-    
+
     const file = e.target.files?.[0]
     if (!file) return
 
@@ -522,8 +522,8 @@ export function SettingsPage() {
                 {memberships.length > 1
                   ? `You have access to ${memberships.length} organization${memberships.length > 1 ? 's' : ''}. Switch between them or manage agent contexts.`
                   : agentRelationships.length > 0
-                  ? 'You can switch between your business and agent contexts.'
-                  : 'Switch between organizations or agent contexts.'}
+                    ? 'You can switch between your business and agent contexts.'
+                    : 'Switch between organizations or agent contexts.'}
               </p>
               <Button
                 variant="primary"
@@ -550,15 +550,15 @@ export function SettingsPage() {
             {/* Logo Preview */}
             <div className="flex h-20 w-20 items-center justify-center rounded-lg bg-white shadow-md p-2 border border-neutral-200">
               {orgSettings?.custom_logo_url ? (
-                <img 
-                  src={orgSettings.custom_logo_url} 
-                  alt="Organization logo" 
+                <img
+                  src={orgSettings.custom_logo_url}
+                  alt="Organization logo"
                   className="w-full h-full object-contain"
                 />
               ) : (
-                <img 
-                  src="/pwa-192x192.png" 
-                  alt="Default finetune logo" 
+                <img
+                  src="/pwa-192x192.png"
+                  alt="Default Flonest logo"
                   className="w-full h-full object-contain"
                 />
               )}
@@ -566,9 +566,9 @@ export function SettingsPage() {
 
             <div className="flex-1 space-y-sm">
               <p className="text-sm text-secondary-text">
-                {orgSettings?.custom_logo_url 
-                  ? 'Custom logo is active' 
-                  : 'Using default finetune logo'}
+                {orgSettings?.custom_logo_url
+                  ? 'Custom logo is active'
+                  : 'Using default Flonest logo'}
               </p>
               <div className="flex gap-sm flex-wrap">
                 <label>
@@ -692,8 +692,8 @@ export function SettingsPage() {
                 )}
               </div>
               <p className="text-xs text-muted-text mt-xs">
-                {gstVerified 
-                  ? 'Verified by platform admin - cannot be changed' 
+                {gstVerified
+                  ? 'Verified by platform admin - cannot be changed'
                   : 'Awaiting platform admin verification'}
               </p>
             </div>
@@ -758,8 +758,8 @@ export function SettingsPage() {
                 rows={3}
               />
               <p className="text-xs text-muted-text mt-xs">
-                {gstVerified 
-                  ? 'From GST verification - cannot be changed' 
+                {gstVerified
+                  ? 'From GST verification - cannot be changed'
                   : 'Will be updated from GST verification'}
               </p>
             </div>
@@ -983,11 +983,10 @@ export function SettingsPage() {
                     type="button"
                     key={plan.id}
                     onClick={() => setSelectedPlanSlug(plan.slug)}
-                    className={`w-full rounded-lg border px-md py-sm text-left transition-all ${
-                      isSelected
+                    className={`w-full rounded-lg border px-md py-sm text-left transition-all ${isSelected
                         ? 'border-primary bg-primary-light/20 shadow-primary'
                         : 'border-neutral-200 hover:border-primary'
-                    }`}
+                      }`}
                   >
                     <div className="flex items-center justify-between gap-sm">
                       <div>

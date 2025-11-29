@@ -12,7 +12,6 @@ import {
   ExclamationTriangleIcon,
   UserPlusIcon,
   CheckCircleIcon,
-  XMarkIcon,
 } from '@heroicons/react/24/outline'
 import { canManageOrgSettings, canManageUsers, canAccessAgentPortal } from '../lib/permissions'
 import { toast } from 'react-toastify'
@@ -24,14 +23,14 @@ import {
   usePendingMemberships,
   useApproveMembership,
 } from '../hooks/useDashboard'
+import { WelcomeOfferPanel } from '../components/dashboard/WelcomeOfferPanel'
 
 export function DashboardPage() {
-  const { user } = useAuth()
+  const { user, currentOrg } = useAuth()
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const { registerRefreshHandler, unregisterRefreshHandler } = useRefresh()
   const [showAddAdvisorForm, setShowAddAdvisorForm] = useState(false)
-  const [showTrialBanner, setShowTrialBanner] = useState(false)
 
   // React Query hooks - parallel queries eliminate loading waterfalls
   const { data: stats, isLoading: statsLoading, error: statsError } = useDashboardStats(user?.orgId)
@@ -77,24 +76,6 @@ export function DashboardPage() {
     return () => unregisterRefreshHandler()
   }, [registerRefreshHandler, unregisterRefreshHandler, queryClient, user?.orgId])
 
-  // Check if trial banner should be shown
-  useEffect(() => {
-    if (
-      user &&
-      !user.platformAdmin &&
-      user.role === 'org_owner' &&
-      user.orgId &&
-      !localStorage.getItem('ft_trial_banner_seen')
-    ) {
-      setShowTrialBanner(true)
-    }
-  }, [user])
-
-  const handleDismissBanner = () => {
-    localStorage.setItem('ft_trial_banner_seen', 'true')
-    setShowTrialBanner(false)
-  }
-
   // BUGFIX: Ensure page is visible on mount (prevent blank screen from stuck transitions)
   useEffect(() => {
     // Reset any stuck CSS states that might cause blank screen
@@ -130,32 +111,14 @@ export function DashboardPage() {
         </p>
       </div>
 
-      {/* Trial Banner */}
-      {showTrialBanner && (
-        <div
-          className="relative rounded-lg p-md mb-lg"
-          style={{
-            background: 'linear-gradient(135deg, var(--color-error), var(--color-warning))',
-            color: 'white',
-            boxShadow: 'var(--shadow-md)',
-          }}
-        >
-          <button
-            onClick={handleDismissBanner}
-            className="absolute top-md right-md p-xs rounded-full hover:bg-white/20 transition-colors"
-            aria-label="Dismiss banner"
-          >
-            <XMarkIcon className="h-5 w-5" />
-          </button>
-          <div className="pr-lg">
-            <p className="text-base font-semibold mb-xs">
-              Welcome to finetune!
-            </p>
-            <p className="text-sm opacity-90">
-              You're on a 3-month free trial worth ₹1999/month — ₹1000 off launch offer.
-            </p>
-          </div>
-        </div>
+      {/* Welcome Offer Panel - Only show for org owners */}
+      {user && !user.platformAdmin && user.role === 'org_owner' && (
+        <WelcomeOfferPanel
+          userEmail={user.email}
+          tenantName={currentOrg?.orgName}
+          isOrgOwner={true}
+          onUpgrade={() => navigate('/settings?tab=billing')}
+        />
       )}
 
       {/* Stats Cards - compact horizontal layout */}

@@ -215,7 +215,7 @@ export function OwnerSignupPage() {
               <div className="mx-auto mb-lg flex h-24 w-24 items-center justify-center rounded-lg bg-white shadow-primary p-md">
                 <img
                   src="/pwa-192x192.png"
-                  alt="finetune logo"
+                  alt="Flonest logo"
                   className="w-full h-full object-contain"
                 />
               </div>

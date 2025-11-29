@@ -65,7 +65,7 @@ function InternalUserRedirect({ children }: { children: React.ReactNode }) {
     if (requiresAdminMfa && location.pathname !== '/admin-mfa') {
       return <Navigate to="/admin-mfa" replace />
     }
-    
+
     // If MFA is satisfied (requiresAdminMfa = false), allow platform-admin routes
     // But redirect org routes to platform-admin
     if (!requiresAdminMfa) {
@@ -84,7 +84,7 @@ function AppRoutes() {
   const location = useLocation()
 
   // Check if we're on the reset password page with recovery params
-  const isRecoveryFlow = location.pathname === '/reset-password' && 
+  const isRecoveryFlow = location.pathname === '/reset-password' &&
     (location.search.includes('type=recovery') || location.hash.includes('type=recovery'))
 
   // Show loading spinner while loading (max 5 seconds due to timeout)
@@ -134,14 +134,14 @@ function AppRoutes() {
               path="/unregistered"
               element={<UnregisteredPage />}
             />
-          <Route
-            path="/admin-mfa"
-            element={
-              <ProtectedRoute>
-                <PlatformAdminMfaPage />
-              </ProtectedRoute>
-            }
-          />
+            <Route
+              path="/admin-mfa"
+              element={
+                <ProtectedRoute>
+                  <PlatformAdminMfaPage />
+                </ProtectedRoute>
+              }
+            />
             <Route
               path="/reset-password"
               element={<ResetPasswordPage />}
@@ -176,153 +176,153 @@ function AppRoutes() {
                 </ProtectedRoute>
               }
             >
-            <Route index element={<RoleRedirect />} />
-            <Route 
-              path="products" 
+              <Route index element={<RoleRedirect />} />
+              <Route
+                path="products"
+                element={
+                  <RoleProtectedRoute requiredPermission={MANAGE_PRODUCTS}>
+                    <ProductsPage />
+                  </RoleProtectedRoute>
+                }
+              />
+              <Route
+                path="invoices/:id"
+                element={<InvoiceDetailsPage />}
+              />
+              <Route path="inventory" element={<InventoryPage />} />
+              <Route
+                path="stock-ledger"
+                element={
+                  <RoleProtectedRoute requiredRole={['org_owner', 'branch_head']}>
+                    <StockLedgerPage />
+                  </RoleProtectedRoute>
+                }
+              />
+              <Route path="customers" element={<CustomersPage />} />
+              <Route path="notifications" element={<NotificationsPage />} />
+              <Route path="pending-products" element={<PendingProductsPage />} />
+              <Route path="purchase-bills" element={<PurchaseBillsPage />} />
+              <Route path="purchase-bills/:id" element={<PurchaseBillDetailsPage />} />
+              <Route path="settings" element={<SettingsPage />} />
+
+              {/* Agent Management Routes (Business context - Admin only) */}
+              <Route
+                path="agents"
+                element={
+                  <RoleProtectedRoute requiredRole="org_owner">
+                    <AgentsPage />
+                  </RoleProtectedRoute>
+                }
+              />
+              <Route
+                path="agents/:relationshipId/issue-dc"
+                element={
+                  <RoleProtectedRoute requiredRole="org_owner">
+                    <IssueDCPage />
+                  </RoleProtectedRoute>
+                }
+              />
+              <Route
+                path="agents/:relationshipId/report"
+                element={
+                  <RoleProtectedRoute requiredRole="org_owner">
+                    <AgentStockReportPage />
+                  </RoleProtectedRoute>
+                }
+              />
+            </Route>
+
+            {/* Canonical role landing routes */}
+            <Route
+              path="/owner"
               element={
-                <RoleProtectedRoute requiredPermission={MANAGE_PRODUCTS}>
-                  <ProductsPage />
-                </RoleProtectedRoute>
-              } 
-            />
-            <Route 
-              path="invoices/:id" 
-              element={<InvoiceDetailsPage />} 
-            />
-            <Route path="inventory" element={<InventoryPage />} />
-            <Route 
-              path="stock-ledger" 
-              element={
-                <RoleProtectedRoute requiredRole={['org_owner', 'branch_head']}>
-                  <StockLedgerPage />
-                </RoleProtectedRoute>
-              } 
-            />
-            <Route path="customers" element={<CustomersPage />} />
-            <Route path="notifications" element={<NotificationsPage />} />
-            <Route path="pending-products" element={<PendingProductsPage />} />
-            <Route path="purchase-bills" element={<PurchaseBillsPage />} />
-            <Route path="purchase-bills/:id" element={<PurchaseBillDetailsPage />} />
-            <Route path="settings" element={<SettingsPage />} />
-            
-            {/* Agent Management Routes (Business context - Admin only) */}
-            <Route 
-              path="agents" 
-              element={
-                <RoleProtectedRoute requiredRole="org_owner">
-                  <AgentsPage />
-                </RoleProtectedRoute>
-              } 
-            />
-            <Route 
-              path="agents/:relationshipId/issue-dc" 
-              element={
-                <RoleProtectedRoute requiredRole="org_owner">
-                  <IssueDCPage />
-                </RoleProtectedRoute>
-              } 
-            />
-            <Route 
-              path="agents/:relationshipId/report" 
-              element={
-                <RoleProtectedRoute requiredRole="org_owner">
-                  <AgentStockReportPage />
-                </RoleProtectedRoute>
-              } 
-            />
-          </Route>
-
-          {/* Canonical role landing routes */}
-          <Route
-            path="/owner"
-            element={
-              <ProtectedRoute>
-                <MainLayout />
-              </ProtectedRoute>
-            }
-          >
-            <Route index element={<DashboardPage />} />
-          </Route>
-
-          <Route
-            path="/branch"
-            element={
-              <ProtectedRoute>
-                <MainLayout />
-              </ProtectedRoute>
-            }
-          >
-            <Route index element={<DashboardPage />} />
-          </Route>
-
-          <Route
-            path="/advisor"
-            element={
-              <ProtectedRoute>
-                <MainLayout />
-              </ProtectedRoute>
-            }
-          >
-            <Route index element={<DashboardPage />} />
-          </Route>
-
-          {/* Role Selector - shown after login to pick context */}
-          <Route
-            path="/role-selector"
-            element={
-              <ProtectedRoute>
-                <RoleSelectorPage />
-              </ProtectedRoute>
-            }
-          />
-
-          {/* Agent Portal Routes (Agent context) */}
-          <Route
-            path="/agent"
-            element={
-              <ProtectedRoute>
-                <MainLayout />
-              </ProtectedRoute>
-            }
-          >
-            <Route index element={<Navigate to="/agent/dashboard" replace />} />
-            <Route path="dashboard" element={<AgentDashboardPage />} />
-            <Route path="delivery-challans" element={<DeliveryChallansPage />} />
-            <Route path="stock" element={<DCStockPage />} />
-            <Route path="create-sale" element={<CreateDCSalePage />} />
-            <Route path="cash" element={<AgentCashPage />} />
-          </Route>
-
-          {/* Cash Oversight (Sender Admin) */}
-          <Route
-            path="/agent-cash-oversight"
-            element={
-              <ProtectedRoute>
-                <RoleProtectedRoute requiredRole="org_owner">
+                <ProtectedRoute>
                   <MainLayout />
-                </RoleProtectedRoute>
-              </ProtectedRoute>
-            }
-          >
-            <Route index element={<AgentCashOversightPage />} />
-          </Route>
+                </ProtectedRoute>
+              }
+            >
+              <Route index element={<DashboardPage />} />
+            </Route>
 
-          {/* Platform Admin Routes */}
-          <Route
-            path="/platform-admin"
-            element={
-              <PlatformAdminRoute>
-                <MainLayout />
-              </PlatformAdminRoute>
-            }
-          >
-            <Route index element={<PlatformAdminDashboardPage />} />
-            <Route path="queue" element={<PlatformAdminDashboardPage />} />
-            <Route path="gst-verification" element={<PlatformAdminDashboardPage />} />
-            <Route path="hsn" element={<PlatformAdminDashboardPage />} />
-            <Route path="blocked-invoices" element={<PlatformAdminDashboardPage />} />
-            <Route path="monitor" element={<PlatformAdminDashboardPage />} />
-          </Route>
+            <Route
+              path="/branch"
+              element={
+                <ProtectedRoute>
+                  <MainLayout />
+                </ProtectedRoute>
+              }
+            >
+              <Route index element={<DashboardPage />} />
+            </Route>
+
+            <Route
+              path="/advisor"
+              element={
+                <ProtectedRoute>
+                  <MainLayout />
+                </ProtectedRoute>
+              }
+            >
+              <Route index element={<DashboardPage />} />
+            </Route>
+
+            {/* Role Selector - shown after login to pick context */}
+            <Route
+              path="/role-selector"
+              element={
+                <ProtectedRoute>
+                  <RoleSelectorPage />
+                </ProtectedRoute>
+              }
+            />
+
+            {/* Agent Portal Routes (Agent context) */}
+            <Route
+              path="/agent"
+              element={
+                <ProtectedRoute>
+                  <MainLayout />
+                </ProtectedRoute>
+              }
+            >
+              <Route index element={<Navigate to="/agent/dashboard" replace />} />
+              <Route path="dashboard" element={<AgentDashboardPage />} />
+              <Route path="delivery-challans" element={<DeliveryChallansPage />} />
+              <Route path="stock" element={<DCStockPage />} />
+              <Route path="create-sale" element={<CreateDCSalePage />} />
+              <Route path="cash" element={<AgentCashPage />} />
+            </Route>
+
+            {/* Cash Oversight (Sender Admin) */}
+            <Route
+              path="/agent-cash-oversight"
+              element={
+                <ProtectedRoute>
+                  <RoleProtectedRoute requiredRole="org_owner">
+                    <MainLayout />
+                  </RoleProtectedRoute>
+                </ProtectedRoute>
+              }
+            >
+              <Route index element={<AgentCashOversightPage />} />
+            </Route>
+
+            {/* Platform Admin Routes */}
+            <Route
+              path="/platform-admin"
+              element={
+                <PlatformAdminRoute>
+                  <MainLayout />
+                </PlatformAdminRoute>
+              }
+            >
+              <Route index element={<PlatformAdminDashboardPage />} />
+              <Route path="queue" element={<PlatformAdminDashboardPage />} />
+              <Route path="gst-verification" element={<PlatformAdminDashboardPage />} />
+              <Route path="hsn" element={<PlatformAdminDashboardPage />} />
+              <Route path="blocked-invoices" element={<PlatformAdminDashboardPage />} />
+              <Route path="monitor" element={<PlatformAdminDashboardPage />} />
+            </Route>
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </InternalUserRedirect>
@@ -340,7 +340,7 @@ const handleSessionError = (error: any): boolean => {
   const status = typeof error?.status === 'number' ? error.status : undefined
   const code = error?.code as string | undefined
   const message = error?.message || ''
-  
+
   // Detect fatal session errors
   const isSessionError =
     status === 401 ||
@@ -350,14 +350,14 @@ const handleSessionError = (error: any): boolean => {
     message.includes('Unable to load user from access token') ||
     message.includes('No active session') ||
     message.includes('access token')
-  
+
   if (isSessionError) {
     // Silent redirect - no error message, no state exposure
     // SECURITY: Use window.location for immediate redirect, bypassing React state
     window.location.href = '/login'
     return true // Indicate error was handled
   }
-  
+
   return false // Error not handled, let React Query handle it normally
 }
 
@@ -377,7 +377,7 @@ const queryClient = new QueryClient({
     onError: (error) => {
       // DEBUG: Log for debugging (console-only, not user-facing)
       console.error('[QueryCache] Query error:', error)
-      
+
       // Handle session errors globally
       handleSessionError(error)
     },
@@ -386,7 +386,7 @@ const queryClient = new QueryClient({
     onError: (error) => {
       // DEBUG: Log for debugging (console-only, not user-facing)
       console.error('[MutationCache] Mutation error:', error)
-      
+
       // Handle session errors globally
       handleSessionError(error)
     },
@@ -406,7 +406,7 @@ function OrgSwitcherProviderWrapper({ children }: { children: ReactNode }) {
 function App() {
   // Log version on mount for debugging
   useEffect(() => {
-    console.log(`FineTune WorkHub v${FRONTEND_VERSION} [Service Worker Auto-Update]`)
+    console.log(`Flonest WorkHub v${FRONTEND_VERSION} [Service Worker Auto-Update]`)
   }, [])
 
   return (
