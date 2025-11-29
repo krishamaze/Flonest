@@ -1,4 +1,4 @@
-import { supabase } from '../supabase'
+
 
 /**
  * Pincode API Utilities
@@ -31,28 +31,8 @@ export async function fetchPincodeData(pincode: string): Promise<PincodeData | n
     return null
   }
 
-  // 1. Try DB Lookup
-  try {
-    const { data, error } = await supabase
-      .from('pincodes')
-      .select('*')
-      .eq('pincode', pincode)
-      .maybeSingle()
-
-    if (data && !error) {
-      return {
-        state: data.state_name,
-        district: data.district,
-        city: data.city,
-        postOffice: data.city, // Defaulting PO to city for DB records
-        circle: data.state_name, 
-        region: data.district, 
-        division: data.district, 
-      }
-    }
-  } catch (err) {
-    console.warn('DB Pincode lookup failed, falling back to API', err)
-  }
+  // Note: pincodes table is optional and may not exist
+  // Skip DB lookup and go directly to API
 
   // 2. Fallback to API
   try {

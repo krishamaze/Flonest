@@ -759,33 +759,6 @@ export type Database = {
         }
         Relationships: []
       }
-      pincodes: {
-        Row: {
-          id: number
-          pincode: string
-          city: string
-          district: string
-          state_name: string
-          created_at: string
-        }
-        Insert: {
-          id?: number
-          pincode: string
-          city: string
-          district: string
-          state_name: string
-          created_at?: string
-        }
-        Update: {
-          id?: number
-          pincode?: string
-          city?: string
-          district?: string
-          state_name?: string
-          created_at?: string
-        }
-        Relationships: []
-      }
       inventory: {
         Row: {
           cost_price: number | null
@@ -1741,6 +1714,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "products_master_product_id_fkey"
+            columns: ["master_product_id"]
+            isOneToOne: false
+            referencedRelation: "master_products"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "products_org_id_fkey"
             columns: ["org_id"]
             isOneToOne: false
@@ -2382,16 +2362,12 @@ export type Database = {
     Functions: {
       adjust_stock_level: {
         Args: {
-          p_org_id: string
-          p_product_id: string
           p_delta_qty: number
           p_notes: string
+          p_org_id: string
+          p_product_id: string
         }
-        Returns: {
-          success: boolean
-          product_id: string
-          delta: number
-        }
+        Returns: Json
       }
       approve_purchase_bill_with_hsn_validation: {
         Args: { p_bill_id: string; p_org_id: string; p_user_id: string }
