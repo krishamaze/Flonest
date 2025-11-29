@@ -40,7 +40,7 @@ async function generateInvoiceNumber(orgId: string): Promise<string> {
   }
 
   const lastInvoice = lastInvoices[0]
-  
+
   if (!lastInvoice || !lastInvoice.invoice_number) {
     return `${prefix}-001`
   }
@@ -69,26 +69,20 @@ export async function createInvoice(
   // Fetch products and convert to line items for tax calculation
   const lineItems = await Promise.all(
     data.items.map(async (item) => {
-      try {
-        const product = await getProduct(item.product_id) as ProductWithMaster & {
-          tax_rate?: number | null
-          hsn_sac_code?: string | null
-        }
-        
-        // Use product.tax_rate (org-specific) if available, otherwise fallback to master_product.gst_rate
-        const taxRate = product?.tax_rate ?? product?.master_product?.gst_rate ?? null
-        const hsnSacCode = product?.hsn_sac_code ?? product?.master_product?.hsn_code ?? null
-        
-        return productToLineItem(
-          item.line_total,
-          taxRate,
-          hsnSacCode
-        )
-      } catch (error) {
-        console.error(`Error fetching product ${item.product_id} for tax calculation:`, error)
-        // Return zero-tax line item if product fetch fails
-        return productToLineItem(item.line_total, null, null)
+      const product = await getProduct(item.product_id) as ProductWithMaster & {
+        tax_rate?: number | null
+        hsn_sac_code?: string | null
       }
+
+      // Use product.tax_rate (org-specific) if available, otherwise fallback to master_product.gst_rate
+      const taxRate = product?.tax_rate ?? product?.master_product?.gst_rate ?? null
+      const hsnSacCode = product?.hsn_sac_code ?? product?.master_product?.hsn_code ?? null
+
+      return productToLineItem(
+        item.line_total,
+        taxRate,
+        hsnSacCode
+      )
     })
   )
 
@@ -151,7 +145,7 @@ export async function createInvoice(
     // Check if all products were found
     const foundProductIds = new Set(existingProducts?.map(p => p.id) || [])
     const missingProducts = productIds.filter(id => !foundProductIds.has(id))
-    
+
     if (missingProducts.length > 0) {
       // Rollback: delete the invoice
       await supabase.from('invoices').delete().eq('id', invoice.id)
@@ -193,8 +187,8 @@ export async function createInvoice(
         } catch (error) {
           // Rollback: delete the invoice
           await supabase.from('invoices').delete().eq('id', invoice.id)
-          throw error instanceof Error 
-            ? error 
+          throw error instanceof Error
+            ? error
             : new Error(`Failed to auto-link product ${productId} to master catalog`)
         }
       }
@@ -203,7 +197,7 @@ export async function createInvoice(
     // Build invoice items using master_product_id instead of product_id
     const itemsData: InvoiceItemInsert[] = data.items.map((item) => {
       const masterProductId = productMasterMap.get(item.product_id)
-      
+
       if (!masterProductId) {
         throw new Error(`Product ${item.product_id} does not have a master product and could not be auto-linked.`)
       }
@@ -262,7 +256,7 @@ export async function finalizeInvoice(invoiceId: string, orgId: string): Promise
     // Note: invoice_items.product_id stores master_product_id, not org product_id
     // We need to find org products that have these master_product_ids
     const masterProductIds = items.map(item => item.product_id)
-    
+
     // Get org products that have these master_product_ids
     const { data: orgProducts } = await supabase
       .from('products')
@@ -287,7 +281,7 @@ export async function finalizeInvoice(invoiceId: string, orgId: string): Promise
 
     for (const item of items) {
       const orgProduct = masterToOrgProductMap.get(item.product_id)
-      
+
       if (!orgProduct) {
         // No org product found for this master_product_id
         // This shouldn't happen if invoice was created correctly, but handle it
@@ -309,8 +303,8 @@ export async function finalizeInvoice(invoiceId: string, orgId: string): Promise
     const validation = await validateInvoiceItems(orgId, validationItems, false)
 
     if (!validation.valid) {
-      const masterProductErrors = validation.errors.filter(e => 
-        e.type === 'master_product_not_approved' || 
+      const masterProductErrors = validation.errors.filter(e =>
+        e.type === 'master_product_not_approved' ||
         e.type === 'master_product_missing_hsn' ||
         e.type === 'master_product_not_linked' ||
         e.type === 'master_product_invalid_hsn'
@@ -324,8 +318,8 @@ export async function finalizeInvoice(invoiceId: string, orgId: string): Promise
       }
 
       // Other validation errors (shouldn't happen if draft was valid, but check anyway)
-      const otherErrors = validation.errors.filter(e => 
-        e.type !== 'master_product_not_approved' && 
+      const otherErrors = validation.errors.filter(e =>
+        e.type !== 'master_product_not_approved' &&
         e.type !== 'master_product_missing_hsn' &&
         e.type !== 'master_product_not_linked' &&
         e.type !== 'master_product_invalid_hsn'
@@ -513,8 +507,8 @@ export async function getInvoiceById(invoiceId: string): Promise<Invoice & {
 
     if (error) {
       // Detect schema cache error specifically
-      const isSchemaCacheError = 
-        error.code === 'PGRST200' || 
+      const isSchemaCacheError =
+        error.code === 'PGRST200' ||
         error.message?.includes('Could not find a relationship') ||
         error.message?.includes('schema cache') ||
         error.message?.includes('relationship') && error.message?.includes('schema')
@@ -601,7 +595,7 @@ export async function getDraftInvoiceByCustomer(
           await new Promise(resolve => setTimeout(resolve, 1000))
           return loadDraft(1)
         }
-        
+
         if (error.code === 'PGRST116') {
           // No draft found
           return null
@@ -648,8 +642,8 @@ export async function loadDraftInvoiceData(invoiceId: string): Promise<{
 
     if (error) {
       // Detect schema cache error specifically
-      const isSchemaCacheError = 
-        error.code === 'PGRST200' || 
+      const isSchemaCacheError =
+        error.code === 'PGRST200' ||
         error.message?.includes('Could not find a relationship') ||
         error.message?.includes('schema cache') ||
         error.message?.includes('relationship') && error.message?.includes('schema')
@@ -754,7 +748,7 @@ export async function revalidateDraftInvoice(
   try {
     // Load draft invoice with items
     const invoice = await getInvoiceById(invoiceId)
-    
+
     if (!invoice || invoice.status !== 'draft') {
       throw new Error('Invoice not found or not a draft')
     }
