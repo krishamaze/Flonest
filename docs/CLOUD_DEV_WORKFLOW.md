@@ -1,13 +1,13 @@
 # Cloud-Only Development Workflow
 
-Complete guide for cloud-only Supabase development. No Docker required.
+Complete guide for Supabase Branching 2.0 development workflow.
 
 ## Overview
 
-This project uses **cloud-only development** with Supabase:
-- ✅ **No Docker required** - All operations use cloud project
-- ✅ **CLI uses ACCESS_TOKEN** - No service role key needed
-- ✅ **App uses ANON key** - Standard client-side auth
+This project uses **Supabase Branching 2.0** for a modern, cloud-native development workflow:
+- ✅ **Cloud Branches** - dedicated database environments for each feature
+- ✅ **Vercel Preview** - automatic preview deployments for every branch
+- ✅ **Git Integration** - database schema changes synchronized with git branches
 - ✅ **Migrations are source of truth** - All schema changes via migrations
 
 ## Prerequisites

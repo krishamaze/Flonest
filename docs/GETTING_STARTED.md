@@ -8,7 +8,7 @@ Quick guide to set up and run the bill.finetune.store inventory management PWA.
 - **Supabase** account and project ([supabase.com](https://supabase.com))
 - **Git** (optional, for version control)
 
-> **Note:** This project uses cloud-only development (no Docker required). All database operations work directly against your cloud Supabase project via the CLI.
+> **Note:** This project uses **Supabase Branching 2.0** and **Vercel Preview** environments. Each feature branch gets its own isolated cloud database and preview deployment.
 
 ## Installation
 
@@ -316,6 +316,11 @@ npm run build
 - Verify Supabase credentials in `.env`
 - Check Supabase Auth settings
 - Look for errors in browser console
+
+**Blank Screen on Navigation:**
+- Check for unhandled loading states in routing components
+- Ensure `RoleRedirect` and protected routes return a loading spinner (not `null`) while auth is initializing
+- Verify `AuthContext` state using React DevTools
 
 ### PWA Issues
 
