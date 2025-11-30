@@ -418,7 +418,7 @@ export function InvoiceForm({
         dispatch({ type: 'SET_SELECTED_CUSTOMER', payload: {
           ...result.customer,
           master_customer: result.master,
-          })
+          } })
       } else {
         // Master doesn't exist - auto-open "Add New Customer" form
         dispatch({ type: 'SET_SHOW_ADD_NEW_FORM', payload: true })
@@ -427,7 +427,7 @@ export function InvoiceForm({
       console.error('Error looking up customer:', error)
       dispatch({ type: 'SET_ERRORS', payload: {
         identifier: error instanceof Error ? error.message : 'Failed to lookup customer',
-        })
+        } })
     } finally {
       dispatch({ type: 'SET_SEARCHING', payload: false })
       dispatch({ type: 'SET_LOOKUP_PERFORMED', payload: true })
@@ -504,7 +504,7 @@ export function InvoiceForm({
       dispatch({ type: 'SET_SELECTED_CUSTOMER', payload: {
         ...result.customer,
         master_customer: result.master,
-         })
+         } })
       dispatch({ type: 'SET_SHOW_ADD_NEW_FORM', payload: false })
       dispatch({ type: 'SET_MASTER_FORM_DATA', payload: { customer_name: '', address: '', email: '', additionalIdentifier: '' } })
       // Auto-advance to Step 2
@@ -513,7 +513,7 @@ export function InvoiceForm({
       console.error('Error creating customer:', error)
       dispatch({ type: 'SET_ERRORS', payload: {
         submit: error instanceof Error ? error.message : 'Failed to create customer',
-        })
+        } })
     } finally {
       dispatch({ type: 'SET_SEARCHING', payload: false })
     }
@@ -521,15 +521,15 @@ export function InvoiceForm({
 
   // Step 2: Add Products
   const handleAddItem = () => {
-    dispatch({ type: 'SET_ITEMS', payload: [
-      ...items,
-      {
+    dispatch({
+      type: 'ADD_ITEM',
+      payload: {
         product_id: '',
         quantity: 1,
         unit_price: 0,
         line_total: 0,
       },
-    ])
+    })
   }
 
   const handleRemoveItem = (index: number) => {
@@ -778,13 +778,13 @@ export function InvoiceForm({
         dispatch({ type: 'SET_TOAST', payload: { 
           message: 'Serial not found in stock. Saved as draft for branch head review.', 
           type: 'error' 
-          })
+          } })
       } else if (serialStatus.product_id !== item.product_id) {
         // Serial belongs to different product
         dispatch({ type: 'SET_TOAST', payload: { 
           message: `Serial belongs to a different product.`, 
           type: 'error' 
-          })
+          } })
         return
       } else if (serialStatus.status !== 'available') {
         // Serial not available
@@ -795,7 +795,7 @@ export function InvoiceForm({
         dispatch({ type: 'SET_TOAST', payload: { 
           message: 'Serial not available in stock. Saved as draft for branch head review.', 
           type: 'error' 
-          })
+          } })
       }
 
       // Add serial (even if invalid, for draft purposes)
@@ -821,7 +821,7 @@ export function InvoiceForm({
       dispatch({ type: 'SET_TOAST', payload: { 
         message: 'Error validating serial. Saved as draft for branch head review.', 
         type: 'error' 
-        })
+        } })
     }
   }
 
@@ -1041,11 +1041,11 @@ export function InvoiceForm({
       console.error('Error creating invoice:', error)
       dispatch({ type: 'SET_ERRORS', payload: {
         submit: error instanceof Error ? error.message : 'Failed to create invoice',
-        })
+        } })
       dispatch({ type: 'SET_TOAST', payload: { 
         message: error instanceof Error ? error.message : 'Failed to create invoice', 
         type: 'error' 
-        })
+        } })
     } finally {
       dispatch({ type: 'SET_IS_SUBMITTING', payload: false })
     }
