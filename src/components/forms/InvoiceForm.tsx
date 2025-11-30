@@ -5,15 +5,13 @@ import { Modal } from '../ui/Modal'
 import { Drawer } from '../ui/Drawer'
 import { Select } from '../ui/Select'
 import { isMobileDevice } from '../../lib/deviceDetection'
-import { IdentifierInput } from '../customers/IdentifierInput'
 import { CustomerSearchCombobox } from '../customers/CustomerSearchCombobox'
 import { CustomerResultCard } from '../customers/CustomerResultCard'
-import { Card, CardContent } from '../ui/Card'
 import { ProductSearchCombobox } from '../invoice/ProductSearchCombobox'
 import { ProductConfirmSheet } from '../invoice/ProductConfirmSheet'
 import { CameraScanner } from '../invoice/CameraScanner'
 import type { InvoiceFormData, InvoiceItemFormData, CustomerWithMaster, Org, ProductWithMaster } from '../../types'
-import { lookupOrCreateCustomer, checkCustomerExists, searchCustomersByIdentifier } from '../../lib/api/customers'
+import { lookupOrCreateCustomer, checkCustomerExists, searchCustomersByIdentifier, addOrgCustomer, getCustomerById } from '../../lib/api/customers'
 import { getAllProducts } from '../../lib/api/products'
 import { createInvoice, autoSaveInvoiceDraft, validateInvoiceItems, getDraftInvoiceByCustomer, loadDraftInvoiceData, revalidateDraftInvoice, getInvoiceById, clearDraftSessionId } from '../../lib/api/invoices'
 import { checkSerialStatus } from '../../lib/api/serials'
@@ -21,8 +19,7 @@ import { validateScannerCodes } from '../../lib/api/scanner'
 import { calculateTax, createTaxContext, productToLineItem } from '../../lib/utils/taxCalculationService'
 import { useAutoSave } from '../../hooks/useAutoSave'
 import { ChevronLeftIcon, ChevronRightIcon, PlusIcon, TrashIcon, XCircleIcon, BookmarkIcon } from '@heroicons/react/24/outline'
-import type { IdentifierType } from '../../lib/utils/identifierValidation'
-import { detectIdentifierType, validateMobile, validateGSTIN, normalizeIdentifier } from '../../lib/utils/identifierValidation'
+import { detectIdentifierType, validateMobile, validateGSTIN } from '../../lib/utils/identifierValidation'
 import { Toast } from '../ui/Toast'
 import { getDraftSessionId, setDraftSessionId } from '../../lib/utils/draftSession'
 import { LoadingSpinner } from '../ui/LoadingSpinner'
@@ -59,17 +56,31 @@ export function InvoiceForm({
   const [currentStep, setCurrentStep] = useState<Step>(1)
   const [identifier, setIdentifier] = useState('')
   const [identifierValid, setIdentifierValid] = useState(false)
-  const [identifierType, setIdentifierType] = useState<IdentifierType>('invalid')
+  // const [identifierType, setIdentifierType] = useState<IdentifierType>('invalid') // Unused
   const [searching, setSearching] = useState(false)
-  const [lookupPerformed, setLookupPerformed] = useState(false)
+  // const [lookupPerformed, setLookupPerformed] = useState(false) // Unused
   const [selectedCustomer, setSelectedCustomer] = useState<CustomerWithMaster | null>(null)
   const [showAddNewForm, setShowAddNewForm] = useState(false)
-  const [masterFormData, setMasterFormData] = useState<{ customer_name: string; address: string; email: string; additionalIdentifier: string }>({
-    customer_name: '',
-    address: '',
-    email: '',
-    additionalIdentifier: '',
+  const [inlineFormData, setInlineFormData] = useState<{ name: string; mobile: string; gstin: string }>({
+    name: '',
+    mobile: '',
+    gstin: '',
   })
+  
+  // Prefill inline form when opening
+  useEffect(() => {
+    if (showAddNewForm) {
+      const type = detectIdentifierType(identifier)
+      if (type === 'mobile') {
+        setInlineFormData({ name: '', mobile: identifier, gstin: '' })
+      } else if (type === 'gstin') {
+        setInlineFormData({ name: '', mobile: '', gstin: identifier })
+      } else {
+        setInlineFormData({ name: identifier, mobile: '', gstin: '' })
+      }
+    }
+  }, [showAddNewForm]) // Intentionally omit identifier to avoid overwriting user edits
+
   const [products, setProducts] = useState<ProductWithMaster[]>([])
   const [loadingProducts, setLoadingProducts] = useState(false)
   const [items, setItems] = useState<InvoiceItemFormData[]>([])
@@ -310,11 +321,11 @@ export function InvoiceForm({
       setCurrentStep(1)
       setIdentifier('')
       setIdentifierValid(false)
-      setIdentifierType('invalid')
-      setLookupPerformed(false)
+      // setIdentifierType('invalid') // Unused
+      // setLookupPerformed(false) // Unused
       setSelectedCustomer(null)
       setShowAddNewForm(false)
-      setMasterFormData({ customer_name: '', address: '', email: '', additionalIdentifier: '' })
+      setInlineFormData({ name: '', mobile: '', gstin: '' })
       setItems([])
       setErrors({})
       setInternalDraftInvoiceId(null)
@@ -327,157 +338,160 @@ export function InvoiceForm({
   useEffect(() => {
     if (identifier.trim() === '' || !identifierValid) {
       setSelectedCustomer(null)
-      setLookupPerformed(false)
+      // setLookupPerformed(false) // Unused
     }
   }, [identifier, identifierValid])
 
-  // Step 1: Customer Selection
-  const handleLookupCustomer = async () => {
-    if (!identifierValid || !identifier.trim()) {
-      setErrors({ identifier: 'Please enter a valid mobile number or GSTIN' })
-      return
-    }
+  // Step 1: Customer Selection (This function is unused, but might be needed later)
+  // const handleLookupCustomer = async () => {
+  //   if (!identifierValid || !identifier.trim()) {
+  //     setErrors({ identifier: 'Please enter a valid mobile number or GSTIN' })
+  //     return
+  //   }
+  //
+  //   setSearching(true)
+  //   setErrors({})
+  //   setShowAddNewForm(false)
+  //   setLookupPerformed(false)
+  //
+  //   try {
+  //     // First, check if org customer exists (master + org link)
+  //     const orgCustomer = await searchCustomersByIdentifier(identifier, orgId)
+  //
+  //     if (orgCustomer) {
+  //       // Customer exists with org link - show details
+  //       setSelectedCustomer(orgCustomer)
+  //       
+  //       // Auto-save draft on customer selection
+  //       try {
+  //         const draftDataToSave = {
+  //           customer_id: orgCustomer.id,
+  //           items: [] // Initially empty items
+  //         }
+  //         const { invoiceId, sessionId } = await autoSaveInvoiceDraft(orgId, userId, draftSessionId.current || getDraftSessionId(), draftDataToSave)
+  //         
+  //         setInternalDraftInvoiceId(invoiceId)
+  //         if (sessionId !== draftSessionId.current) {
+  //           draftSessionId.current = sessionId
+  //           setDraftSessionId(invoiceId, sessionId)
+  //         }
+  //         
+  //         // Use invoice_number if available, otherwise just say "Draft auto-saved"
+  //         // We can't easily get the number here without fetching the invoice again, 
+  //         // but we can just say "Draft auto-saved" as immediate feedback
+  //         showToast('success', 'Draft auto-saved', { autoClose: 2000 })
+  //       } catch (saveError) {
+  //         console.error('Failed to auto-save draft on customer selection:', saveError)
+  //       }
+  //
+  //       // Check for existing draft for this customer
+  //       try {
+  //         const existingDraft = await getDraftInvoiceByCustomer(orgId, orgCustomer.id)
+  //         if (existingDraft) {
+  //           // Show confirmation dialog
+  //           const continueDraft = window.confirm(
+  //             'A draft invoice already exists for this customer. Continue?'
+  //           )
+  //
+  //           if (continueDraft) {
+  //             // Load draft data
+  //             const draftData = await loadDraftInvoiceData(existingDraft.id)
+  //             if (draftData) {
+  //               // Restore items from draft
+  //               setInternalDraftInvoiceId(existingDraft.id)
+  //
+  //               // Load products to restore full item data
+  //               const allProducts = await getAllProducts(orgId, { status: 'active' })
+  //               const restoredItems: InvoiceItemFormData[] = draftData.items.map((draftItem: any) => {
+  //                 const product = allProducts.find((p: any) => p.id === draftItem.product_id)
+  //                 return {
+  //                   product_id: draftItem.product_id,
+  //                   quantity: draftItem.quantity || 0,
+  //                   unit_price: draftItem.unit_price || (product?.selling_price || 0),
+  //                   line_total: draftItem.line_total || (draftItem.quantity * (draftItem.unit_price || product?.selling_price || 0)),
+  //                   serials: draftItem.serials || [],
+  //                   serial_tracked: product?.serial_tracked || false,
+  //                   invalid_serials: draftItem.invalid_serials || [],
+  //                   validation_errors: draftItem.validation_errors || [],
+  //                   stock_available: draftItem.stock_available,
+  //                 }
+  //               })
+  //               setItems(restoredItems)
+  //
+  //               // Re-validate draft
+  //               try {
+  //                 const revalidation = await revalidateDraftInvoice(existingDraft.id, orgId)
+  //                 if (revalidation.updated) {
+  //                   setToast({
+  //                     message: 'Draft revalidated — missing items are now available.',
+  //                     type: 'success'
+  //                   })
+  //                   // Clear invalid serials/errors if now valid
+  //                   if (revalidation.valid) {
+  //                     const cleanedItems = restoredItems.map(item => ({
+  //                       ...item,
+  //                       invalid_serials: [],
+  //                       validation_errors: [],
+  //                     }))
+  //                     setItems(cleanedItems)
+  //                   }
+  //                 }
+  //               } catch (revalError) {
+  //                 console.error('Error re-validating draft:', revalError)
+  //               }
+  //
+  //               showToast('success', 'Draft loaded', { autoClose: 3000 })
+  //               setCurrentStep(2)
+  //               return
+  //             }
+  //           }
+  //         }
+  //       } catch (draftError) {
+  //         console.error('Error checking for draft:', draftError)
+  //         // Continue with normal flow if draft check fails
+  //       }
+  //
+  //       return
+  //     }
+  //
+  //     // Check if master customer exists (but no org link)
+  //     const master = await checkCustomerExists(identifier)
+  //
+  //     if (master) {
+  //       // Master exists but no org link - create org link and show
+  //       const result = await lookupOrCreateCustomer(identifier, orgId, userId)
+  //       setSelectedCustomer({
+  //         ...result.customer,
+  //         master_customer: result.master,
+  //       })
+  //     } else {
+  //       // Master doesn't exist - auto-open "Add New Customer" form
+  //       setShowAddNewForm(true)
+  //     }
+  //   } catch (error) {
+  //     console.error('Error looking up customer:', error)
+  //     setErrors({
+  //       identifier: error instanceof Error ? error.message : 'Failed to lookup customer',
+  //     })
+  //   } finally {
+  //     setSearching(false)
+  //     setLookupPerformed(true)
+  //   }
+  // }
 
-    setSearching(true)
-    setErrors({})
-    setShowAddNewForm(false)
-    setLookupPerformed(false)
-
-    try {
-      // First, check if org customer exists (master + org link)
-      const orgCustomer = await searchCustomersByIdentifier(identifier, orgId)
-
-      if (orgCustomer) {
-        // Customer exists with org link - show details
-        setSelectedCustomer(orgCustomer)
-
-        // Check for existing draft for this customer
-        try {
-          const existingDraft = await getDraftInvoiceByCustomer(orgId, orgCustomer.id)
-          if (existingDraft) {
-            // Show confirmation dialog
-            const continueDraft = window.confirm(
-              'A draft invoice already exists for this customer. Continue?'
-            )
-
-            if (continueDraft) {
-              // Load draft data
-              const draftData = await loadDraftInvoiceData(existingDraft.id)
-              if (draftData) {
-                // Restore items from draft
-                setInternalDraftInvoiceId(existingDraft.id)
-
-                // Load products to restore full item data
-                const allProducts = await getAllProducts(orgId, { status: 'active' })
-                const restoredItems: InvoiceItemFormData[] = draftData.items.map((draftItem: any) => {
-                  const product = allProducts.find((p: any) => p.id === draftItem.product_id)
-                  return {
-                    product_id: draftItem.product_id,
-                    quantity: draftItem.quantity || 0,
-                    unit_price: draftItem.unit_price || (product?.selling_price || 0),
-                    line_total: draftItem.line_total || (draftItem.quantity * (draftItem.unit_price || product?.selling_price || 0)),
-                    serials: draftItem.serials || [],
-                    serial_tracked: product?.serial_tracked || false,
-                    invalid_serials: draftItem.invalid_serials || [],
-                    validation_errors: draftItem.validation_errors || [],
-                    stock_available: draftItem.stock_available,
-                  }
-                })
-                setItems(restoredItems)
-
-                // Re-validate draft
-                try {
-                  const revalidation = await revalidateDraftInvoice(existingDraft.id, orgId)
-                  if (revalidation.updated) {
-                    setToast({
-                      message: 'Draft revalidated — missing items are now available.',
-                      type: 'success'
-                    })
-                    // Clear invalid serials/errors if now valid
-                    if (revalidation.valid) {
-                      const cleanedItems = restoredItems.map(item => ({
-                        ...item,
-                        invalid_serials: [],
-                        validation_errors: [],
-                      }))
-                      setItems(cleanedItems)
-                    }
-                  }
-                } catch (revalError) {
-                  console.error('Error re-validating draft:', revalError)
-                }
-
-                showToast('success', 'Draft loaded', { autoClose: 3000 })
-                setCurrentStep(2)
-                return
-              }
-            }
-          }
-        } catch (draftError) {
-          console.error('Error checking for draft:', draftError)
-          // Continue with normal flow if draft check fails
-        }
-
-        return
-      }
-
-      // Check if master customer exists (but no org link)
-      const master = await checkCustomerExists(identifier)
-
-      if (master) {
-        // Master exists but no org link - create org link and show
-        const result = await lookupOrCreateCustomer(identifier, orgId, userId)
-        setSelectedCustomer({
-          ...result.customer,
-          master_customer: result.master,
-        })
-      } else {
-        // Master doesn't exist - auto-open "Add New Customer" form
-        setShowAddNewForm(true)
-      }
-    } catch (error) {
-      console.error('Error looking up customer:', error)
-      setErrors({
-        identifier: error instanceof Error ? error.message : 'Failed to lookup customer',
-      })
-    } finally {
-      setSearching(false)
-      setLookupPerformed(true)
-    }
-  }
-
-  const handleCreateMasterCustomer = async () => {
-    // Validate form - all fields optional except: at least one identifier OR legal_name
+  const handleCreateOrgCustomer = async () => {
     const formErrors: Record<string, string> = {}
-
-    const hasLegalName = masterFormData.customer_name.trim().length >= 2
-    if (!hasLegalName) {
-      formErrors.customer_name = 'Customer name is required'
+    
+    if (!inlineFormData.name || inlineFormData.name.trim().length < 2) {
+      formErrors.name = 'Customer name is required (min 2 chars)'
+    }
+    
+    if (inlineFormData.mobile && !validateMobile(inlineFormData.mobile)) {
+      formErrors.mobile = 'Mobile must be 10 digits'
     }
 
-    // Validate email format if provided
-    if (masterFormData.email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(masterFormData.email.trim())) {
-      formErrors.email = 'Please enter a valid email address'
-    }
-
-    // Validate additional identifier if provided
-    if (masterFormData.additionalIdentifier.trim()) {
-      const additionalType = identifierType === 'mobile' ? 'gstin' : 'mobile'
-      const detected = detectIdentifierType(masterFormData.additionalIdentifier.trim())
-      if (detected !== additionalType) {
-        formErrors.additionalIdentifier = additionalType === 'mobile'
-          ? 'Please enter a valid 10-digit mobile number'
-          : 'Please enter a valid 15-character GSTIN'
-      } else {
-        const isValid = additionalType === 'mobile'
-          ? validateMobile(masterFormData.additionalIdentifier.trim())
-          : validateGSTIN(masterFormData.additionalIdentifier.trim())
-        if (!isValid) {
-          formErrors.additionalIdentifier = additionalType === 'mobile'
-            ? 'Mobile must be exactly 10 digits starting with 6, 7, 8, or 9'
-            : 'Invalid GSTIN format'
-        }
-      }
+    if (inlineFormData.gstin && !validateGSTIN(inlineFormData.gstin)) {
+      formErrors.gstin = 'Invalid GSTIN format'
     }
 
     if (Object.keys(formErrors).length > 0) {
@@ -489,47 +503,47 @@ export function InvoiceForm({
     setErrors({})
 
     try {
-      const additionalNormalized = masterFormData.additionalIdentifier.trim()
-        ? normalizeIdentifier(masterFormData.additionalIdentifier.trim(), identifierType === 'mobile' ? 'gstin' : 'mobile')
-        : undefined
-
-      const masterData: any = {
-        legal_name: masterFormData.customer_name.trim(),
-        address: masterFormData.address.trim() || undefined,
-        email: masterFormData.email.trim() || undefined,
-      }
-
-      if (identifierType === 'mobile') {
-        masterData.mobile = normalizeIdentifier(identifier, 'mobile')
-        if (additionalNormalized) masterData.gstin = additionalNormalized
-      } else if (identifierType === 'gstin') {
-        masterData.gstin = normalizeIdentifier(identifier, 'gstin')
-        if (additionalNormalized) masterData.mobile = additionalNormalized
-      }
-
-      const result = await lookupOrCreateCustomer(
-        identifier,
+      const customerId = await addOrgCustomer(
         orgId,
-        userId,
-        masterData
+        inlineFormData.name,
+        inlineFormData.mobile || null,
+        inlineFormData.gstin || null
       )
-      setSelectedCustomer({
-        ...result.customer,
-        master_customer: result.master,
-      })
+
+      const newCustomer = await getCustomerById(customerId)
+      setSelectedCustomer(newCustomer)
+      
+      // Update identifier input to show the name
+      setIdentifier(newCustomer.alias_name || newCustomer.name || newCustomer.master_customer.legal_name)
+      
       setShowAddNewForm(false)
-      setMasterFormData({ customer_name: '', address: '', email: '', additionalIdentifier: '' })
-      // Auto-advance to Step 2
+      setInlineFormData({ name: '', mobile: '', gstin: '' })
+      
+      // Auto-save draft on new customer creation
+      try {
+        const draftDataToSave = {
+          customer_id: newCustomer.id,
+          items: [] // Initially empty items
+        }
+        const { invoiceId, sessionId } = await autoSaveInvoiceDraft(orgId, userId, draftSessionId.current || getDraftSessionId(), draftDataToSave)
+        
+        setInternalDraftInvoiceId(invoiceId)
+        if (sessionId !== draftSessionId.current) {
+          draftSessionId.current = sessionId
+          setDraftSessionId(invoiceId, sessionId)
+        }
+        
+        showToast('success', 'Draft auto-saved', { autoClose: 2000 })
+      } catch (saveError) {
+        console.error('Failed to auto-save draft on customer creation:', saveError)
+      }
+
+      showToast('success', 'Customer added successfully', { autoClose: 3000 })
       setCurrentStep(2)
     } catch (error) {
-      console.error('Error creating customer:', error)
-      const errorMessage = error instanceof Error ? error.message : 'Failed to create customer'
+      console.error('Error adding customer:', error)
       setErrors({
-        submit: errorMessage,
-      })
-      setToast({
-        message: errorMessage,
-        type: 'error'
+        submit: error instanceof Error ? error.message : 'Failed to add customer',
       })
     } finally {
       setSearching(false)
@@ -1152,75 +1166,60 @@ export function InvoiceForm({
             {/* Show "Add New Customer" form inline when activated */}
             {showAddNewForm ? (
               <div className="mt-md space-y-md p-md border border-neutral-200 rounded-md bg-neutral-50">
-                <h4 className="text-sm font-semibold text-primary-text">Add New Customer</h4>
-                <p className="text-xs text-secondary-text">
-                  You are creating a new customer record based on the identifier: <span className="font-semibold">{identifier}</span>
-                </p>
+                <div className="flex justify-between items-start">
+                  <div>
+                    <h4 className="text-sm font-semibold text-primary-text">Add New Party Details</h4>
+                    <p className="text-xs text-secondary-text">
+                      Customer Identifier: <span className="font-semibold">{identifier}</span>
+                    </p>
+                  </div>
+                </div>
 
                 <Input
-                  label="Legal Name *"
+                  label="Customer Name *"
                   type="text"
-                  value={masterFormData.customer_name}
+                  value={inlineFormData.name}
                   onChange={(e) =>
-                    setMasterFormData({ ...masterFormData, customer_name: e.target.value })
+                    setInlineFormData({ ...inlineFormData, name: e.target.value })
                   }
                   disabled={isSubmitting || searching}
-                  placeholder="Enter customer's legal name"
-                  error={errors.customer_name}
+                  placeholder="Enter customer name"
+                  error={errors.name}
                   required
                   autoFocus
                 />
 
-                {/* Dynamic Identifier Field */}
-                {identifierType !== 'invalid' && (
-                  <Input
-                    label={identifierType === 'mobile' ? 'GSTIN (Optional)' : 'Mobile Number (Optional)'}
-                    type="text"
-                    value={masterFormData.additionalIdentifier}
-                    onChange={(e) =>
-                      setMasterFormData({ ...masterFormData, additionalIdentifier: e.target.value })
-                    }
-                    disabled={isSubmitting || searching}
-                    placeholder={identifierType === 'mobile' ? 'Enter 15-character GSTIN' : 'Enter 10-digit mobile number'}
-                    error={errors.additionalIdentifier}
-                  />
-                )}
-
                 <Input
-                  label="Email (Optional)"
-                  type="email"
-                  value={masterFormData.email}
+                  label="Mobile Number (optional)"
+                  type="tel"
+                  value={inlineFormData.mobile}
                   onChange={(e) =>
-                    setMasterFormData({ ...masterFormData, email: e.target.value })
+                    setInlineFormData({ ...inlineFormData, mobile: e.target.value })
                   }
                   disabled={isSubmitting || searching}
-                  placeholder="Enter email address"
-                  error={errors.email}
+                  placeholder="Enter 10-digit mobile number"
+                  error={errors.mobile}
                 />
 
-                <div>
-                  <label className="block text-sm font-medium text-secondary-text mb-xs">
-                    Address (Optional)
-                  </label>
-                  <textarea
-                    value={masterFormData.address}
-                    onChange={(e) =>
-                      setMasterFormData({ ...masterFormData, address: e.target.value })
-                    }
-                    disabled={isSubmitting || searching}
-                    placeholder="Enter customer's address"
-                    rows={3}
-                    className="w-full px-md py-sm border border-neutral-300 rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary disabled:bg-neutral-100 disabled:cursor-not-allowed"
-                  />
-                </div>
+                <Input
+                  label="GSTIN (optional)"
+                  type="text"
+                  value={inlineFormData.gstin}
+                  onChange={(e) =>
+                    setInlineFormData({ ...inlineFormData, gstin: e.target.value })
+                  }
+                  disabled={isSubmitting || searching}
+                  placeholder="Enter 15-character GSTIN"
+                  error={errors.gstin}
+                />
 
-                <div className="flex gap-2">
+                <div className="flex gap-2 pt-2">
                   <Button
                     type="button"
                     variant="secondary"
                     onClick={() => {
                       setShowAddNewForm(false)
-                      setMasterFormData({ customer_name: '', address: '', email: '', additionalIdentifier: '' })
+                      setInlineFormData({ name: '', mobile: '', gstin: '' })
                       setErrors({})
                     }}
                     disabled={isSubmitting || searching}
@@ -1231,12 +1230,12 @@ export function InvoiceForm({
                   <Button
                     type="button"
                     variant="primary"
-                    onClick={handleCreateMasterCustomer}
+                    onClick={handleCreateOrgCustomer}
                     isLoading={searching}
                     disabled={isSubmitting || searching}
                     className="flex-1"
                   >
-                    Create & Select Customer
+                    Add Customer
                   </Button>
                 </div>
               </div>
@@ -1638,7 +1637,7 @@ export function InvoiceForm({
       )}
 
       {/* Navigation Buttons */}
-      <div className="flex justify-between gap-sm pt-md border-t border-neutral-200">
+      <div className={`flex justify-between gap-sm pt-md border-t border-neutral-200 ${isMobileDevice() ? 'fixed bottom-4 left-4 right-4 z-50 bg-white p-4 shadow-lg border-t rounded-lg' : ''}`}>
         <div className="flex-1">
           {currentStep > 1 && (
             <Button
