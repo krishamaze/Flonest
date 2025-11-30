@@ -1,13 +1,11 @@
 import { useState, FormEvent, useEffect, useMemo, useRef, useCallback } from 'react'
-import { Input } from '../ui/Input'
 import { Button } from '../ui/Button'
 import { Modal } from '../ui/Modal'
 import { Drawer } from '../ui/Drawer'
-import { Select } from '../ui/Select'
 import { isMobileDevice } from '../../lib/deviceDetection'
-import { ProductSearchCombobox } from '../invoice/ProductSearchCombobox'
 import { InvoiceReviewStep } from '../invoice/InvoiceReviewStep'
 import { CustomerSelectionStep } from '../invoice/CustomerSelectionStep'
+import { InvoiceItemsStep } from '../invoice/InvoiceItemsStep'
 import { ProductConfirmSheet } from '../invoice/ProductConfirmSheet'
 import { CameraScanner } from '../invoice/CameraScanner'
 import type { InvoiceFormData, InvoiceItemFormData, CustomerWithMaster, Org, ProductWithMaster } from '../../types'
@@ -18,7 +16,7 @@ import { checkSerialStatus } from '../../lib/api/serials'
 import { validateScannerCodes } from '../../lib/api/scanner'
 import { calculateTax, createTaxContext, productToLineItem } from '../../lib/utils/taxCalculationService'
 import { useAutoSave } from '../../hooks/useAutoSave'
-import { ChevronLeftIcon, ChevronRightIcon, PlusIcon, TrashIcon, XCircleIcon, BookmarkIcon } from '@heroicons/react/24/outline'
+import { ChevronLeftIcon, ChevronRightIcon, BookmarkIcon } from '@heroicons/react/24/outline'
 import { detectIdentifierType, validateMobile, validateGSTIN } from '../../lib/utils/identifierValidation'
 import { Toast } from '../ui/Toast'
 import { getDraftSessionId, setDraftSessionId } from '../../lib/utils/draftSession'
@@ -1044,227 +1042,26 @@ export function InvoiceForm({
 
       {/* Step 2: Add Products */}
       {currentStep === 2 && (
-        <div className="space-y-4">
-          <div>
-            <h3 className="text-lg font-semibold text-primary-text mb-md">Step 2: Add Products</h3>
-
-            {/* Product Search Combobox */}
-            <div className="mb-md">
-              <ProductSearchCombobox
-                onProductSelect={handleProductSelect}
-                onScanClick={handleScanClick}
-                disabled={isSubmitting || !selectedCustomer}
-                orgId={orgId}
-                products={products}
-                placeholder="Search / Select Product..."
-              />
-            </div>
-
-            {/* Create New Item Button */}
-            <div className="mb-md">
-              <Button
-                type="button"
-                variant="primary"
-                onClick={handleAddItem}
-                disabled={isSubmitting || !selectedCustomer}
-              >
-                <PlusIcon className="h-4 w-4 mr-2" />
-                Create New Item
-              </Button>
-            </div>
-
-            {/* Items List - Auto-visible when items exist */}
-            {items.length === 0 ? (
-              <div className="text-center py-lg border-2 border-dashed border-neutral-300 rounded-md">
-                <p className="text-sm text-secondary-text">No items yet. Search or scan to add products.</p>
-              </div>
-            ) : (
-              <div className="space-y-4">
-                {items.map((item, index) => {
-                  const hasInvalidSerials = item.invalid_serials && item.invalid_serials.length > 0
-                  const hasValidationErrors = item.validation_errors && item.validation_errors.length > 0
-                  const hasStockError = item.validation_errors?.some((e: string) => e.includes('Insufficient stock'))
-                  const isInvalid = hasInvalidSerials || hasValidationErrors
-
-                  return (
-                    <div
-                      key={index}
-                      className={`border rounded-md p-md space-y-md ${isInvalid
-                        ? 'border-error bg-error-light/10'
-                        : 'border-neutral-200'
-                        }`}
-                    >
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-sm">
-                          <h4 className="text-sm font-medium text-primary-text">Item {index + 1}</h4>
-                          {isInvalid && (
-                            <span className="text-xs text-error font-medium" title={item.validation_errors?.join(', ') || 'Item has validation errors'}>
-                              ⚠️ Needs review
-                            </span>
-                          )}
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() => handleRemoveItem(index)}
-                          className="text-error hover:text-error-dark"
-                          disabled={isSubmitting}
-                        >
-                          <TrashIcon className="h-4 w-4" />
-                        </button>
-                      </div>
-
-                      <Select
-                        label="Product *"
-                        value={item.product_id || ''}
-                        onChange={(e) => {
-                          handleProductChange(index, e.target.value)
-                        }}
-                        options={products.length > 0 ? [
-                          { value: '', label: 'Select a product' },
-                          ...products.map((p) => ({
-                            value: p.id,
-                            label: `${p.name} (${p.sku}) - $${p.selling_price?.toFixed(2) || '0.00'}`,
-                          })),
-                        ] : [{ value: '', label: 'No products available' }]}
-                        disabled={isSubmitting || loadingProducts}
-                        required
-                      />
-
-                      {/* Serial Tracking UI */}
-                      {item.serial_tracked ? (
-                        <div className="space-y-sm">
-                          <label className="block text-sm font-medium text-secondary-text">
-                            Serial Numbers ({item.serials?.length || 0})
-                          </label>
-                          {item.serials && item.serials.length > 0 ? (
-                            <div className="space-y-xs">
-                              {item.serials.map((serial, serialIndex) => {
-                                const isInvalidSerial = item.invalid_serials?.includes(serial)
-                                return (
-                                  <div
-                                    key={serialIndex}
-                                    className={`flex items-center justify-between p-sm rounded-md ${isInvalidSerial
-                                      ? 'bg-error-light border border-error'
-                                      : 'bg-neutral-50'
-                                      }`}
-                                  >
-                                    <div className="flex items-center gap-xs">
-                                      <span className="text-sm text-primary-text font-mono">
-                                        {serial}
-                                      </span>
-                                      {isInvalidSerial && (
-                                        <span className="text-xs text-error" title="Serial not found in stock">
-                                          ⚠️
-                                        </span>
-                                      )}
-                                    </div>
-                                    <button
-                                      type="button"
-                                      onClick={() => handleRemoveSerial(index, serialIndex)}
-                                      className="text-error hover:text-error-dark"
-                                      disabled={isSubmitting}
-                                    >
-                                      <XCircleIcon className="h-4 w-4" />
-                                    </button>
-                                  </div>
-                                )
-                              })}
-                            </div>
-                          ) : (
-                            <p className="text-xs text-secondary-text">
-                              Scan serial numbers for this product
-                            </p>
-                          )}
-                          {hasInvalidSerials && (
-                            <p className="text-xs text-error">
-                              Some serials not found in stock. Saved as draft for branch head review.
-                            </p>
-                          )}
-                          <Input
-                            label="Add Serial Number"
-                            type="text"
-                            value={serialInputs[index] || ''}
-                            onChange={(e) => {
-                              setSerialInputs({ ...serialInputs, [index]: e.target.value })
-                            }}
-                            onKeyDown={(e) => {
-                              if (e.key === 'Enter') {
-                                e.preventDefault()
-                                const value = serialInputs[index]?.trim()
-                                if (value) {
-                                  handleAddSerial(index, value)
-                                  setSerialInputs({ ...serialInputs, [index]: '' })
-                                }
-                              }
-                            }}
-                            placeholder="Scan or enter serial number"
-                            disabled={isSubmitting}
-                          />
-                        </div>
-                      ) : (
-                        <div className="space-y-md">
-                          {hasStockError && item.stock_available !== undefined && (
-                            <div className="p-sm bg-warning-light border border-warning rounded-md">
-                              <p className="text-xs text-warning-dark font-medium">
-                                Insufficient stock. Available: {item.stock_available}
-                              </p>
-                            </div>
-                          )}
-                          <div className="grid grid-cols-2 gap-4">
-                            <Input
-                              label="Quantity"
-                              type="number"
-                              min="1"
-                              step="1"
-                              value={item.quantity.toString()}
-                              onChange={(e) =>
-                                handleItemChange(index, 'quantity', parseInt(e.target.value) || 1)
-                              }
-                              disabled={isSubmitting}
-                              required
-                              placeholder="1"
-                            />
-
-                            <Input
-                              label="Unit Price"
-                              type="number"
-                              min="0"
-                              step="0.01"
-                              value={item.unit_price.toString()}
-                              onChange={(e) =>
-                                handleItemChange(index, 'unit_price', parseFloat(e.target.value) || 0)
-                              }
-                              disabled={isSubmitting}
-                              required
-                              placeholder="0.00"
-                            />
-                          </div>
-                          {hasValidationErrors && !hasStockError && (
-                            <div className="p-sm bg-error-light border border-error rounded-md">
-                              <p className="text-xs text-error-dark font-medium">
-                                {item.validation_errors?.join(', ')}
-                              </p>
-                            </div>
-                          )}
-                        </div>
-                      )}
-
-                      <div className="text-right">
-                        <p className="text-sm text-secondary-text">
-                          Line Total: <span className="font-semibold text-primary-text">${item.line_total.toFixed(2)}</span>
-                        </p>
-                      </div>
-                    </div>
-                  )
-                })}
-              </div>
-            )}
-
-            {errors.items && (
-              <p className="mt-sm text-sm text-error">{errors.items}</p>
-            )}
-          </div>
-        </div>
+        <InvoiceItemsStep
+          items={items}
+          products={products}
+          loadingProducts={loadingProducts}
+          itemsError={errors.items}
+          onAddItem={handleAddItem}
+          onRemoveItem={handleRemoveItem}
+          onProductSelect={handleProductSelect}
+          onProductChange={handleProductChange}
+          onItemFieldChange={handleItemChange}
+          serialInputs={serialInputs}
+          onSerialInputChange={(index, value) => {
+            setSerialInputs({ ...serialInputs, [index]: value })
+          }}
+          onAddSerial={handleAddSerial}
+          onRemoveSerial={handleRemoveSerial}
+          onScanClick={handleScanClick}
+          orgId={orgId}
+          isDisabled={isSubmitting}
+        />
       )}
 
       {/* Step 3: Review */}
