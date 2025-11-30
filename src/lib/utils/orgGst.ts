@@ -25,7 +25,7 @@ export function isOrgGstEnabled(org: Org | null | undefined): boolean {
   if (!org) return false
 
   const hasGstin = !!(org.gst_number && org.gst_number.trim().length > 0)
-  const isVerified = org.gst_verification_status === 'verified'
+  const isVerified = (org as any).gst_verification_status === 'verified'
 
   return hasGstin && isVerified
 }
@@ -36,8 +36,8 @@ export function isOrgGstEnabled(org: Org | null | undefined): boolean {
  * @returns Verification status or 'unverified' if not set
  */
 export function getGstVerificationStatus(org: Org | null | undefined): GstVerificationStatus {
-  if (!org?.gst_verification_status) return 'unverified'
-  return org.gst_verification_status as GstVerificationStatus
+  if (!(org as any)?.gst_verification_status) return 'unverified'
+  return (org as any).gst_verification_status as GstVerificationStatus
 }
 
 /**

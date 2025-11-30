@@ -196,8 +196,8 @@ export async function markGstVerified(
   const { error } = await supabase.rpc('mark_gst_verified', {
     p_org_id: orgId,
     p_verification_notes: verificationNotes.trim(),
-    p_legal_name: legalName || null,
-    p_address: address || null,
+    p_legal_name: legalName ?? undefined,
+    p_address: address ?? undefined,
   })
 
   if (error) {

@@ -6,9 +6,9 @@ import {
   lookupOrCreateCustomer,
   checkCustomerExists,
   searchCustomersByIdentifier,
-  type CustomerWithMaster,
   type LookupResult,
 } from '../lib/api/customers'
+import type { CustomerWithMaster } from '../types'
 import type { Database } from '../types/database'
 
 type MasterCustomer = Database['public']['Tables']['master_customers']['Row']
@@ -99,7 +99,8 @@ export const useUpdateOrgCustomer = (orgId: string | null | undefined) => {
         shipping_address?: string
         notes?: string
       }
-    }
+    },
+    { previousCustomers: CustomerWithMaster[] | undefined; previousCustomer: CustomerWithMaster | undefined }
   >({
     mutationFn: ({ customerId, data }) => updateOrgCustomer(customerId, data),
     // Optimistic update
@@ -184,6 +185,8 @@ export const useLookupOrCreateCustomer = (orgId: string | null | undefined, user
       queryClient.setQueryData<CustomerWithMaster>(['customer', result.customer.id], {
         ...result.customer,
         master_customer: result.master,
+        name: result.customer.alias_name || result.master.legal_name,
+        status: 'verified'
       })
     },
   })

@@ -39,7 +39,7 @@ export const useOrgSettings = (orgId: string | null | undefined) => {
       if (error) throw error
       if (!data) throw new Error('Organization not found')
 
-      return data as OrgSettings
+      return data as any as OrgSettings
     },
     enabled: !!orgId,
     staleTime: 5 * 60 * 1000, // 5 minutes - org settings don't change frequently
@@ -71,7 +71,7 @@ export const useUpdateOrgSettings = () => {
       if (error) throw error
       if (!data) throw new Error('Failed to update organization settings')
 
-      return data as OrgSettings
+      return data as any as OrgSettings
     },
     // OPTIMISTIC UPDATE: Update cache immediately before server responds
     onMutate: async ({ orgId, name, phone }) => {

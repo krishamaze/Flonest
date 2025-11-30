@@ -1,49 +1,30 @@
-import { useReducer, FormEvent, useEffect, useMemo, useRef, useCallback } from 'react'
-import { useQueryClient } from '@tanstack/react-query'
+import { useState, FormEvent, useEffect, useMemo, useRef, useCallback } from 'react'
 import { Input } from '../ui/Input'
 import { Button } from '../ui/Button'
 import { Modal } from '../ui/Modal'
 import { Drawer } from '../ui/Drawer'
 import { Select } from '../ui/Select'
 import { isMobileDevice } from '../../lib/deviceDetection'
-import { IdentifierInput } from '../customers/IdentifierInput'
-import { CustomerResultCard } from '../customers/CustomerResultCard'
+import { CustomerSearchCombobox } from '../customers/CustomerSearchCombobox'
 import { Card, CardContent } from '../ui/Card'
 import { ProductSearchCombobox } from '../invoice/ProductSearchCombobox'
 import { ProductConfirmSheet } from '../invoice/ProductConfirmSheet'
 import { CameraScanner } from '../invoice/CameraScanner'
 import type { InvoiceFormData, InvoiceItemFormData, CustomerWithMaster, Org, ProductWithMaster } from '../../types'
-import {
-  clearDraftSessionId,
-  loadDraftInvoiceData,
-  getInvoiceById,
-  revalidateDraftInvoice as revalidateDraftInvoiceAPI,
-  getDraftInvoiceByCustomer,
-  createInvoice as createInvoiceAPI,
-  autoSaveInvoiceDraft as autoSaveInvoiceDraftAPI,
-  validateInvoiceItems as validateInvoiceItemsAPI,
-} from '../../lib/api/invoices'
+import { addOrgCustomer, getCustomerById } from '../../lib/api/customers'
 import { getAllProducts } from '../../lib/api/products'
-import { searchCustomersByIdentifier, lookupOrCreateCustomer as lookupOrCreateCustomerAPI, checkCustomerExists as checkCustomerExistsAPI } from '../../lib/api/customers'
-import { validateScannerCodes } from '../../lib/api/scanner'
+import { createInvoice, autoSaveInvoiceDraft, validateInvoiceItems, loadDraftInvoiceData, revalidateDraftInvoice, getInvoiceById, clearDraftSessionId } from '../../lib/api/invoices'
 import { checkSerialStatus } from '../../lib/api/serials'
+import { validateScannerCodes } from '../../lib/api/scanner'
 import { calculateTax, createTaxContext, productToLineItem } from '../../lib/utils/taxCalculationService'
 import { useAutoSave } from '../../hooks/useAutoSave'
-import { useProducts } from '../../hooks/useProducts'
-import {
-  useCreateInvoice,
-  useAutoSaveInvoiceDraft,
-  useValidateInvoiceItems,
-} from '../../hooks/useInvoices'
 import { ChevronLeftIcon, ChevronRightIcon, PlusIcon, TrashIcon, XCircleIcon, BookmarkIcon } from '@heroicons/react/24/outline'
-import type { IdentifierType } from '../../lib/utils/identifierValidation'
-import { detectIdentifierType, validateMobile, validateGSTIN, normalizeIdentifier } from '../../lib/utils/identifierValidation'
+import { detectIdentifierType, validateMobile, validateGSTIN } from '../../lib/utils/identifierValidation'
 import { Toast } from '../ui/Toast'
 import { getDraftSessionId, setDraftSessionId } from '../../lib/utils/draftSession'
 import { LoadingSpinner } from '../ui/LoadingSpinner'
 import { useToastDedupe } from '../../hooks/useToastDedupe'
 import { ExclamationCircleIcon } from '@heroicons/react/24/outline'
-import { useInvoiceFormReducer } from '../../hooks/useInvoiceFormReducer'
 
 interface InvoiceFormProps {
   isOpen: boolean
@@ -54,6 +35,8 @@ interface InvoiceFormProps {
   org: Org
   title?: string
   draftInvoiceId?: string
+  mode?: 'modal' | 'page' // Modal/Drawer (default) or Full-page
+  onFormChange?: (hasChanges: boolean) => void  // Track form changes
 }
 
 type Step = 1 | 2 | 3 | 4
@@ -67,74 +50,78 @@ export function InvoiceForm({
   org,
   title,
   draftInvoiceId,
+  mode = 'modal',
+  onFormChange,
 }: InvoiceFormProps) {
-  // Consolidated state management with useReducer
-  const [state, dispatch] = useInvoiceFormReducer()
+  const [currentStep, setCurrentStep] = useState<Step>(1)
+  const [identifier, setIdentifier] = useState('')
+  const [identifierValid, setIdentifierValid] = useState(false)
+  const [searching, setSearching] = useState(false)
+  const [selectedCustomer, setSelectedCustomer] = useState<CustomerWithMaster | null>(null)
+  const [showAddNewForm, setShowAddNewForm] = useState(false)
+  const [inlineFormData, setInlineFormData] = useState<{ name: string; mobile: string; gstin: string }>({
+    name: '',
+    mobile: '',
+    gstin: '',
+  })
 
-  // Destructure state for easier access
-  const {
-    currentStep,
-    identifier,
-    identifierValid,
-    identifierType,
-    searching,
-    lookupPerformed,
-    selectedCustomer,
-    showAddNewForm,
-    masterFormData,
-    products,
-    loadingProducts,
-    items,
-    errors,
-    isSubmitting,
-    internalDraftInvoiceId,
-    serialInputs,
-    scannerMode,
-    showConfirmSheet,
-    pendingProduct,
-    pendingQuantity,
-    loadingDraft,
-    draftLoadError,
-    isRetrying,
-    toast,
-    lastAutoSaveTime,
-  } = state
+  // Prefill inline form when opening
+  useEffect(() => {
+    if (showAddNewForm) {
+      const type = detectIdentifierType(identifier)
+      if (type === 'mobile') {
+        setInlineFormData({ name: '', mobile: identifier, gstin: '' })
+      } else if (type === 'gstin') {
+        setInlineFormData({ name: '', mobile: '', gstin: identifier })
+      } else {
+        setInlineFormData({ name: identifier, mobile: '', gstin: '' })
+      }
+    }
+  }, [showAddNewForm]) // Intentionally omit identifier to avoid overwriting user edits
 
-  // Refs that aren't part of reducer state
+  const [products, setProducts] = useState<ProductWithMaster[]>([])
+  const [loadingProducts, setLoadingProducts] = useState(false)
+  const [items, setItems] = useState<InvoiceItemFormData[]>([])
+  const [errors, setErrors] = useState<Record<string, string>>({})
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [internalDraftInvoiceId, setInternalDraftInvoiceId] = useState<string | null>(null)
+  const [serialInputs, setSerialInputs] = useState<Record<number, string>>({})
+
+  // Scanner and confirmation state
+  type ScannerMode = 'closed' | 'scanning' | 'confirming'
+  const [scannerMode, setScannerMode] = useState<ScannerMode>('closed')
+  const [showConfirmSheet, setShowConfirmSheet] = useState(false)
+  const [pendingProduct, setPendingProduct] = useState<ProductWithMaster | null>(null)
+  const [pendingQuantity, setPendingQuantity] = useState(1)
+
+  // Draft loading state
+  const [loadingDraft, setLoadingDraft] = useState(false)
+  const [draftLoadError, setDraftLoadError] = useState<string | null>(null)
+  const [isRetrying, setIsRetrying] = useState(false)
   const draftLoadRetries = useRef(0)
   const MAX_RETRIES = 1
-  
+
   // Draft session ID ref - persists across re-renders
   const draftSessionId = useRef<string | null>(null)
-  
+
   // Use prop if provided, otherwise use internal state
   const currentDraftInvoiceId = draftInvoiceId || internalDraftInvoiceId
-  
-  // Query client for imperative data fetching
-  const queryClient = useQueryClient()
 
   // Toast deduplication hook
   const { showToast } = useToastDedupe()
 
-  // React Query hooks - useProducts returns infinite query, so we extract the first page
-  const productsQuery = useProducts(orgId, { status: 'active' }, {})
-  const productsData = productsQuery.data?.pages?.[0]?.data || []
-  const loadingProductsQuery = productsQuery.isLoading
-
-  // React Query mutations for write operations
-  const { mutateAsync: createInvoiceAsync } = useCreateInvoice(orgId, userId)
-  const { mutateAsync: autoSaveDraftAsync } = useAutoSaveInvoiceDraft(orgId, userId)
-  const { mutateAsync: validateItemsAsync } = useValidateInvoiceItems()
-
-  // Load products when form opens - sync query data to reducer state
+  // Load products when form opens
   useEffect(() => {
     if (isOpen && orgId) {
-      dispatch({ type: 'SET_LOADING_PRODUCTS', payload: loadingProductsQuery })
-      if (productsData.length > 0) {
-        dispatch({ type: 'SET_PRODUCTS', payload: productsData as ProductWithMaster[] })
-      }
+      setLoadingProducts(true)
+      getAllProducts(orgId, { status: 'active' })
+        .then((products) => setProducts(products as ProductWithMaster[]))
+        .catch((error) => {
+          console.error('Error loading products:', error)
+        })
+        .finally(() => setLoadingProducts(false))
     }
-  }, [isOpen, orgId, productsData, loadingProductsQuery])
+  }, [isOpen, orgId])
 
   // Initialize draft session ID when form opens
   useEffect(() => {
@@ -149,24 +136,32 @@ export function InvoiceForm({
     }
   }, [isOpen, draftInvoiceId])
 
+  // Track form changes for unsaved data warning
+  useEffect(() => {
+    if (onFormChange) {
+      const hasChanges = selectedCustomer !== null || items.length > 0
+      onFormChange(hasChanges)
+    }
+  }, [selectedCustomer, items, onFormChange])
+
   // Helper function to classify errors as retry-able or permanent
   const isRetryableError = (error: any): boolean => {
     if (!error) return false
-    
+
     const errorMessage = error.message?.toLowerCase() || ''
     const errorCode = error.code?.toLowerCase() || ''
-    
+
     // Schema cache errors are retry-able (will be handled with cache reload)
-    const isSchemaCacheError = 
-      errorCode === 'pgrst200' || 
+    const isSchemaCacheError =
+      errorCode === 'pgrst200' ||
       errorMessage.includes('could not find a relationship') ||
       errorMessage.includes('schema cache') ||
       (errorMessage.includes('relationship') && errorMessage.includes('schema'))
-    
+
     if (isSchemaCacheError) {
       return true
     }
-    
+
     // Retry-able errors: network issues, RLS policy errors, timeouts
     const retryablePatterns = [
       'network',
@@ -180,7 +175,7 @@ export function InvoiceForm({
       'networkerror',
       'pgrst',
     ]
-    
+
     // Permanent errors: not found, deleted, invalid
     const permanentPatterns = [
       'not found',
@@ -193,17 +188,17 @@ export function InvoiceForm({
       'permission denied',
       'draft data not found',
     ]
-    
+
     // Check for permanent errors first
     if (permanentPatterns.some(pattern => errorMessage.includes(pattern) || errorCode.includes(pattern))) {
       return false
     }
-    
+
     // Check for retry-able errors
     if (retryablePatterns.some(pattern => errorMessage.includes(pattern) || errorCode.includes(pattern))) {
       return true
     }
-    
+
     // Default: retry on unknown errors (might be transient)
     return true
   }
@@ -211,27 +206,27 @@ export function InvoiceForm({
   // Load draft with retry logic
   const loadDraftWithRetry = useCallback(async (invoiceId: string, retryCount = 0): Promise<void> => {
     try {
-      dispatch({ type: 'SET_LOADING_DRAFT', payload: true })
-      dispatch({ type: 'SET_DRAFT_LOAD_ERROR', payload: null })
-      dispatch({ type: 'SET_IS_RETRYING', payload: retryCount > 0 })
-      
+      setLoadingDraft(true)
+      setDraftLoadError(null)
+      setIsRetrying(retryCount > 0)
+
       const draftData = await loadDraftInvoiceData(invoiceId)
-      
+
       if (draftData) {
         // Restore draft session ID from database
         if (draftData.draft_session_id) {
           draftSessionId.current = draftData.draft_session_id
           setDraftSessionId(invoiceId, draftData.draft_session_id)
         }
-        
+
         // Load customer
         const draftInvoice = await getInvoiceById(invoiceId)
         if (draftInvoice.customer) {
-          dispatch({ type: 'SET_SELECTED_CUSTOMER', payload: draftInvoice.customer as any })
+          setSelectedCustomer(draftInvoice.customer as any)
         }
-        
+
         // Load products and restore items
-        const allProducts = productsData.length > 0 ? productsData : await getAllProducts(orgId, { status: 'active' })
+        const allProducts = await getAllProducts(orgId, { status: 'active' })
         const restoredItems: InvoiceItemFormData[] = draftData.items.map((draftItem: any) => {
           const product = allProducts.find((p: any) => p.id === draftItem.product_id)
           return {
@@ -246,18 +241,18 @@ export function InvoiceForm({
             stock_available: draftItem.stock_available,
           }
         })
-        dispatch({ type: 'SET_ITEMS', payload: restoredItems })
-        dispatch({ type: 'SET_INTERNAL_DRAFT_ID', payload: invoiceId })
+        setItems(restoredItems)
+        setInternalDraftInvoiceId(invoiceId)
         // Only advance to step 2 on successful load - don't auto-advance on error
-        dispatch({ type: 'SET_STEP', payload: 2 })
-        
+        setCurrentStep(2)
+
         // Reset retry counter on success
         draftLoadRetries.current = 0
-        dispatch({ type: 'SET_IS_RETRYING', payload: false })
-        
+        setIsRetrying(false)
+
         // Re-validate draft
         try {
-          const revalidation = await revalidateDraftInvoiceAPI(invoiceId, orgId)
+          const revalidation = await revalidateDraftInvoice(invoiceId, orgId)
           if (revalidation.updated) {
             showToast('success', 'Draft revalidated — missing items are now available.', { autoClose: 3000 })
             if (revalidation.valid) {
@@ -266,7 +261,7 @@ export function InvoiceForm({
                 invalid_serials: [],
                 validation_errors: [],
               }))
-              dispatch({ type: 'SET_ITEMS', payload: cleanedItems })
+              setItems(cleanedItems)
             }
           }
         } catch (revalError) {
@@ -278,39 +273,39 @@ export function InvoiceForm({
       }
     } catch (error) {
       console.error('Error loading draft:', error)
-      
+
       // Check if error is retry-able and we haven't exceeded max retries
       if (isRetryableError(error) && retryCount < MAX_RETRIES) {
         draftLoadRetries.current = retryCount + 1
-        dispatch({ type: 'SET_IS_RETRYING', payload: true })
-        
+        setIsRetrying(true)
+
         // Wait 500ms before retrying
         await new Promise(resolve => setTimeout(resolve, 500))
-        
+
         // Retry
         return loadDraftWithRetry(invoiceId, retryCount + 1)
       } else {
         // Permanent error or max retries exceeded
         const errorMessage = error instanceof Error ? error.message : 'Failed to load draft invoice'
-        dispatch({ type: 'SET_DRAFT_LOAD_ERROR', payload: errorMessage })
-        dispatch({ type: 'SET_IS_RETRYING', payload: false })
+        setDraftLoadError(errorMessage)
+        setIsRetrying(false)
         // Use deduplicated toast
         showToast('error', errorMessage, { unique: true, autoClose: 5000 })
         // Don't auto-advance to step 2 on failure - show error UI instead
       }
     } finally {
-      dispatch({ type: 'SET_LOADING_DRAFT', payload: false })
+      setLoadingDraft(false)
     }
-  }, [orgId, org, showToast, productsData])
+  }, [orgId, showToast, loadDraftInvoiceData, getInvoiceById, getAllProducts, revalidateDraftInvoice, setDraftSessionId])
 
   // Load draft on mount if draftInvoiceId prop is provided
   useEffect(() => {
     if (isOpen && draftInvoiceId) {
       // Reset retry counter when opening draft
       draftLoadRetries.current = 0
-      dispatch({ type: 'SET_DRAFT_LOAD_ERROR', payload: null })
-      dispatch({ type: 'SET_IS_RETRYING', payload: false })
-      
+      setDraftLoadError(null)
+      setIsRetrying(false)
+
       // Load draft with retry
       loadDraftWithRetry(draftInvoiceId)
     }
@@ -321,245 +316,95 @@ export function InvoiceForm({
     if (!isOpen && !loadingDraft) {
       // Don't clear session ID here - it should persist if form is reopened
       // Only clear on finalize or explicit delete
-      dispatch({ type: 'SET_STEP', payload: 1 })
-      dispatch({ type: 'SET_IDENTIFIER', payload: '' })
-      dispatch({ type: 'SET_IDENTIFIER_VALID', payload: false })
-      dispatch({ type: 'SET_IDENTIFIER_TYPE', payload: 'invalid' })
-      dispatch({ type: 'SET_LOOKUP_PERFORMED', payload: false })
-      dispatch({ type: 'SET_SELECTED_CUSTOMER', payload: null })
-      dispatch({ type: 'SET_SHOW_ADD_NEW_FORM', payload: false })
-      dispatch({ type: 'SET_MASTER_FORM_DATA', payload: { customer_name: '', address: '', email: '', additionalIdentifier: '' } })
-      dispatch({ type: 'SET_ITEMS', payload: [] })
-      dispatch({ type: 'SET_ERRORS', payload: {} })
-      dispatch({ type: 'SET_INTERNAL_DRAFT_ID', payload: null })
-      dispatch({ type: 'SET_DRAFT_LOAD_ERROR', payload: null })
-      dispatch({ type: 'SET_IS_RETRYING', payload: false })
+      setCurrentStep(1)
+      setIdentifier('')
+      setIdentifierValid(false)
+      setSelectedCustomer(null)
+      setShowAddNewForm(false)
+      setInlineFormData({ name: '', mobile: '', gstin: '' })
+      setItems([])
+      setErrors({})
+      setInternalDraftInvoiceId(null)
+      setDraftLoadError(null)
+      setIsRetrying(false)
     }
   }, [isOpen, loadingDraft])
 
   // Reset selectedCustomer when identifier changes (ensures Next button stays disabled)
   useEffect(() => {
     if (identifier.trim() === '' || !identifierValid) {
-      dispatch({ type: 'SET_SELECTED_CUSTOMER', payload: null })
-      dispatch({ type: 'SET_LOOKUP_PERFORMED', payload: false })
+      setSelectedCustomer(null)
     }
   }, [identifier, identifierValid])
 
-  // Step 1: Customer Selection
-  const handleLookupCustomer = async () => {
-    if (!identifierValid || !identifier.trim()) {
-      dispatch({ type: 'SET_ERRORS', payload: { identifier: 'Please enter a valid mobile number or GSTIN' } })
-      return
-    }
 
-    dispatch({ type: 'SET_SEARCHING', payload: true })
-    dispatch({ type: 'SET_ERRORS', payload: {} })
-    dispatch({ type: 'SET_SHOW_ADD_NEW_FORM', payload: false })
-    dispatch({ type: 'SET_LOOKUP_PERFORMED', payload: false })
 
-    try {
-      // First, check if org customer exists (master + org link)
-      const orgCustomer = await searchCustomersByIdentifier(identifier, orgId)
-
-      if (orgCustomer) {
-        // Customer exists with org link - show details
-        dispatch({ type: 'SET_SELECTED_CUSTOMER', payload: orgCustomer })
-
-        // Check for existing draft for this customer
-        try {
-          const existingDraft = await getDraftInvoiceByCustomer(orgId, orgCustomer.id)
-          if (existingDraft) {
-            // Show confirmation dialog
-            const continueDraft = window.confirm(
-              'A draft invoice already exists for this customer. Continue?'
-            )
-            
-            if (continueDraft) {
-              // Load draft data
-              const draftData = await loadDraftInvoiceData(existingDraft.id)
-              if (draftData) {
-                // Restore items from draft
-                dispatch({ type: 'SET_INTERNAL_DRAFT_ID', payload: existingDraft.id })
-                
-                // Load products to restore full item data
-                const allProducts = productsData.length > 0 ? productsData : await getAllProducts(orgId, { status: 'active' })
-                const restoredItems: InvoiceItemFormData[] = draftData.items.map((draftItem: any) => {
-                  const product = allProducts.find((p: any) => p.id === draftItem.product_id)
-                  return {
-                    product_id: draftItem.product_id,
-                    quantity: draftItem.quantity || 0,
-                    unit_price: draftItem.unit_price || (product?.selling_price || 0),
-                    line_total: draftItem.line_total || (draftItem.quantity * (draftItem.unit_price || product?.selling_price || 0)),
-                    serials: draftItem.serials || [],
-                    serial_tracked: product?.serial_tracked || false,
-                    invalid_serials: draftItem.invalid_serials || [],
-                    validation_errors: draftItem.validation_errors || [],
-                    stock_available: draftItem.stock_available,
-                  }
-                 })
-                dispatch({ type: 'SET_ITEMS', payload: restoredItems })
-                
-                // Re-validate draft
-                try {
-                  const revalidation = await revalidateDraftInvoiceAPI(existingDraft.id, orgId)
-                  if (revalidation.updated) {
-                    dispatch({ type: 'SET_TOAST', payload: {
-                      message: 'Draft revalidated — missing items are now available.',
-                      type: 'success'
-                    } })
-                    // Clear invalid serials/errors if now valid
-                    if (revalidation.valid) {
-                      const cleanedItems = restoredItems.map(item => ({
-                        ...item,
-                        invalid_serials: [],
-                        validation_errors: [],
-                      }))
-                      dispatch({ type: 'SET_ITEMS', payload: cleanedItems })
-                    }
-                  }
-                } catch (revalError) {
-                  console.error('Error re-validating draft:', revalError)
-                }
-                
-                showToast('success', 'Draft loaded', { autoClose: 3000 })
-                dispatch({ type: 'SET_STEP', payload: 2 })
-                return
-              }
-            }
-          }
-        } catch (draftError) {
-          console.error('Error checking for draft:', draftError)
-          // Continue with normal flow if draft check fails
-        }
-        
-        return
-      }
-
-      // Check if master customer exists (but no org link)
-      const master = await checkCustomerExistsAPI(identifier)
-
-      if (master) {
-        // Master exists but no org link - create org link and show
-        const result = await lookupOrCreateCustomerAPI(identifier, orgId, userId)
-        dispatch({ type: 'SET_SELECTED_CUSTOMER', payload: {
-          ...result.customer,
-          master_customer: result.master,
-          } })
-      } else {
-        // Master doesn't exist - auto-open "Add New Customer" form
-        dispatch({ type: 'SET_SHOW_ADD_NEW_FORM', payload: true })
-      }
-    } catch (error) {
-      console.error('Error looking up customer:', error)
-      dispatch({ type: 'SET_ERRORS', payload: {
-        identifier: error instanceof Error ? error.message : 'Failed to lookup customer',
-        } })
-    } finally {
-      dispatch({ type: 'SET_SEARCHING', payload: false })
-      dispatch({ type: 'SET_LOOKUP_PERFORMED', payload: true })
-    }
-  }
-
-  const handleCreateMasterCustomer = async () => {
-    // Validate form - all fields optional except: at least one identifier OR legal_name
+  const handleCreateOrgCustomer = async () => {
     const formErrors: Record<string, string> = {}
-    
-    const hasLegalName = masterFormData.customer_name.trim().length >= 2
-    if (!hasLegalName) {
-      formErrors.customer_name = 'Customer name is required'
-    }
-    
-    // Validate email format if provided
-    if (masterFormData.email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(masterFormData.email.trim())) {
-      formErrors.email = 'Please enter a valid email address'
+
+    if (!inlineFormData.name || inlineFormData.name.trim().length < 2) {
+      formErrors.name = 'Customer name is required (min 2 chars)'
     }
 
-    // Validate additional identifier if provided
-    if (masterFormData.additionalIdentifier.trim()) {
-      const additionalType = identifierType === 'mobile' ? 'gstin' : 'mobile'
-      const detected = detectIdentifierType(masterFormData.additionalIdentifier.trim())
-      if (detected !== additionalType) {
-        formErrors.additionalIdentifier = additionalType === 'mobile' 
-          ? 'Please enter a valid 10-digit mobile number'
-          : 'Please enter a valid 15-character GSTIN'
-      } else {
-        const isValid = additionalType === 'mobile' 
-          ? validateMobile(masterFormData.additionalIdentifier.trim())
-          : validateGSTIN(masterFormData.additionalIdentifier.trim())
-        if (!isValid) {
-          formErrors.additionalIdentifier = additionalType === 'mobile'
-            ? 'Mobile must be exactly 10 digits starting with 6, 7, 8, or 9'
-            : 'Invalid GSTIN format'
-        }
-      }
+    if (inlineFormData.mobile && !validateMobile(inlineFormData.mobile)) {
+      formErrors.mobile = 'Mobile must be 10 digits'
     }
-    
+
+    if (inlineFormData.gstin && !validateGSTIN(inlineFormData.gstin)) {
+      formErrors.gstin = 'Invalid GSTIN format'
+    }
+
     if (Object.keys(formErrors).length > 0) {
-      dispatch({ type: 'SET_ERRORS', payload: formErrors })
+      setErrors(formErrors)
       return
     }
 
-    dispatch({ type: 'SET_SEARCHING', payload: true })
-    dispatch({ type: 'SET_ERRORS', payload: {} })
+    setSearching(true)
+    setErrors({})
 
     try {
-      const additionalNormalized = masterFormData.additionalIdentifier.trim()
-        ? normalizeIdentifier(masterFormData.additionalIdentifier.trim(), identifierType === 'mobile' ? 'gstin' : 'mobile')
-        : undefined
-
-      const masterData: any = {
-        legal_name: masterFormData.customer_name.trim(),
-        address: masterFormData.address.trim() || undefined,
-        email: masterFormData.email.trim() || undefined,
-      }
-
-      if (identifierType === 'mobile') {
-        masterData.mobile = normalizeIdentifier(identifier, 'mobile')
-        if (additionalNormalized) masterData.gstin = additionalNormalized
-      } else if (identifierType === 'gstin') {
-        masterData.gstin = normalizeIdentifier(identifier, 'gstin')
-        if (additionalNormalized) masterData.mobile = additionalNormalized
-      }
-
-      const result = await lookupOrCreateCustomerAPI(
-        identifier,
+      const customerId = await addOrgCustomer(
         orgId,
-        userId,
-        masterData
+        inlineFormData.name,
+        inlineFormData.mobile || null,
+        inlineFormData.gstin || null
       )
-      dispatch({ type: 'SET_SELECTED_CUSTOMER', payload: {
-        ...result.customer,
-        master_customer: result.master,
-         } })
-      dispatch({ type: 'SET_SHOW_ADD_NEW_FORM', payload: false })
-      dispatch({ type: 'SET_MASTER_FORM_DATA', payload: { customer_name: '', address: '', email: '', additionalIdentifier: '' } })
-      // Auto-advance to Step 2
-      dispatch({ type: 'SET_STEP', payload: 2 })
+
+      const newCustomer = await getCustomerById(customerId)
+      setSelectedCustomer(newCustomer)
+
+      // Update identifier input to show the name
+      setIdentifier(newCustomer.alias_name || newCustomer.name || newCustomer.master_customer.legal_name)
+
+      setShowAddNewForm(false)
+      setInlineFormData({ name: '', mobile: '', gstin: '' })
+      setCurrentStep(2)
+      showToast('success', 'Customer added successfully', { autoClose: 3000 })
     } catch (error) {
-      console.error('Error creating customer:', error)
-      dispatch({ type: 'SET_ERRORS', payload: {
-        submit: error instanceof Error ? error.message : 'Failed to create customer',
-        } })
+      console.error('Error adding customer:', error)
+      setErrors({
+        submit: error instanceof Error ? error.message : 'Failed to add customer',
+      })
     } finally {
-      dispatch({ type: 'SET_SEARCHING', payload: false })
+      setSearching(false)
     }
   }
 
   // Step 2: Add Products
   const handleAddItem = () => {
-    dispatch({
-      type: 'ADD_ITEM',
-      payload: {
+    setItems([
+      ...items,
+      {
         product_id: '',
         quantity: 1,
         unit_price: 0,
         line_total: 0,
       },
-    })
+    ])
   }
 
   const handleRemoveItem = (index: number) => {
-    dispatch({ type: 'REMOVE_ITEM', payload: index })
+    setItems(items.filter((_, i) => i !== index))
   }
 
   const handleItemChange = (index: number, field: keyof InvoiceItemFormData, value: any) => {
@@ -571,13 +416,13 @@ export function InvoiceForm({
       updated[index].line_total = (updated[index].quantity || 0) * (updated[index].unit_price || 0)
     }
 
-    dispatch({ type: 'SET_ITEMS', payload: updated })
+    setItems(updated)
   }
 
   const handleProductChange = (index: number, productId: string) => {
     const updated = [...items]
     const selectedProduct = products.find((p) => p.id === productId)
-    
+
     updated[index] = {
       ...updated[index],
       product_id: productId,
@@ -586,11 +431,11 @@ export function InvoiceForm({
       serials: selectedProduct?.serial_tracked ? (updated[index].serials || []) : undefined,
       quantity: selectedProduct?.serial_tracked ? (updated[index].serials?.length || 0) : updated[index].quantity || 1,
     }
-    
+
     // Recalculate line_total
     updated[index].line_total = (updated[index].quantity || 0) * updated[index].unit_price
 
-    dispatch({ type: 'SET_ITEMS', payload: updated })
+    setItems(updated)
   }
 
   // Handle product selection from combobox
@@ -599,38 +444,38 @@ export function InvoiceForm({
       showToast('error', 'Please select a customer first', { autoClose: 3000 })
       return
     }
-    dispatch({ type: 'SET_PENDING_PRODUCT', payload: product })
-    dispatch({ type: 'SET_PENDING_QUANTITY', payload: 1 })
-    dispatch({ type: 'SET_SHOW_CONFIRM_SHEET', payload: true })
+    setPendingProduct(product)
+    setPendingQuantity(1)
+    setShowConfirmSheet(true)
   }
 
   // Handle scan from camera (continuous mode)
   const handleScanFromCamera = async (code: string) => {
     if (!selectedCustomer) {
       showToast('error', 'Please select a customer first', { autoClose: 3000 })
-      dispatch({ type: 'SET_SCANNER_MODE', payload: 'closed' })
+      setScannerMode('closed')
       return
     }
 
     try {
       // Validate single code
       const results = await validateScannerCodes(orgId, [code])
-      
+
       if (results.length === 0) {
         showToast('error', 'Product not found. Ask your branch head to add this product.', { autoClose: 3000 })
         return
       }
 
       const result = results[0]
-      
+
       if (result.status === 'valid' && result.product_id) {
         const product = products.find((p) => p.id === result.product_id)
         if (product) {
           // Show confirmation sheet (scanner stays open)
-          dispatch({ type: 'SET_PENDING_PRODUCT', payload: product })
-          dispatch({ type: 'SET_PENDING_QUANTITY', payload: 1 })
-          dispatch({ type: 'SET_SCANNER_MODE', payload: 'confirming' })
-          dispatch({ type: 'SET_SHOW_CONFIRM_SHEET', payload: true })
+          setPendingProduct(product)
+          setPendingQuantity(1)
+          setScannerMode('confirming')
+          setShowConfirmSheet(true)
         } else {
           showToast('error', 'Product not found in inventory.', { autoClose: 3000 })
         }
@@ -650,10 +495,10 @@ export function InvoiceForm({
     if (!pendingProduct) return
 
     const updatedItems = [...items]
-    
+
     // Check if item already exists for this product
     const existingIndex = updatedItems.findIndex((item) => item.product_id === pendingProduct.id)
-    
+
     if (existingIndex >= 0) {
       // Update existing item
       const existingItem = updatedItems[existingIndex]
@@ -683,24 +528,24 @@ export function InvoiceForm({
       updatedItems.push(newItem)
     }
 
-    dispatch({ type: 'SET_ITEMS', payload: updatedItems })
-    dispatch({ type: 'SET_SHOW_CONFIRM_SHEET', payload: false })
-    dispatch({ type: 'SET_PENDING_PRODUCT', payload: null })
-    
+    setItems(updatedItems)
+    setShowConfirmSheet(false)
+    setPendingProduct(null)
+
     // If scanner was open, continue scanning
     if (scannerMode === 'confirming') {
-      dispatch({ type: 'SET_SCANNER_MODE', payload: 'scanning' })
+      setScannerMode('scanning')
     }
   }
 
   // Handle cancel confirmation
   const handleCancelConfirm = () => {
-    dispatch({ type: 'SET_SHOW_CONFIRM_SHEET', payload: false })
-    dispatch({ type: 'SET_PENDING_PRODUCT', payload: null })
-    
+    setShowConfirmSheet(false)
+    setPendingProduct(null)
+
     // If scanner was open, continue scanning
     if (scannerMode === 'confirming') {
-      dispatch({ type: 'SET_SCANNER_MODE', payload: 'scanning' })
+      setScannerMode('scanning')
     }
   }
 
@@ -710,7 +555,7 @@ export function InvoiceForm({
       showToast('error', 'Please select a customer first', { autoClose: 3000 })
       return
     }
-    dispatch({ type: 'SET_SCANNER_MODE', payload: 'scanning' })
+    setScannerMode('scanning')
   }
 
   // Auto-save draft
@@ -725,38 +570,39 @@ export function InvoiceForm({
     })),
   }), [selectedCustomer, items])
 
-  // toast and lastAutoSaveTime are now part of reducer state (see destructuring above)
+  const [toast, setToast] = useState<{ message: string; type?: 'success' | 'info' | 'error' } | null>(null)
+  const [lastAutoSaveTime, setLastAutoSaveTime] = useState<number | null>(null)
 
   const { saveStatus, manualSave } = useAutoSave(
     draftData,
     async (data) => {
       if (!selectedCustomer || !draftSessionId.current) return
       try {
-        const result = await autoSaveDraftAsync({
-          draftId: currentDraftInvoiceId,
-          data,
-          org,
-          customer: selectedCustomer
-        })
-        dispatch({ type: 'SET_INTERNAL_DRAFT_ID', payload: result.id })
+        const result = await autoSaveInvoiceDraft(
+          orgId,
+          userId,
+          internalDraftInvoiceId || '',
+          data
+        )
+        setInternalDraftInvoiceId(result.invoiceId)
         // Update session ID if it changed
-        if (result.draft_session_id && result.draft_session_id !== draftSessionId.current) {
-          draftSessionId.current = result.draft_session_id
-          if (result.id) {
-            setDraftSessionId(result.id, result.draft_session_id)
+        if (result.sessionId && result.sessionId !== draftSessionId.current) {
+          draftSessionId.current = result.sessionId
+          if (result.invoiceId) {
+            setDraftSessionId(result.invoiceId, result.sessionId)
           }
         }
         const now = Date.now()
         // Only show toast if it's been more than 3 seconds since last auto-save (avoid spam)
         if (!lastAutoSaveTime || now - lastAutoSaveTime > 3000) {
           showToast('success', 'Draft saved automatically', { autoClose: 2000 })
-          dispatch({ type: 'SET_LAST_AUTO_SAVE_TIME', payload: now })
+          setLastAutoSaveTime(now)
         }
       } catch (error) {
         console.error('Auto-save failed:', error)
       }
     },
-    { 
+    {
       localDebounce: 1500,  // 1.5s debounce for localStorage
       rpcInterval: 5000,     // 5s interval for RPC calls
       enabled: selectedCustomer !== null && draftSessionId.current !== null
@@ -767,7 +613,7 @@ export function InvoiceForm({
     if (!selectedCustomer) return
     try {
       await manualSave()
-      const hasInvalidItems = items.some(item => 
+      const hasInvalidItems = items.some(item =>
         (item.invalid_serials && item.invalid_serials.length > 0) ||
         (item.validation_errors && item.validation_errors.length > 0)
       )
@@ -786,7 +632,7 @@ export function InvoiceForm({
   const handleAddSerial = async (itemIndex: number, serial: string) => {
     const updated = [...items]
     const item = updated[itemIndex]
-    
+
     if (!item.serials) {
       item.serials = []
     }
@@ -799,23 +645,23 @@ export function InvoiceForm({
     // Validate serial before adding
     try {
       const serialStatus = await checkSerialStatus(orgId, serial.trim())
-      
+
       if (!serialStatus.found) {
         // Serial not found - allow adding but mark as invalid
         if (!item.invalid_serials) {
           item.invalid_serials = []
         }
         item.invalid_serials.push(serial.trim())
-        dispatch({ type: 'SET_TOAST', payload: { 
-          message: 'Serial not found in stock. Saved as draft for branch head review.', 
-          type: 'error' 
-          } })
+        setToast({
+          message: 'Serial not found in stock. Saved as draft for branch head review.',
+          type: 'error'
+        })
       } else if (serialStatus.product_id !== item.product_id) {
         // Serial belongs to different product
-        dispatch({ type: 'SET_TOAST', payload: { 
-          message: `Serial belongs to a different product.`, 
-          type: 'error' 
-          } })
+        setToast({
+          message: `Serial belongs to a different product.`,
+          type: 'error'
+        })
         return
       } else if (serialStatus.status !== 'available') {
         // Serial not available
@@ -823,10 +669,10 @@ export function InvoiceForm({
           item.invalid_serials = []
         }
         item.invalid_serials.push(serial.trim())
-        dispatch({ type: 'SET_TOAST', payload: { 
-          message: 'Serial not available in stock. Saved as draft for branch head review.', 
-          type: 'error' 
-          } })
+        setToast({
+          message: 'Serial not available in stock. Saved as draft for branch head review.',
+          type: 'error'
+        })
       }
 
       // Add serial (even if invalid, for draft purposes)
@@ -835,7 +681,7 @@ export function InvoiceForm({
         item.quantity = item.serials.length
         item.line_total = item.quantity * item.unit_price
       }
-      dispatch({ type: 'SET_ITEMS', payload: updated })
+      setItems(updated)
     } catch (error) {
       console.error('Error validating serial:', error)
       // Still allow adding for draft, but mark as invalid
@@ -848,11 +694,11 @@ export function InvoiceForm({
         item.quantity = item.serials.length
         item.line_total = item.quantity * item.unit_price
       }
-      dispatch({ type: 'SET_ITEMS', payload: updated })
-      dispatch({ type: 'SET_TOAST', payload: { 
-        message: 'Error validating serial. Saved as draft for branch head review.', 
-        type: 'error' 
-        } })
+      setItems(updated)
+      setToast({
+        message: 'Error validating serial. Saved as draft for branch head review.',
+        type: 'error'
+      })
     }
   }
 
@@ -860,28 +706,28 @@ export function InvoiceForm({
   const handleRemoveSerial = (itemIndex: number, serialIndex: number) => {
     const updated = [...items]
     const item = updated[itemIndex]
-    
+
     if (item.serials) {
       const removedSerial = item.serials[serialIndex]
       item.serials.splice(serialIndex, 1)
-      
+
       // Also remove from invalid_serials if present
       if (item.invalid_serials && item.invalid_serials.includes(removedSerial)) {
         item.invalid_serials = item.invalid_serials.filter(s => s !== removedSerial)
       }
-      
+
       if (item.serial_tracked) {
         item.quantity = item.serials.length
         item.line_total = item.quantity * item.unit_price
       }
-      dispatch({ type: 'SET_ITEMS', payload: updated })
+      setItems(updated)
     }
   }
 
   // Calculate totals using new Tax Calculation Service
   const totals = useMemo(() => {
     const subtotal = items.reduce((sum, item) => sum + (item.line_total || 0), 0)
-    
+
     // If no customer selected or no items, return zero tax
     if (!selectedCustomer || items.length === 0) {
       return {
@@ -904,7 +750,7 @@ export function InvoiceForm({
       // Use product.tax_rate (org-specific) if available, otherwise fallback to master_product.gst_rate
       const taxRate = product?.tax_rate ?? product?.master_product?.gst_rate ?? null
       const hsnSacCode = product?.hsn_sac_code ?? product?.master_product?.hsn_code ?? null
-      
+
       return productToLineItem(
         item.line_total,
         taxRate,
@@ -932,38 +778,38 @@ export function InvoiceForm({
     e.preventDefault()
 
     if (!selectedCustomer) {
-      dispatch({ type: 'SET_ERRORS', payload: { customer: 'Please select a customer' } })
-      dispatch({ type: 'SET_STEP', payload: 1 })
+      setErrors({ customer: 'Please select a customer' })
+      setCurrentStep(1)
       return
     }
 
     if (items.length === 0) {
-      dispatch({ type: 'SET_ERRORS', payload: { items: 'Please add at least one item' } })
-      dispatch({ type: 'SET_STEP', payload: 2 })
+      setErrors({ items: 'Please add at least one item' })
+      setCurrentStep(2)
       return
     }
 
     // Validate all items
     const invalidItems = items.some((item) => {
       if (!item.product_id || item.unit_price <= 0) return true
-      
+
       // For serial-tracked products, check serials instead of quantity
       if (item.serial_tracked) {
         return !item.serials || item.serials.length === 0
       }
-      
+
       // For non-serial products, check quantity
       return item.quantity <= 0
-     })
-    
+    })
+
     if (invalidItems) {
-      dispatch({ type: 'SET_ERRORS', payload: { items: 'Please fill all item fields correctly (serials for serial-tracked products, quantity for others)' } })
-      dispatch({ type: 'SET_STEP', payload: 2 })
+      setErrors({ items: 'Please fill all item fields correctly (serials for serial-tracked products, quantity for others)' })
+      setCurrentStep(2)
       return
     }
 
-    dispatch({ type: 'SET_IS_SUBMITTING', payload: true })
-    dispatch({ type: 'SET_ERRORS', payload: {} })
+    setIsSubmitting(true)
+    setErrors({})
 
     try {
       // Backend validation before finalization
@@ -975,15 +821,15 @@ export function InvoiceForm({
       }))
 
       // Validate items - allow drafts (pending masters allowed)
-      const validation = await validateItemsAsync({ items: validationItems, orgId })
+      const validation = await validateInvoiceItems(orgId, validationItems, true)
 
       if (!validation.valid) {
         // Group errors by type
         const productErrors = validation.errors.filter(e => e.type === 'product_not_found')
         const serialErrors = validation.errors.filter(e => e.type === 'serial_not_found')
         const stockErrors = validation.errors.filter(e => e.type === 'insufficient_stock')
-        const masterProductErrors = validation.errors.filter(e => 
-          e.type === 'master_product_not_approved' || 
+        const masterProductErrors = validation.errors.filter(e =>
+          e.type === 'master_product_not_approved' ||
           e.type === 'master_product_missing_hsn' ||
           e.type === 'master_product_not_linked' ||
           e.type === 'master_product_invalid_hsn'
@@ -993,13 +839,13 @@ export function InvoiceForm({
         const updatedItems = items.map((item, index) => {
           const itemErrors = validation.errors.filter(e => e.item_index === index + 1)
           const stockError = itemErrors.find(e => e.type === 'insufficient_stock')
-          const masterProductError = itemErrors.find(e => 
-            e.type === 'master_product_not_approved' || 
+          const masterProductError = itemErrors.find(e =>
+            e.type === 'master_product_not_approved' ||
             e.type === 'master_product_missing_hsn' ||
             e.type === 'master_product_not_linked' ||
             e.type === 'master_product_invalid_hsn'
           )
-          
+
           return {
             ...item,
             validation_errors: itemErrors.map(e => e.message),
@@ -1014,7 +860,7 @@ export function InvoiceForm({
             }),
           }
         })
-        dispatch({ type: 'SET_ITEMS', payload: updatedItems })
+        setItems(updatedItems)
 
         // Show toast with error summary
         let errorMessage = 'Invoice validation failed: '
@@ -1030,15 +876,15 @@ export function InvoiceForm({
         if (stockErrors.length > 0) {
           errorMessage += `${stockErrors.length} item(s) have insufficient stock. `
         }
-        dispatch({ type: 'SET_TOAST', payload: { message: errorMessage.trim(), type: 'error' } })
+        setToast({ message: errorMessage.trim(), type: 'error' })
 
         // Set form errors
-        dispatch({ type: 'SET_ERRORS', payload: {
+        setErrors({
           items: 'Some items have validation errors. Please fix them before finalizing.',
           submit: 'Cannot create invoice with invalid items'
-        } })
-        dispatch({ type: 'SET_STEP', payload: 2 })
-        dispatch({ type: 'SET_IS_SUBMITTING', payload: false })
+        })
+        setCurrentStep(2)
+        setIsSubmitting(false)
         return
       }
 
@@ -1050,11 +896,13 @@ export function InvoiceForm({
         })),
       }
 
-      const invoice = await createInvoiceAsync({
-        data: invoiceData,
+      const invoice = await createInvoice(
+        orgId,
+        userId,
+        invoiceData,
         org,
-        customer: selectedCustomer
-      })
+        selectedCustomer
+      )
 
       // Clear draft session ID on finalize
       if (currentDraftInvoiceId) {
@@ -1068,15 +916,15 @@ export function InvoiceForm({
       onClose()
     } catch (error) {
       console.error('Error creating invoice:', error)
-      dispatch({ type: 'SET_ERRORS', payload: {
+      setErrors({
         submit: error instanceof Error ? error.message : 'Failed to create invoice',
-        } })
-      dispatch({ type: 'SET_TOAST', payload: { 
-        message: error instanceof Error ? error.message : 'Failed to create invoice', 
-        type: 'error' 
-        } })
+      })
+      setToast({
+        message: error instanceof Error ? error.message : 'Failed to create invoice',
+        type: 'error'
+      })
     } finally {
-      dispatch({ type: 'SET_IS_SUBMITTING', payload: false })
+      setIsSubmitting(false)
     }
   }
 
@@ -1112,8 +960,8 @@ export function InvoiceForm({
               variant="primary"
               size="md"
               onClick={async () => {
-                dispatch({ type: 'SET_DRAFT_LOAD_ERROR', payload: null })
-                dispatch({ type: 'SET_IS_RETRYING', payload: false })
+                setDraftLoadError(null)
+                setIsRetrying(false)
                 draftLoadRetries.current = 0
                 await loadDraftWithRetry(draftInvoiceId!)
               }}
@@ -1127,13 +975,13 @@ export function InvoiceForm({
               size="md"
               onClick={() => {
                 // Reset form and start new invoice
-                dispatch({ type: 'SET_DRAFT_LOAD_ERROR', payload: null })
-                dispatch({ type: 'SET_INTERNAL_DRAFT_ID', payload: null })
-                dispatch({ type: 'SET_STEP', payload: 1 })
-                dispatch({ type: 'SET_IDENTIFIER', payload: '' })
-                dispatch({ type: 'SET_IDENTIFIER_VALID', payload: false })
-                dispatch({ type: 'SET_SELECTED_CUSTOMER', payload: null })
-                dispatch({ type: 'SET_ITEMS', payload: [] })
+                setDraftLoadError(null)
+                setInternalDraftInvoiceId(null)
+                setCurrentStep(1)
+                setIdentifier('')
+                setIdentifierValid(false)
+                setSelectedCustomer(null)
+                setItems([])
                 // Don't close the form - allow user to start new invoice
               }}
               className="w-full"
@@ -1159,80 +1007,65 @@ export function InvoiceForm({
         <div className="space-y-4">
           <div>
             <h3 className="text-lg font-semibold text-primary-text mb-md">Step 1: Select Customer</h3>
-            
+
             {/* Show "Add New Customer" form inline when activated */}
             {showAddNewForm ? (
               <div className="mt-md space-y-md p-md border border-neutral-200 rounded-md bg-neutral-50">
-                <h4 className="text-sm font-semibold text-primary-text">Add New Customer</h4>
-                <p className="text-xs text-secondary-text">
-                  You are creating a new customer record based on the identifier: <span className="font-semibold">{identifier}</span>
-                </p>
+                <div className="flex justify-between items-start">
+                  <div>
+                    <h4 className="text-sm font-semibold text-primary-text">Add New Party Details</h4>
+                    <p className="text-xs text-secondary-text">
+                      Customer Identifier: <span className="font-semibold">{identifier}</span>
+                    </p>
+                  </div>
+                </div>
 
                 <Input
-                  label="Legal Name *"
+                  label="Customer Name *"
                   type="text"
-                  value={masterFormData.customer_name}
+                  value={inlineFormData.name}
                   onChange={(e) =>
-                    dispatch({ type: 'SET_MASTER_FORM_DATA', payload: { ...masterFormData, customer_name: e.target.value } })
+                    setInlineFormData({ ...inlineFormData, name: e.target.value })
                   }
                   disabled={isSubmitting || searching}
-                  placeholder="Enter customer's legal name"
-                  error={errors.customer_name}
+                  placeholder="Enter customer name"
+                  error={errors.name}
                   required
                   autoFocus
                 />
 
-                {/* Dynamic Identifier Field */}
-                {identifierType !== 'invalid' && (
-                  <Input
-                    label={identifierType === 'mobile' ? 'GSTIN (Optional)' : 'Mobile Number (Optional)'}
-                    type="text"
-                    value={masterFormData.additionalIdentifier}
-                    onChange={(e) =>
-                      dispatch({ type: 'SET_MASTER_FORM_DATA', payload: { ...masterFormData, additionalIdentifier: e.target.value } })
-                    }
-                    disabled={isSubmitting || searching}
-                    placeholder={identifierType === 'mobile' ? 'Enter 15-character GSTIN' : 'Enter 10-digit mobile number'}
-                    error={errors.additionalIdentifier}
-                  />
-                )}
-
                 <Input
-                  label="Email (Optional)"
-                  type="email"
-                  value={masterFormData.email}
+                  label="Mobile Number (optional)"
+                  type="tel"
+                  value={inlineFormData.mobile}
                   onChange={(e) =>
-                    dispatch({ type: 'SET_MASTER_FORM_DATA', payload: { ...masterFormData, email: e.target.value } })
+                    setInlineFormData({ ...inlineFormData, mobile: e.target.value })
                   }
                   disabled={isSubmitting || searching}
-                  placeholder="Enter email address"
-                  error={errors.email}
+                  placeholder="Enter 10-digit mobile number"
+                  error={errors.mobile}
                 />
 
-                <div>
-                  <label className="block text-sm font-medium text-secondary-text mb-xs">
-                    Address (Optional)
-                  </label>
-                  <textarea
-                    value={masterFormData.address}
-                    onChange={(e) =>
-                      dispatch({ type: 'SET_MASTER_FORM_DATA', payload: { ...masterFormData, address: e.target.value } })
-                    }
-                    disabled={isSubmitting || searching}
-                    placeholder="Enter customer's address"
-                    rows={3}
-                    className="w-full px-md py-sm border border-neutral-300 rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary disabled:bg-neutral-100 disabled:cursor-not-allowed"
-                  />
-                </div>
+                <Input
+                  label="GSTIN (optional)"
+                  type="text"
+                  value={inlineFormData.gstin}
+                  onChange={(e) =>
+                    setInlineFormData({ ...inlineFormData, gstin: e.target.value })
+                  }
+                  disabled={isSubmitting || searching}
+                  placeholder="Enter 15-character GSTIN"
+                  error={errors.gstin}
+                />
 
-                <div className="flex gap-2">
+                <div className="flex gap-2 pt-2">
                   <Button
                     type="button"
                     variant="secondary"
                     onClick={() => {
-                      dispatch({ type: 'SET_SHOW_ADD_NEW_FORM', payload: false })
-                      dispatch({ type: 'SET_MASTER_FORM_DATA', payload: { customer_name: '', address: '', email: '', additionalIdentifier: '' } })
-                      dispatch({ type: 'SET_ERRORS', payload: {} })
+                      setShowAddNewForm(false)
+                      setInlineFormData({ name: '', mobile: '', gstin: '' })
+                      setErrors({})
                     }}
                     disabled={isSubmitting || searching}
                     className="flex-1"
@@ -1242,106 +1075,63 @@ export function InvoiceForm({
                   <Button
                     type="button"
                     variant="primary"
-                    onClick={handleCreateMasterCustomer}
+                    onClick={handleCreateOrgCustomer}
                     isLoading={searching}
                     disabled={isSubmitting || searching}
                     className="flex-1"
                   >
-                    Create & Select Customer
+                    Add Customer
                   </Button>
                 </div>
               </div>
             ) : (
               <>
-                {/* "Add New" card and Identifier Input */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-md items-start">
-                  {/* Add New Customer Card */}
-                  <Card
-                    className="border-2 border-success-light shadow-sm h-full"
-                    onClick={() => {
-                      if (identifierValid) {
-                        dispatch({ type: 'SET_SHOW_ADD_NEW_FORM', payload: true })
-                      } else {
-                        dispatch({ type: 'SET_ERRORS', payload: { identifier: 'Enter a valid Mobile or GSTIN to create a new customer.' } })
-                      }
-                    }}
-                  >
-                    <CardContent className="p-md">
-                      <div className="space-y-md">
-                        <div>
-                          <div className="flex items-center gap-sm mb-xs">
-                            <div className="w-8 h-8 rounded-md bg-success-light flex items-center justify-center flex-shrink-0">
-                              <PlusIcon className="h-4 w-4 text-success" />
-                            </div>
-                            <h3 className="text-base font-semibold text-primary-text">Add New Customer</h3>
-                          </div>
-                          <p className="text-xs text-secondary-text">
-                            Create a new customer record.
-                          </p>
-                        </div>
-                        <div className="space-y-xs text-xs text-secondary-text opacity-50">
-                          <div>Enter customer details</div>
-                          <div>Mobile or GSTIN required</div>
-                        </div>
-                        <div className="flex gap-sm pt-sm">
-                          <Button 
-                            variant="primary" 
-                            size="sm" 
-                            className="flex-1 min-h-[44px]"
-                            aria-label="Add new customer"
-                            tabIndex={-1} // Make it non-focusable, card is the target
-                          >
-                            Add New Customer
-                          </Button>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
+                {/* Customer Search Combobox - TASKS 2 & 3 */}
+                <CustomerSearchCombobox
+                  orgId={orgId}
+                  value={identifier}
+                  onChange={setIdentifier}
+                  onCustomerSelect={(customer) => {
+                    setSelectedCustomer(customer)
+                    if (customer) {
+                      setCurrentStep(2)
+                    }
+                  }}
+                  onAddNewPartyClick={() => {
+                    if (identifier.trim().length >= 3) {
+                      setShowAddNewForm(true)
+                    }
+                  }}
+                  autoFocus={isOpen && currentStep === 1}
+                  disabled={isSubmitting}
+                />
 
-                  {/* Identifier Input */}
-                  <IdentifierInput
-                    value={identifier}
-                    onChange={setIdentifier}
-                    onValidationChange={(isValid, type) => {
-                      dispatch({ type: 'SET_IDENTIFIER_VALID', payload: isValid })
-                      dispatch({ type: 'SET_IDENTIFIER_TYPE', payload: type })
-                      if (errors.identifier) {
-                        dispatch({ type: 'SET_ERRORS', payload: {} }) // Clear error when user starts typing
-                      }
-                    }}
-                    onSearch={handleLookupCustomer}
-                    onClear={() => {
-                      dispatch({ type: 'SET_SELECTED_CUSTOMER', payload: null })
-                      dispatch({ type: 'SET_LOOKUP_PERFORMED', payload: false })
-                      dispatch({ type: 'SET_SHOW_ADD_NEW_FORM', payload: false })
-                    }}
-                    autoFocus={isOpen && currentStep === 1}
-                    disabled={isSubmitting}
-                    searching={searching}
-                  />
-                </div>
-
-                {/* Search Result */}
-                {lookupPerformed && !searching && selectedCustomer && (
+                {/* Selected Customer Display */}
+                {selectedCustomer && !showAddNewForm && (
                   <div className="mt-4">
-                    <h4 className="text-sm font-semibold text-primary-text mb-sm">Existing Customer Found</h4>
-                    <CustomerResultCard
-                      customer={selectedCustomer}
-                      onSelect={() => dispatch({ type: 'SET_STEP', payload: 2 })}
-                    />
-                  </div>
-                )}
-                
-                {lookupPerformed && !searching && !selectedCustomer && (
-                  <div className="mt-4 text-center p-md bg-neutral-50 rounded-md">
-                    <p className="text-sm text-secondary-text">No existing customer found with this identifier.</p>
-                    <Button
-                      variant="ghost"
-                      onClick={() => dispatch({ type: 'SET_SHOW_ADD_NEW_FORM', payload: true })}
-                      className="mt-xs"
-                    >
-                      Click here to add them as a new customer.
-                    </Button>
+                    <h4 className="text-sm font-semibold text-primary-text mb-sm">Selected Customer</h4>
+                    {/* Customer details would be displayed here, e.g., using a Card or custom component */}
+                    <Card>
+                      <CardContent className="p-4">
+                        <p className="text-md font-semibold text-primary-text">
+                          {selectedCustomer.alias_name || selectedCustomer.name || selectedCustomer.master_customer.legal_name}
+                        </p>
+                        {selectedCustomer.mobile && (
+                          <p className="text-sm text-secondary-text">Mobile: {selectedCustomer.mobile}</p>
+                        )}
+                        {selectedCustomer.master_customer.gstin && (
+                          <p className="text-sm text-secondary-text">GSTIN: {selectedCustomer.master_customer.gstin}</p>
+                        )}
+                        <Button
+                          variant="secondary"
+                          size="sm"
+                          onClick={() => setCurrentStep(2)}
+                          className="mt-2"
+                        >
+                          Continue
+                        </Button>
+                      </CardContent>
+                    </Card>
                   </div>
                 )}
               </>
@@ -1374,9 +1164,9 @@ export function InvoiceForm({
 
             {/* Create New Item Button */}
             <div className="mb-md">
-              <Button 
-                type="button" 
-                variant="primary" 
+              <Button
+                type="button"
+                variant="primary"
                 onClick={handleAddItem}
                 disabled={isSubmitting || !selectedCustomer}
               >
@@ -1399,13 +1189,12 @@ export function InvoiceForm({
                   const isInvalid = hasInvalidSerials || hasValidationErrors
 
                   return (
-                    <div 
-                      key={index} 
-                      className={`border rounded-md p-md space-y-md ${
-                        isInvalid 
-                          ? 'border-error bg-error-light/10' 
-                          : 'border-neutral-200'
-                      }`}
+                    <div
+                      key={index}
+                      className={`border rounded-md p-md space-y-md ${isInvalid
+                        ? 'border-error bg-error-light/10'
+                        : 'border-neutral-200'
+                        }`}
                     >
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-sm">
@@ -1456,11 +1245,10 @@ export function InvoiceForm({
                                 return (
                                   <div
                                     key={serialIndex}
-                                    className={`flex items-center justify-between p-sm rounded-md ${
-                                      isInvalidSerial 
-                                        ? 'bg-error-light border border-error' 
-                                        : 'bg-neutral-50'
-                                    }`}
+                                    className={`flex items-center justify-between p-sm rounded-md ${isInvalidSerial
+                                      ? 'bg-error-light border border-error'
+                                      : 'bg-neutral-50'
+                                      }`}
                                   >
                                     <div className="flex items-center gap-xs">
                                       <span className="text-sm text-primary-text font-mono">
@@ -1499,7 +1287,7 @@ export function InvoiceForm({
                             type="text"
                             value={serialInputs[index] || ''}
                             onChange={(e) => {
-                              dispatch({ type: 'SET_SERIAL_INPUT', payload: { index, value: e.target.value } })
+                              setSerialInputs({ ...serialInputs, [index]: e.target.value })
                             }}
                             onKeyDown={(e) => {
                               if (e.key === 'Enter') {
@@ -1507,7 +1295,7 @@ export function InvoiceForm({
                                 const value = serialInputs[index]?.trim()
                                 if (value) {
                                   handleAddSerial(index, value)
-                                  dispatch({ type: 'SET_SERIAL_INPUT', payload: { index, value: '' } })
+                                  setSerialInputs({ ...serialInputs, [index]: '' })
                                 }
                               }
                             }}
@@ -1611,13 +1399,12 @@ export function InvoiceForm({
                 const hasInvalidSerials = item.invalid_serials && item.invalid_serials.length > 0
                 const hasValidationErrors = item.validation_errors && item.validation_errors.length > 0
                 const isInvalid = hasInvalidSerials || hasValidationErrors
-                
+
                 return (
-                  <div 
-                    key={index} 
-                    className={`border-b last:border-0 pb-sm mb-sm ${
-                      isInvalid ? 'border-error bg-error-light/10' : 'border-neutral-200'
-                    }`}
+                  <div
+                    key={index}
+                    className={`border-b last:border-0 pb-sm mb-sm ${isInvalid ? 'border-error bg-error-light/10' : 'border-neutral-200'
+                      }`}
                   >
                     <div className="flex justify-between text-sm">
                       <div className="flex-1">
@@ -1685,7 +1472,7 @@ export function InvoiceForm({
               {/* Zero-rated or Exempt indicator */}
               {(totals.supply_type === 'zero_rated' || totals.supply_type === 'exempt') && totals.cgst_amount === 0 && totals.sgst_amount === 0 && totals.igst_amount === 0 && (
                 <div className="text-xs text-secondary-text py-xs">
-                  {totals.supply_type === 'zero_rated' 
+                  {totals.supply_type === 'zero_rated'
                     ? 'Zero-Rated Supply - No Tax Applicable'
                     : 'Exempt Supply - No Tax Applicable'}
                 </div>
@@ -1694,19 +1481,19 @@ export function InvoiceForm({
                 <span className="text-primary-text">Total</span>
                 <span className="text-primary-text">${totals.total_amount.toFixed(2)}</span>
               </div>
-              {items.some(item => 
+              {items.some(item =>
                 (item.invalid_serials && item.invalid_serials.length > 0) ||
                 (item.validation_errors && item.validation_errors.length > 0)
               ) && (
-                <div className="mt-md p-md bg-warning-light border border-warning rounded-md">
-                  <p className="text-sm font-medium text-warning-dark">
-                    ⚠️ This invoice contains items that need branch head review
-                  </p>
-                  <p className="text-xs text-warning-dark mt-xs">
-                    Please fix validation errors before finalizing the invoice.
-                  </p>
-                </div>
-              )}
+                  <div className="mt-md p-md bg-warning-light border border-warning rounded-md">
+                    <p className="text-sm font-medium text-warning-dark">
+                      ⚠️ This invoice contains items that need branch head review
+                    </p>
+                    <p className="text-xs text-warning-dark mt-xs">
+                      Please fix validation errors before finalizing the invoice.
+                    </p>
+                  </div>
+                )}
             </div>
           </div>
         </div>
@@ -1719,7 +1506,7 @@ export function InvoiceForm({
             <Button
               type="button"
               variant="secondary"
-              onClick={() => dispatch({ type: 'PREV_STEP' })}
+              onClick={() => setCurrentStep((s) => (s - 1) as Step)}
               disabled={isSubmitting}
               className="w-full"
             >
@@ -1736,9 +1523,9 @@ export function InvoiceForm({
               variant="primary"
               onClick={() => {
                 if (currentStep === 1 && canProceedToStep2) {
-                  dispatch({ type: 'SET_STEP', payload: 2 })
+                  setCurrentStep(2)
                 } else if (currentStep === 2 && canProceedToStep3) {
-                  dispatch({ type: 'SET_STEP', payload: 3 })
+                  setCurrentStep(3)
                 }
               }}
               disabled={
@@ -1755,22 +1542,22 @@ export function InvoiceForm({
 
           {currentStep === 3 && (
             <>
-              <Button 
-                type="button" 
-                variant="secondary" 
-                onClick={onClose} 
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={onClose}
                 disabled={isSubmitting}
                 className="flex-1"
               >
                 Cancel
               </Button>
-              <Button 
-                type="submit" 
-                variant="primary" 
+              <Button
+                type="submit"
+                variant="primary"
                 isLoading={isSubmitting}
                 className="flex-1"
                 disabled={
-                  items.some(item => 
+                  items.some(item =>
                     (item.invalid_serials && item.invalid_serials.length > 0) ||
                     (item.validation_errors && item.validation_errors.length > 0)
                   )
@@ -1815,26 +1602,32 @@ export function InvoiceForm({
         <Toast
           message={toast.message}
           type={toast.type}
-          onClose={() => dispatch({ type: 'SET_TOAST', payload: null })}
+          onClose={() => setToast(null)}
         />
       )}
-      {isMobileDevice() ? (
-        <Drawer isOpen={isOpen} onClose={onClose} title={formTitle} headerAction={headerAction}>
-          {FormContent}
-        </Drawer>
+      {mode === 'page' ? (
+        // Page mode: render form content directly without modal/drawer wrapper
+        FormContent
       ) : (
-        <Modal isOpen={isOpen} onClose={onClose} title={formTitle} headerAction={headerAction}>
-          {FormContent}
-        </Modal>
+        // Modal mode: wrap in Drawer (mobile) or Modal (desktop)
+        isMobileDevice() ? (
+          <Drawer isOpen={isOpen} onClose={onClose} title={formTitle} headerAction={headerAction}>
+            {FormContent}
+          </Drawer>
+        ) : (
+          <Modal isOpen={isOpen} onClose={onClose} title={formTitle} headerAction={headerAction}>
+            {FormContent}
+          </Modal>
+        )
       )}
 
       {/* Camera Scanner - Continuous Mode */}
       <CameraScanner
         isOpen={scannerMode === 'scanning' || scannerMode === 'confirming'}
         onClose={() => {
-          dispatch({ type: 'SET_SCANNER_MODE', payload: 'closed' })
-          dispatch({ type: 'SET_SHOW_CONFIRM_SHEET', payload: false })
-          dispatch({ type: 'SET_PENDING_PRODUCT', payload: null })
+          setScannerMode('closed')
+          setShowConfirmSheet(false)
+          setPendingProduct(null)
         }}
         onScanSuccess={handleScanFromCamera}
         continuousMode={true}
@@ -1842,7 +1635,7 @@ export function InvoiceForm({
 
       {/* Backdrop - z-index 9999, dims content but NOT scanner */}
       {scannerMode === 'confirming' && (
-        <div 
+        <div
           className="fixed inset-0 bg-black/40"
           style={{ zIndex: 9999 }}
           onClick={handleCancelConfirm}

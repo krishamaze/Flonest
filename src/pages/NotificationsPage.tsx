@@ -38,7 +38,7 @@ export function NotificationsPage() {
 
   // Register refresh handler for pull-to-refresh
   useEffect(() => {
-    registerRefreshHandler(() => refetch())
+    registerRefreshHandler(async () => { await refetch() })
     return () => unregisterRefreshHandler()
   }, [registerRefreshHandler, unregisterRefreshHandler, refetch])
 
@@ -119,41 +119,37 @@ export function NotificationsPage() {
       <div className="flex gap-sm border-b border-neutral-200 overflow-x-auto">
         <button
           onClick={() => setFilter('all')}
-          className={`px-md py-sm text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
-            filter === 'all'
+          className={`px-md py-sm text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${filter === 'all'
               ? 'border-primary text-primary'
               : 'border-transparent text-secondary-text hover:text-primary-text'
-          }`}
+            }`}
         >
           All ({notifications.length})
         </button>
         <button
           onClick={() => setFilter('unread')}
-          className={`px-md py-sm text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
-            filter === 'unread'
+          className={`px-md py-sm text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${filter === 'unread'
               ? 'border-primary text-primary'
               : 'border-transparent text-secondary-text hover:text-primary-text'
-          }`}
+            }`}
         >
           Unread ({unreadCount})
         </button>
         <button
           onClick={() => setFilter('product_approved')}
-          className={`px-md py-sm text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
-            filter === 'product_approved'
+          className={`px-md py-sm text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${filter === 'product_approved'
               ? 'border-primary text-primary'
               : 'border-transparent text-secondary-text hover:text-primary-text'
-          }`}
+            }`}
         >
           Approved
         </button>
         <button
           onClick={() => setFilter('product_rejected')}
-          className={`px-md py-sm text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
-            filter === 'product_rejected'
+          className={`px-md py-sm text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${filter === 'product_rejected'
               ? 'border-primary text-primary'
               : 'border-transparent text-secondary-text hover:text-primary-text'
-          }`}
+            }`}
         >
           Rejected
         </button>

@@ -23,7 +23,7 @@ import type { Invoice, InvoiceFormData, Org, CustomerWithMaster } from '../types
 export const useInvoices = (
   orgId: string | null | undefined,
   params?: {
-    status?: 'draft' | 'posted' | 'cancelled'
+    status?: 'draft' | 'finalized' | 'cancelled'
     limit?: number
     offset?: number
   }
@@ -81,10 +81,17 @@ export const useDraftInvoiceByCustomer = (
  */
 export const useDraftInvoiceData = (invoiceId: string | null | undefined, enabled: boolean = true) => {
   return useQuery<{
-    invoice: Invoice
-    items: any[]
-    customer: any
-  }>({
+    customer_id: string
+    draft_session_id?: string
+    items: Array<{
+      product_id: string
+      quantity: number
+      unit_price: number
+      line_total: number
+      serials?: string[]
+      serial_tracked?: boolean
+    }>
+  } | null>({
     queryKey: ['draft-invoice-data', invoiceId],
     queryFn: async () => {
       if (!invoiceId) throw new Error('Invoice ID is required')
@@ -137,7 +144,7 @@ export const useFinalizeInvoice = (orgId: string | null | undefined) => {
       if (!orgId) throw new Error('Organization ID is required')
       return finalizeInvoice(invoiceId, orgId)
     },
-    onSuccess: (data, invoiceId) => {
+    onSuccess: (_data, invoiceId) => {
       // Invalidate invoices list
       queryClient.invalidateQueries({ queryKey: ['invoices', orgId] })
       // Invalidate specific invoice
@@ -154,15 +161,16 @@ export const useFinalizeInvoice = (orgId: string | null | undefined) => {
 /**
  * Mutation hook to post (finalize + record) a sales invoice
  */
-export const usePostSalesInvoice = (orgId: string | null | undefined) => {
+export const usePostSalesInvoice = (orgId: string | null | undefined, userId: string | null | undefined) => {
   const queryClient = useQueryClient()
 
-  return useMutation<Invoice, Error, string>({
+  return useMutation<{ success: boolean; invoice_id: string; status: string; stock_entries_created?: number }, Error, string>({
     mutationFn: async (invoiceId: string) => {
       if (!orgId) throw new Error('Organization ID is required')
-      return postSalesInvoice(invoiceId, orgId)
+      if (!userId) throw new Error('User ID is required')
+      return postSalesInvoice(invoiceId, orgId, userId)
     },
-    onSuccess: (data, invoiceId) => {
+    onSuccess: (_data, invoiceId) => {
       // Invalidate invoices list
       queryClient.invalidateQueries({ queryKey: ['invoices', orgId] })
       // Invalidate specific invoice
@@ -185,7 +193,7 @@ export const useCancelInvoice = (orgId: string | null | undefined) => {
       if (!orgId) throw new Error('Organization ID is required')
       return cancelInvoice(invoiceId, orgId)
     },
-    onSuccess: (data, invoiceId) => {
+    onSuccess: (_data, invoiceId) => {
       // Invalidate invoices list
       queryClient.invalidateQueries({ queryKey: ['invoices', orgId] })
       // Invalidate specific invoice
@@ -199,14 +207,25 @@ export const useCancelInvoice = (orgId: string | null | undefined) => {
  */
 export const useValidateInvoiceItems = () => {
   return useMutation<
-    { valid: boolean; errors: string[] },
+    { valid: boolean; errors: Array<{
+      item_index: number
+      type: string
+      message: string
+      product_id?: string
+      serial?: string
+      available_stock?: number
+      requested_quantity?: number
+      master_product_id?: string
+      approval_status?: string
+      hsn_code?: string
+    }> },
     Error,
     {
       items: any[]
       orgId: string
     }
   >({
-    mutationFn: ({ items, orgId }) => validateInvoiceItems(items, orgId),
+    mutationFn: ({ items, orgId }) => validateInvoiceItems(orgId, items),
   })
 }
 
@@ -217,19 +236,17 @@ export const useRevalidateDraftInvoice = (orgId: string | null | undefined) => {
   const queryClient = useQueryClient()
 
   return useMutation<
-    Invoice,
+    { valid: boolean; errors: any[]; updated: boolean },
     Error,
     {
       invoiceId: string
-      org: Org
-      customer: CustomerWithMaster
     }
   >({
-    mutationFn: async ({ invoiceId, org, customer }) => {
+    mutationFn: async ({ invoiceId }) => {
       if (!orgId) throw new Error('Organization ID is required')
-      return revalidateDraftInvoice(invoiceId, org, customer)
+      return revalidateDraftInvoice(invoiceId, orgId)
     },
-    onSuccess: (data, { invoiceId }) => {
+    onSuccess: (_data, { invoiceId }) => {
       // Invalidate specific invoice
       queryClient.invalidateQueries({ queryKey: ['invoice', invoiceId] })
       // Invalidate draft invoice queries
@@ -249,21 +266,19 @@ export const useAutoSaveInvoiceDraft = (
   const queryClient = useQueryClient()
 
   return useMutation<
-    Invoice,
+    { invoiceId: string; sessionId: string },
     Error,
     {
       draftId: string | null
       data: InvoiceFormData
-      org: Org
-      customer: CustomerWithMaster
     }
   >({
-    mutationFn: async ({ draftId, data, org, customer }) => {
+    mutationFn: async ({ draftId, data }) => {
       if (!orgId) throw new Error('Organization ID is required')
       if (!userId) throw new Error('User ID is required')
-      return autoSaveInvoiceDraft(orgId, userId, draftId, data, org, customer)
+      return autoSaveInvoiceDraft(orgId, userId, draftId || '', data)
     },
-    onSuccess: (data, { draftId }) => {
+    onSuccess: (_data, { draftId }) => {
       // Invalidate draft queries
       queryClient.invalidateQueries({ queryKey: ['draft-invoice'] })
       if (draftId) {
@@ -280,7 +295,7 @@ export const useAutoSaveInvoiceDraft = (
 export const useDeleteDraft = (orgId: string | null | undefined) => {
   const queryClient = useQueryClient()
 
-  return useMutation<void, Error, string>({
+  return useMutation<void, Error, string, { previousInvoices: Invoice[] | undefined }>({
     mutationFn: async (invoiceId: string) => {
       if (!orgId) throw new Error('Organization ID is required')
       return deleteDraft(invoiceId, orgId)
@@ -322,7 +337,7 @@ export const useDeleteDraft = (orgId: string | null | undefined) => {
  */
 export const useValidateScannerCodes = () => {
   return useMutation<ScanResult[], Error, { codes: string[]; orgId: string }>({
-    mutationFn: ({ codes, orgId }) => validateScannerCodes(codes, orgId),
+    mutationFn: ({ codes, orgId }) => validateScannerCodes(orgId, codes),
   })
 }
 

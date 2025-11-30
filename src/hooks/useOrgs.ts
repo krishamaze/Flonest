@@ -48,7 +48,7 @@ export const useIsSlugAvailable = (slug: string | null | undefined, excludeOrgId
 export const useUpdateOrg = (orgId: string | null | undefined) => {
   const queryClient = useQueryClient()
 
-  return useMutation<Org, Error, UpdateOrgData>({
+  return useMutation<Org, Error, UpdateOrgData, { previousOrg: Org | undefined }>({
     mutationFn: async (data: UpdateOrgData) => {
       if (!orgId) throw new Error('Organization ID is required')
       return updateOrg(orgId, data)

@@ -23,7 +23,7 @@ export function CustomersPage() {
 
   // Register refresh handler for pull-to-refresh
   useEffect(() => {
-    registerRefreshHandler(() => refetch())
+    registerRefreshHandler(async () => { await refetch() })
     return () => unregisterRefreshHandler()
   }, [registerRefreshHandler, unregisterRefreshHandler, refetch])
 
@@ -47,7 +47,7 @@ export function CustomersPage() {
     )
   })
 
-  const handleUpdateCustomer = (data: any) => {
+  const handleUpdateCustomer = async (data: any) => {
     if (!editingCustomer) return
 
     updateCustomer(
@@ -109,7 +109,7 @@ export function CustomersPage() {
           placeholder="Search by name, mobile, GSTIN, or email..."
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full rounded-md border border-neutral-300 bg-bg-card py-sm pl-[2.5rem] pr-md text-sm min-h-[44px] focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all"
+          className="w-full rounded-md border border-neutral-300 bg-bg-card py-sm pl-[2.5rem] pr-md text-sm min-h-[44px] focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all"
           aria-label="Search customers"
         />
       </div>

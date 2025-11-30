@@ -10,10 +10,11 @@ import { toast } from 'react-toastify'
 import type { Org } from '../../types'
 
 interface OrgWithVerification extends Org {
-  gst_verification_status: string | null
+  gst_verification_status: string
   gst_verification_source: string | null
   gst_verified_at: string | null
   gst_verified_by: string | null
+  gst_verification_notes: string | null
 }
 
 interface ParsedGstDetails {
@@ -55,7 +56,7 @@ export function GstVerificationQueue() {
 
       if (error) throw error
 
-      setOrgs((data || []) as OrgWithVerification[])
+      setOrgs((data || []) as unknown as OrgWithVerification[])
     } catch (err) {
       console.error('[GstVerificationQueue] Failed to load queue', err)
       toast.error('Failed to load verification queue')
@@ -83,56 +84,56 @@ export function GstVerificationQueue() {
     const parsed: ParsedGstDetails = {}
     const errors: string[] = []
     const warnings: string[] = []
-    
+
     // First: Strict GSTIN validation
     const gstinMatch = text.match(/Search Result based on GSTIN\/UIN\s*:\s*([A-Z0-9]{15})/i)
     if (!gstinMatch) {
       errors.push('GST portal header not found. Please paste complete portal results.')
       return { parsed, errors, warnings }
     }
-    
+
     const foundGstin = gstinMatch[1].toUpperCase()
     if (foundGstin !== expectedGstin.toUpperCase()) {
       errors.push(`Pasted GSTIN (${foundGstin}) does not match the GSTIN being verified (${expectedGstin})`)
       return { parsed, errors, warnings }
     }
-    
+
     parsed.gstin = foundGstin
-    
+
     // Parse all portal fields exactly
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i]
-      
+
       // Legal Name of Business
       if (line === 'Legal Name of Business' && i + 1 < lines.length) {
         parsed.legalName = lines[i + 1]
       }
-      
+
       // Trade Name
       if (line === 'Trade Name' && i + 1 < lines.length) {
         parsed.tradeName = lines[i + 1]
       }
-      
+
       // Effective Date of registration (DD/MM/YYYY)
       if (line === 'Effective Date of registration' && i + 1 < lines.length) {
         parsed.registrationDate = lines[i + 1]
       }
-      
+
       // Constitution of Business
       if (line === 'Constitution of Business' && i + 1 < lines.length) {
         parsed.constitution = lines[i + 1]
       }
-      
+
       // GSTIN / UIN Status
       if (line === 'GSTIN / UIN Status' && i + 1 < lines.length) {
         parsed.status = lines[i + 1]
       }
-      
+
       // Taxpayer Type
       if (line === 'Taxpayer Type' && i + 1 < lines.length) {
         parsed.taxpayerType = lines[i + 1]
       }
-      
+
       // Principal Place of Business (multi-line address)
       if (line === 'Principal Place of Business' && i + 1 < lines.length) {
         const addressLines: string[] = []
@@ -146,7 +147,7 @@ export function GstVerificationQueue() {
         }
         parsed.principalAddress = addressLines.join(', ')
       }
-      
+
       // Administrative Office (STATE jurisdiction)
       if (line.match(/Administrative Office.*JURISDICTION.*STATE/i) && i + 1 < lines.length) {
         const jurisdictionLines: string[] = []
@@ -157,13 +158,13 @@ export function GstVerificationQueue() {
         }
         parsed.stateJurisdiction = jurisdictionLines.join('; ')
       }
-      
+
       // Nature Of Core Business Activity
       if (line === 'Nature Of Core Business Activity' && i + 1 < lines.length) {
         parsed.coreBusinessActivity = lines[i + 1]
       }
     }
-    
+
     // Auto-fill state from GSTIN if not found in portal
     if (!parsed.stateJurisdiction && parsed.gstin) {
       const stateCode = extractStateCodeFromGSTIN(parsed.gstin)
@@ -172,12 +173,12 @@ export function GstVerificationQueue() {
         parsed.stateJurisdiction = stateName
       }
     }
-    
+
     // Validation warnings
     if (parsed.status && parsed.status.toLowerCase() !== 'active') {
       warnings.push(`GSTIN status is "${parsed.status}" (not Active). Please verify.`)
     }
-    
+
     return { parsed, errors, warnings }
   }
 
@@ -188,7 +189,7 @@ export function GstVerificationQueue() {
     const notesParts: string[] = []
     notesParts.push(`Verified from GST Portal on ${new Date().toLocaleDateString('en-IN')}`)
     notesParts.push('')
-    
+
     if (parsed.gstin) notesParts.push(`GSTIN: ${parsed.gstin}`)
     if (parsed.legalName) notesParts.push(`Legal Name: ${parsed.legalName}`)
     if (parsed.tradeName) notesParts.push(`Trade Name: ${parsed.tradeName}`)
@@ -200,16 +201,16 @@ export function GstVerificationQueue() {
     if (parsed.stateJurisdiction) notesParts.push(`State Jurisdiction: ${parsed.stateJurisdiction}`)
     if (parsed.centreJurisdiction) notesParts.push(`Centre Jurisdiction: ${parsed.centreJurisdiction}`)
     if (parsed.coreBusinessActivity) notesParts.push(`Core Business Activity: ${parsed.coreBusinessActivity}`)
-    
+
     return notesParts.join('\n')
   }
 
   const handleVerifyClick = async () => {
     if (!verifyingOrgId) return
-    
+
     const org = orgs.find(o => o.id === verifyingOrgId)
     if (!org?.gst_number) return
-    
+
     // Copy GSTIN to clipboard
     try {
       await navigator.clipboard.writeText(org.gst_number)
@@ -218,60 +219,60 @@ export function GstVerificationQueue() {
       toast.error('Failed to copy GSTIN')
       return
     }
-    
+
     // Open GST portal in new window
     window.open(
       'https://services.gst.gov.in/services/searchtp',
       '_blank',
       'width=1200,height=800'
     )
-    
+
     // Change button state
     setVerificationStep('awaiting-paste')
   }
 
   const handlePasteFromClipboard = async () => {
     if (!verifyingOrgId) return
-    
+
     const org = orgs.find(o => o.id === verifyingOrgId)
     if (!org?.gst_number) return
-    
+
     setVerifying(true)
     setGstDetailsError(null)
-    
+
     try {
       // Read clipboard
       const clipboardText = await navigator.clipboard.readText()
-      
+
       if (!clipboardText.trim()) {
         setGstDetailsError('Clipboard is empty. Copy GST portal results first.')
         setVerifying(false)
         return
       }
-      
+
       // Parse with strict validation
       const { parsed, errors, warnings } = parseGstPortalResult(clipboardText, org.gst_number)
-      
+
       // Show errors
       if (errors.length > 0) {
         setGstDetailsError(errors.join('. '))
         setVerifying(false)
         return
       }
-      
+
       // Show warnings
       if (warnings.length > 0) {
         warnings.forEach(warning => toast.warning(warning, { autoClose: 5000 }))
       }
-      
+
       // Check if legal name matches org name (warning only)
       if (parsed.legalName && org.name && parsed.legalName.toLowerCase() !== org.name.toLowerCase()) {
         toast.warning(`Legal name "${parsed.legalName}" differs from org name "${org.name}"`, { autoClose: 5000 })
       }
-      
+
       // Auto-generate verification notes
       const notes = generateVerificationNotes(parsed)
-      
+
       // Verify immediately (no preview)
       await markGstVerified(
         verifyingOrgId,
@@ -279,11 +280,11 @@ export function GstVerificationQueue() {
         parsed.legalName || null,
         parsed.principalAddress || null
       )
-      
+
       toast.success('GSTIN verified successfully')
       setVerificationStep('initial')
       setVerifyingOrgId(null)
-      
+
       // Refresh list
       await loadQueue()
     } catch (error: any) {
@@ -402,7 +403,7 @@ export function GstVerificationQueue() {
       {/* Verification Modal - Simplified Single-Button Workflow */}
       {verifyingOrgId && (() => {
         const org = orgs.find(o => o.id === verifyingOrgId)
-        
+
         return (
           <Modal
             key={verifyingOrgId}
@@ -421,7 +422,7 @@ export function GstVerificationQueue() {
                   </span>
                 </div>
               </div>
-              
+
               {/* Instructions */}
               <div className="space-y-xs text-sm text-secondary-text">
                 <p>1. Click button below to open GST portal (GSTIN will be copied)</p>
@@ -429,14 +430,14 @@ export function GstVerificationQueue() {
                 <p>3. Copy all portal results</p>
                 <p>4. Close portal window and click "Paste from Clipboard"</p>
               </div>
-              
+
               {/* Error display */}
               {gstDetailsError && (
                 <div className="rounded-lg border border-error bg-error-light px-md py-sm text-sm text-error-dark">
                   {gstDetailsError}
                 </div>
               )}
-              
+
               {/* Action button (morphs between states) */}
               {verificationStep === 'initial' ? (
                 <Button
@@ -458,7 +459,7 @@ export function GstVerificationQueue() {
                   📋 Paste from Clipboard
                 </Button>
               )}
-              
+
               <Button variant="ghost" className="w-full" onClick={handleCloseModal}>
                 Cancel
               </Button>

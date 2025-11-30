@@ -1,0 +1,23 @@
+﻿src/components/forms/InvoiceForm.tsx(1,10): error TS6133: 'useReducer' is declared but its value is never read.
+src/components/forms/InvoiceForm.tsx(15,53): error TS6196: 'CustomerWithMaster' is declared but never used.
+src/components/forms/InvoiceForm.tsx(22,20): error TS6133: 'createInvoiceAPI' is declared but its value is never read.
+src/components/forms/InvoiceForm.tsx(23,27): error TS6133: 'autoSaveInvoiceDraftAPI' is declared but its value is never read.
+src/components/forms/InvoiceForm.tsx(24,27): error TS6133: 'validateInvoiceItemsAPI' is declared but its value is never read.
+src/components/forms/InvoiceForm.tsx(39,1): error TS6133: 'IdentifierType' is declared but its value is never read.
+src/components/forms/InvoiceForm.tsx(61,6): error TS6196: 'Step' is declared but never used.
+src/components/forms/InvoiceForm.tsx(116,9): error TS6133: 'queryClient' is declared but its value is never read.
+src/components/forms/InvoiceForm.tsx(754,11): error TS2353: Object literal may only specify known properties, and 'org' does not exist in type '{ draftId: string | null; data: InvoiceFormData; }'.
+src/components/forms/InvoiceForm.tsx(1334,31): error TS2552: Cannot find name 'setIdentifier'. Did you mean 'identifier'?
+src/components/platformAdmin/GstVerificationQueue.tsx(58,15): error TS2352: Conversion of type 'SelectQueryError<"column 'gst_verification_status' does not exist on 'orgs'.">[]' to type 'OrgWithVerification[]' may be a mistake because neither type sufficiently overlaps with the other. If this was intentional, convert the expression to 'unknown' first.
+  Type '{ error: true; } & String' is missing the following properties from type 'OrgWithVerification': gst_verification_status, gst_verification_source, gst_verified_at, gst_verified_by, and 18 more.
+src/hooks/useInvoices.ts(147,17): error TS6133: 'data' is declared but its value is never read.
+src/hooks/useInvoices.ts(173,17): error TS6133: 'data' is declared but its value is never read.
+src/hooks/useInvoices.ts(196,17): error TS6133: 'data' is declared but its value is never read.
+src/hooks/useInvoices.ts(249,17): error TS6133: 'data' is declared but its value is never read.
+src/hooks/useInvoices.ts(279,50): error TS2345: Argument of type 'string | null' is not assignable to parameter of type 'string'.
+  Type 'null' is not assignable to type 'string'.
+src/hooks/useInvoices.ts(281,17): error TS6133: 'data' is declared but its value is never read.
+src/lib/api/orgs.ts(199,5): error TS2322: Type 'string | null | undefined' is not assignable to type 'string | undefined'.
+  Type 'null' is not assignable to type 'string | undefined'.
+src/lib/api/orgs.ts(200,5): error TS2322: Type 'string | null | undefined' is not assignable to type 'string | undefined'.
+  Type 'null' is not assignable to type 'string | undefined'.

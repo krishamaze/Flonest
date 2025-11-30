@@ -52,7 +52,7 @@ export const useUnreadCount = (userId: string | null | undefined) => {
 export const useMarkAsRead = (userId: string | null | undefined) => {
   const queryClient = useQueryClient()
 
-  return useMutation<void, Error, string>({
+  return useMutation<void, Error, string, { previousNotifications: Notification[] | undefined; previousUnreadCount: number | undefined }>({
     mutationFn: (notificationId: string) => markAsRead(notificationId),
     // Optimistic update
     onMutate: async (notificationId) => {
@@ -105,7 +105,7 @@ export const useMarkAsRead = (userId: string | null | undefined) => {
 export const useMarkAllAsRead = (userId: string | null | undefined) => {
   const queryClient = useQueryClient()
 
-  return useMutation<void, Error>({
+  return useMutation<void, Error, void, { previousNotifications: Notification[] | undefined; previousUnreadCount: number | undefined }>({
     mutationFn: async () => {
       if (!userId) throw new Error('User ID is required')
       return markAllAsRead(userId)
@@ -157,7 +157,7 @@ export const useMarkAllAsRead = (userId: string | null | undefined) => {
 export const useDeleteNotification = (userId: string | null | undefined) => {
   const queryClient = useQueryClient()
 
-  return useMutation<void, Error, string>({
+  return useMutation<void, Error, string, { previousNotifications: Notification[] | undefined; previousUnreadCount: number | undefined }>({
     mutationFn: (notificationId: string) => deleteNotification(notificationId),
     // Optimistic update
     onMutate: async (notificationId) => {

@@ -147,8 +147,8 @@ export interface InvoiceItemFormData {
 
 export interface CustomerWithMaster extends Customer {
   master_customer: MasterCustomer
-  status: 'name_only' | 'edited' | 'verified' | null
-  name: string | null
+  name: string // Display name (alias_name || master_customer.legal_name)
+  status: 'verified' | 'pending' | 'unverified' | 'edited' | 'name_only' // Verification status
 }
 
 export interface ScanResult {
