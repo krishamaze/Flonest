@@ -34,15 +34,19 @@ interface UseInvoiceDraftReturn {
 }
 
 export function useInvoiceDraft(params: UseInvoiceDraftParams): UseInvoiceDraftReturn {
-  // Temporarily log params to avoid unused error - will be removed when logic is implemented
-  console.log('useInvoiceDraft params:', params.isOpen ? 'open' : 'closed')
+  // Real state - moved from InvoiceForm
+  const [draftInvoiceId, setDraftInvoiceId] = useState<string | null>(
+    params.initialDraftInvoiceId || null
+  )
+  const [loadingDraft, setLoadingDraft] = useState(false)
+  const [draftLoadError, setDraftLoadError] = useState<string | null>(null)
+  const [isRetrying, setIsRetrying] = useState(false)
+  const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved'>('idle')
   
-  // Placeholder state - will be moved from InvoiceForm in next step
-  const [draftInvoiceId] = useState<string | null>(null)
-  const [loadingDraft] = useState(false)
-  const [draftLoadError] = useState<string | null>(null)
-  const [saveStatus] = useState<'idle' | 'saving' | 'saved'>('idle')
-  const [isRetrying] = useState(false)
+  // Temporary - suppress unused variable warnings
+  console.log('Draft state:', { draftInvoiceId, loadingDraft, draftLoadError, isRetrying, saveStatus })
+  console.log('Draft setters:', { setDraftInvoiceId, setLoadingDraft, setDraftLoadError, setIsRetrying, setSaveStatus })
+  console.log('Params:', params.customerId, params.items.length)
   
   // Placeholder functions - will be implemented in next steps
   const handleManualSaveDraft = () => {

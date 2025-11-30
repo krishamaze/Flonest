@@ -93,18 +93,17 @@ export function InvoiceForm({
   const [pendingProduct, setPendingProduct] = useState<ProductWithMaster | null>(null)
   const [pendingQuantity, setPendingQuantity] = useState(1)
 
-  // Draft loading state
+  // TEMP: Draft loading state - keeping during migration, will be removed when effects move to hook
   const [loadingDraft, setLoadingDraft] = useState(false)
   const [draftLoadError, setDraftLoadError] = useState<string | null>(null)
   const [isRetrying, setIsRetrying] = useState(false)
+
+  // Draft session ID ref and retry counter - will be moved to hook later
   const draftLoadRetries = useRef(0)
   const MAX_RETRIES = 1
-
-  // Draft session ID ref - persists across re-renders
   const draftSessionId = useRef<string | null>(null)
 
-  // Use prop if provided, otherwise use internal state
-  const currentDraftInvoiceId = draftInvoiceId || internalDraftInvoiceId
+
 
   // Toast deduplication hook
   const { showToast } = useToastDedupe()
@@ -149,6 +148,9 @@ export function InvoiceForm({
   // Temporary log to use hook outputs during skeleton phase - will be removed
   console.log('Draft hook status:', { hookDraftId, hookLoadingDraft, hookDraftLoadError, hookSaveStatus, hookIsRetrying })
   console.log('Draft hook actions:', { hookHandleManualSaveDraft, hookClearDraftSession, hookRetryLoadDraft })
+
+  // Use prop draftInvoiceId if provided, otherwise use hook's internal ID
+  const currentDraftInvoiceId = draftInvoiceId || hookDraftId || internalDraftInvoiceId
 
   // Load products when form opens
   useEffect(() => {
