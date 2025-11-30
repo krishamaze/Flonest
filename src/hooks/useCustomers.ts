@@ -1,0 +1,190 @@
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import {
+  getCustomersByOrg,
+  getCustomerById,
+  updateOrgCustomer,
+  lookupOrCreateCustomer,
+  checkCustomerExists,
+  searchCustomersByIdentifier,
+  type CustomerWithMaster,
+  type LookupResult,
+} from '../lib/api/customers'
+import type { Database } from '../types/database'
+
+type MasterCustomer = Database['public']['Tables']['master_customers']['Row']
+type Customer = Database['public']['Tables']['customers']['Row']
+
+/**
+ * Query hook to get all customers for an organization
+ */
+export const useCustomers = (orgId: string | null | undefined) => {
+  return useQuery<CustomerWithMaster[]>({
+    queryKey: ['customers', orgId],
+    queryFn: async () => {
+      if (!orgId) throw new Error('Organization ID is required')
+      return getCustomersByOrg(orgId)
+    },
+    enabled: !!orgId,
+    staleTime: 30 * 1000, // 30 seconds
+    refetchOnWindowFocus: false,
+  })
+}
+
+/**
+ * Query hook to get a single customer by ID
+ */
+export const useCustomerById = (customerId: string | null | undefined) => {
+  return useQuery<CustomerWithMaster>({
+    queryKey: ['customer', customerId],
+    queryFn: async () => {
+      if (!customerId) throw new Error('Customer ID is required')
+      return getCustomerById(customerId)
+    },
+    enabled: !!customerId,
+    staleTime: 30 * 1000,
+    refetchOnWindowFocus: false,
+  })
+}
+
+/**
+ * Query hook to check if a customer exists by identifier
+ */
+export const useCheckCustomerExists = (identifier: string | null | undefined, enabled: boolean = true) => {
+  return useQuery<MasterCustomer | null>({
+    queryKey: ['customer-exists', identifier],
+    queryFn: async () => {
+      if (!identifier) return null
+      return checkCustomerExists(identifier)
+    },
+    enabled: enabled && !!identifier,
+    staleTime: 10 * 1000, // 10 seconds
+    refetchOnWindowFocus: false,
+  })
+}
+
+/**
+ * Query hook to search customers by identifier for an org
+ */
+export const useSearchCustomersByIdentifier = (
+  identifier: string | null | undefined,
+  orgId: string | null | undefined,
+  enabled: boolean = true
+) => {
+  return useQuery<CustomerWithMaster | null>({
+    queryKey: ['customer-search', identifier, orgId],
+    queryFn: async () => {
+      if (!identifier || !orgId) return null
+      return searchCustomersByIdentifier(identifier, orgId)
+    },
+    enabled: enabled && !!identifier && !!orgId,
+    staleTime: 10 * 1000,
+    refetchOnWindowFocus: false,
+  })
+}
+
+/**
+ * Mutation hook to update org-specific customer data
+ */
+export const useUpdateOrgCustomer = (orgId: string | null | undefined) => {
+  const queryClient = useQueryClient()
+
+  return useMutation<
+    Customer,
+    Error,
+    {
+      customerId: string
+      data: {
+        alias_name?: string
+        billing_address?: string
+        shipping_address?: string
+        notes?: string
+      }
+    }
+  >({
+    mutationFn: ({ customerId, data }) => updateOrgCustomer(customerId, data),
+    // Optimistic update
+    onMutate: async ({ customerId, data }) => {
+      await queryClient.cancelQueries({ queryKey: ['customers', orgId] })
+      await queryClient.cancelQueries({ queryKey: ['customer', customerId] })
+
+      const previousCustomers = queryClient.getQueryData<CustomerWithMaster[]>(['customers', orgId])
+      const previousCustomer = queryClient.getQueryData<CustomerWithMaster>(['customer', customerId])
+
+      // Optimistically update customers list
+      if (previousCustomers) {
+        queryClient.setQueryData<CustomerWithMaster[]>(
+          ['customers', orgId],
+          previousCustomers.map((c) =>
+            c.id === customerId ? { ...c, ...data, updated_at: new Date().toISOString() } : c
+          )
+        )
+      }
+
+      // Optimistically update single customer
+      if (previousCustomer) {
+        queryClient.setQueryData<CustomerWithMaster>(['customer', customerId], {
+          ...previousCustomer,
+          ...data,
+          updated_at: new Date().toISOString(),
+        })
+      }
+
+      return { previousCustomers, previousCustomer }
+    },
+    onError: (_error, { customerId }, context) => {
+      // Revert on error
+      if (context?.previousCustomers) {
+        queryClient.setQueryData(['customers', orgId], context.previousCustomers)
+      }
+      if (context?.previousCustomer) {
+        queryClient.setQueryData(['customer', customerId], context.previousCustomer)
+      }
+    },
+    onSuccess: (_, { customerId }) => {
+      // Invalidate queries to refetch fresh data
+      queryClient.invalidateQueries({ queryKey: ['customers', orgId] })
+      queryClient.invalidateQueries({ queryKey: ['customer', customerId] })
+    },
+  })
+}
+
+/**
+ * Mutation hook to lookup or create a customer
+ */
+export const useLookupOrCreateCustomer = (orgId: string | null | undefined, userId: string | null | undefined) => {
+  const queryClient = useQueryClient()
+
+  return useMutation<
+    LookupResult,
+    Error,
+    {
+      identifier: string
+      masterData?: {
+        legal_name?: string
+        address?: string
+        email?: string
+        mobile?: string
+        gstin?: string
+      }
+    }
+  >({
+    mutationFn: async ({ identifier, masterData }) => {
+      if (!orgId) throw new Error('Organization ID is required')
+      if (!userId) throw new Error('User ID is required')
+      return lookupOrCreateCustomer(identifier, orgId, userId, masterData)
+    },
+    onSuccess: (result) => {
+      // Invalidate customers list to include the new/updated customer
+      queryClient.invalidateQueries({ queryKey: ['customers', orgId] })
+      // Invalidate search queries
+      queryClient.invalidateQueries({ queryKey: ['customer-search'] })
+      queryClient.invalidateQueries({ queryKey: ['customer-exists'] })
+
+      // Optionally set the customer in cache
+      queryClient.setQueryData<CustomerWithMaster>(['customer', result.customer.id], {
+        ...result.customer,
+        master_customer: result.master,
+      })
+    },
+  })
+}
