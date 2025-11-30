@@ -42,8 +42,18 @@ export default defineConfig({
   // Configure projects for major browsers
   projects: [
     {
-      name: 'chromium',
-      use: { ...devices['Desktop Chrome'] },
+      name: 'desktop-chromium',
+      use: { 
+        ...devices['Desktop Chrome'],
+        viewport: { width: 1920, height: 1080 }
+      },
+    },
+    {
+      name: 'mobile-chromium',
+      use: { 
+        ...devices['iPhone SE'],
+        viewport: { width: 375, height: 667 }
+      },
     },
   ],
 

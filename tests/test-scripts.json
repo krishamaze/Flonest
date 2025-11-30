@@ -1,0 +1,10 @@
+{
+    "scripts": {
+        "test:invoice-flow": "playwright test tests/invoice-creation-flow.spec.ts",
+        "test:invoice-flow:ui": "playwright test tests/invoice-creation-flow.spec.ts --ui",
+        "test:invoice-flow:headed": "playwright test tests/invoice-creation-flow.spec.ts --headed",
+        "test:invoice-flow:mobile": "playwright test tests/invoice-creation-flow.spec.ts --project=mobile-chromium",
+        "test:invoice-flow:desktop": "playwright test tests/invoice-creation-flow.spec.ts --project=desktop-chromium",
+        "test:invoice-flow:debug": "playwright test tests/invoice-creation-flow.spec.ts --debug"
+    }
+}
