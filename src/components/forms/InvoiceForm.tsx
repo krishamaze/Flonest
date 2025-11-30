@@ -16,6 +16,7 @@ import { checkSerialStatus } from '../../lib/api/serials'
 import { validateScannerCodes } from '../../lib/api/scanner'
 import { calculateTax, createTaxContext, productToLineItem } from '../../lib/utils/taxCalculationService'
 import { useAutoSave } from '../../hooks/useAutoSave'
+import { useInvoiceDraft } from '../../hooks/invoice/useInvoiceDraft'
 import { ChevronLeftIcon, ChevronRightIcon, BookmarkIcon } from '@heroicons/react/24/outline'
 import { detectIdentifierType, validateMobile, validateGSTIN } from '../../lib/utils/identifierValidation'
 import { Toast } from '../ui/Toast'
@@ -107,6 +108,47 @@ export function InvoiceForm({
 
   // Toast deduplication hook
   const { showToast } = useToastDedupe()
+
+  // Draft management hook (placeholder - logic will be moved here incrementally)
+  const {
+    draftInvoiceId: hookDraftId,
+    loadingDraft: hookLoadingDraft,
+    draftLoadError: hookDraftLoadError,
+    saveStatus: hookSaveStatus,
+    isRetrying: hookIsRetrying,
+    handleManualSaveDraft: hookHandleManualSaveDraft,
+    clearDraftSession: hookClearDraftSession,
+    retryLoadDraft: hookRetryLoadDraft,
+  } = useInvoiceDraft({
+    customerId: selectedCustomer?.id || null,
+    items,
+    orgId,
+    userId,
+    org,
+    isOpen,
+    initialDraftInvoiceId: draftInvoiceId,
+    mode,
+    onDraftRestored: ({ customer, items: restoredItems }) => {
+      setSelectedCustomer(customer)
+      setItems(restoredItems)
+      setCurrentStep(2)
+    },
+    onReset: () => {
+      setCurrentStep(1)
+      setIdentifier('')
+      setIdentifierValid(false)
+      setSelectedCustomer(null)
+      setShowAddNewForm(false)
+      setInlineFormData({ name: '', mobile: '', gstin: '' })
+      setItems([])
+      setErrors({})
+      setInternalDraftInvoiceId(null)
+    },
+  })
+
+  // Temporary log to use hook outputs during skeleton phase - will be removed
+  console.log('Draft hook status:', { hookDraftId, hookLoadingDraft, hookDraftLoadError, hookSaveStatus, hookIsRetrying })
+  console.log('Draft hook actions:', { hookHandleManualSaveDraft, hookClearDraftSession, hookRetryLoadDraft })
 
   // Load products when form opens
   useEffect(() => {
