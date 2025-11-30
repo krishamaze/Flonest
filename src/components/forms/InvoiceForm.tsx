@@ -1,4 +1,4 @@
-import { useState, FormEvent, useEffect, useMemo, useRef, useCallback } from 'react'
+import { useState, FormEvent, useEffect, useMemo } from 'react'
 import { Button } from '../ui/Button'
 import { Modal } from '../ui/Modal'
 import { Drawer } from '../ui/Drawer'
@@ -11,16 +11,16 @@ import { CameraScanner } from '../invoice/CameraScanner'
 import type { InvoiceFormData, InvoiceItemFormData, CustomerWithMaster, Org, ProductWithMaster } from '../../types'
 import { addOrgCustomer, getCustomerById } from '../../lib/api/customers'
 import { getAllProducts } from '../../lib/api/products'
-import { createInvoice, autoSaveInvoiceDraft, validateInvoiceItems, loadDraftInvoiceData, revalidateDraftInvoice, getInvoiceById, clearDraftSessionId } from '../../lib/api/invoices'
+import { createInvoice, validateInvoiceItems, clearDraftSessionId } from '../../lib/api/invoices'
 import { checkSerialStatus } from '../../lib/api/serials'
 import { validateScannerCodes } from '../../lib/api/scanner'
 import { calculateTax, createTaxContext, productToLineItem } from '../../lib/utils/taxCalculationService'
-import { useAutoSave } from '../../hooks/useAutoSave'
+
 import { useInvoiceDraft } from '../../hooks/invoice/useInvoiceDraft'
 import { ChevronLeftIcon, ChevronRightIcon, BookmarkIcon } from '@heroicons/react/24/outline'
 import { detectIdentifierType, validateMobile, validateGSTIN } from '../../lib/utils/identifierValidation'
 import { Toast } from '../ui/Toast'
-import { getDraftSessionId, setDraftSessionId } from '../../lib/utils/draftSession'
+
 import { LoadingSpinner } from '../ui/LoadingSpinner'
 import { useToastDedupe } from '../../hooks/useToastDedupe'
 import { ExclamationCircleIcon } from '@heroicons/react/24/outline'
@@ -83,7 +83,7 @@ export function InvoiceForm({
   const [items, setItems] = useState<InvoiceItemFormData[]>([])
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [isSubmitting, setIsSubmitting] = useState(false)
-  const [internalDraftInvoiceId, setInternalDraftInvoiceId] = useState<string | null>(null)
+
   const [serialInputs, setSerialInputs] = useState<Record<number, string>>({})
 
   // Scanner and confirmation state
@@ -94,36 +94,23 @@ export function InvoiceForm({
   const [pendingQuantity, setPendingQuantity] = useState(1)
 
 
-  // TODO: Move draft + autosave logic into useInvoiceDraft hook
-  // All draft-related state, effects, and functions below should be migrated to
-  // src/hooks/invoice/useInvoiceDraft.ts in a future refactor. For now, this logic
-  // is the single source of truth. DO NOT delete until hook is fully implemented.
-
-  // Draft loading state
-  const [loadingDraft, setLoadingDraft] = useState(false)
-  const [draftLoadError, setDraftLoadError] = useState<string | null>(null)
-  const [isRetrying, setIsRetrying] = useState(false)
-
-  // Draft session ID ref and retry counter
-  const draftLoadRetries = useRef(0)
-  const MAX_RETRIES = 1
-  const draftSessionId = useRef<string | null>(null)
+  // Draft state managed by useInvoiceDraft hook
 
 
 
   // Toast deduplication hook
   const { showToast } = useToastDedupe()
 
-  // Draft management hook (placeholder - logic will be moved here incrementally)
+  // Draft management hook
   const {
-    draftInvoiceId: hookDraftId,
-    loadingDraft: hookLoadingDraft,
-    draftLoadError: hookDraftLoadError,
-    saveStatus: hookSaveStatus,
-    isRetrying: hookIsRetrying,
-    handleManualSaveDraft: hookHandleManualSaveDraft,
-    clearDraftSession: hookClearDraftSession,
-    retryLoadDraft: hookRetryLoadDraft,
+    draftInvoiceId: internalDraftInvoiceId,
+    loadingDraft,
+    draftLoadError,
+    saveStatus,
+    isRetrying,
+    handleManualSaveDraft,
+    retryLoadDraft,
+    resetDraftState,
   } = useInvoiceDraft({
     customerId: selectedCustomer?.id || null,
     items,
@@ -147,16 +134,11 @@ export function InvoiceForm({
       setInlineFormData({ name: '', mobile: '', gstin: '' })
       setItems([])
       setErrors({})
-      setInternalDraftInvoiceId(null)
     },
   })
 
-  // Temporary log to use hook outputs during skeleton phase - will be removed
-  console.log('Draft hook status:', { hookDraftId, hookLoadingDraft, hookDraftLoadError, hookSaveStatus, hookIsRetrying })
-  console.log('Draft hook actions:', { hookHandleManualSaveDraft, hookClearDraftSession, hookRetryLoadDraft })
-
   // Use prop draftInvoiceId if provided, otherwise use hook's internal ID
-  const currentDraftInvoiceId = draftInvoiceId || hookDraftId || internalDraftInvoiceId
+  const currentDraftInvoiceId = draftInvoiceId || internalDraftInvoiceId
 
   // Load products when form opens
   useEffect(() => {
@@ -171,18 +153,7 @@ export function InvoiceForm({
     }
   }, [isOpen, orgId])
 
-  // Initialize draft session ID when form opens
-  useEffect(() => {
-    if (isOpen) {
-      if (draftInvoiceId) {
-        // For existing drafts, get session ID from sessionStorage or create new one
-        draftSessionId.current = getDraftSessionId(draftInvoiceId)
-      } else {
-        // For new drafts, create new session ID
-        draftSessionId.current = getDraftSessionId()
-      }
-    }
-  }, [isOpen, draftInvoiceId])
+
 
   // Track form changes for unsaved data warning
   useEffect(() => {
@@ -191,173 +162,6 @@ export function InvoiceForm({
       onFormChange(hasChanges)
     }
   }, [selectedCustomer, items, onFormChange])
-
-  // Helper function to classify errors as retry-able or permanent
-  const isRetryableError = (error: any): boolean => {
-    if (!error) return false
-
-    const errorMessage = error.message?.toLowerCase() || ''
-    const errorCode = error.code?.toLowerCase() || ''
-
-    // Schema cache errors are retry-able (will be handled with cache reload)
-    const isSchemaCacheError =
-      errorCode === 'pgrst200' ||
-      errorMessage.includes('could not find a relationship') ||
-      errorMessage.includes('schema cache') ||
-      (errorMessage.includes('relationship') && errorMessage.includes('schema'))
-
-    if (isSchemaCacheError) {
-      return true
-    }
-
-    // Retry-able errors: network issues, RLS policy errors, timeouts
-    const retryablePatterns = [
-      'network',
-      'timeout',
-      'fetch',
-      'rls',
-      'row level security',
-      'policy',
-      'connection',
-      'failed to fetch',
-      'networkerror',
-      'pgrst',
-    ]
-
-    // Permanent errors: not found, deleted, invalid
-    const permanentPatterns = [
-      'not found',
-      'does not exist',
-      'deleted',
-      'invalid',
-      'malformed',
-      'unauthorized',
-      'forbidden',
-      'permission denied',
-      'draft data not found',
-    ]
-
-    // Check for permanent errors first
-    if (permanentPatterns.some(pattern => errorMessage.includes(pattern) || errorCode.includes(pattern))) {
-      return false
-    }
-
-    // Check for retry-able errors
-    if (retryablePatterns.some(pattern => errorMessage.includes(pattern) || errorCode.includes(pattern))) {
-      return true
-    }
-
-    // Default: retry on unknown errors (might be transient)
-    return true
-  }
-
-  // Load draft with retry logic
-  const loadDraftWithRetry = useCallback(async (invoiceId: string, retryCount = 0): Promise<void> => {
-    try {
-      setLoadingDraft(true)
-      setDraftLoadError(null)
-      setIsRetrying(retryCount > 0)
-
-      const draftData = await loadDraftInvoiceData(invoiceId)
-
-      if (draftData) {
-        // Restore draft session ID from database
-        if (draftData.draft_session_id) {
-          draftSessionId.current = draftData.draft_session_id
-          setDraftSessionId(invoiceId, draftData.draft_session_id)
-        }
-
-        // Load customer
-        const draftInvoice = await getInvoiceById(invoiceId)
-        if (draftInvoice.customer) {
-          setSelectedCustomer(draftInvoice.customer as any)
-        }
-
-        // Load products and restore items
-        const allProducts = await getAllProducts(orgId, { status: 'active' })
-        const restoredItems: InvoiceItemFormData[] = draftData.items.map((draftItem: any) => {
-          const product = allProducts.find((p: any) => p.id === draftItem.product_id)
-          return {
-            product_id: draftItem.product_id,
-            quantity: draftItem.quantity || 0,
-            unit_price: draftItem.unit_price || (product?.selling_price || 0),
-            line_total: draftItem.line_total || (draftItem.quantity * (draftItem.unit_price || product?.selling_price || 0)),
-            serials: draftItem.serials || [],
-            serial_tracked: product?.serial_tracked || false,
-            invalid_serials: draftItem.invalid_serials || [],
-            validation_errors: draftItem.validation_errors || [],
-            stock_available: draftItem.stock_available,
-          }
-        })
-        setItems(restoredItems)
-        setInternalDraftInvoiceId(invoiceId)
-        // Only advance to step 2 on successful load - don't auto-advance on error
-        setCurrentStep(2)
-
-        // Reset retry counter on success
-        draftLoadRetries.current = 0
-        setIsRetrying(false)
-
-        // Re-validate draft
-        try {
-          const revalidation = await revalidateDraftInvoice(invoiceId, orgId)
-          if (revalidation.updated) {
-            showToast('success', 'Draft revalidated — missing items are now available.', { autoClose: 3000 })
-            if (revalidation.valid) {
-              const cleanedItems = restoredItems.map(item => ({
-                ...item,
-                invalid_serials: [],
-                validation_errors: [],
-              }))
-              setItems(cleanedItems)
-            }
-          }
-        } catch (revalError) {
-          console.error('Error re-validating draft:', revalError)
-        }
-      } else {
-        // Draft data is null - permanent error
-        throw new Error('Draft data not found')
-      }
-    } catch (error) {
-      console.error('Error loading draft:', error)
-
-      // Check if error is retry-able and we haven't exceeded max retries
-      if (isRetryableError(error) && retryCount < MAX_RETRIES) {
-        draftLoadRetries.current = retryCount + 1
-        setIsRetrying(true)
-
-        // Wait 500ms before retrying
-        await new Promise(resolve => setTimeout(resolve, 500))
-
-        // Retry
-        return loadDraftWithRetry(invoiceId, retryCount + 1)
-      } else {
-        // Permanent error or max retries exceeded
-        const errorMessage = error instanceof Error ? error.message : 'Failed to load draft invoice'
-        setDraftLoadError(errorMessage)
-        setIsRetrying(false)
-        // Use deduplicated toast
-        showToast('error', errorMessage, { unique: true, autoClose: 5000 })
-        // Don't auto-advance to step 2 on failure - show error UI instead
-      }
-    } finally {
-      setLoadingDraft(false)
-    }
-  }, [orgId, showToast, loadDraftInvoiceData, getInvoiceById, getAllProducts, revalidateDraftInvoice, setDraftSessionId])
-
-  // Load draft on mount if draftInvoiceId prop is provided
-  useEffect(() => {
-    if (isOpen && draftInvoiceId) {
-      // Reset retry counter when opening draft
-      draftLoadRetries.current = 0
-      setDraftLoadError(null)
-      setIsRetrying(false)
-
-      // Load draft with retry
-      loadDraftWithRetry(draftInvoiceId)
-    }
-  }, [isOpen, draftInvoiceId, loadDraftWithRetry])
 
   // Reset form when closed (but not if we're loading a draft)
   useEffect(() => {
@@ -372,9 +176,7 @@ export function InvoiceForm({
       setInlineFormData({ name: '', mobile: '', gstin: '' })
       setItems([])
       setErrors({})
-      setInternalDraftInvoiceId(null)
-      setDraftLoadError(null)
-      setIsRetrying(false)
+      // Draft state is reset by the hook
     }
   }, [isOpen, loadingDraft])
 
@@ -606,75 +408,7 @@ export function InvoiceForm({
     setScannerMode('scanning')
   }
 
-  // Auto-save draft
-  const draftData = useMemo(() => ({
-    customer_id: selectedCustomer?.id,
-    items: items.map((item) => ({
-      product_id: item.product_id,
-      quantity: item.quantity,
-      unit_price: item.unit_price,
-      line_total: item.line_total,
-      serials: item.serials,
-    })),
-  }), [selectedCustomer, items])
-
   const [toast, setToast] = useState<{ message: string; type?: 'success' | 'info' | 'error' } | null>(null)
-  const [lastAutoSaveTime, setLastAutoSaveTime] = useState<number | null>(null)
-
-  const { saveStatus, manualSave } = useAutoSave(
-    draftData,
-    async (data) => {
-      if (!selectedCustomer || !draftSessionId.current) return
-      try {
-        const result = await autoSaveInvoiceDraft(
-          orgId,
-          userId,
-          internalDraftInvoiceId || '',
-          data
-        )
-        setInternalDraftInvoiceId(result.invoiceId)
-        // Update session ID if it changed
-        if (result.sessionId && result.sessionId !== draftSessionId.current) {
-          draftSessionId.current = result.sessionId
-          if (result.invoiceId) {
-            setDraftSessionId(result.invoiceId, result.sessionId)
-          }
-        }
-        const now = Date.now()
-        // Only show toast if it's been more than 3 seconds since last auto-save (avoid spam)
-        if (!lastAutoSaveTime || now - lastAutoSaveTime > 3000) {
-          showToast('success', 'Draft saved automatically', { autoClose: 2000 })
-          setLastAutoSaveTime(now)
-        }
-      } catch (error) {
-        console.error('Auto-save failed:', error)
-      }
-    },
-    {
-      localDebounce: 1500,  // 1.5s debounce for localStorage
-      rpcInterval: 5000,     // 5s interval for RPC calls
-      enabled: selectedCustomer !== null && draftSessionId.current !== null
-    }
-  )
-
-  const handleManualSaveDraft = async () => {
-    if (!selectedCustomer) return
-    try {
-      await manualSave()
-      const hasInvalidItems = items.some(item =>
-        (item.invalid_serials && item.invalid_serials.length > 0) ||
-        (item.validation_errors && item.validation_errors.length > 0)
-      )
-      if (hasInvalidItems) {
-        showToast('info', 'Draft saved (contains items needing review)', { autoClose: 3000 })
-      } else {
-        showToast('success', 'Draft saved', { autoClose: 3000 })
-      }
-    } catch (error) {
-      console.error('Manual save failed:', error)
-      showToast('error', 'Failed to save draft', { autoClose: 5000 })
-    }
-  }
 
   // Add serial to item
   const handleAddSerial = async (itemIndex: number, serial: string) => {
@@ -958,7 +692,6 @@ export function InvoiceForm({
       } else {
         clearDraftSessionId()
       }
-      draftSessionId.current = null
 
       await onSubmit(invoice.id)
       onClose()
@@ -1007,12 +740,7 @@ export function InvoiceForm({
             <Button
               variant="primary"
               size="md"
-              onClick={async () => {
-                setDraftLoadError(null)
-                setIsRetrying(false)
-                draftLoadRetries.current = 0
-                await loadDraftWithRetry(draftInvoiceId!)
-              }}
+              onClick={retryLoadDraft}
               disabled={loadingDraft}
               className="w-full"
             >
@@ -1023,8 +751,7 @@ export function InvoiceForm({
               size="md"
               onClick={() => {
                 // Reset form and start new invoice
-                setDraftLoadError(null)
-                setInternalDraftInvoiceId(null)
+                resetDraftState()
                 setCurrentStep(1)
                 setIdentifier('')
                 setIdentifierValid(false)
