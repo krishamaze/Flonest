@@ -10,11 +10,10 @@ import { toast } from 'react-toastify'
 import type { Org } from '../../types'
 
 interface OrgWithVerification extends Org {
-  gst_verification_status: string
+  gst_verification_status: string | null
   gst_verification_source: string | null
   gst_verified_at: string | null
   gst_verified_by: string | null
-  gst_verification_notes: string | null
 }
 
 interface ParsedGstDetails {

@@ -147,6 +147,8 @@ export interface InvoiceItemFormData {
 
 export interface CustomerWithMaster extends Customer {
   master_customer: MasterCustomer
+  status: 'name_only' | 'edited' | 'verified' | null
+  name: string | null
 }
 
 export interface ScanResult {

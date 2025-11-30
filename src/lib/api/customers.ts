@@ -4,15 +4,12 @@ import {
   detectIdentifierType,
   normalizeIdentifier,
 } from '../utils/identifierValidation'
+import type { CustomerWithMaster } from '../../types'
 
 type MasterCustomer = Database['public']['Tables']['master_customers']['Row']
 type Customer = Database['public']['Tables']['customers']['Row']
 type CustomerInsert = Database['public']['Tables']['customers']['Insert']
 type CustomerUpdate = Database['public']['Tables']['customers']['Update']
-
-export interface CustomerWithMaster extends Customer {
-  master_customer: MasterCustomer
-}
 
 export interface LookupResult {
   master: MasterCustomer
@@ -360,6 +357,8 @@ export async function searchCustomersByIdentifier(
   return {
     ...customer,
     master_customer: master,
+    status: customer.status,
+    name: customer.name,
   }
 }
 
@@ -368,6 +367,8 @@ export async function searchCustomersByIdentifier(
  * Searches in mobile and GSTIN fields with partial matching
  * Returns results sorted by recently invoiced (last 30 days preferred), then alphabetically
  * Limit: 10 results
+ * 
+ * Updated to use search_org_customers RPC for unified search
  */
 export async function searchCustomersByPartialIdentifier(
   orgId: string,
@@ -377,26 +378,75 @@ export async function searchCustomersByPartialIdentifier(
     return []
   }
 
-  const searchQuery = query.trim()
-
-  // Search for customers where mobile starts with query OR gstin contains query
-  const { data, error } = await supabase
-    .from('customers')
-    .select(`
-      *,
-      master_customer:master_customers(*)
-    `)
-    .eq('org_id', orgId)
-    .or(`master_customer.mobile.ilike.${searchQuery}%,master_customer.gstin.ilike.%${searchQuery}%`)
-    .order('last_invoice_date', { ascending: false, nullsFirst: false })
-    .limit(10)
+  const { data, error } = await supabase.rpc('search_org_customers', {
+    p_org_id: orgId,
+    p_query: query.trim()
+  })
 
   if (error) {
     console.error('Error searching customers:', error)
     return []
   }
 
-  return (data || []) as CustomerWithMaster[]
+  // Map RPC result to CustomerWithMaster structure
+  return (data || []).map((row: any) => ({
+    id: row.id,
+    org_id: orgId,
+    master_customer_id: '', 
+    name: row.name,
+    alias_name: row.name,
+    mobile: row.mobile,
+    gst_number: row.gstin,
+    status: row.status,
+    last_invoice_date: row.last_invoice_date,
+    created_at: null,
+    updated_at: null,
+    billing_address: null,
+    shipping_address: null,
+    created_by: null,
+    state_code: null,
+    tax_status: null,
+    notes: null,
+    master_customer: {
+      id: '',
+      legal_name: row.master_name || row.name,
+      mobile: row.mobile,
+      gstin: row.gstin,
+      email: null,
+      address: null,
+      created_at: null,
+      updated_at: null,
+      last_seen_at: null,
+      pan: null,
+      state_code: null,
+      status: 'verified'
+    }
+  })) as unknown as CustomerWithMaster[]
 }
+
+/**
+ * Add a new org customer (with optional master link logic)
+ * Uses add_org_customer RPC
+ */
+export async function addOrgCustomer(
+  orgId: string,
+  name: string,
+  mobile: string | null,
+  gstin: string | null
+): Promise<string> {
+  const { data, error } = await supabase.rpc('add_org_customer', {
+    p_org_id: orgId,
+    p_name: name,
+    p_mobile: mobile || null,
+    p_gstin: gstin || null
+  })
+
+  if (error) {
+    throw new Error(`Failed to add customer: ${error.message}`)
+  }
+
+  return data
+}
+
 
 

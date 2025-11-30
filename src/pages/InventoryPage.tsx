@@ -95,8 +95,22 @@ export function InventoryPage() {
 
   // Filter invoices based on selected filter
   const filteredInvoices = useMemo(() => {
+    // Current time for 7-day filter
+    const sevenDaysAgo = new Date()
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7)
+
     if (filter === 'all') return invoices
-    if (filter === 'draft') return invoices.filter(inv => inv.status === 'draft')
+    
+    if (filter === 'draft') {
+      return invoices.filter(inv => {
+        if (inv.status !== 'draft') return false
+        
+        // Filter drafts older than 7 days (Task 9)
+        const createdDate = new Date(inv.created_at || '')
+        return createdDate > sevenDaysAgo
+      })
+    }
+    
     if (filter === 'finalized') return invoices.filter(inv => inv.status === 'finalized')
     return invoices
   }, [invoices, filter])
@@ -297,7 +311,6 @@ export function InventoryPage() {
                     onDelete={handleDeleteDraft}
                     onClick={() => handleDraftClick(invoice.id)}
                     getStatusColor={getStatusColor}
-                    formatDate={formatDate}
                   />
                 )
               }

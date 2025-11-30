@@ -217,8 +217,26 @@ export function CustomerSearchCombobox({
                                 aria-selected={isHighlighted}
                             >
                                 <div className="space-y-0.5">
-                                    <div className={`text-base font-semibold ${isHighlighted ? 'text-text-on-primary' : 'text-primary-text'}`}>
-                                        {customer.alias_name || customer.master_customer.legal_name}
+                                    <div className="flex items-center gap-2">
+                                        <div className={`text-base font-semibold ${isHighlighted ? 'text-text-on-primary' : 'text-primary-text'}`}>
+                                            {customer.alias_name || customer.master_customer.legal_name}
+                                        </div>
+                                        {/* Status Badges */}
+                                        {customer.status === 'verified' && customer.master_customer_id && (
+                                            <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium ${isHighlighted ? 'bg-white/20 text-white' : 'bg-success-light text-success-dark'}`}>
+                                                ✓ Verified
+                                            </span>
+                                        )}
+                                        {customer.status === 'edited' && (
+                                            <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium ${isHighlighted ? 'bg-white/20 text-white' : 'bg-warning-light text-warning-dark'}`}>
+                                                ⚠ Pending Review
+                                            </span>
+                                        )}
+                                        {customer.status === 'name_only' && (
+                                            <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium ${isHighlighted ? 'bg-white/20 text-white' : 'bg-neutral-100 text-secondary-text'}`}>
+                                                ○ Name Only
+                                            </span>
+                                        )}
                                     </div>
                                     <div className={`text-sm ${isHighlighted ? 'text-text-on-primary opacity-90' : 'text-secondary-text'}`}>
                                         {customer.master_customer.mobile

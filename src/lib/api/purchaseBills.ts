@@ -33,6 +33,7 @@ export interface PurchaseBillItemFormData {
 
 export interface PurchaseBillWithItems extends PurchaseBill {
   items: PurchaseBillItem[]
+  vendor_state_code: string | null
 }
 
 /**
