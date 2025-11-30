@@ -357,9 +357,7 @@ export async function searchCustomersByIdentifier(
   return {
     ...customer,
     master_customer: master,
-    status: customer.status,
-    name: customer.name,
-  }
+  } as CustomerWithMaster
 }
 
 /**
@@ -378,7 +376,7 @@ export async function searchCustomersByPartialIdentifier(
     return []
   }
 
-  const { data, error } = await supabase.rpc('search_org_customers', {
+  const { data, error } = await (supabase.rpc as any)('search_org_customers', {
     p_org_id: orgId,
     p_query: query.trim()
   })
@@ -434,7 +432,7 @@ export async function addOrgCustomer(
   mobile: string | null,
   gstin: string | null
 ): Promise<string> {
-  const { data, error } = await supabase.rpc('add_org_customer', {
+  const { data, error } = await (supabase.rpc as any)('add_org_customer', {
     p_org_id: orgId,
     p_name: name,
     p_mobile: mobile || null,
@@ -445,7 +443,7 @@ export async function addOrgCustomer(
     throw new Error(`Failed to add customer: ${error.message}`)
   }
 
-  return data
+  return data as string
 }
 
 
