@@ -19,7 +19,7 @@ import { validateScannerCodes } from '../../lib/api/scanner'
 import { calculateTax, createTaxContext, productToLineItem } from '../../lib/utils/taxCalculationService'
 import { useAutoSave } from '../../hooks/useAutoSave'
 import { ChevronLeftIcon, ChevronRightIcon, PlusIcon, TrashIcon, XCircleIcon, BookmarkIcon } from '@heroicons/react/24/outline'
-import { detectIdentifierType, validateMobile, validateGSTIN } from '../../lib/utils/identifierValidation'
+import { detectIdentifierTypeEnhanced, validateMobile, validateGSTIN, type EnhancedIdentifierType } from '../../lib/utils/identifierValidation'
 import { Toast } from '../ui/Toast'
 import { getDraftSessionId, setDraftSessionId } from '../../lib/utils/draftSession'
 import { LoadingSpinner } from '../ui/LoadingSpinner'
@@ -61,21 +61,27 @@ export function InvoiceForm({
   // const [lookupPerformed, setLookupPerformed] = useState(false) // Unused
   const [selectedCustomer, setSelectedCustomer] = useState<CustomerWithMaster | null>(null)
   const [showAddNewForm, setShowAddNewForm] = useState(false)
+  const [detectedInputType, setDetectedInputType] = useState<EnhancedIdentifierType>('text')
   const [inlineFormData, setInlineFormData] = useState<{ name: string; mobile: string; gstin: string }>({
     name: '',
     mobile: '',
     gstin: '',
   })
-  
-  // Prefill inline form when opening
+
+  // Prefill inline form when opening - with enhanced detection
   useEffect(() => {
     if (showAddNewForm) {
-      const type = detectIdentifierType(identifier)
+      const type = detectIdentifierTypeEnhanced(identifier)
+      setDetectedInputType(type)
+
       if (type === 'mobile') {
         setInlineFormData({ name: '', mobile: identifier, gstin: '' })
       } else if (type === 'gstin') {
         setInlineFormData({ name: '', mobile: '', gstin: identifier })
+      } else if (type === 'partial_gstin') {
+        setInlineFormData({ name: '', mobile: '', gstin: identifier })
       } else {
+        // type === 'text'
         setInlineFormData({ name: identifier, mobile: '', gstin: '' })
       }
     }
@@ -481,17 +487,28 @@ export function InvoiceForm({
 
   const handleCreateOrgCustomer = async () => {
     const formErrors: Record<string, string> = {}
-    
+
     if (!inlineFormData.name || inlineFormData.name.trim().length < 2) {
       formErrors.name = 'Customer name is required (min 2 chars)'
     }
-    
+
+    // Mobile is always optional, but validate format if provided
     if (inlineFormData.mobile && !validateMobile(inlineFormData.mobile)) {
       formErrors.mobile = 'Mobile must be 10 digits'
     }
 
-    if (inlineFormData.gstin && !validateGSTIN(inlineFormData.gstin)) {
-      formErrors.gstin = 'Invalid GSTIN format'
+    // GSTIN is mandatory only if detected from search input (gstin or partial_gstin)
+    if (detectedInputType === 'gstin' || detectedInputType === 'partial_gstin') {
+      if (!inlineFormData.gstin || !inlineFormData.gstin.trim()) {
+        formErrors.gstin = 'GSTIN is required (detected from search)'
+      } else if (!validateGSTIN(inlineFormData.gstin)) {
+        formErrors.gstin = 'Invalid GSTIN format'
+      }
+    } else {
+      // GSTIN is optional for other input types, but validate format if provided
+      if (inlineFormData.gstin && !validateGSTIN(inlineFormData.gstin)) {
+        formErrors.gstin = 'Invalid GSTIN format'
+      }
     }
 
     if (Object.keys(formErrors).length > 0) {
@@ -512,12 +529,13 @@ export function InvoiceForm({
 
       const newCustomer = await getCustomerById(customerId)
       setSelectedCustomer(newCustomer)
-      
+
       // Update identifier input to show the name
       setIdentifier(newCustomer.alias_name || newCustomer.name || newCustomer.master_customer.legal_name)
-      
+
       setShowAddNewForm(false)
       setInlineFormData({ name: '', mobile: '', gstin: '' })
+      setDetectedInputType('text')
       
       // Auto-save draft on new customer creation
       try {
@@ -1175,43 +1193,96 @@ export function InvoiceForm({
                   </div>
                 </div>
 
-                <Input
-                  label="Customer Name *"
-                  type="text"
-                  value={inlineFormData.name}
-                  onChange={(e) =>
-                    setInlineFormData({ ...inlineFormData, name: e.target.value })
-                  }
-                  disabled={isSubmitting || searching}
-                  placeholder="Enter customer name"
-                  error={errors.name}
-                  required
-                  autoFocus
-                />
+                {/* Dynamic field rendering based on detected input type */}
+                {(() => {
+                  // Define field order and configuration based on input type
+                  type FieldName = 'name' | 'mobile' | 'gstin'
 
-                <Input
-                  label="Mobile Number (optional)"
-                  type="tel"
-                  value={inlineFormData.mobile}
-                  onChange={(e) =>
-                    setInlineFormData({ ...inlineFormData, mobile: e.target.value })
+                  interface FieldConfig {
+                    order: FieldName[]
+                    required: Record<FieldName, boolean>
+                    autofocus: FieldName | null
                   }
-                  disabled={isSubmitting || searching}
-                  placeholder="Enter 10-digit mobile number"
-                  error={errors.mobile}
-                />
 
-                <Input
-                  label="GSTIN (optional)"
-                  type="text"
-                  value={inlineFormData.gstin}
-                  onChange={(e) =>
-                    setInlineFormData({ ...inlineFormData, gstin: e.target.value })
+                  const fieldConfigs: Record<EnhancedIdentifierType, FieldConfig> = {
+                    mobile: {
+                      order: ['mobile', 'gstin', 'name'],
+                      required: { name: true, mobile: false, gstin: false },
+                      autofocus: 'name' // Mobile already filled, focus on empty required field
+                    },
+                    gstin: {
+                      order: ['gstin', 'mobile', 'name'],
+                      required: { name: true, mobile: false, gstin: true },
+                      autofocus: 'name' // GSTIN already filled, focus on empty required field
+                    },
+                    partial_gstin: {
+                      order: ['gstin', 'mobile', 'name'],
+                      required: { name: true, mobile: false, gstin: true },
+                      autofocus: 'gstin' // Let user complete GSTIN
+                    },
+                    text: {
+                      order: ['name', 'mobile', 'gstin'],
+                      required: { name: true, mobile: false, gstin: false },
+                      autofocus: 'mobile' // Name already filled, focus on next field
+                    }
                   }
-                  disabled={isSubmitting || searching}
-                  placeholder="Enter 15-character GSTIN"
-                  error={errors.gstin}
-                />
+
+                  const config = fieldConfigs[detectedInputType]
+
+                  // Define all field components
+                  const fields: Record<FieldName, JSX.Element> = {
+                    name: (
+                      <Input
+                        key="name"
+                        label="Customer Name *"
+                        type="text"
+                        value={inlineFormData.name}
+                        onChange={(e) =>
+                          setInlineFormData({ ...inlineFormData, name: e.target.value })
+                        }
+                        disabled={isSubmitting || searching}
+                        placeholder="Enter customer name"
+                        error={errors.name}
+                        required
+                        autoFocus={config.autofocus === 'name'}
+                      />
+                    ),
+                    mobile: (
+                      <Input
+                        key="mobile"
+                        label="Mobile Number (optional)"
+                        type="tel"
+                        value={inlineFormData.mobile}
+                        onChange={(e) =>
+                          setInlineFormData({ ...inlineFormData, mobile: e.target.value })
+                        }
+                        disabled={isSubmitting || searching}
+                        placeholder="Enter 10-digit mobile number"
+                        error={errors.mobile}
+                        autoFocus={config.autofocus === 'mobile'}
+                      />
+                    ),
+                    gstin: (
+                      <Input
+                        key="gstin"
+                        label={config.required.gstin ? "GSTIN *" : "GSTIN (optional)"}
+                        type="text"
+                        value={inlineFormData.gstin}
+                        onChange={(e) =>
+                          setInlineFormData({ ...inlineFormData, gstin: e.target.value })
+                        }
+                        disabled={isSubmitting || searching}
+                        placeholder="Enter 15-character GSTIN"
+                        error={errors.gstin}
+                        required={config.required.gstin}
+                        autoFocus={config.autofocus === 'gstin'}
+                      />
+                    )
+                  }
+
+                  // Render fields in configured order
+                  return config.order.map(fieldName => fields[fieldName])
+                })()}
 
                 <div className="flex gap-2 pt-2">
                   <Button
@@ -1220,6 +1291,7 @@ export function InvoiceForm({
                     onClick={() => {
                       setShowAddNewForm(false)
                       setInlineFormData({ name: '', mobile: '', gstin: '' })
+                      setDetectedInputType('text')
                       setErrors({})
                     }}
                     disabled={isSubmitting || searching}

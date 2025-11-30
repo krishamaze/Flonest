@@ -5,6 +5,8 @@
 
 export type IdentifierType = 'mobile' | 'gstin' | 'invalid'
 
+export type EnhancedIdentifierType = 'mobile' | 'gstin' | 'partial_gstin' | 'text'
+
 /**
  * Detect identifier type from input string
  * Returns 'mobile', 'gstin', or 'invalid'
@@ -78,6 +80,49 @@ export function normalizeIdentifier(identifier: string, type: IdentifierType): s
   }
   
   throw new Error('Invalid identifier type')
+}
+
+/**
+ * Enhanced identifier detection for invoice "Add New Party" flow
+ * Returns 'mobile', 'gstin', 'partial_gstin', or 'text'
+ *
+ * This function provides smarter detection than detectIdentifierType():
+ * - Detects partial GSTIN patterns (3+ characters starting with state code)
+ * - Returns 'text' instead of 'invalid' for customer names
+ * - Used for adaptive form field ordering in invoice creation
+ */
+export function detectIdentifierTypeEnhanced(identifier: string): EnhancedIdentifierType {
+  const cleaned = identifier.trim().replace(/\s+/g, '')
+
+  // Empty input
+  if (!cleaned) {
+    return 'text'
+  }
+
+  // Check if it's a mobile number (10 digits starting with 6-9)
+  if (/^[6-9][0-9]{9}$/.test(cleaned)) {
+    return 'mobile'
+  }
+
+  // Check if it's a complete GSTIN (15 characters with specific pattern)
+  if (/^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/.test(cleaned.toUpperCase())) {
+    return 'gstin'
+  }
+
+  // Check if it's a partial GSTIN (3+ chars, starts with 2 digits, followed by valid pattern prefix)
+  // Examples: "22A", "22AAAAA", "22AAAAA1234", "22AAAAA1234A"
+  // Minimum 3 chars: 2 state digits + at least 1 PAN character
+  if (cleaned.length >= 3) {
+    const upperCleaned = cleaned.toUpperCase()
+    // Pattern: 2 digits + 0-5 letters + 0-4 digits + 0-1 letter + 0-1 alphanumeric + optional Z + 0-1 alphanumeric
+    // This matches progressive typing of a GSTIN
+    if (/^[0-9]{2}[A-Z]{1,5}([0-9]{0,4}([A-Z]{0,1}([1-9A-Z]{0,1}(Z[0-9A-Z]{0,1})?)?)?)?$/.test(upperCleaned)) {
+      return 'partial_gstin'
+    }
+  }
+
+  // Default: treat as customer name text
+  return 'text'
 }
 
 /**
