@@ -1,4 +1,5 @@
 import { useReducer, FormEvent, useEffect, useMemo, useRef, useCallback } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
 import { Input } from '../ui/Input'
 import { Button } from '../ui/Button'
 import { Modal } from '../ui/Modal'
@@ -12,13 +13,28 @@ import { ProductSearchCombobox } from '../invoice/ProductSearchCombobox'
 import { ProductConfirmSheet } from '../invoice/ProductConfirmSheet'
 import { CameraScanner } from '../invoice/CameraScanner'
 import type { InvoiceFormData, InvoiceItemFormData, CustomerWithMaster, Org, ProductWithMaster } from '../../types'
-import { lookupOrCreateCustomer, checkCustomerExists, searchCustomersByIdentifier } from '../../lib/api/customers'
+import {
+  clearDraftSessionId,
+  loadDraftInvoiceData,
+  getInvoiceById,
+  revalidateDraftInvoice as revalidateDraftInvoiceAPI,
+  getDraftInvoiceByCustomer,
+  createInvoice as createInvoiceAPI,
+  autoSaveInvoiceDraft as autoSaveInvoiceDraftAPI,
+  validateInvoiceItems as validateInvoiceItemsAPI,
+} from '../../lib/api/invoices'
 import { getAllProducts } from '../../lib/api/products'
-import { createInvoice, autoSaveInvoiceDraft, validateInvoiceItems, getDraftInvoiceByCustomer, loadDraftInvoiceData, revalidateDraftInvoice, getInvoiceById, clearDraftSessionId } from '../../lib/api/invoices'
-import { checkSerialStatus } from '../../lib/api/serials'
+import { searchCustomersByIdentifier, lookupOrCreateCustomer as lookupOrCreateCustomerAPI, checkCustomerExists as checkCustomerExistsAPI } from '../../lib/api/customers'
 import { validateScannerCodes } from '../../lib/api/scanner'
+import { checkSerialStatus } from '../../lib/api/serials'
 import { calculateTax, createTaxContext, productToLineItem } from '../../lib/utils/taxCalculationService'
 import { useAutoSave } from '../../hooks/useAutoSave'
+import { useProducts } from '../../hooks/useProducts'
+import {
+  useCreateInvoice,
+  useAutoSaveInvoiceDraft,
+  useValidateInvoiceItems,
+} from '../../hooks/useInvoices'
 import { ChevronLeftIcon, ChevronRightIcon, PlusIcon, TrashIcon, XCircleIcon, BookmarkIcon } from '@heroicons/react/24/outline'
 import type { IdentifierType } from '../../lib/utils/identifierValidation'
 import { detectIdentifierType, validateMobile, validateGSTIN, normalizeIdentifier } from '../../lib/utils/identifierValidation'
@@ -94,21 +110,31 @@ export function InvoiceForm({
   // Use prop if provided, otherwise use internal state
   const currentDraftInvoiceId = draftInvoiceId || internalDraftInvoiceId
   
+  // Query client for imperative data fetching
+  const queryClient = useQueryClient()
+
   // Toast deduplication hook
   const { showToast } = useToastDedupe()
 
-  // Load products when form opens
+  // React Query hooks - useProducts returns infinite query, so we extract the first page
+  const productsQuery = useProducts(orgId, { status: 'active' }, {})
+  const productsData = productsQuery.data?.pages?.[0]?.data || []
+  const loadingProductsQuery = productsQuery.isLoading
+
+  // React Query mutations for write operations
+  const { mutateAsync: createInvoiceAsync } = useCreateInvoice(orgId, userId)
+  const { mutateAsync: autoSaveDraftAsync } = useAutoSaveInvoiceDraft(orgId, userId)
+  const { mutateAsync: validateItemsAsync } = useValidateInvoiceItems()
+
+  // Load products when form opens - sync query data to reducer state
   useEffect(() => {
     if (isOpen && orgId) {
-      dispatch({ type: 'SET_LOADING_PRODUCTS', payload: true })
-      getAllProducts(orgId, { status: 'active' })
-        .then((products) => dispatch({ type: 'SET_PRODUCTS', payload: products as ProductWithMaster[] }))
-        .catch((error) => {
-          console.error('Error loading products:', error)
-        })
-        .finally(() => dispatch({ type: 'SET_LOADING_PRODUCTS', payload: false }))
+      dispatch({ type: 'SET_LOADING_PRODUCTS', payload: loadingProductsQuery })
+      if (productsData.length > 0) {
+        dispatch({ type: 'SET_PRODUCTS', payload: productsData as ProductWithMaster[] })
+      }
     }
-  }, [isOpen, orgId])
+  }, [isOpen, orgId, productsData, loadingProductsQuery])
 
   // Initialize draft session ID when form opens
   useEffect(() => {
@@ -205,7 +231,7 @@ export function InvoiceForm({
         }
         
         // Load products and restore items
-        const allProducts = await getAllProducts(orgId, { status: 'active' })
+        const allProducts = productsData.length > 0 ? productsData : await getAllProducts(orgId, { status: 'active' })
         const restoredItems: InvoiceItemFormData[] = draftData.items.map((draftItem: any) => {
           const product = allProducts.find((p: any) => p.id === draftItem.product_id)
           return {
@@ -231,7 +257,7 @@ export function InvoiceForm({
         
         // Re-validate draft
         try {
-          const revalidation = await revalidateDraftInvoice(invoiceId, orgId)
+          const revalidation = await revalidateDraftInvoiceAPI(invoiceId, orgId)
           if (revalidation.updated) {
             showToast('success', 'Draft revalidated — missing items are now available.', { autoClose: 3000 })
             if (revalidation.valid) {
@@ -275,7 +301,7 @@ export function InvoiceForm({
     } finally {
       dispatch({ type: 'SET_LOADING_DRAFT', payload: false })
     }
-  }, [orgId, showToast, loadDraftInvoiceData, getInvoiceById, getAllProducts, revalidateDraftInvoice, setDraftSessionId])
+  }, [orgId, org, showToast, productsData])
 
   // Load draft on mount if draftInvoiceId prop is provided
   useEffect(() => {
@@ -334,11 +360,11 @@ export function InvoiceForm({
     try {
       // First, check if org customer exists (master + org link)
       const orgCustomer = await searchCustomersByIdentifier(identifier, orgId)
-      
+
       if (orgCustomer) {
         // Customer exists with org link - show details
         dispatch({ type: 'SET_SELECTED_CUSTOMER', payload: orgCustomer })
-        
+
         // Check for existing draft for this customer
         try {
           const existingDraft = await getDraftInvoiceByCustomer(orgId, orgCustomer.id)
@@ -356,7 +382,7 @@ export function InvoiceForm({
                 dispatch({ type: 'SET_INTERNAL_DRAFT_ID', payload: existingDraft.id })
                 
                 // Load products to restore full item data
-                const allProducts = await getAllProducts(orgId, { status: 'active' })
+                const allProducts = productsData.length > 0 ? productsData : await getAllProducts(orgId, { status: 'active' })
                 const restoredItems: InvoiceItemFormData[] = draftData.items.map((draftItem: any) => {
                   const product = allProducts.find((p: any) => p.id === draftItem.product_id)
                   return {
@@ -375,7 +401,7 @@ export function InvoiceForm({
                 
                 // Re-validate draft
                 try {
-                  const revalidation = await revalidateDraftInvoice(existingDraft.id, orgId)
+                  const revalidation = await revalidateDraftInvoiceAPI(existingDraft.id, orgId)
                   if (revalidation.updated) {
                     dispatch({ type: 'SET_TOAST', payload: {
                       message: 'Draft revalidated — missing items are now available.',
@@ -410,11 +436,11 @@ export function InvoiceForm({
       }
 
       // Check if master customer exists (but no org link)
-      const master = await checkCustomerExists(identifier)
-      
+      const master = await checkCustomerExistsAPI(identifier)
+
       if (master) {
         // Master exists but no org link - create org link and show
-        const result = await lookupOrCreateCustomer(identifier, orgId, userId)
+        const result = await lookupOrCreateCustomerAPI(identifier, orgId, userId)
         dispatch({ type: 'SET_SELECTED_CUSTOMER', payload: {
           ...result.customer,
           master_customer: result.master,
@@ -495,7 +521,7 @@ export function InvoiceForm({
         if (additionalNormalized) masterData.mobile = additionalNormalized
       }
 
-      const result = await lookupOrCreateCustomer(
+      const result = await lookupOrCreateCustomerAPI(
         identifier,
         orgId,
         userId,
@@ -706,13 +732,18 @@ export function InvoiceForm({
     async (data) => {
       if (!selectedCustomer || !draftSessionId.current) return
       try {
-        const result = await autoSaveInvoiceDraft(orgId, userId, draftSessionId.current, data)
-        dispatch({ type: 'SET_INTERNAL_DRAFT_ID', payload: result.invoiceId })
+        const result = await autoSaveDraftAsync({
+          draftId: currentDraftInvoiceId,
+          data,
+          org,
+          customer: selectedCustomer
+        })
+        dispatch({ type: 'SET_INTERNAL_DRAFT_ID', payload: result.id })
         // Update session ID if it changed
-        if (result.sessionId && result.sessionId !== draftSessionId.current) {
-          draftSessionId.current = result.sessionId
-          if (result.invoiceId) {
-            setDraftSessionId(result.invoiceId, result.sessionId)
+        if (result.draft_session_id && result.draft_session_id !== draftSessionId.current) {
+          draftSessionId.current = result.draft_session_id
+          if (result.id) {
+            setDraftSessionId(result.id, result.draft_session_id)
           }
         }
         const now = Date.now()
@@ -944,7 +975,7 @@ export function InvoiceForm({
       }))
 
       // Validate items - allow drafts (pending masters allowed)
-      const validation = await validateInvoiceItems(orgId, validationItems, true)
+      const validation = await validateItemsAsync({ items: validationItems, orgId })
 
       if (!validation.valid) {
         // Group errors by type
@@ -1019,13 +1050,11 @@ export function InvoiceForm({
         })),
       }
 
-      const invoice = await createInvoice(
-        orgId,
-        userId,
-        invoiceData,
+      const invoice = await createInvoiceAsync({
+        data: invoiceData,
         org,
-        selectedCustomer
-      )
+        customer: selectedCustomer
+      })
 
       // Clear draft session ID on finalize
       if (currentDraftInvoiceId) {

@@ -13,6 +13,8 @@ import {
   autoSaveInvoiceDraft,
   deleteDraft,
 } from '../lib/api/invoices'
+import { validateScannerCodes, type ScanResult } from '../lib/api/scanner'
+import { checkSerialStatus, type SerialStatus } from '../lib/api/serials'
 import type { Invoice, InvoiceFormData, Org, CustomerWithMaster } from '../types'
 
 /**
@@ -312,5 +314,23 @@ export const useDeleteDraft = (orgId: string | null | undefined) => {
       queryClient.invalidateQueries({ queryKey: ['draft-invoice'] })
       queryClient.invalidateQueries({ queryKey: ['draft-invoice-data', invoiceId] })
     },
+  })
+}
+
+/**
+ * Mutation hook to validate scanner codes
+ */
+export const useValidateScannerCodes = () => {
+  return useMutation<ScanResult[], Error, { codes: string[]; orgId: string }>({
+    mutationFn: ({ codes, orgId }) => validateScannerCodes(codes, orgId),
+  })
+}
+
+/**
+ * Mutation hook to check serial status
+ */
+export const useCheckSerialStatus = () => {
+  return useMutation<SerialStatus, Error, { serial: string; orgId: string }>({
+    mutationFn: ({ serial, orgId }) => checkSerialStatus(serial, orgId),
   })
 }
