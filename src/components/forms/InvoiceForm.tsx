@@ -5,10 +5,9 @@ import { Modal } from '../ui/Modal'
 import { Drawer } from '../ui/Drawer'
 import { Select } from '../ui/Select'
 import { isMobileDevice } from '../../lib/deviceDetection'
-import { CustomerSearchCombobox } from '../customers/CustomerSearchCombobox'
-import { Card, CardContent } from '../ui/Card'
 import { ProductSearchCombobox } from '../invoice/ProductSearchCombobox'
 import { InvoiceReviewStep } from '../invoice/InvoiceReviewStep'
+import { CustomerSelectionStep } from '../invoice/CustomerSelectionStep'
 import { ProductConfirmSheet } from '../invoice/ProductConfirmSheet'
 import { CameraScanner } from '../invoice/CameraScanner'
 import type { InvoiceFormData, InvoiceItemFormData, CustomerWithMaster, Org, ProductWithMaster } from '../../types'
@@ -1005,144 +1004,42 @@ export function InvoiceForm({
     <form onSubmit={handleSubmit} className="space-y-6">
       {/* Step 1: Customer Selection */}
       {currentStep === 1 && (
-        <div className="space-y-4">
-          <div>
-            <h3 className="text-lg font-semibold text-primary-text mb-md">Step 1: Select Customer</h3>
-
-            {/* Show "Add New Customer" form inline when activated */}
-            {showAddNewForm ? (
-              <div className="mt-md space-y-md p-md border border-neutral-200 rounded-md bg-neutral-50">
-                <div className="flex justify-between items-start">
-                  <div>
-                    <h4 className="text-sm font-semibold text-primary-text">Add New Party Details</h4>
-                    <p className="text-xs text-secondary-text">
-                      Customer Identifier: <span className="font-semibold">{identifier}</span>
-                    </p>
-                  </div>
-                </div>
-
-                <Input
-                  label="Customer Name *"
-                  type="text"
-                  value={inlineFormData.name}
-                  onChange={(e) =>
-                    setInlineFormData({ ...inlineFormData, name: e.target.value })
-                  }
-                  disabled={isSubmitting || searching}
-                  placeholder="Enter customer name"
-                  error={errors.name}
-                  required
-                  autoFocus
-                />
-
-                <Input
-                  label="Mobile Number (optional)"
-                  type="tel"
-                  value={inlineFormData.mobile}
-                  onChange={(e) =>
-                    setInlineFormData({ ...inlineFormData, mobile: e.target.value })
-                  }
-                  disabled={isSubmitting || searching}
-                  placeholder="Enter 10-digit mobile number"
-                  error={errors.mobile}
-                />
-
-                <Input
-                  label="GSTIN (optional)"
-                  type="text"
-                  value={inlineFormData.gstin}
-                  onChange={(e) =>
-                    setInlineFormData({ ...inlineFormData, gstin: e.target.value })
-                  }
-                  disabled={isSubmitting || searching}
-                  placeholder="Enter 15-character GSTIN"
-                  error={errors.gstin}
-                />
-
-                <div className="flex gap-2 pt-2">
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    onClick={() => {
-                      setShowAddNewForm(false)
-                      setInlineFormData({ name: '', mobile: '', gstin: '' })
-                      setErrors({})
-                    }}
-                    disabled={isSubmitting || searching}
-                    className="flex-1"
-                  >
-                    Cancel
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="primary"
-                    onClick={handleCreateOrgCustomer}
-                    isLoading={searching}
-                    disabled={isSubmitting || searching}
-                    className="flex-1"
-                  >
-                    Add Customer
-                  </Button>
-                </div>
-              </div>
-            ) : (
-              <>
-                {/* Customer Search Combobox - TASKS 2 & 3 */}
-                <CustomerSearchCombobox
-                  orgId={orgId}
-                  value={identifier}
-                  onChange={setIdentifier}
-                  onCustomerSelect={(customer) => {
-                    setSelectedCustomer(customer)
-                    if (customer) {
-                      setCurrentStep(2)
-                    }
-                  }}
-                  onAddNewPartyClick={() => {
-                    if (identifier.trim().length >= 3) {
-                      setShowAddNewForm(true)
-                    }
-                  }}
-                  autoFocus={isOpen && currentStep === 1}
-                  disabled={isSubmitting}
-                />
-
-                {/* Selected Customer Display */}
-                {selectedCustomer && !showAddNewForm && (
-                  <div className="mt-4">
-                    <h4 className="text-sm font-semibold text-primary-text mb-sm">Selected Customer</h4>
-                    {/* Customer details would be displayed here, e.g., using a Card or custom component */}
-                    <Card>
-                      <CardContent className="p-4">
-                        <p className="text-md font-semibold text-primary-text">
-                          {selectedCustomer.alias_name || selectedCustomer.name || selectedCustomer.master_customer.legal_name}
-                        </p>
-                        {selectedCustomer.mobile && (
-                          <p className="text-sm text-secondary-text">Mobile: {selectedCustomer.mobile}</p>
-                        )}
-                        {selectedCustomer.master_customer.gstin && (
-                          <p className="text-sm text-secondary-text">GSTIN: {selectedCustomer.master_customer.gstin}</p>
-                        )}
-                        <Button
-                          variant="secondary"
-                          size="sm"
-                          onClick={() => setCurrentStep(2)}
-                          className="mt-2"
-                        >
-                          Continue
-                        </Button>
-                      </CardContent>
-                    </Card>
-                  </div>
-                )}
-              </>
-            )}
-
-            {errors.identifier && (
-              <p className="mt-sm text-sm text-error">{errors.identifier}</p>
-            )}
-          </div>
-        </div>
+        <CustomerSelectionStep
+          searchValue={identifier}
+          onSearchChange={setIdentifier}
+          isSearching={searching}
+          searchError={errors.identifier}
+          selectedCustomer={selectedCustomer}
+          onCustomerSelected={(customer) => {
+            setSelectedCustomer(customer)
+            if (customer) {
+              setCurrentStep(2)
+            }
+          }}
+          isAddNewFormOpen={showAddNewForm}
+          newCustomerData={inlineFormData}
+          formErrors={{
+            name: errors.name,
+            mobile: errors.mobile,
+            gstin: errors.gstin,
+          }}
+          onOpenAddNewForm={() => {
+            if (identifier.trim().length >= 3) {
+              setShowAddNewForm(true)
+            }
+          }}
+          onCloseAddNewForm={() => {
+            setShowAddNewForm(false)
+            setInlineFormData({ name: '', mobile: '', gstin: '' })
+            setErrors({})
+          }}
+          onFormDataChange={setInlineFormData}
+          onSubmitNewCustomer={handleCreateOrgCustomer}
+          onContinue={() => setCurrentStep(2)}
+          orgId={orgId}
+          isDisabled={isSubmitting}
+          autoFocus={isOpen && currentStep === 1}
+        />
       )}
 
       {/* Step 2: Add Products */}
