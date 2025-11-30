@@ -6,7 +6,7 @@
  */
 
 import { useQuery, useMutation, useQueryClient, useInfiniteQuery } from '@tanstack/react-query'
-import { getProducts, createProduct, updateProduct, deleteProduct } from '../lib/api/products'
+import { getProducts, createProduct, updateProduct, deleteProduct, createProductFromMaster } from '../lib/api/products'
 import { getCurrentStockForProducts } from '../lib/api/stockCalculations'
 import type { Product, ProductWithStock } from '../types'
 
@@ -274,7 +274,7 @@ export const useDeleteProduct = () => {
 
       // Optimistically remove from products with stock
       if (previousProductsWithStock) {
-        queryClient.setQueryData<ProductWithStock[]>(['products-with-stock', orgId], 
+        queryClient.setQueryData<ProductWithStock[]>(['products-with-stock', orgId],
           previousProductsWithStock.filter(p => p.id !== productId)
         )
       }
@@ -291,6 +291,60 @@ export const useDeleteProduct = () => {
       }
     },
     // On success, invalidate to refetch
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['products', variables.orgId] })
+      queryClient.invalidateQueries({ queryKey: ['products-with-stock', variables.orgId] })
+    },
+  })
+}
+
+/**
+ * Create product from master product mutation
+ * OPTIMISTIC UPDATE: Adds product to cache immediately, reverts on error
+ */
+export const useCreateProductFromMaster = () => {
+  const queryClient = useQueryClient()
+
+  type ProductsContext = {
+    previousProducts?: { pages: { data: Product[]; total: number }[] }
+    previousProductsWithStock?: ProductWithStock[]
+  }
+
+  return useMutation<
+    Product,
+    Error,
+    {
+      orgId: string
+      data: Parameters<typeof createProductFromMaster>[1]
+      userId?: string
+    },
+    ProductsContext
+  >({
+    mutationFn: async ({ orgId, data, userId }) => {
+      return createProductFromMaster(orgId, data, userId)
+    },
+    // OPTIMISTIC UPDATE: Add product to cache immediately
+    onMutate: async ({ orgId }) => {
+      // Cancel outgoing refetches
+      await queryClient.cancelQueries({ queryKey: ['products', orgId] })
+      await queryClient.cancelQueries({ queryKey: ['products-with-stock', orgId] })
+
+      // Snapshot previous values for rollback
+      const previousProducts = queryClient.getQueryData<{ pages: { data: Product[]; total: number }[] }>(['products', orgId])
+      const previousProductsWithStock = queryClient.getQueryData<ProductWithStock[]>(['products-with-stock', orgId])
+
+      return { previousProducts, previousProductsWithStock }
+    },
+    // On error, rollback to previous values
+    onError: (_error, variables, context) => {
+      if (context?.previousProducts) {
+        queryClient.setQueryData(['products', variables.orgId], context.previousProducts)
+      }
+      if (context?.previousProductsWithStock) {
+        queryClient.setQueryData(['products-with-stock', variables.orgId], context.previousProductsWithStock)
+      }
+    },
+    // On success, invalidate to refetch fresh data
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: ['products', variables.orgId] })
       queryClient.invalidateQueries({ queryKey: ['products-with-stock', variables.orgId] })

@@ -34,7 +34,7 @@ SUPABASE_DB_PASSWORD=your-database-password-here
 npm run supabase:link
 ```
 
-This links your local project to the cloud Supabase project using direct connection (no Docker required).
+This links your local project to the cloud Supabase project, enabling the Branching 2.0 workflow.
 
 ## MCP vs CLI: When to Use What
 
@@ -101,7 +101,7 @@ See [MCP Setup Guide](.cursor/MCP_SETUP.md) for complete list.
 ## Project Details
 
 - **Project Ref**: `yzrwkznkfisfpnwzbwfw`
-- **Connection**: Direct connection (--skip-pooler) - No Docker required
+- **Connection**: Direct connection via Supabase Branching 2.0
 - **Migrations**: Stored in `supabase/migrations/`
 
 ## Troubleshooting

@@ -1,89 +1,78 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useMemo } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { useRefresh } from '../contexts/RefreshContext'
 import { Card, CardContent } from '../components/ui/Card'
 import { LoadingSpinner } from '../components/ui/LoadingSpinner'
 import { Button } from '../components/ui/Button'
 import {
-  getNotifications,
-  markAsRead,
-  markAllAsRead,
-  deleteNotification,
-} from '../lib/api/notifications'
-import type { Notification, NotificationType } from '../lib/api/notifications'
+  useNotifications,
+  useMarkAsRead,
+  useMarkAllAsRead,
+  useDeleteNotification,
+} from '../hooks/useNotifications'
+import type { NotificationType } from '../lib/api/notifications'
 import { CheckCircleIcon, XCircleIcon, ExclamationTriangleIcon } from '@heroicons/react/24/outline'
+import { toast } from 'react-toastify'
 
 export function NotificationsPage() {
   const { user } = useAuth()
   const { registerRefreshHandler, unregisterRefreshHandler } = useRefresh()
-  const [notifications, setNotifications] = useState<Notification[]>([])
-  const [loading, setLoading] = useState(true)
   const [filter, setFilter] = useState<'all' | 'unread' | NotificationType>('all')
 
-  useEffect(() => {
-    if (user) {
-      loadNotifications()
+  // Build filters for React Query
+  const filters = useMemo(() => {
+    const result: any = {}
+    if (filter === 'unread') {
+      result.read = false
+    } else if (filter !== 'all') {
+      result.type = filter
     }
-  }, [user, filter])
+    return result
+  }, [filter])
+
+  // React Query hooks
+  const { data: notifications = [], isLoading: loading, refetch } = useNotifications(user?.id, filters)
+  const { mutate: markAsRead } = useMarkAsRead(user?.id)
+  const { mutate: markAllAsRead } = useMarkAllAsRead(user?.id)
+  const { mutate: deleteNotification } = useDeleteNotification(user?.id)
 
   // Register refresh handler for pull-to-refresh
   useEffect(() => {
-    registerRefreshHandler(loadNotifications)
+    registerRefreshHandler(() => refetch())
     return () => unregisterRefreshHandler()
-  }, [registerRefreshHandler, unregisterRefreshHandler])
+  }, [registerRefreshHandler, unregisterRefreshHandler, refetch])
 
-  const loadNotifications = async () => {
-    if (!user) return
-
-    setLoading(true)
-    try {
-      const filters: any = {}
-      if (filter === 'unread') {
-        filters.read = false
-      } else if (filter !== 'all') {
-        filters.type = filter
-      }
-
-      const data = await getNotifications(user.id, filters)
-      setNotifications(data)
-    } catch (error) {
-      console.error('Error loading notifications:', error)
-    } finally {
-      setLoading(false)
-    }
+  const handleMarkAsRead = (notificationId: string) => {
+    markAsRead(notificationId, {
+      onError: (error) => {
+        console.error('Error marking notification as read:', error)
+        toast.error('Failed to mark notification as read')
+      },
+    })
   }
 
-  const handleMarkAsRead = async (notificationId: string) => {
-    try {
-      await markAsRead(notificationId)
-      setNotifications(prev =>
-        prev.map(n => n.id === notificationId ? { ...n, read_at: new Date().toISOString() } : n)
-      )
-    } catch (error) {
-      console.error('Error marking notification as read:', error)
-    }
+  const handleMarkAllAsRead = () => {
+    markAllAsRead(undefined, {
+      onSuccess: () => {
+        toast.success('All notifications marked as read')
+      },
+      onError: (error) => {
+        console.error('Error marking all as read:', error)
+        toast.error('Failed to mark all notifications as read')
+      },
+    })
   }
 
-  const handleMarkAllAsRead = async () => {
-    if (!user) return
-
-    try {
-      await markAllAsRead(user.id)
-      setNotifications(prev =>
-        prev.map(n => ({ ...n, read_at: n.read_at || new Date().toISOString() }))
-      )
-    } catch (error) {
-      console.error('Error marking all as read:', error)
-    }
-  }
-
-  const handleDelete = async (notificationId: string) => {
-    try {
-      await deleteNotification(notificationId)
-      setNotifications(prev => prev.filter(n => n.id !== notificationId))
-    } catch (error) {
-      console.error('Error deleting notification:', error)
-    }
+  const handleDelete = (notificationId: string) => {
+    deleteNotification(notificationId, {
+      onSuccess: () => {
+        toast.success('Notification deleted')
+      },
+      onError: (error) => {
+        console.error('Error deleting notification:', error)
+        toast.error('Failed to delete notification')
+      },
+    })
   }
 
   const getNotificationIcon = (type: NotificationType) => {

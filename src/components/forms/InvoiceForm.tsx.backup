@@ -1,5 +1,4 @@
 import { useReducer, FormEvent, useEffect, useMemo, useRef, useCallback } from 'react'
-import { useQueryClient } from '@tanstack/react-query'
 import { Input } from '../ui/Input'
 import { Button } from '../ui/Button'
 import { Modal } from '../ui/Modal'
@@ -13,28 +12,13 @@ import { ProductSearchCombobox } from '../invoice/ProductSearchCombobox'
 import { ProductConfirmSheet } from '../invoice/ProductConfirmSheet'
 import { CameraScanner } from '../invoice/CameraScanner'
 import type { InvoiceFormData, InvoiceItemFormData, CustomerWithMaster, Org, ProductWithMaster } from '../../types'
-import {
-  clearDraftSessionId,
-  loadDraftInvoiceData,
-  getInvoiceById,
-  revalidateDraftInvoice as revalidateDraftInvoiceAPI,
-  getDraftInvoiceByCustomer,
-  createInvoice as createInvoiceAPI,
-  autoSaveInvoiceDraft as autoSaveInvoiceDraftAPI,
-  validateInvoiceItems as validateInvoiceItemsAPI,
-} from '../../lib/api/invoices'
+import { lookupOrCreateCustomer, checkCustomerExists, searchCustomersByIdentifier } from '../../lib/api/customers'
 import { getAllProducts } from '../../lib/api/products'
-import { searchCustomersByIdentifier, lookupOrCreateCustomer as lookupOrCreateCustomerAPI, checkCustomerExists as checkCustomerExistsAPI } from '../../lib/api/customers'
-import { validateScannerCodes } from '../../lib/api/scanner'
+import { createInvoice, autoSaveInvoiceDraft, validateInvoiceItems, getDraftInvoiceByCustomer, loadDraftInvoiceData, revalidateDraftInvoice, getInvoiceById, clearDraftSessionId } from '../../lib/api/invoices'
 import { checkSerialStatus } from '../../lib/api/serials'
+import { validateScannerCodes } from '../../lib/api/scanner'
 import { calculateTax, createTaxContext, productToLineItem } from '../../lib/utils/taxCalculationService'
 import { useAutoSave } from '../../hooks/useAutoSave'
-import { useProducts } from '../../hooks/useProducts'
-import {
-  useCreateInvoice,
-  useAutoSaveInvoiceDraft,
-  useValidateInvoiceItems,
-} from '../../hooks/useInvoices'
 import { ChevronLeftIcon, ChevronRightIcon, PlusIcon, TrashIcon, XCircleIcon, BookmarkIcon } from '@heroicons/react/24/outline'
 import type { IdentifierType } from '../../lib/utils/identifierValidation'
 import { detectIdentifierType, validateMobile, validateGSTIN, normalizeIdentifier } from '../../lib/utils/identifierValidation'
@@ -110,31 +94,21 @@ export function InvoiceForm({
   // Use prop if provided, otherwise use internal state
   const currentDraftInvoiceId = draftInvoiceId || internalDraftInvoiceId
   
-  // Query client for imperative data fetching
-  const queryClient = useQueryClient()
-
   // Toast deduplication hook
   const { showToast } = useToastDedupe()
 
-  // React Query hooks - useProducts returns infinite query, so we extract the first page
-  const productsQuery = useProducts(orgId, { status: 'active' }, {})
-  const productsData = productsQuery.data?.pages?.[0]?.data || []
-  const loadingProductsQuery = productsQuery.isLoading
-
-  // React Query mutations for write operations
-  const { mutateAsync: createInvoiceAsync } = useCreateInvoice(orgId, userId)
-  const { mutateAsync: autoSaveDraftAsync } = useAutoSaveInvoiceDraft(orgId, userId)
-  const { mutateAsync: validateItemsAsync } = useValidateInvoiceItems()
-
-  // Load products when form opens - sync query data to reducer state
+  // Load products when form opens
   useEffect(() => {
     if (isOpen && orgId) {
-      dispatch({ type: 'SET_LOADING_PRODUCTS', payload: loadingProductsQuery })
-      if (productsData.length > 0) {
-        dispatch({ type: 'SET_PRODUCTS', payload: productsData as ProductWithMaster[] })
-      }
+      setLoadingProducts(true)
+      getAllProducts(orgId, { status: 'active' })
+        .then((products) => setProducts(products as ProductWithMaster[]))
+        .catch((error) => {
+          console.error('Error loading products:', error)
+        })
+        .finally(() => setLoadingProducts(false))
     }
-  }, [isOpen, orgId, productsData, loadingProductsQuery])
+  }, [isOpen, orgId])
 
   // Initialize draft session ID when form opens
   useEffect(() => {
@@ -211,9 +185,9 @@ export function InvoiceForm({
   // Load draft with retry logic
   const loadDraftWithRetry = useCallback(async (invoiceId: string, retryCount = 0): Promise<void> => {
     try {
-      dispatch({ type: 'SET_LOADING_DRAFT', payload: true })
-      dispatch({ type: 'SET_DRAFT_LOAD_ERROR', payload: null })
-      dispatch({ type: 'SET_IS_RETRYING', payload: retryCount > 0 })
+      setLoadingDraft(true)
+      setDraftLoadError(null)
+      setIsRetrying(retryCount > 0)
       
       const draftData = await loadDraftInvoiceData(invoiceId)
       
@@ -227,11 +201,11 @@ export function InvoiceForm({
         // Load customer
         const draftInvoice = await getInvoiceById(invoiceId)
         if (draftInvoice.customer) {
-          dispatch({ type: 'SET_SELECTED_CUSTOMER', payload: draftInvoice.customer as any })
+          setSelectedCustomer(draftInvoice.customer as any)
         }
         
         // Load products and restore items
-        const allProducts = productsData.length > 0 ? productsData : await getAllProducts(orgId, { status: 'active' })
+        const allProducts = await getAllProducts(orgId, { status: 'active' })
         const restoredItems: InvoiceItemFormData[] = draftData.items.map((draftItem: any) => {
           const product = allProducts.find((p: any) => p.id === draftItem.product_id)
           return {
@@ -246,18 +220,18 @@ export function InvoiceForm({
             stock_available: draftItem.stock_available,
           }
         })
-        dispatch({ type: 'SET_ITEMS', payload: restoredItems })
-        dispatch({ type: 'SET_INTERNAL_DRAFT_ID', payload: invoiceId })
+        setItems(restoredItems)
+        setInternalDraftInvoiceId(invoiceId)
         // Only advance to step 2 on successful load - don't auto-advance on error
-        dispatch({ type: 'SET_STEP', payload: 2 })
+        setCurrentStep(2)
         
         // Reset retry counter on success
         draftLoadRetries.current = 0
-        dispatch({ type: 'SET_IS_RETRYING', payload: false })
+        setIsRetrying(false)
         
         // Re-validate draft
         try {
-          const revalidation = await revalidateDraftInvoiceAPI(invoiceId, orgId)
+          const revalidation = await revalidateDraftInvoice(invoiceId, orgId)
           if (revalidation.updated) {
             showToast('success', 'Draft revalidated — missing items are now available.', { autoClose: 3000 })
             if (revalidation.valid) {
@@ -266,7 +240,7 @@ export function InvoiceForm({
                 invalid_serials: [],
                 validation_errors: [],
               }))
-              dispatch({ type: 'SET_ITEMS', payload: cleanedItems })
+              setItems(cleanedItems)
             }
           }
         } catch (revalError) {
@@ -282,7 +256,7 @@ export function InvoiceForm({
       // Check if error is retry-able and we haven't exceeded max retries
       if (isRetryableError(error) && retryCount < MAX_RETRIES) {
         draftLoadRetries.current = retryCount + 1
-        dispatch({ type: 'SET_IS_RETRYING', payload: true })
+        setIsRetrying(true)
         
         // Wait 500ms before retrying
         await new Promise(resolve => setTimeout(resolve, 500))
@@ -292,24 +266,24 @@ export function InvoiceForm({
       } else {
         // Permanent error or max retries exceeded
         const errorMessage = error instanceof Error ? error.message : 'Failed to load draft invoice'
-        dispatch({ type: 'SET_DRAFT_LOAD_ERROR', payload: errorMessage })
-        dispatch({ type: 'SET_IS_RETRYING', payload: false })
+        setDraftLoadError(errorMessage)
+        setIsRetrying(false)
         // Use deduplicated toast
         showToast('error', errorMessage, { unique: true, autoClose: 5000 })
         // Don't auto-advance to step 2 on failure - show error UI instead
       }
     } finally {
-      dispatch({ type: 'SET_LOADING_DRAFT', payload: false })
+      setLoadingDraft(false)
     }
-  }, [orgId, org, showToast, productsData])
+  }, [orgId, showToast, loadDraftInvoiceData, getInvoiceById, getAllProducts, revalidateDraftInvoice, setDraftSessionId])
 
   // Load draft on mount if draftInvoiceId prop is provided
   useEffect(() => {
     if (isOpen && draftInvoiceId) {
       // Reset retry counter when opening draft
       draftLoadRetries.current = 0
-      dispatch({ type: 'SET_DRAFT_LOAD_ERROR', payload: null })
-      dispatch({ type: 'SET_IS_RETRYING', payload: false })
+      setDraftLoadError(null)
+      setIsRetrying(false)
       
       // Load draft with retry
       loadDraftWithRetry(draftInvoiceId)
@@ -321,50 +295,50 @@ export function InvoiceForm({
     if (!isOpen && !loadingDraft) {
       // Don't clear session ID here - it should persist if form is reopened
       // Only clear on finalize or explicit delete
-      dispatch({ type: 'SET_STEP', payload: 1 })
-      dispatch({ type: 'SET_IDENTIFIER', payload: '' })
-      dispatch({ type: 'SET_IDENTIFIER_VALID', payload: false })
-      dispatch({ type: 'SET_IDENTIFIER_TYPE', payload: 'invalid' })
-      dispatch({ type: 'SET_LOOKUP_PERFORMED', payload: false })
-      dispatch({ type: 'SET_SELECTED_CUSTOMER', payload: null })
-      dispatch({ type: 'SET_SHOW_ADD_NEW_FORM', payload: false })
-      dispatch({ type: 'SET_MASTER_FORM_DATA', payload: { customer_name: '', address: '', email: '', additionalIdentifier: '' } })
-      dispatch({ type: 'SET_ITEMS', payload: [] })
-      dispatch({ type: 'SET_ERRORS', payload: {} })
-      dispatch({ type: 'SET_INTERNAL_DRAFT_ID', payload: null })
-      dispatch({ type: 'SET_DRAFT_LOAD_ERROR', payload: null })
-      dispatch({ type: 'SET_IS_RETRYING', payload: false })
+      setCurrentStep(1)
+      setIdentifier('')
+      setIdentifierValid(false)
+      setIdentifierType('invalid')
+      setLookupPerformed(false)
+      setSelectedCustomer(null)
+      setShowAddNewForm(false)
+      setMasterFormData({ customer_name: '', address: '', email: '', additionalIdentifier: '' })
+      setItems([])
+      setErrors({})
+      setInternalDraftInvoiceId(null)
+      setDraftLoadError(null)
+      setIsRetrying(false)
     }
   }, [isOpen, loadingDraft])
 
   // Reset selectedCustomer when identifier changes (ensures Next button stays disabled)
   useEffect(() => {
     if (identifier.trim() === '' || !identifierValid) {
-      dispatch({ type: 'SET_SELECTED_CUSTOMER', payload: null })
-      dispatch({ type: 'SET_LOOKUP_PERFORMED', payload: false })
+      setSelectedCustomer(null)
+      setLookupPerformed(false)
     }
   }, [identifier, identifierValid])
 
   // Step 1: Customer Selection
   const handleLookupCustomer = async () => {
     if (!identifierValid || !identifier.trim()) {
-      dispatch({ type: 'SET_ERRORS', payload: { identifier: 'Please enter a valid mobile number or GSTIN' } })
+      setErrors({ identifier: 'Please enter a valid mobile number or GSTIN' })
       return
     }
 
-    dispatch({ type: 'SET_SEARCHING', payload: true })
-    dispatch({ type: 'SET_ERRORS', payload: {} })
-    dispatch({ type: 'SET_SHOW_ADD_NEW_FORM', payload: false })
-    dispatch({ type: 'SET_LOOKUP_PERFORMED', payload: false })
+    setSearching(true)
+    setErrors({})
+    setShowAddNewForm(false)
+    setLookupPerformed(false)
 
     try {
       // First, check if org customer exists (master + org link)
       const orgCustomer = await searchCustomersByIdentifier(identifier, orgId)
-
+      
       if (orgCustomer) {
         // Customer exists with org link - show details
-        dispatch({ type: 'SET_SELECTED_CUSTOMER', payload: orgCustomer })
-
+        setSelectedCustomer(orgCustomer)
+        
         // Check for existing draft for this customer
         try {
           const existingDraft = await getDraftInvoiceByCustomer(orgId, orgCustomer.id)
@@ -379,10 +353,10 @@ export function InvoiceForm({
               const draftData = await loadDraftInvoiceData(existingDraft.id)
               if (draftData) {
                 // Restore items from draft
-                dispatch({ type: 'SET_INTERNAL_DRAFT_ID', payload: existingDraft.id })
+                setInternalDraftInvoiceId(existingDraft.id)
                 
                 // Load products to restore full item data
-                const allProducts = productsData.length > 0 ? productsData : await getAllProducts(orgId, { status: 'active' })
+                const allProducts = await getAllProducts(orgId, { status: 'active' })
                 const restoredItems: InvoiceItemFormData[] = draftData.items.map((draftItem: any) => {
                   const product = allProducts.find((p: any) => p.id === draftItem.product_id)
                   return {
@@ -396,17 +370,17 @@ export function InvoiceForm({
                     validation_errors: draftItem.validation_errors || [],
                     stock_available: draftItem.stock_available,
                   }
-                 })
-                dispatch({ type: 'SET_ITEMS', payload: restoredItems })
+                })
+                setItems(restoredItems)
                 
                 // Re-validate draft
                 try {
-                  const revalidation = await revalidateDraftInvoiceAPI(existingDraft.id, orgId)
+                  const revalidation = await revalidateDraftInvoice(existingDraft.id, orgId)
                   if (revalidation.updated) {
-                    dispatch({ type: 'SET_TOAST', payload: {
-                      message: 'Draft revalidated — missing items are now available.',
-                      type: 'success'
-                    } })
+                    setToast({ 
+                      message: 'Draft revalidated — missing items are now available.', 
+                      type: 'success' 
+                    })
                     // Clear invalid serials/errors if now valid
                     if (revalidation.valid) {
                       const cleanedItems = restoredItems.map(item => ({
@@ -414,7 +388,7 @@ export function InvoiceForm({
                         invalid_serials: [],
                         validation_errors: [],
                       }))
-                      dispatch({ type: 'SET_ITEMS', payload: cleanedItems })
+                      setItems(cleanedItems)
                     }
                   }
                 } catch (revalError) {
@@ -422,7 +396,7 @@ export function InvoiceForm({
                 }
                 
                 showToast('success', 'Draft loaded', { autoClose: 3000 })
-                dispatch({ type: 'SET_STEP', payload: 2 })
+                setCurrentStep(2)
                 return
               }
             }
@@ -436,27 +410,27 @@ export function InvoiceForm({
       }
 
       // Check if master customer exists (but no org link)
-      const master = await checkCustomerExistsAPI(identifier)
-
+      const master = await checkCustomerExists(identifier)
+      
       if (master) {
         // Master exists but no org link - create org link and show
-        const result = await lookupOrCreateCustomerAPI(identifier, orgId, userId)
-        dispatch({ type: 'SET_SELECTED_CUSTOMER', payload: {
+        const result = await lookupOrCreateCustomer(identifier, orgId, userId)
+        setSelectedCustomer({
           ...result.customer,
           master_customer: result.master,
-          } })
+        })
       } else {
         // Master doesn't exist - auto-open "Add New Customer" form
-        dispatch({ type: 'SET_SHOW_ADD_NEW_FORM', payload: true })
+        setShowAddNewForm(true)
       }
     } catch (error) {
       console.error('Error looking up customer:', error)
-      dispatch({ type: 'SET_ERRORS', payload: {
+      setErrors({
         identifier: error instanceof Error ? error.message : 'Failed to lookup customer',
-        } })
+      })
     } finally {
-      dispatch({ type: 'SET_SEARCHING', payload: false })
-      dispatch({ type: 'SET_LOOKUP_PERFORMED', payload: true })
+      setSearching(false)
+      setLookupPerformed(true)
     }
   }
 
@@ -495,12 +469,12 @@ export function InvoiceForm({
     }
     
     if (Object.keys(formErrors).length > 0) {
-      dispatch({ type: 'SET_ERRORS', payload: formErrors })
+      setErrors(formErrors)
       return
     }
 
-    dispatch({ type: 'SET_SEARCHING', payload: true })
-    dispatch({ type: 'SET_ERRORS', payload: {} })
+    setSearching(true)
+    setErrors({})
 
     try {
       const additionalNormalized = masterFormData.additionalIdentifier.trim()
@@ -521,45 +495,45 @@ export function InvoiceForm({
         if (additionalNormalized) masterData.mobile = additionalNormalized
       }
 
-      const result = await lookupOrCreateCustomerAPI(
+      const result = await lookupOrCreateCustomer(
         identifier,
         orgId,
         userId,
         masterData
       )
-      dispatch({ type: 'SET_SELECTED_CUSTOMER', payload: {
+      setSelectedCustomer({
         ...result.customer,
         master_customer: result.master,
-         } })
-      dispatch({ type: 'SET_SHOW_ADD_NEW_FORM', payload: false })
-      dispatch({ type: 'SET_MASTER_FORM_DATA', payload: { customer_name: '', address: '', email: '', additionalIdentifier: '' } })
+      })
+      setShowAddNewForm(false)
+      setMasterFormData({ customer_name: '', address: '', email: '', additionalIdentifier: '' })
       // Auto-advance to Step 2
-      dispatch({ type: 'SET_STEP', payload: 2 })
+      setCurrentStep(2)
     } catch (error) {
       console.error('Error creating customer:', error)
-      dispatch({ type: 'SET_ERRORS', payload: {
+      setErrors({
         submit: error instanceof Error ? error.message : 'Failed to create customer',
-        } })
+      })
     } finally {
-      dispatch({ type: 'SET_SEARCHING', payload: false })
+      setSearching(false)
     }
   }
 
   // Step 2: Add Products
   const handleAddItem = () => {
-    dispatch({
-      type: 'ADD_ITEM',
-      payload: {
+    setItems([
+      ...items,
+      {
         product_id: '',
         quantity: 1,
         unit_price: 0,
         line_total: 0,
       },
-    })
+    ])
   }
 
   const handleRemoveItem = (index: number) => {
-    dispatch({ type: 'REMOVE_ITEM', payload: index })
+    setItems(items.filter((_, i) => i !== index))
   }
 
   const handleItemChange = (index: number, field: keyof InvoiceItemFormData, value: any) => {
@@ -571,7 +545,7 @@ export function InvoiceForm({
       updated[index].line_total = (updated[index].quantity || 0) * (updated[index].unit_price || 0)
     }
 
-    dispatch({ type: 'SET_ITEMS', payload: updated })
+    setItems(updated)
   }
 
   const handleProductChange = (index: number, productId: string) => {
@@ -590,7 +564,7 @@ export function InvoiceForm({
     // Recalculate line_total
     updated[index].line_total = (updated[index].quantity || 0) * updated[index].unit_price
 
-    dispatch({ type: 'SET_ITEMS', payload: updated })
+    setItems(updated)
   }
 
   // Handle product selection from combobox
@@ -599,16 +573,16 @@ export function InvoiceForm({
       showToast('error', 'Please select a customer first', { autoClose: 3000 })
       return
     }
-    dispatch({ type: 'SET_PENDING_PRODUCT', payload: product })
-    dispatch({ type: 'SET_PENDING_QUANTITY', payload: 1 })
-    dispatch({ type: 'SET_SHOW_CONFIRM_SHEET', payload: true })
+    setPendingProduct(product)
+    setPendingQuantity(1)
+    setShowConfirmSheet(true)
   }
 
   // Handle scan from camera (continuous mode)
   const handleScanFromCamera = async (code: string) => {
     if (!selectedCustomer) {
       showToast('error', 'Please select a customer first', { autoClose: 3000 })
-      dispatch({ type: 'SET_SCANNER_MODE', payload: 'closed' })
+      setScannerMode('closed')
       return
     }
 
@@ -627,10 +601,10 @@ export function InvoiceForm({
         const product = products.find((p) => p.id === result.product_id)
         if (product) {
           // Show confirmation sheet (scanner stays open)
-          dispatch({ type: 'SET_PENDING_PRODUCT', payload: product })
-          dispatch({ type: 'SET_PENDING_QUANTITY', payload: 1 })
-          dispatch({ type: 'SET_SCANNER_MODE', payload: 'confirming' })
-          dispatch({ type: 'SET_SHOW_CONFIRM_SHEET', payload: true })
+          setPendingProduct(product)
+          setPendingQuantity(1)
+          setScannerMode('confirming')
+          setShowConfirmSheet(true)
         } else {
           showToast('error', 'Product not found in inventory.', { autoClose: 3000 })
         }
@@ -683,24 +657,24 @@ export function InvoiceForm({
       updatedItems.push(newItem)
     }
 
-    dispatch({ type: 'SET_ITEMS', payload: updatedItems })
-    dispatch({ type: 'SET_SHOW_CONFIRM_SHEET', payload: false })
-    dispatch({ type: 'SET_PENDING_PRODUCT', payload: null })
+    setItems(updatedItems)
+    setShowConfirmSheet(false)
+    setPendingProduct(null)
     
     // If scanner was open, continue scanning
     if (scannerMode === 'confirming') {
-      dispatch({ type: 'SET_SCANNER_MODE', payload: 'scanning' })
+      setScannerMode('scanning')
     }
   }
 
   // Handle cancel confirmation
   const handleCancelConfirm = () => {
-    dispatch({ type: 'SET_SHOW_CONFIRM_SHEET', payload: false })
-    dispatch({ type: 'SET_PENDING_PRODUCT', payload: null })
+    setShowConfirmSheet(false)
+    setPendingProduct(null)
     
     // If scanner was open, continue scanning
     if (scannerMode === 'confirming') {
-      dispatch({ type: 'SET_SCANNER_MODE', payload: 'scanning' })
+      setScannerMode('scanning')
     }
   }
 
@@ -710,7 +684,7 @@ export function InvoiceForm({
       showToast('error', 'Please select a customer first', { autoClose: 3000 })
       return
     }
-    dispatch({ type: 'SET_SCANNER_MODE', payload: 'scanning' })
+    setScannerMode('scanning')
   }
 
   // Auto-save draft
@@ -732,25 +706,20 @@ export function InvoiceForm({
     async (data) => {
       if (!selectedCustomer || !draftSessionId.current) return
       try {
-        const result = await autoSaveDraftAsync({
-          draftId: currentDraftInvoiceId,
-          data,
-          org,
-          customer: selectedCustomer
-        })
-        dispatch({ type: 'SET_INTERNAL_DRAFT_ID', payload: result.id })
+        const result = await autoSaveInvoiceDraft(orgId, userId, draftSessionId.current, data)
+        setInternalDraftInvoiceId(result.invoiceId)
         // Update session ID if it changed
-        if (result.draft_session_id && result.draft_session_id !== draftSessionId.current) {
-          draftSessionId.current = result.draft_session_id
-          if (result.id) {
-            setDraftSessionId(result.id, result.draft_session_id)
+        if (result.sessionId && result.sessionId !== draftSessionId.current) {
+          draftSessionId.current = result.sessionId
+          if (result.invoiceId) {
+            setDraftSessionId(result.invoiceId, result.sessionId)
           }
         }
         const now = Date.now()
         // Only show toast if it's been more than 3 seconds since last auto-save (avoid spam)
         if (!lastAutoSaveTime || now - lastAutoSaveTime > 3000) {
           showToast('success', 'Draft saved automatically', { autoClose: 2000 })
-          dispatch({ type: 'SET_LAST_AUTO_SAVE_TIME', payload: now })
+          setLastAutoSaveTime(now)
         }
       } catch (error) {
         console.error('Auto-save failed:', error)
@@ -806,16 +775,16 @@ export function InvoiceForm({
           item.invalid_serials = []
         }
         item.invalid_serials.push(serial.trim())
-        dispatch({ type: 'SET_TOAST', payload: { 
+        setToast({ 
           message: 'Serial not found in stock. Saved as draft for branch head review.', 
           type: 'error' 
-          } })
+        })
       } else if (serialStatus.product_id !== item.product_id) {
         // Serial belongs to different product
-        dispatch({ type: 'SET_TOAST', payload: { 
+        setToast({ 
           message: `Serial belongs to a different product.`, 
           type: 'error' 
-          } })
+        })
         return
       } else if (serialStatus.status !== 'available') {
         // Serial not available
@@ -823,10 +792,10 @@ export function InvoiceForm({
           item.invalid_serials = []
         }
         item.invalid_serials.push(serial.trim())
-        dispatch({ type: 'SET_TOAST', payload: { 
+        setToast({ 
           message: 'Serial not available in stock. Saved as draft for branch head review.', 
           type: 'error' 
-          } })
+        })
       }
 
       // Add serial (even if invalid, for draft purposes)
@@ -835,7 +804,7 @@ export function InvoiceForm({
         item.quantity = item.serials.length
         item.line_total = item.quantity * item.unit_price
       }
-      dispatch({ type: 'SET_ITEMS', payload: updated })
+      setItems(updated)
     } catch (error) {
       console.error('Error validating serial:', error)
       // Still allow adding for draft, but mark as invalid
@@ -848,11 +817,11 @@ export function InvoiceForm({
         item.quantity = item.serials.length
         item.line_total = item.quantity * item.unit_price
       }
-      dispatch({ type: 'SET_ITEMS', payload: updated })
-      dispatch({ type: 'SET_TOAST', payload: { 
+      setItems(updated)
+      setToast({ 
         message: 'Error validating serial. Saved as draft for branch head review.', 
         type: 'error' 
-        } })
+      })
     }
   }
 
@@ -874,7 +843,7 @@ export function InvoiceForm({
         item.quantity = item.serials.length
         item.line_total = item.quantity * item.unit_price
       }
-      dispatch({ type: 'SET_ITEMS', payload: updated })
+      setItems(updated)
     }
   }
 
@@ -932,14 +901,14 @@ export function InvoiceForm({
     e.preventDefault()
 
     if (!selectedCustomer) {
-      dispatch({ type: 'SET_ERRORS', payload: { customer: 'Please select a customer' } })
-      dispatch({ type: 'SET_STEP', payload: 1 })
+      setErrors({ customer: 'Please select a customer' })
+      setCurrentStep(1)
       return
     }
 
     if (items.length === 0) {
-      dispatch({ type: 'SET_ERRORS', payload: { items: 'Please add at least one item' } })
-      dispatch({ type: 'SET_STEP', payload: 2 })
+      setErrors({ items: 'Please add at least one item' })
+      setCurrentStep(2)
       return
     }
 
@@ -954,16 +923,16 @@ export function InvoiceForm({
       
       // For non-serial products, check quantity
       return item.quantity <= 0
-     })
+    })
     
     if (invalidItems) {
-      dispatch({ type: 'SET_ERRORS', payload: { items: 'Please fill all item fields correctly (serials for serial-tracked products, quantity for others)' } })
-      dispatch({ type: 'SET_STEP', payload: 2 })
+      setErrors({ items: 'Please fill all item fields correctly (serials for serial-tracked products, quantity for others)' })
+      setCurrentStep(2)
       return
     }
 
-    dispatch({ type: 'SET_IS_SUBMITTING', payload: true })
-    dispatch({ type: 'SET_ERRORS', payload: {} })
+    setIsSubmitting(true)
+    setErrors({})
 
     try {
       // Backend validation before finalization
@@ -975,7 +944,7 @@ export function InvoiceForm({
       }))
 
       // Validate items - allow drafts (pending masters allowed)
-      const validation = await validateItemsAsync({ items: validationItems, orgId })
+      const validation = await validateInvoiceItems(orgId, validationItems, true)
 
       if (!validation.valid) {
         // Group errors by type
@@ -1014,7 +983,7 @@ export function InvoiceForm({
             }),
           }
         })
-        dispatch({ type: 'SET_ITEMS', payload: updatedItems })
+        setItems(updatedItems)
 
         // Show toast with error summary
         let errorMessage = 'Invoice validation failed: '
@@ -1030,15 +999,15 @@ export function InvoiceForm({
         if (stockErrors.length > 0) {
           errorMessage += `${stockErrors.length} item(s) have insufficient stock. `
         }
-        dispatch({ type: 'SET_TOAST', payload: { message: errorMessage.trim(), type: 'error' } })
+        setToast({ message: errorMessage.trim(), type: 'error' })
 
         // Set form errors
-        dispatch({ type: 'SET_ERRORS', payload: {
+        setErrors({ 
           items: 'Some items have validation errors. Please fix them before finalizing.',
           submit: 'Cannot create invoice with invalid items'
-        } })
-        dispatch({ type: 'SET_STEP', payload: 2 })
-        dispatch({ type: 'SET_IS_SUBMITTING', payload: false })
+        })
+        setCurrentStep(2)
+        setIsSubmitting(false)
         return
       }
 
@@ -1050,11 +1019,13 @@ export function InvoiceForm({
         })),
       }
 
-      const invoice = await createInvoiceAsync({
-        data: invoiceData,
+      const invoice = await createInvoice(
+        orgId,
+        userId,
+        invoiceData,
         org,
-        customer: selectedCustomer
-      })
+        selectedCustomer
+      )
 
       // Clear draft session ID on finalize
       if (currentDraftInvoiceId) {
@@ -1068,15 +1039,15 @@ export function InvoiceForm({
       onClose()
     } catch (error) {
       console.error('Error creating invoice:', error)
-      dispatch({ type: 'SET_ERRORS', payload: {
+      setErrors({
         submit: error instanceof Error ? error.message : 'Failed to create invoice',
-        } })
-      dispatch({ type: 'SET_TOAST', payload: { 
+      })
+      setToast({ 
         message: error instanceof Error ? error.message : 'Failed to create invoice', 
         type: 'error' 
-        } })
+      })
     } finally {
-      dispatch({ type: 'SET_IS_SUBMITTING', payload: false })
+      setIsSubmitting(false)
     }
   }
 
@@ -1112,8 +1083,8 @@ export function InvoiceForm({
               variant="primary"
               size="md"
               onClick={async () => {
-                dispatch({ type: 'SET_DRAFT_LOAD_ERROR', payload: null })
-                dispatch({ type: 'SET_IS_RETRYING', payload: false })
+                setDraftLoadError(null)
+                setIsRetrying(false)
                 draftLoadRetries.current = 0
                 await loadDraftWithRetry(draftInvoiceId!)
               }}
@@ -1127,13 +1098,13 @@ export function InvoiceForm({
               size="md"
               onClick={() => {
                 // Reset form and start new invoice
-                dispatch({ type: 'SET_DRAFT_LOAD_ERROR', payload: null })
-                dispatch({ type: 'SET_INTERNAL_DRAFT_ID', payload: null })
-                dispatch({ type: 'SET_STEP', payload: 1 })
-                dispatch({ type: 'SET_IDENTIFIER', payload: '' })
-                dispatch({ type: 'SET_IDENTIFIER_VALID', payload: false })
-                dispatch({ type: 'SET_SELECTED_CUSTOMER', payload: null })
-                dispatch({ type: 'SET_ITEMS', payload: [] })
+                setDraftLoadError(null)
+                setInternalDraftInvoiceId(null)
+                setCurrentStep(1)
+                setIdentifier('')
+                setIdentifierValid(false)
+                setSelectedCustomer(null)
+                setItems([])
                 // Don't close the form - allow user to start new invoice
               }}
               className="w-full"
@@ -1173,7 +1144,7 @@ export function InvoiceForm({
                   type="text"
                   value={masterFormData.customer_name}
                   onChange={(e) =>
-                    dispatch({ type: 'SET_MASTER_FORM_DATA', payload: { ...masterFormData, customer_name: e.target.value } })
+                    setMasterFormData({ ...masterFormData, customer_name: e.target.value })
                   }
                   disabled={isSubmitting || searching}
                   placeholder="Enter customer's legal name"
@@ -1189,7 +1160,7 @@ export function InvoiceForm({
                     type="text"
                     value={masterFormData.additionalIdentifier}
                     onChange={(e) =>
-                      dispatch({ type: 'SET_MASTER_FORM_DATA', payload: { ...masterFormData, additionalIdentifier: e.target.value } })
+                      setMasterFormData({ ...masterFormData, additionalIdentifier: e.target.value })
                     }
                     disabled={isSubmitting || searching}
                     placeholder={identifierType === 'mobile' ? 'Enter 15-character GSTIN' : 'Enter 10-digit mobile number'}
@@ -1202,7 +1173,7 @@ export function InvoiceForm({
                   type="email"
                   value={masterFormData.email}
                   onChange={(e) =>
-                    dispatch({ type: 'SET_MASTER_FORM_DATA', payload: { ...masterFormData, email: e.target.value } })
+                    setMasterFormData({ ...masterFormData, email: e.target.value })
                   }
                   disabled={isSubmitting || searching}
                   placeholder="Enter email address"
@@ -1216,7 +1187,7 @@ export function InvoiceForm({
                   <textarea
                     value={masterFormData.address}
                     onChange={(e) =>
-                      dispatch({ type: 'SET_MASTER_FORM_DATA', payload: { ...masterFormData, address: e.target.value } })
+                      setMasterFormData({ ...masterFormData, address: e.target.value })
                     }
                     disabled={isSubmitting || searching}
                     placeholder="Enter customer's address"
@@ -1230,9 +1201,9 @@ export function InvoiceForm({
                     type="button"
                     variant="secondary"
                     onClick={() => {
-                      dispatch({ type: 'SET_SHOW_ADD_NEW_FORM', payload: false })
-                      dispatch({ type: 'SET_MASTER_FORM_DATA', payload: { customer_name: '', address: '', email: '', additionalIdentifier: '' } })
-                      dispatch({ type: 'SET_ERRORS', payload: {} })
+                      setShowAddNewForm(false)
+                      setMasterFormData({ customer_name: '', address: '', email: '', additionalIdentifier: '' })
+                      setErrors({})
                     }}
                     disabled={isSubmitting || searching}
                     className="flex-1"
@@ -1260,9 +1231,9 @@ export function InvoiceForm({
                     className="border-2 border-success-light shadow-sm h-full"
                     onClick={() => {
                       if (identifierValid) {
-                        dispatch({ type: 'SET_SHOW_ADD_NEW_FORM', payload: true })
+                        setShowAddNewForm(true)
                       } else {
-                        dispatch({ type: 'SET_ERRORS', payload: { identifier: 'Enter a valid Mobile or GSTIN to create a new customer.' } })
+                        setErrors({ identifier: 'Enter a valid Mobile or GSTIN to create a new customer.' })
                       }
                     }}
                   >
@@ -1303,17 +1274,17 @@ export function InvoiceForm({
                     value={identifier}
                     onChange={setIdentifier}
                     onValidationChange={(isValid, type) => {
-                      dispatch({ type: 'SET_IDENTIFIER_VALID', payload: isValid })
-                      dispatch({ type: 'SET_IDENTIFIER_TYPE', payload: type })
+                      setIdentifierValid(isValid)
+                      setIdentifierType(type)
                       if (errors.identifier) {
-                        dispatch({ type: 'SET_ERRORS', payload: {} }) // Clear error when user starts typing
+                        setErrors({}) // Clear error when user starts typing
                       }
                     }}
                     onSearch={handleLookupCustomer}
                     onClear={() => {
-                      dispatch({ type: 'SET_SELECTED_CUSTOMER', payload: null })
-                      dispatch({ type: 'SET_LOOKUP_PERFORMED', payload: false })
-                      dispatch({ type: 'SET_SHOW_ADD_NEW_FORM', payload: false })
+                      setSelectedCustomer(null)
+                      setLookupPerformed(false)
+                      setShowAddNewForm(false)
                     }}
                     autoFocus={isOpen && currentStep === 1}
                     disabled={isSubmitting}
@@ -1327,7 +1298,7 @@ export function InvoiceForm({
                     <h4 className="text-sm font-semibold text-primary-text mb-sm">Existing Customer Found</h4>
                     <CustomerResultCard
                       customer={selectedCustomer}
-                      onSelect={() => dispatch({ type: 'SET_STEP', payload: 2 })}
+                      onSelect={() => setCurrentStep(2)}
                     />
                   </div>
                 )}
@@ -1337,7 +1308,7 @@ export function InvoiceForm({
                     <p className="text-sm text-secondary-text">No existing customer found with this identifier.</p>
                     <Button
                       variant="ghost"
-                      onClick={() => dispatch({ type: 'SET_SHOW_ADD_NEW_FORM', payload: true })}
+                      onClick={() => setShowAddNewForm(true)}
                       className="mt-xs"
                     >
                       Click here to add them as a new customer.
@@ -1499,7 +1470,7 @@ export function InvoiceForm({
                             type="text"
                             value={serialInputs[index] || ''}
                             onChange={(e) => {
-                              dispatch({ type: 'SET_SERIAL_INPUT', payload: { index, value: e.target.value } })
+                              setSerialInputs({ ...serialInputs, [index]: e.target.value })
                             }}
                             onKeyDown={(e) => {
                               if (e.key === 'Enter') {
@@ -1507,7 +1478,7 @@ export function InvoiceForm({
                                 const value = serialInputs[index]?.trim()
                                 if (value) {
                                   handleAddSerial(index, value)
-                                  dispatch({ type: 'SET_SERIAL_INPUT', payload: { index, value: '' } })
+                                  setSerialInputs({ ...serialInputs, [index]: '' })
                                 }
                               }
                             }}
@@ -1719,7 +1690,7 @@ export function InvoiceForm({
             <Button
               type="button"
               variant="secondary"
-              onClick={() => dispatch({ type: 'PREV_STEP' })}
+              onClick={() => setCurrentStep((s) => (s - 1) as Step)}
               disabled={isSubmitting}
               className="w-full"
             >
@@ -1736,9 +1707,9 @@ export function InvoiceForm({
               variant="primary"
               onClick={() => {
                 if (currentStep === 1 && canProceedToStep2) {
-                  dispatch({ type: 'SET_STEP', payload: 2 })
+                  setCurrentStep(2)
                 } else if (currentStep === 2 && canProceedToStep3) {
-                  dispatch({ type: 'SET_STEP', payload: 3 })
+                  setCurrentStep(3)
                 }
               }}
               disabled={
@@ -1815,7 +1786,7 @@ export function InvoiceForm({
         <Toast
           message={toast.message}
           type={toast.type}
-          onClose={() => dispatch({ type: 'SET_TOAST', payload: null })}
+          onClose={() => setToast(null)}
         />
       )}
       {isMobileDevice() ? (
@@ -1832,9 +1803,9 @@ export function InvoiceForm({
       <CameraScanner
         isOpen={scannerMode === 'scanning' || scannerMode === 'confirming'}
         onClose={() => {
-          dispatch({ type: 'SET_SCANNER_MODE', payload: 'closed' })
-          dispatch({ type: 'SET_SHOW_CONFIRM_SHEET', payload: false })
-          dispatch({ type: 'SET_PENDING_PRODUCT', payload: null })
+          setScannerMode('closed')
+          setShowConfirmSheet(false)
+          setPendingProduct(null)
         }}
         onScanSuccess={handleScanFromCamera}
         continuousMode={true}

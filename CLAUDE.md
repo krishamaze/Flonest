@@ -1183,24 +1183,29 @@ When working on this codebase:
 
 ### Common Issues
 
-#### 1. Local Supabase Issues
+#### 1. Supabase Branching 2.0 Issues
 
-**Problem**: Storage container fails with "Migration iceberg-catalog-ids not found"
+**Problem**: Branch creation fails with "Branch already exists"
 
-**Solution**: See [docs/LOCAL_SUPABASE_POSTMORTEM.md](docs/LOCAL_SUPABASE_POSTMORTEM.md) for complete analysis.
-
-**Quick Fix**:
+**Solution**:
+1. Check if the branch exists in Supabase Dashboard
+2. Delete the stale branch if it's no longer needed:
 ```bash
-# Stop and clean Docker state
-npx supabase stop
-docker rm -f $(docker ps -aq --filter "name=supabase")
-docker volume rm $(docker volume ls -q --filter label=com.supabase.cli.project=Flonest)
-
-# Start fresh with latest CLI
-npx supabase start
+npx supabase branches delete <branch-name>
 ```
 
-**Root Cause**: CLI version mismatch or corrupted Docker volumes
+**Problem**: Migration fails on push
+
+**Solution**:
+1. Check the error message for SQL syntax errors
+2. Ensure your migration is idempotent (can be run multiple times)
+3. If there's a conflict, rebase your git branch on `preview` or `main`
+
+**Problem**: Environment variables not matching branch
+
+**Solution**:
+1. Verify you are using the correct `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` for your active branch
+2. Check the Supabase Dashboard for the specific branch credentials
 
 #### 2. Authentication Errors
 

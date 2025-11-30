@@ -1,64 +1,31 @@
-import { useEffect, useState, useCallback, useRef } from 'react'
+import { useEffect, useState } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { useRefresh } from '../contexts/RefreshContext'
+import { useCustomers, useUpdateOrgCustomer } from '../hooks/useCustomers'
 import type { CustomerWithMaster } from '../types'
 import { Card, CardContent } from '../components/ui/Card'
 import { LoadingSpinner } from '../components/ui/LoadingSpinner'
 import { Button } from '../components/ui/Button'
 import { CustomerForm } from '../components/forms/CustomerForm'
 import { PlusIcon, MagnifyingGlassIcon, PencilIcon } from '@heroicons/react/24/outline'
-import { getCustomersByOrg, updateOrgCustomer } from '../lib/api/customers'
+import { toast } from 'react-toastify'
 
 export function CustomersPage() {
   const { user } = useAuth()
   const { registerRefreshHandler, unregisterRefreshHandler } = useRefresh()
-  const [customers, setCustomers] = useState<CustomerWithMaster[]>([])
-  const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')
   const [isFormOpen, setIsFormOpen] = useState(false)
   const [editingCustomer, setEditingCustomer] = useState<CustomerWithMaster | null>(null)
-  const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null)
 
-  const loadCustomers = useCallback(async () => {
-    if (!user || !user.orgId) return
-
-    setLoading(true)
-    try {
-      const data = await getCustomersByOrg(user.orgId)
-      setCustomers(data)
-    } catch (error) {
-      console.error('Error loading customers:', error)
-    } finally {
-      setLoading(false)
-    }
-  }, [user])
-
-  useEffect(() => {
-    loadCustomers()
-  }, [loadCustomers])
+  // React Query hooks
+  const { data: customers = [], isLoading: loading, refetch } = useCustomers(user?.orgId)
+  const { mutate: updateCustomer } = useUpdateOrgCustomer(user?.orgId)
 
   // Register refresh handler for pull-to-refresh
   useEffect(() => {
-    registerRefreshHandler(loadCustomers)
+    registerRefreshHandler(() => refetch())
     return () => unregisterRefreshHandler()
-  }, [registerRefreshHandler, unregisterRefreshHandler, loadCustomers])
-
-  // Debounced search
-  useEffect(() => {
-    if (searchTimeoutRef.current) {
-      clearTimeout(searchTimeoutRef.current)
-    }
-
-    searchTimeoutRef.current = setTimeout(() => {
-      loadCustomers()
-    }, 300)
-
-    return () => {
-      if (searchTimeoutRef.current) {
-        clearTimeout(searchTimeoutRef.current)
-      }
-    }
-  }, [searchQuery, loadCustomers])
+  }, [registerRefreshHandler, unregisterRefreshHandler, refetch])
 
   const filteredCustomers = customers.filter((customer) => {
     if (!searchQuery.trim()) return true
@@ -80,11 +47,23 @@ export function CustomersPage() {
     )
   })
 
-  const handleUpdateCustomer = async (data: any) => {
+  const handleUpdateCustomer = (data: any) => {
     if (!editingCustomer) return
-    await updateOrgCustomer(editingCustomer.id, data)
-    await loadCustomers()
-    setEditingCustomer(null)
+
+    updateCustomer(
+      { customerId: editingCustomer.id, data },
+      {
+        onSuccess: () => {
+          setEditingCustomer(null)
+          setIsFormOpen(false)
+          toast.success('Customer updated successfully')
+        },
+        onError: (error) => {
+          console.error('Error updating customer:', error)
+          toast.error('Failed to update customer')
+        },
+      }
+    )
   }
 
   const handleEditClick = (customer: CustomerWithMaster) => {
