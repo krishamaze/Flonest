@@ -1,8 +1,14 @@
-import { useState } from 'react'
 import type { CustomerWithMaster, InvoiceItemFormData, Org } from '../../types'
 
+// TODO: Move draft + autosave logic into useInvoiceDraft
+// This hook is currently a stub. The actual draft loading, retry logic, autosave,
+// and session management still live in InvoiceForm.tsx. Next steps:
+// 1) Copy ALL draft-related logic (state, refs, effects, helpers) into this hook
+// 2) Wire InvoiceForm to call the hook and verify parity
+// 3) Delete the original logic from InvoiceForm once behavior is confirmed identical
+
 interface UseInvoiceDraftParams {
-  // Form snapshot
+  // Form snapshot for autosave
   customerId: string | null
   items: InvoiceItemFormData[]
   orgId: string
@@ -33,42 +39,36 @@ interface UseInvoiceDraftReturn {
   retryLoadDraft: () => void
 }
 
-export function useInvoiceDraft(params: UseInvoiceDraftParams): UseInvoiceDraftReturn {
-  // Real state - moved from InvoiceForm
-  const [draftInvoiceId, setDraftInvoiceId] = useState<string | null>(
-    params.initialDraftInvoiceId || null
-  )
-  const [loadingDraft, setLoadingDraft] = useState(false)
-  const [draftLoadError, setDraftLoadError] = useState<string | null>(null)
-  const [isRetrying, setIsRetrying] = useState(false)
-  const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved'>('idle')
-  
-  // Temporary - suppress unused variable warnings
-  console.log('Draft state:', { draftInvoiceId, loadingDraft, draftLoadError, isRetrying, saveStatus })
-  console.log('Draft setters:', { setDraftInvoiceId, setLoadingDraft, setDraftLoadError, setIsRetrying, setSaveStatus })
-  console.log('Params:', params.customerId, params.items.length)
-  
-  // Placeholder functions - will be implemented in next steps
-  const handleManualSaveDraft = () => {
-    console.log('Manual save draft - placeholder')
-  }
-  
-  const clearDraftSession = () => {
-    console.log('Clear draft session - placeholder')
-  }
-  
-  const retryLoadDraft = () => {
-    console.log('Retry load draft - placeholder')
-  }
+/**
+ * STUB: Draft management hook (not yet implemented)
+ * 
+ * This hook WILL eventually own:
+ * - Draft loading with retry logic
+ * - Autosave timer and session ID management  
+ * - Draft revalidation
+ * - Draft session cleanup
+ * 
+ * Currently, all this logic still lives in InvoiceForm.tsx.
+ * DO NOT depend on this hook for correctness yet.
+ */
+export function useInvoiceDraft(_params: UseInvoiceDraftParams): UseInvoiceDraftReturn {
+  // Stub implementation - returns safe defaults
+  // Real implementation will be migrated from InvoiceForm in a future refactor
   
   return {
-    draftInvoiceId,
-    loadingDraft,
-    draftLoadError,
-    saveStatus,
-    isRetrying,
-    handleManualSaveDraft,
-    clearDraftSession,
-    retryLoadDraft,
+    draftInvoiceId: null,
+    loadingDraft: false,
+    draftLoadError: null,
+    saveStatus: 'idle',
+    isRetrying: false,
+    handleManualSaveDraft: () => {
+      console.warn('useInvoiceDraft: handleManualSaveDraft called on stub - no-op')
+    },
+    clearDraftSession: () => {
+      console.warn('useInvoiceDraft: clearDraftSession called on stub - no-op')
+    },
+    retryLoadDraft: () => {
+      console.warn('useInvoiceDraft: retryLoadDraft called on stub - no-op')
+    },
   }
 }

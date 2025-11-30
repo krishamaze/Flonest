@@ -93,12 +93,18 @@ export function InvoiceForm({
   const [pendingProduct, setPendingProduct] = useState<ProductWithMaster | null>(null)
   const [pendingQuantity, setPendingQuantity] = useState(1)
 
-  // TEMP: Draft loading state - keeping during migration, will be removed when effects move to hook
+
+  // TODO: Move draft + autosave logic into useInvoiceDraft hook
+  // All draft-related state, effects, and functions below should be migrated to
+  // src/hooks/invoice/useInvoiceDraft.ts in a future refactor. For now, this logic
+  // is the single source of truth. DO NOT delete until hook is fully implemented.
+
+  // Draft loading state
   const [loadingDraft, setLoadingDraft] = useState(false)
   const [draftLoadError, setDraftLoadError] = useState<string | null>(null)
   const [isRetrying, setIsRetrying] = useState(false)
 
-  // Draft session ID ref and retry counter - will be moved to hook later
+  // Draft session ID ref and retry counter
   const draftLoadRetries = useRef(0)
   const MAX_RETRIES = 1
   const draftSessionId = useRef<string | null>(null)
