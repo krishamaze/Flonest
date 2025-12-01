@@ -132,13 +132,25 @@ export function CustomerSearchCombobox({
     }
 
     const handleResultSelect = (result: CustomerSearchResult) => {
-        const displayName = result.type === 'org'
-            ? (result.data.alias_name || result.data.master_customer.legal_name)
-            : result.data.legal_name
+        // Extract the identifier (mobile or GSTIN) to display in the input field
+        const identifier = (() => {
+            if (result.type === 'org') {
+                const customer = result.data as CustomerWithMaster
+                return customer.master_customer.mobile || customer.master_customer.gstin || ''
+            } else {
+                const master = result.data as any
+                return master.mobile || master.gstin || ''
+            }
+        })()
 
-        onChange(displayName)
+        onChange(identifier)
         setIsOpen(false)
         onCustomerSelect(result)
+
+        // Blur the input to unfocus it
+        setTimeout(() => {
+            inputRef.current?.blur()
+        }, 0)
     }
 
     const getInputMode = (): 'text' | 'tel' => {
