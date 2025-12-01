@@ -106,7 +106,6 @@ export function InvoiceForm({
     identifierValid: _hookIdentifierValid,
     searching: hookSearching,
     selectedCustomer: hookSelectedCustomer,
-    showAddNewForm: hookShowAddNewForm,
     inlineFormData: hookInlineFormData,
     errors: hookCustomerErrors,
     fieldPriority: hookFieldPriority,
@@ -115,8 +114,6 @@ export function InvoiceForm({
     setSearching: _hookSetSearching,
     setSelectedCustomer: hookSetSelectedCustomer,
     handleCustomerSelected: hookHandleCustomerSelected,
-    handleOpenAddNewForm: hookHandleOpenAddNewForm,
-    handleCloseAddNewForm: hookHandleCloseAddNewForm,
     handleFormDataChange: hookHandleFormDataChange,
     handleCreateOrgCustomer: hookHandleCreateOrgCustomer,
     handleValidateField: hookHandleValidateField,
@@ -127,8 +124,8 @@ export function InvoiceForm({
       showToast('error', message, { autoClose: 3000 })
     },
     onCustomerCreated: (_customer) => {
-      showToast('success', 'Customer added successfully', { autoClose: 3000 })
-      // We might need to update identifier here if not handled by hook
+      showToast('success', 'Customer saved successfully', { autoClose: 3000 })
+      setCurrentStep(2)
     }
   })
 
@@ -476,19 +473,13 @@ export function InvoiceForm({
           selectedCustomer={hookSelectedCustomer}
           onCustomerSelected={(customer) => {
             hookHandleCustomerSelected(customer)
-            if (customer) {
-              setCurrentStep(2)
-            }
           }}
-          isAddNewFormOpen={hookShowAddNewForm}
           newCustomerData={hookInlineFormData}
           formErrors={{
             name: hookCustomerErrors.name,
             mobile: hookCustomerErrors.mobile,
             gstin: hookCustomerErrors.gstin,
           }}
-          onOpenAddNewForm={hookHandleOpenAddNewForm}
-          onCloseAddNewForm={hookHandleCloseAddNewForm}
           onFormDataChange={hookHandleFormDataChange}
           onSubmitNewCustomer={hookHandleCreateOrgCustomer}
           onFieldBlur={hookHandleValidateField}

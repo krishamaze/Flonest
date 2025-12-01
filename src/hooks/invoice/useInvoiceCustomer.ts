@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react'
 import type { CustomerWithMaster } from '../../types'
-import { useAddOrgCustomer, useCustomerById } from '../../hooks/useCustomers'
+import { useAddOrgCustomer, useCustomerById, useUpdateOrgCustomer } from '../../hooks/useCustomers'
 import { detectIdentifierTypeEnhanced, type EnhancedIdentifierType } from '../../lib/utils/identifierValidation'
 import { validateMobile, validateGSTIN } from '../../lib/utils/identifierValidation'
 
@@ -72,6 +72,7 @@ export function useInvoiceCustomer({
   
   // Hooks for customer mutations/queries
   const addCustomerMutation = useAddOrgCustomer(orgId)
+  const updateCustomerMutation = useUpdateOrgCustomer(orgId)
   const [newlyCreatedCustomerId, setNewlyCreatedCustomerId] = useState<string | null>(null)
   const { data: fetchedCustomer } = useCustomerById(newlyCreatedCustomerId)
   
@@ -80,8 +81,8 @@ export function useInvoiceCustomer({
   const [identifierValid, setIdentifierValid] = useState(false)
   const [searching, setSearching] = useState(false)
   const [selectedCustomer, setSelectedCustomer] = useState<CustomerWithMaster | null>(null)
-  const [showAddNewForm, setShowAddNewForm] = useState(false)
-  const [searchedIdentifier, setSearchedIdentifier] = useState('') // Snapshot of identifier when "Add New" clicked
+  
+  // Inline form data - always active now
   const [inlineFormData, setInlineFormData] = useState<{ name: string; mobile: string; gstin: string }>({
     name: '',
     mobile: '',
@@ -89,11 +90,10 @@ export function useInvoiceCustomer({
   })
   const [errors, setErrors] = useState<Record<string, string>>({})
 
-  // Detect identifier type from search input (snapshot when form opens)
+  // Detect identifier type from LIVE identifier
   const detectedType = useMemo<EnhancedIdentifierType>(() => {
-    if (!showAddNewForm || !searchedIdentifier) return 'text'
-    return detectIdentifierTypeEnhanced(searchedIdentifier)
-  }, [showAddNewForm, searchedIdentifier])
+    return detectIdentifierTypeEnhanced(identifier)
+  }, [identifier])
 
   // Determine field rendering priority based on detected type
   const fieldPriority = useMemo<FieldPriority>(() => {
@@ -102,110 +102,94 @@ export function useInvoiceCustomer({
     return 'name'
   }, [detectedType])
 
-  // GSTIN and Mobile are always optional now
-  // Name is the only mandatory field
-  const gstinRequired = false
-  const mobileRequired = false
+  // Sync inlineFormData with identifier (when no customer selected)
+  // This ensures the search box value is reflected in the appropriate field
+  useEffect(() => {
+    if (!selectedCustomer) {
+      if (detectedType === 'mobile') {
+        setInlineFormData(prev => ({ ...prev, mobile: identifier, name: '', gstin: '' }))
+      } else if (detectedType === 'gstin' || detectedType === 'partial_gstin') {
+        setInlineFormData(prev => ({ ...prev, gstin: identifier.toUpperCase(), mobile: '', name: '' }))
+      } else {
+        setInlineFormData(prev => ({ ...prev, name: identifier, mobile: '', gstin: '' }))
+      }
+    }
+  }, [identifier, detectedType, selectedCustomer])
 
   // When customer is fetched after creation, update state
   useEffect(() => {
     if (fetchedCustomer) {
       setSelectedCustomer(fetchedCustomer)
       setIdentifier(fetchedCustomer.alias_name || fetchedCustomer.name || fetchedCustomer.master_customer.legal_name)
-      setShowAddNewForm(false)
-      setInlineFormData({ name: '', mobile: '', gstin: '' })
-      setSearchedIdentifier('') // Reset snapshot
+      
+      setInlineFormData({
+        name: fetchedCustomer.alias_name || fetchedCustomer.master_customer.legal_name,
+        mobile: fetchedCustomer.master_customer.mobile || '',
+        gstin: fetchedCustomer.master_customer.gstin || ''
+      })
+      
       onCustomerCreated?.(fetchedCustomer)
       setNewlyCreatedCustomerId(null) // Reset after successful load
     }
   }, [fetchedCustomer, onCustomerCreated])
 
-
-  // Prefill inline form when opening (use enhanced detection)
+  // Reset selectedCustomer when identifier changes (user types new search)
+  // Note: We need to be careful not to reset when we programmatically set identifier
+  // But since we use the search box as the input, typing SHOULD reset selection.
   useEffect(() => {
-    if (showAddNewForm) {
-      const type = detectIdentifierTypeEnhanced(identifier)
-      if (type === 'mobile') {
-        setInlineFormData({ name: '', mobile: identifier, gstin: '' })
-      } else if (type === 'gstin' || type === 'partial_gstin') {
-        setInlineFormData({ name: '', mobile: '', gstin: identifier.toUpperCase() })
-      } else {
-        setInlineFormData({ name: identifier, mobile: '', gstin: '' })
-      }
+    // If we have a selected customer, but the identifier doesn't match their name/alias,
+    // it means user is typing something new.
+    if (selectedCustomer) {
+        const currentName = selectedCustomer.alias_name || selectedCustomer.master_customer.legal_name
+        if (identifier !== currentName) {
+            setSelectedCustomer(null)
+        }
     }
-  }, [showAddNewForm, identifier])
+  }, [identifier, selectedCustomer])
 
-  // Reset selectedCustomer when identifier changes
-  useEffect(() => {
-    if (identifier.trim() === '' || !identifierValid) {
-      setSelectedCustomer(null)
-    }
-  }, [identifier, identifierValid])
+  // Handlers
 
   // Handlers
 
   const handleCustomerSelected = (customer: CustomerWithMaster | null) => {
     setSelectedCustomer(customer)
-  }
-
-  const handleOpenAddNewForm = () => {
-    if (identifier.trim().length >= 3) {
-      setSearchedIdentifier(identifier) // Snapshot identifier at time of "Add New" click
-      setShowAddNewForm(true)
+    if (customer) {
+        setInlineFormData({
+            name: customer.alias_name || customer.master_customer.legal_name,
+            mobile: customer.master_customer.mobile || '',
+            gstin: customer.master_customer.gstin || ''
+        })
+        // Update identifier to show selected customer name
+        setIdentifier(customer.alias_name || customer.master_customer.legal_name)
     }
   }
 
-  const handleCloseAddNewForm = () => {
-    setShowAddNewForm(false)
-    setInlineFormData({ name: '', mobile: '', gstin: '' })
-    setSearchedIdentifier('')
-    setErrors({})
-  }
+  // Deprecated - No-ops
+  const handleOpenAddNewForm = () => {}
+  const handleCloseAddNewForm = () => {}
 
   const handleFormDataChange = (data: { name: string; mobile: string; gstin: string }) => {
     setInlineFormData(data)
     
     // Clear errors when user starts typing
     const newErrors = { ...errors }
-    
-    // Clear mobile error if user is typing in mobile field
-    if (data.mobile !== inlineFormData.mobile && errors.mobile) {
-      delete newErrors.mobile
-    }
-    
-    // Clear gstin error if user is typing in gstin field
-    if (data.gstin !== inlineFormData.gstin && errors.gstin) {
-      delete newErrors.gstin
-    }
-    
-    // Clear name error if user is typing in name field
-    if (data.name !== inlineFormData.name && errors.name) {
-      delete newErrors.name
-    }
-    
+    if (data.mobile !== inlineFormData.mobile && errors.mobile) delete newErrors.mobile
+    if (data.gstin !== inlineFormData.gstin && errors.gstin) delete newErrors.gstin
+    if (data.name !== inlineFormData.name && errors.name) delete newErrors.name
     setErrors(newErrors)
   }
 
   // Field validation handler (onBlur validation)
   const handleValidateField = (field: 'mobile' | 'gstin', value: string) => {
     const newErrors = { ...errors }
-    
     if (field === 'mobile') {
-      if (value && !validateMobile(value)) {
-        newErrors.mobile = 'Mobile must be 10 digits starting with 6-9'
-      } else {
-        delete newErrors.mobile
-      }
+      if (value && !validateMobile(value)) newErrors.mobile = 'Mobile must be 10 digits starting with 6-9'
+      else delete newErrors.mobile
     }
-    
     if (field === 'gstin') {
-      if (value && !validateGSTIN(value)) {
-        newErrors.gstin = 'Invalid GSTIN format (15 characters)'
-      } else {
-        delete newErrors.gstin
-      }
+      if (value && !validateGSTIN(value)) newErrors.gstin = 'Invalid GSTIN format (15 characters)'
+      else delete newErrors.gstin
     }
-    
     setErrors(newErrors)
   }
 
@@ -232,9 +216,8 @@ export function useInvoiceCustomer({
       return
     }
 
-    // DUPLICATE CHECK: Prevent creating same customer multiple times
-    // Check by mobile or GSTIN if provided
-    if (inlineFormData.mobile || inlineFormData.gstin) {
+    // DUPLICATE CHECK: Prevent creating same customer multiple times (ONLY FOR NEW CUSTOMERS)
+    if (!selectedCustomer && (inlineFormData.mobile || inlineFormData.gstin)) {
       try {
         const searchQuery = inlineFormData.mobile || inlineFormData.gstin || ''
         const existingCustomers = await import('../../lib/api/customers')
@@ -242,12 +225,8 @@ export function useInvoiceCustomer({
         
         // Check if exact match exists
         const exactMatch = existingCustomers.find(c => {
-          if (inlineFormData.mobile && c.master_customer.mobile === inlineFormData.mobile) {
-            return true
-          }
-          if (inlineFormData.gstin && c.master_customer.gstin === inlineFormData.gstin) {
-            return true
-          }
+          if (inlineFormData.mobile && c.master_customer.mobile === inlineFormData.mobile) return true
+          if (inlineFormData.gstin && c.master_customer.gstin === inlineFormData.gstin) return true
           return false
         })
 
@@ -260,7 +239,6 @@ export function useInvoiceCustomer({
         }
       } catch (error) {
         console.warn('Duplicate check failed, proceeding with creation:', error)
-        // Don't block creation if duplicate check fails - better to allow than block unfairly
       }
     }
 
@@ -268,18 +246,27 @@ export function useInvoiceCustomer({
     setErrors({})
 
     try {
-      const customerId = await addCustomerMutation.mutateAsync({
-        name: inlineFormData.name,
-        mobile: inlineFormData.mobile || null,
-        gstin: inlineFormData.gstin || null,
-      })
-
-      // Trigger customer fetch by setting ID
-      setNewlyCreatedCustomerId(customerId)
-      // Note: useEffect will handle setting selectedCustomer when fetchedCustomer updates
+      if (selectedCustomer) {
+          // Update existing customer
+          await updateCustomerMutation.mutateAsync({
+              customerId: selectedCustomer.id,
+              data: {
+                  alias_name: inlineFormData.name,
+              }
+          })
+          onCustomerCreated?.(selectedCustomer)
+      } else {
+          // Create new customer
+          const customerId = await addCustomerMutation.mutateAsync({
+            name: inlineFormData.name,
+            mobile: inlineFormData.mobile || null,
+            gstin: inlineFormData.gstin || null,
+          })
+          setNewlyCreatedCustomerId(customerId)
+      }
     } catch (error) {
-      console.error('Error adding customer:', error)
-      const errorMessage = error instanceof Error ? error.message : 'Failed to add customer'
+      console.error('Error saving customer:', error)
+      const errorMessage = error instanceof Error ? error.message : 'Failed to save customer'
       setErrors({
         submit: errorMessage,
       })
@@ -293,9 +280,7 @@ export function useInvoiceCustomer({
     setIdentifier('')
     setIdentifierValid(false)
     setSelectedCustomer(null)
-    setShowAddNewForm(false)
     setInlineFormData({ name: '', mobile: '', gstin: '' })
-    setSearchedIdentifier('')
     setErrors({})
   }
 
@@ -304,13 +289,13 @@ export function useInvoiceCustomer({
     identifierValid,
     searching,
     selectedCustomer,
-    showAddNewForm,
+    showAddNewForm: false, // Deprecated
     inlineFormData,
     errors,
     detectedType,
     fieldPriority,
-    gstinRequired,
-    mobileRequired,
+    gstinRequired: false, // Deprecated
+    mobileRequired: false, // Deprecated
     setIdentifier,
     setIdentifierValid,
     setSearching,

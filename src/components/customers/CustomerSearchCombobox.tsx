@@ -1,5 +1,4 @@
 import { useState, useEffect, useRef, KeyboardEvent, ChangeEvent } from 'react'
-import { PlusIcon } from '@heroicons/react/24/outline'
 import { useSearchCustomersAutocomplete } from '../../hooks/useCustomers'
 import type { CustomerWithMaster } from '../../types'
 import { LoadingSpinner } from '../ui/LoadingSpinner'
@@ -10,7 +9,6 @@ interface CustomerSearchComboboxProps {
     value: string
     onChange: (value: string) => void
     onCustomerSelect: (customer: CustomerWithMaster | null) => void
-    onAddNewPartyClick: () => void
     disabled?: boolean
     autoFocus?: boolean
 }
@@ -20,7 +18,6 @@ export function CustomerSearchCombobox({
     value,
     onChange,
     onCustomerSelect,
-    onAddNewPartyClick,
     disabled = false,
     autoFocus = false,
 }: CustomerSearchComboboxProps) {
@@ -69,9 +66,9 @@ export function CustomerSearchCombobox({
     }
 
     const handleKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
-        if (!isOpen) return
+        if (!isOpen || searchResults.length === 0) return
 
-        const totalItems = searchResults.length + 1
+        const totalItems = searchResults.length
 
         switch (e.key) {
             case 'ArrowDown':
@@ -84,10 +81,8 @@ export function CustomerSearchCombobox({
                 break
             case 'Enter':
                 e.preventDefault()
-                if (highlightedIndex === 0) {
-                    handleAddNewPartyClick()
-                } else if (highlightedIndex > 0) {
-                    const selectedCustomer = searchResults[highlightedIndex - 1]
+                if (highlightedIndex >= 0 && highlightedIndex < searchResults.length) {
+                    const selectedCustomer = searchResults[highlightedIndex]
                     handleCustomerSelect(selectedCustomer)
                 }
                 break
@@ -97,11 +92,6 @@ export function CustomerSearchCombobox({
                 setHighlightedIndex(-1)
                 break
         }
-    }
-
-    const handleAddNewPartyClick = () => {
-        setIsOpen(false)
-        onAddNewPartyClick()
     }
 
     const handleCustomerSelect = (customer: CustomerWithMaster) => {
@@ -130,6 +120,29 @@ export function CustomerSearchCombobox({
         return 'text'
     }
 
+    // Dynamic label based on detected input type
+    const getInputLabel = (): string => {
+        if (!value || value.length < 3) {
+            return 'Customer Identifier'
+        }
+
+        const cleaned = value.trim().replace(/\s+/g, '')
+        const isAllDigits = /^\d+$/.test(cleaned)
+
+        // Detect mobile (3-10 digits starting with 6-9)
+        if (isAllDigits && /^[6-9]/.test(cleaned)) {
+            return 'Mobile Number'
+        }
+
+        // Detect GSTIN (starts with 2 digits + letter)
+        if (cleaned.length >= 3 && /^[0-9]{2}[A-Z]/i.test(cleaned)) {
+            return 'GSTIN'
+        }
+
+        // Default to customer name for text
+        return 'Customer Name'
+    }
+
     const formatLastInvoiceDate = (dateString: string | null | undefined) => {
         if (!dateString) return null
         const date = new Date(dateString)
@@ -140,7 +153,7 @@ export function CustomerSearchCombobox({
         <div className="relative w-full">
             <div className="relative">
                 <label htmlFor="customer-search" className="block text-sm font-medium text-secondary-text mb-xs">
-                    Customer Identifier <span className="text-error">*</span>
+                    {getInputLabel()} <span className="text-error">*</span>
                 </label>
                 <input
                     ref={inputRef}
@@ -177,85 +190,49 @@ export function CustomerSearchCombobox({
                     className="absolute z-50 w-full mt-1 bg-white border border-neutral-300 rounded-md shadow-lg max-h-80 overflow-y-auto"
                     role="listbox"
                 >
-                    <button
-                        type="button"
-                        onClick={handleAddNewPartyClick}
-                        onMouseEnter={() => setHighlightedIndex(0)}
-                        className={`w-full text-left px-4 py-3 flex items-center gap-2 transition-colors min-h-[44px] ${highlightedIndex === 0
-                            ? 'bg-primary text-text-on-primary'
-                            : 'hover:bg-neutral-50 text-primary'
-                            }`}
-                        role="option"
-                        aria-selected={highlightedIndex === 0}
-                    >
-                        <PlusIcon className="h-5 w-5 flex-shrink-0" />
-                        <span className="font-medium">+ Add New Party</span>
-                    </button>
+                    {searchResults.length > 0 ? (
+                        searchResults.map((customer, index) => {
+                            const isHighlighted = highlightedIndex === index
+                            const lastInvoiceDate = (customer as any).last_invoice_date as string | null | undefined
 
-                    {searchResults.length > 0 && (
-                        <div className="border-t border-neutral-200" />
-                    )}
-
-                    {searchResults.map((customer, index) => {
-                        const itemIndex = index + 1
-                        const isHighlighted = highlightedIndex === itemIndex
-                        const lastInvoiceDate = (customer as any).last_invoice_date as string | null | undefined
-
-                        return (
-                            <button
-                                key={customer.id}
-                                type="button"
-                                onClick={() => handleCustomerSelect(customer)}
-                                onMouseEnter={() => setHighlightedIndex(itemIndex)}
-                                className={`w-full text-left px-4 py-3 transition-colors min-h-[44px] ${isHighlighted ? 'bg-primary text-text-on-primary' : 'hover:bg-neutral-50'
-                                    }`}
-                                role="option"
-                                aria-selected={isHighlighted}
-                            >
-                                <div className="space-y-0.5">
-                                    <div className="flex items-center gap-2">
-                                        <div className={`text-base font-semibold ${isHighlighted ? 'text-text-on-primary' : 'text-primary-text'}`}>
-                                            {customer.alias_name || customer.master_customer.legal_name}
+                            return (
+                                <button
+                                    key={customer.id}
+                                    type="button"
+                                    onClick={() => handleCustomerSelect(customer)}
+                                    onMouseEnter={() => setHighlightedIndex(index)}
+                                    className={`w-full text-left px-4 py-3 transition-colors min-h-[44px] ${isHighlighted ? 'bg-primary text-text-on-primary' : 'hover:bg-neutral-50'
+                                        }`}
+                                    role="option"
+                                    aria-selected={isHighlighted}
+                                >
+                                    <div className="space-y-0.5">
+                                        <div className="flex items-center gap-2">
+                                            <div className={`text-base font-semibold ${isHighlighted ? 'text-text-on-primary' : 'text-primary-text'}`}>
+                                                {customer.alias_name || customer.master_customer.legal_name}
+                                            </div>
                                         </div>
-                                        {/* Status Badges */}
-                                        {customer.status === 'verified' && customer.master_customer_id && (
-                                            <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium ${isHighlighted ? 'bg-white/20 text-white' : 'bg-success-light text-success-dark'}`}>
-                                                ✓ Verified
-                                            </span>
-                                        )}
-                                        {customer.status === 'edited' && (
-                                            <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium ${isHighlighted ? 'bg-white/20 text-white' : 'bg-warning-light text-warning-dark'}`}>
-                                                ⚠ Pending Review
-                                            </span>
-                                        )}
-                                        {customer.status === 'name_only' && (
-                                            <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium ${isHighlighted ? 'bg-white/20 text-white' : 'bg-neutral-100 text-secondary-text'}`}>
-                                                ○ Name Only
-                                            </span>
+                                        <div className={`text-sm ${isHighlighted ? 'text-text-on-primary opacity-90' : 'text-secondary-text'}`}>
+                                            {customer.master_customer.mobile
+                                                ? `${customer.master_customer.mobile}`
+                                                : customer.master_customer.gstin
+                                                    ? `GSTIN: ${customer.master_customer.gstin}`
+                                                    : 'No contact info'}
+                                        </div>
+                                        {lastInvoiceDate && (
+                                            <div className={`text-xs ${isHighlighted ? 'text-text-on-primary opacity-75' : 'text-muted-text'}`}>
+                                                Last invoice: {formatLastInvoiceDate(lastInvoiceDate)}
+                                            </div>
                                         )}
                                     </div>
-                                    <div className={`text-sm ${isHighlighted ? 'text-text-on-primary opacity-90' : 'text-secondary-text'}`}>
-                                        {customer.master_customer.mobile
-                                            ? `${customer.master_customer.mobile}`
-                                            : customer.master_customer.gstin
-                                                ? `GSTIN: ${customer.master_customer.gstin}`
-                                                : 'No contact info'}
-                                    </div>
-                                    {lastInvoiceDate && (
-                                        <div className={`text-xs ${isHighlighted ? 'text-text-on-primary opacity-75' : 'text-muted-text'}`}>
-                                            Last invoice: {formatLastInvoiceDate(lastInvoiceDate)}
-                                        </div>
-                                    )}
-                                </div>
-                            </button>
-                        )
-                    })}
-
-                    {searchResults.length === 0 && !isSearching && (
+                                </button>
+                            )
+                        })
+                    ) : !isSearching ? (
                         <div className="px-4 py-3 text-sm text-secondary-text text-center">
-                            No matching customers
+                            No matching customers found
                         </div>
-                    )}
+                    ) : null}
                 </div>
             )}
         </div>
