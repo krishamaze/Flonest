@@ -210,8 +210,8 @@ export async function getCustomerById(customerId: string): Promise<CustomerWithM
   const customer = data as any
   return {
     ...customer,
-    name: customer.alias_name || customer.master_customer.legal_name,
-    status: customer.master_customer.gstin ? 'verified' : 'pending' // Simplified logic for now
+    name: customer.alias_name || customer.master_customer?.legal_name || 'Unknown',
+    status: customer.master_customer?.gstin ? 'verified' : 'pending'
   }
 }
 
@@ -272,8 +272,8 @@ export async function getCustomersByOrg(orgId: string): Promise<CustomerWithMast
 
   return (data || []).map((customer: any) => ({
     ...customer,
-    name: customer.alias_name || customer.master_customer.legal_name,
-    status: customer.master_customer.gstin ? 'verified' : 'pending'
+    name: customer.alias_name || customer.master_customer?.legal_name || 'Unknown',
+    status: customer.master_customer?.gstin ? 'verified' : 'pending'
   }))
 }
 
