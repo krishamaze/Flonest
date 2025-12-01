@@ -1,4 +1,4 @@
-import { Outlet } from 'react-router-dom'
+import { Outlet, useLocation } from 'react-router-dom'
 import { Header } from './Header'
 import { BottomNav } from './BottomNav'
 import { PullToRefresh } from '../ui/PullToRefresh'
@@ -8,6 +8,7 @@ import { useServiceWorker } from '../../contexts/ServiceWorkerContext'
 function MainLayoutContent() {
   const { refresh, registerServiceWorker } = useRefresh()
   const { registration } = useServiceWorker()
+  const location = useLocation()
 
   // Share SW registration with RefreshContext for pull-to-refresh
   if (registration) {
@@ -19,17 +20,24 @@ function MainLayoutContent() {
     await refresh()
   }
 
+  // Hide navigation on full-screen detail pages
+  const hideNavigation = location.pathname.startsWith('/customers/') && location.pathname !== '/customers'
+
   return (
     <div className="flex viewport-height flex-col bg-bg-page overflow-hidden">
-      <Header />
+      {!hideNavigation && <Header />}
       <PullToRefresh onRefresh={handleRefresh}>
-        <main className="pb-[calc(5rem+env(safe-area-inset-bottom))] px-md md:px-lg">
-          <div className="container-mobile mx-auto max-w-7xl py-md space-y-lg">
+        <main className={hideNavigation ? '' : 'pb-[calc(5rem+env(safe-area-inset-bottom))] px-md md:px-lg'}>
+          {hideNavigation ? (
             <Outlet />
-          </div>
+          ) : (
+            <div className="container-mobile mx-auto max-w-7xl py-md space-y-lg">
+              <Outlet />
+            </div>
+          )}
         </main>
       </PullToRefresh>
-      <BottomNav />
+      {!hideNavigation && <BottomNav />}
     </div>
   )
 }
@@ -41,4 +49,3 @@ export function MainLayout() {
     </RefreshProvider>
   )
 }
-
