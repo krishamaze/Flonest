@@ -164,6 +164,26 @@ export function useInvoiceCustomer({
 
   const handleFormDataChange = (data: { name: string; mobile: string; gstin: string }) => {
     setInlineFormData(data)
+    
+    // Clear errors when user starts typing
+    const newErrors = { ...errors }
+    
+    // Clear mobile error if user is typing in mobile field
+    if (data.mobile !== inlineFormData.mobile && errors.mobile) {
+      delete newErrors.mobile
+    }
+    
+    // Clear gstin error if user is typing in gstin field
+    if (data.gstin !== inlineFormData.gstin && errors.gstin) {
+      delete newErrors.gstin
+    }
+    
+    // Clear name error if user is typing in name field
+    if (data.name !== inlineFormData.name && errors.name) {
+      delete newErrors.name
+    }
+    
+    setErrors(newErrors)
   }
 
   // Field validation handler (onBlur validation)
