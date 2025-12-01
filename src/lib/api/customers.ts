@@ -255,6 +255,7 @@ export async function updateOrgCustomer(
 
 /**
  * Get all customers for an organization with master customer data
+ * IMPORTANT: Filters out soft-deleted customers (deleted_at IS NULL)
  */
 export async function getCustomersByOrg(orgId: string): Promise<CustomerWithMaster[]> {
   const { data, error } = await supabase
@@ -264,6 +265,7 @@ export async function getCustomersByOrg(orgId: string): Promise<CustomerWithMast
       master_customer:master_customers(*)
     `)
     .eq('org_id', orgId)
+    .is('deleted_at', null)  // ← Filter out soft-deleted customers
     .order('created_at', { ascending: false })
 
   if (error) {
@@ -275,6 +277,79 @@ export async function getCustomersByOrg(orgId: string): Promise<CustomerWithMast
     name: customer.alias_name || customer.master_customer?.legal_name || 'Unknown',
     status: customer.master_customer?.gstin ? 'verified' : 'pending'
   }))
+}
+
+/**
+ * Soft Delete Functions
+ */
+
+export interface DeleteCheckResult {
+  can_delete: boolean
+  invoice_count: number
+}
+
+export interface DeleteResult {
+  success: boolean
+  deleted_at: string
+  expires_at: string
+}
+
+export interface RestoreResult {
+  success: boolean
+  restored_at: string
+  was_deleted_for_days: number
+}
+
+/**
+ * Check if a customer can be soft-deleted
+ * Returns { can_delete: boolean, invoice_count: number }
+ */
+export async function canDeleteCustomer(customerId: string): Promise<DeleteCheckResult> {
+  const { data, error } = await supabase
+    .rpc('can_delete_customer', { p_customer_id: customerId })
+  
+  if (error) throw new Error(`Failed to check delete eligibility: ${error.message}`)
+  return data as DeleteCheckResult
+}
+
+/**
+ * Soft delete a customer (sets deleted_at timestamp)
+ * Customer will be auto-purged after 30 days
+ * Throws error if customer has existing non-draft invoices
+ */
+export async function softDeleteCustomer(customerId: string): Promise<DeleteResult> {
+  const { data, error } = await supabase
+    .rpc('soft_delete_customer', { p_customer_id: customerId })
+  
+  if (error) {
+    if (error.message.includes('existing transactions')) {
+      throw new Error(error.message)
+    }
+    throw new Error(`Failed to delete customer: ${error.message}`)
+  }
+  
+  return data as DeleteResult
+}
+
+/**
+ * Restore a soft-deleted customer (if within 30-day window)
+ * Throws error if restore window expired
+ */
+export async function restoreCustomer(customerId: string): Promise<RestoreResult> {
+  const { data, error } = await supabase
+    .rpc('restore_customer', { p_customer_id: customerId })
+  
+  if (error) {
+    if (error.message.includes('not deleted')) {
+      throw new Error('Customer is not deleted')
+    }
+    if (error.message.includes('expired')) {
+      throw new Error(error.message)
+    }
+    throw new Error(`Failed to restore customer: ${error.message}`)
+  }
+  
+  return data as RestoreResult
 }
 
 /**

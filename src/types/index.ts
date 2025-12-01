@@ -151,6 +151,15 @@ export interface CustomerWithMaster extends Customer {
   status: 'verified' | 'pending' | 'unverified' | 'edited' | 'name_only' // Verification status
 }
 
+export interface CustomerWithBalance extends CustomerWithMaster {
+  total_invoiced: number
+  total_paid: number
+  balance_due: number
+  last_invoice_date: string | null
+  invoice_count: number
+}
+
+
 export interface ScanResult {
   code: string
   type: 'serialnumber' | 'productcode' | 'unknown'

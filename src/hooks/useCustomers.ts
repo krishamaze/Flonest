@@ -9,7 +9,13 @@ import {
   searchCustomersByPartialIdentifier,
   searchGlobalCustomers,
   addOrgCustomer,
+  canDeleteCustomer,
+  softDeleteCustomer,
+  restoreCustomer,
   type LookupResult,
+  type DeleteCheckResult,
+  type DeleteResult,
+  type RestoreResult,
 } from '../lib/api/customers'
 import type { CustomerWithMaster, CustomerSearchResult } from '../types'
 import type { Database } from '../types/database'
@@ -280,3 +286,73 @@ export const useAddOrgCustomer = (orgId: string | null | undefined) => {
   })
 }
 
+/**
+ * Mutation hook to soft delete a customer
+ * Optimistic update: Removes customer from cache immediately, reverts on error
+ */
+export const useSoftDeleteCustomer = (orgId: string | null | undefined) => {
+  const queryClient = useQueryClient()
+
+  return useMutation<DeleteResult, Error, { customerId: string }, { previousCustomers?: CustomerWithMaster[] }>({
+    mutationFn: async ({ customerId }) => softDeleteCustomer(customerId),
+    
+    onMutate: async ({ customerId }) => {
+      // Optimistic update: remove from list
+      await queryClient.cancelQueries({ queryKey: ['customers', orgId] })
+      const previousCustomers = queryClient.getQueryData<CustomerWithMaster[]>(['customers', orgId])
+      
+      if (previousCustomers) {
+        queryClient.setQueryData<CustomerWithMaster[]>(
+          ['customers', orgId],
+          previousCustomers.filter(c => c.id !== customerId)
+        )
+      }
+      
+      return { previousCustomers }
+    },
+    
+    onError: (_error, _variables, context) => {
+      // Revert optimistic update
+      if (context?.previousCustomers) {
+        queryClient.setQueryData(['customers', orgId], context.previousCustomers)
+      }
+    },
+    
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['customers', orgId] })
+      queryClient.invalidateQueries({ queryKey: ['customer-balances', orgId] })
+    }
+  })
+}
+
+/**
+ * Mutation hook to restore a soft-deleted customer
+ */
+export const useRestoreCustomer = (orgId: string | null | undefined) => {
+  const queryClient = useQueryClient()
+
+  return useMutation<RestoreResult, Error, { customerId: string }>({
+    mutationFn: async ({ customerId }) => restoreCustomer(customerId),
+    
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['customers', orgId] })
+      queryClient.invalidateQueries({ queryKey: ['customer-balances', orgId] })
+    }
+  })
+}
+
+/**
+ * Query hook to check if a customer can be deleted
+ * Returns { can_delete: boolean, invoice_count: number }
+ */
+export const useCanDeleteCustomer = (customerId: string | null | undefined) => {
+  return useQuery<DeleteCheckResult>({
+    queryKey: ['can-delete-customer', customerId],
+    queryFn: async () => {
+      if (!customerId) return { can_delete: false, invoice_count: 0 }
+      return canDeleteCustomer(customerId)
+    },
+    enabled: !!customerId,
+    staleTime: 0, // Always check fresh
+  })
+}

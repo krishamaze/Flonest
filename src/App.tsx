@@ -33,6 +33,7 @@ const InventoryPage = lazy(() => import('./pages/InventoryPage').then(m => ({ de
 const InvoiceDetailsPage = lazy(() => import('./pages/InvoiceDetailsPage').then(m => ({ default: m.InvoiceDetailsPage })))
 const StockLedgerPage = lazy(() => import('./pages/StockLedgerPage').then(m => ({ default: m.StockLedgerPage })))
 const CustomersPage = lazy(() => import('./pages/CustomersPage').then(m => ({ default: m.CustomersPage })))
+const PartyDetailsPage = lazy(() => import('./pages/PartyDetailsPage').then(m => ({ default: m.PartyDetailsPage })))
 const PlatformAdminDashboardPage = lazy(() => import('./pages/PlatformAdminDashboardPage').then(m => ({ default: m.PlatformAdminDashboardPage })))
 const NotificationsPage = lazy(() => import('./pages/NotificationsPage').then(m => ({ default: m.NotificationsPage })))
 const PendingProductsPage = lazy(() => import('./pages/PendingProductsPage').then(m => ({ default: m.PendingProductsPage })))
@@ -208,6 +209,7 @@ function AppRoutes() {
                 }
               />
               <Route path="customers" element={<CustomersPage />} />
+              <Route path="customers/:id" element={<PartyDetailsPage />} />
               <Route path="notifications" element={<NotificationsPage />} />
               <Route path="pending-products" element={<PendingProductsPage />} />
               <Route path="purchase-bills" element={<PurchaseBillsPage />} />

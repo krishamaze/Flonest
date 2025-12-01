@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { useRefresh } from '../contexts/RefreshContext'
 import { useCustomers, useUpdateOrgCustomer } from '../hooks/useCustomers'
+import { useCustomerBalances } from '../hooks/useCustomerBalances'
 import type { CustomerWithMaster } from '../types'
 import { Card, CardContent } from '../components/ui/Card'
 import { LoadingSpinner } from '../components/ui/LoadingSpinner'
@@ -19,7 +21,12 @@ export function CustomersPage() {
 
   // React Query hooks
   const { data: customers = [], isLoading: loading, refetch } = useCustomers(user?.orgId)
+  const { data: balances = [] } = useCustomerBalances(user?.orgId)
   const { mutate: updateCustomer } = useUpdateOrgCustomer(user?.orgId)
+
+  // Create a map of customer balances for quick lookup
+  const balanceMap = new Map(balances.map(b => [b.customer_id, b]))
+
 
   // Register refresh handler for pull-to-refresh
   useEffect(() => {
@@ -135,59 +142,69 @@ export function CustomersPage() {
             const displayName = customer.alias_name || master?.legal_name || 'Unknown'
 
             return (
-              <Card key={customer.id} className="shadow-sm hover:shadow-md transition-shadow">
-                <CardContent className="p-4">
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="flex-1 min-w-0">
-                      <h3 className="text-base font-medium text-primary-text truncate">
-                        {displayName}
-                      </h3>
-                      {customer.alias_name && master?.legal_name && (
-                        <p className="text-xs text-muted-text mt-xs">Legal: {master.legal_name}</p>
-                      )}
-                      <div className="mt-sm flex flex-wrap items-center gap-sm text-xs text-secondary-text">
-                        {master?.mobile && (
-                          <span>Mobile: {master.mobile}</span>
+              <Link key={customer.id} to={`/customers/${customer.id}`}>
+                <Card className="shadow-sm hover:shadow-md transition-shadow cursor-pointer">
+                  <CardContent className="p-4">
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="flex-1 min-w-0">
+                        <h3 className="text-base font-medium text-primary-text truncate">
+                          {displayName}
+                        </h3>
+                        {customer.alias_name && master?.legal_name && (
+                          <p className="text-xs text-muted-text mt-xs">Legal: {master.legal_name}</p>
                         )}
-                        {master?.gstin && (
-                          <span>• GSTIN: {master.gstin}</span>
+                        <div className="mt-sm flex flex-wrap items-center gap-sm text-xs text-secondary-text">
+                          {master?.mobile && (
+                            <span>Mobile: {master.mobile}</span>
+                          )}
+                          {master?.gstin && (
+                            <span>• GSTIN: {master.gstin}</span>
+                          )}
+                          {master?.email && (
+                            <span>• Email: {master.email}</span>
+                          )}
+                        </div>
+                        {master?.address && (
+                          <p className="text-xs text-gray-500 mt-1 line-clamp-1">
+                            {master.address}
+                          </p>
                         )}
-                        {master?.email && (
-                          <span>• Email: {master.email}</span>
+                        {customer.billing_address && (
+                          <p className="text-xs text-gray-500 mt-1">
+                            <span className="font-medium">Billing: </span>
+                            {customer.billing_address}
+                          </p>
+                        )}
+                        {customer.notes && (
+                          <p className="text-xs text-gray-500 mt-1 line-clamp-1">
+                            <span className="font-medium">Notes: </span>
+                            {customer.notes}
+                          </p>
                         )}
                       </div>
-                      {master?.address && (
-                        <p className="text-xs text-gray-500 mt-1 line-clamp-1">
-                          {master.address}
-                        </p>
-                      )}
-                      {customer.billing_address && (
-                        <p className="text-xs text-gray-500 mt-1">
-                          <span className="font-medium">Billing: </span>
-                          {customer.billing_address}
-                        </p>
-                      )}
-                      {customer.notes && (
-                        <p className="text-xs text-gray-500 mt-1 line-clamp-1">
-                          <span className="font-medium">Notes: </span>
-                          {customer.notes}
-                        </p>
-                      )}
-                    </div>
-                    <div className="text-right shrink-0">
-                      <div className="mt-2 flex items-center justify-end gap-2">
-                        <button
-                          onClick={() => handleEditClick(customer)}
-                          className="rounded-md p-sm min-w-[44px] min-h-[44px] flex items-center justify-center text-secondary-text hover:bg-neutral-100 hover:text-primary-text transition-colors duration-200"
-                          aria-label={`Edit customer ${displayName}`}
-                        >
-                          <PencilIcon className="h-4 w-4" aria-hidden="true" />
-                        </button>
+                      <div className="text-right shrink-0">
+                        {balanceMap.has(customer.id) && balanceMap.get(customer.id)!.balance_due > 0 && (
+                          <div className="mb-2">
+                            <p className="text-xs text-green-600 font-medium">You'll Get</p>
+                            <p className="text-lg font-semibold text-primary-text">
+                              ₹{balanceMap.get(customer.id)!.balance_due.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            </p>
+                          </div>
+                        )}
+                        <div className="mt-2 flex items-center justify-end gap-2">
+                          <button
+                            onClick={() => handleEditClick(customer)}
+                            className="rounded-md p-sm min-w-[44px] min-h-[44px] flex items-center justify-center text-secondary-text hover:bg-neutral-100 hover:text-primary-text transition-colors duration-200"
+                            aria-label={`Edit customer ${displayName}`}
+                          >
+                            <PencilIcon className="h-4 w-4" aria-hidden="true" />
+                          </button>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                </CardContent>
-              </Card>
+                  </CardContent>
+                </Card>
+              </Link>
             )
           })}
         </div>
