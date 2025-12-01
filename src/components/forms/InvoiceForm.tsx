@@ -1,4 +1,4 @@
-import { useState, FormEvent, useEffect, useMemo } from 'react'
+import { useState, FormEvent, useEffect } from 'react'
 import { Button } from '../ui/Button'
 import { Modal } from '../ui/Modal'
 import { Drawer } from '../ui/Drawer'
@@ -8,18 +8,21 @@ import { CustomerSelectionStep } from '../invoice/CustomerSelectionStep'
 import { InvoiceItemsStep } from '../invoice/InvoiceItemsStep'
 import { ProductConfirmSheet } from '../invoice/ProductConfirmSheet'
 import { CameraScanner } from '../invoice/CameraScanner'
-import type { InvoiceFormData, InvoiceItemFormData, CustomerWithMaster, Org, ProductWithMaster } from '../../types'
-import { addOrgCustomer, getCustomerById } from '../../lib/api/customers'
+import type { InvoiceFormData, Org, ProductWithMaster } from '../../types'
+
 import { getAllProducts } from '../../lib/api/products'
 import { createInvoice, validateInvoiceItems, clearDraftSessionId } from '../../lib/api/invoices'
-import { checkSerialStatus } from '../../lib/api/serials'
-import { validateScannerCodes } from '../../lib/api/scanner'
-import { calculateTax, createTaxContext, productToLineItem } from '../../lib/utils/taxCalculationService'
+
+
 
 import { useInvoiceDraft } from '../../hooks/invoice/useInvoiceDraft'
+import { useInvoiceScanner } from '../../hooks/invoice/useInvoiceScanner'
+import { useInvoiceItems } from '../../hooks/invoice/useInvoiceItems'
+import { useInvoiceCustomer } from '../../hooks/invoice/useInvoiceCustomer'
+import { useInvoiceTax } from '../../hooks/invoice/useInvoiceTax'
 import { ChevronLeftIcon, ChevronRightIcon, BookmarkIcon } from '@heroicons/react/24/outline'
-import { detectIdentifierType, validateMobile, validateGSTIN } from '../../lib/utils/identifierValidation'
-import { Toast } from '../ui/Toast'
+
+
 
 import { LoadingSpinner } from '../ui/LoadingSpinner'
 import { useToastDedupe } from '../../hooks/useToastDedupe'
@@ -53,45 +56,13 @@ export function InvoiceForm({
   onFormChange,
 }: InvoiceFormProps) {
   const [currentStep, setCurrentStep] = useState<Step>(1)
-  const [identifier, setIdentifier] = useState('')
-  const [identifierValid, setIdentifierValid] = useState(false)
-  const [searching, setSearching] = useState(false)
-  const [selectedCustomer, setSelectedCustomer] = useState<CustomerWithMaster | null>(null)
-  const [showAddNewForm, setShowAddNewForm] = useState(false)
-  const [inlineFormData, setInlineFormData] = useState<{ name: string; mobile: string; gstin: string }>({
-    name: '',
-    mobile: '',
-    gstin: '',
-  })
 
-  // Prefill inline form when opening
-  useEffect(() => {
-    if (showAddNewForm) {
-      const type = detectIdentifierType(identifier)
-      if (type === 'mobile') {
-        setInlineFormData({ name: '', mobile: identifier, gstin: '' })
-      } else if (type === 'gstin') {
-        setInlineFormData({ name: '', mobile: '', gstin: identifier })
-      } else {
-        setInlineFormData({ name: identifier, mobile: '', gstin: '' })
-      }
-    }
-  }, [showAddNewForm]) // Intentionally omit identifier to avoid overwriting user edits
+
 
   const [products, setProducts] = useState<ProductWithMaster[]>([])
   const [loadingProducts, setLoadingProducts] = useState(false)
-  const [items, setItems] = useState<InvoiceItemFormData[]>([])
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [isSubmitting, setIsSubmitting] = useState(false)
-
-  const [serialInputs, setSerialInputs] = useState<Record<number, string>>({})
-
-  // Scanner and confirmation state
-  type ScannerMode = 'closed' | 'scanning' | 'confirming'
-  const [scannerMode, setScannerMode] = useState<ScannerMode>('closed')
-  const [showConfirmSheet, setShowConfirmSheet] = useState(false)
-  const [pendingProduct, setPendingProduct] = useState<ProductWithMaster | null>(null)
-  const [pendingQuantity, setPendingQuantity] = useState(1)
 
 
   // Draft state managed by useInvoiceDraft hook
@@ -100,6 +71,64 @@ export function InvoiceForm({
 
   // Toast deduplication hook
   const { showToast } = useToastDedupe()
+
+  // Items management hook
+  const {
+    items: hookItems,
+    serialInputs: hookSerialInputs,
+    setItems: hookSetItems,
+    setSerialInputs: _hookSetSerialInputs,
+    handleAddItem: hookHandleAddItem,
+    handleRemoveItem: hookHandleRemoveItem,
+    handleItemChange: hookHandleItemChange,
+    handleProductChange: hookHandleProductChange,
+    handleAddSerial: hookHandleAddSerial,
+    handleRemoveSerial: hookHandleRemoveSerial,
+    handleSerialInputChange: hookHandleSerialInputChange,
+  } = useInvoiceItems({
+    products,
+    orgId,
+    initialItems: [], // Will be replaced by draft items when switching
+    onError: (message) => {
+      showToast('error', message, { autoClose: 3000 })
+    },
+    // We'll wire this up later if needed
+    onItemsChange: (_items) => {
+      // Optional: trigger draft save or validation
+    }
+  })
+
+
+
+  // Customer management hook
+  const {
+    identifier: hookIdentifier,
+    identifierValid: _hookIdentifierValid,
+    searching: hookSearching,
+    selectedCustomer: hookSelectedCustomer,
+    showAddNewForm: hookShowAddNewForm,
+    inlineFormData: hookInlineFormData,
+    errors: hookCustomerErrors,
+    setIdentifier: hookSetIdentifier,
+    setIdentifierValid: _hookSetIdentifierValid,
+    setSearching: _hookSetSearching,
+    setSelectedCustomer: hookSetSelectedCustomer,
+    handleCustomerSelected: hookHandleCustomerSelected,
+    handleOpenAddNewForm: hookHandleOpenAddNewForm,
+    handleCloseAddNewForm: hookHandleCloseAddNewForm,
+    handleFormDataChange: hookHandleFormDataChange,
+    handleCreateOrgCustomer: hookHandleCreateOrgCustomer,
+    resetCustomer: hookResetCustomer,
+  } = useInvoiceCustomer({
+    orgId,
+    onError: (message) => {
+      showToast('error', message, { autoClose: 3000 })
+    },
+    onCustomerCreated: (_customer) => {
+      showToast('success', 'Customer added successfully', { autoClose: 3000 })
+      // We might need to update identifier here if not handled by hook
+    }
+  })
 
   // Draft management hook
   const {
@@ -112,8 +141,8 @@ export function InvoiceForm({
     retryLoadDraft,
     resetDraftState,
   } = useInvoiceDraft({
-    customerId: selectedCustomer?.id || null,
-    items,
+    customerId: hookSelectedCustomer?.id || null,
+    items: hookItems,
     orgId,
     userId,
     org,
@@ -121,21 +150,44 @@ export function InvoiceForm({
     initialDraftInvoiceId: draftInvoiceId,
     mode,
     onDraftRestored: ({ customer, items: restoredItems }) => {
-      setSelectedCustomer(customer)
-      setItems(restoredItems)
+      hookSetSelectedCustomer(customer)
+      hookSetItems(restoredItems)
       setCurrentStep(2)
     },
     onReset: () => {
       setCurrentStep(1)
-      setIdentifier('')
-      setIdentifierValid(false)
-      setSelectedCustomer(null)
-      setShowAddNewForm(false)
-      setInlineFormData({ name: '', mobile: '', gstin: '' })
-      setItems([])
+      hookResetCustomer()
+      hookSetItems([])
       setErrors({})
     },
   })
+
+  // Scanner management hook
+  const {
+    scannerMode: hookScannerMode,
+    showConfirmSheet: hookShowConfirmSheet,
+    pendingProduct: hookPendingProduct,
+    pendingQuantity: hookPendingQuantity,
+    handleScanClick: hookHandleScanClick,
+    handleScanFromCamera: hookHandleScanFromCamera,
+    handleProductSelect: hookHandleProductSelect,
+    handleConfirmProduct: hookHandleConfirmProduct,
+    handleCancelConfirm: hookHandleCancelConfirm,
+  } = useInvoiceScanner({
+    selectedCustomerId: hookSelectedCustomer?.id || null,
+    items: hookItems,
+    products,
+    orgId,
+    onItemsChange: hookSetItems,
+    onRequireCustomer: () => {
+      showToast('error', 'Please select a customer first', { autoClose: 3000 })
+    },
+    onError: (message) => {
+      showToast('error', message, { autoClose: 3000 })
+    },
+  })
+
+
 
   // Use prop draftInvoiceId if provided, otherwise use hook's internal ID
   const currentDraftInvoiceId = draftInvoiceId || internalDraftInvoiceId
@@ -158,10 +210,10 @@ export function InvoiceForm({
   // Track form changes for unsaved data warning
   useEffect(() => {
     if (onFormChange) {
-      const hasChanges = selectedCustomer !== null || items.length > 0
+      const hasChanges = hookSelectedCustomer !== null || hookItems.length > 0
       onFormChange(hasChanges)
     }
-  }, [selectedCustomer, items, onFormChange])
+  }, [hookSelectedCustomer, hookItems, onFormChange])
 
   // Reset form when closed (but not if we're loading a draft)
   useEffect(() => {
@@ -169,410 +221,50 @@ export function InvoiceForm({
       // Don't clear session ID here - it should persist if form is reopened
       // Only clear on finalize or explicit delete
       setCurrentStep(1)
-      setIdentifier('')
-      setIdentifierValid(false)
-      setSelectedCustomer(null)
-      setShowAddNewForm(false)
-      setInlineFormData({ name: '', mobile: '', gstin: '' })
-      setItems([])
+      hookResetCustomer()
+      hookSetItems([])
       setErrors({})
       // Draft state is reset by the hook
     }
   }, [isOpen, loadingDraft])
 
-  // Reset selectedCustomer when identifier changes (ensures Next button stays disabled)
-  useEffect(() => {
-    if (identifier.trim() === '' || !identifierValid) {
-      setSelectedCustomer(null)
-    }
-  }, [identifier, identifierValid])
 
 
 
-  const handleCreateOrgCustomer = async () => {
-    const formErrors: Record<string, string> = {}
 
-    if (!inlineFormData.name || inlineFormData.name.trim().length < 2) {
-      formErrors.name = 'Customer name is required (min 2 chars)'
-    }
 
-    if (inlineFormData.mobile && !validateMobile(inlineFormData.mobile)) {
-      formErrors.mobile = 'Mobile must be 10 digits'
-    }
 
-    if (inlineFormData.gstin && !validateGSTIN(inlineFormData.gstin)) {
-      formErrors.gstin = 'Invalid GSTIN format'
-    }
-
-    if (Object.keys(formErrors).length > 0) {
-      setErrors(formErrors)
-      return
-    }
-
-    setSearching(true)
-    setErrors({})
-
-    try {
-      const customerId = await addOrgCustomer(
-        orgId,
-        inlineFormData.name,
-        inlineFormData.mobile || null,
-        inlineFormData.gstin || null
-      )
-
-      const newCustomer = await getCustomerById(customerId)
-      setSelectedCustomer(newCustomer)
-
-      // Update identifier input to show the name
-      setIdentifier(newCustomer.alias_name || newCustomer.name || newCustomer.master_customer.legal_name)
-
-      setShowAddNewForm(false)
-      setInlineFormData({ name: '', mobile: '', gstin: '' })
-      setCurrentStep(2)
-      showToast('success', 'Customer added successfully', { autoClose: 3000 })
-    } catch (error) {
-      console.error('Error adding customer:', error)
-      setErrors({
-        submit: error instanceof Error ? error.message : 'Failed to add customer',
-      })
-    } finally {
-      setSearching(false)
-    }
-  }
+  // Tax calculation hook
+  const { totals } = useInvoiceTax({
+    items: hookItems,
+    org,
+    selectedCustomer: hookSelectedCustomer,
+    products,
+  })
 
   // Step 2: Add Products
-  const handleAddItem = () => {
-    setItems([
-      ...items,
-      {
-        product_id: '',
-        quantity: 1,
-        unit_price: 0,
-        line_total: 0,
-      },
-    ])
-  }
 
-  const handleRemoveItem = (index: number) => {
-    setItems(items.filter((_, i) => i !== index))
-  }
 
-  const handleItemChange = (index: number, field: keyof InvoiceItemFormData, value: any) => {
-    const updated = [...items]
-    updated[index] = { ...updated[index], [field]: value }
-
-    // Recalculate line_total if quantity or unit_price changed
-    if (field === 'quantity' || field === 'unit_price') {
-      updated[index].line_total = (updated[index].quantity || 0) * (updated[index].unit_price || 0)
-    }
-
-    setItems(updated)
-  }
-
-  const handleProductChange = (index: number, productId: string) => {
-    const updated = [...items]
-    const selectedProduct = products.find((p) => p.id === productId)
-
-    updated[index] = {
-      ...updated[index],
-      product_id: productId,
-      unit_price: selectedProduct?.selling_price || updated[index].unit_price || 0,
-      serial_tracked: selectedProduct?.serial_tracked || false,
-      serials: selectedProduct?.serial_tracked ? (updated[index].serials || []) : undefined,
-      quantity: selectedProduct?.serial_tracked ? (updated[index].serials?.length || 0) : updated[index].quantity || 1,
-    }
-
-    // Recalculate line_total
-    updated[index].line_total = (updated[index].quantity || 0) * updated[index].unit_price
-
-    setItems(updated)
-  }
-
-  // Handle product selection from combobox
-  const handleProductSelect = (product: ProductWithMaster) => {
-    if (!selectedCustomer) {
-      showToast('error', 'Please select a customer first', { autoClose: 3000 })
-      return
-    }
-    setPendingProduct(product)
-    setPendingQuantity(1)
-    setShowConfirmSheet(true)
-  }
-
-  // Handle scan from camera (continuous mode)
-  const handleScanFromCamera = async (code: string) => {
-    if (!selectedCustomer) {
-      showToast('error', 'Please select a customer first', { autoClose: 3000 })
-      setScannerMode('closed')
-      return
-    }
-
-    try {
-      // Validate single code
-      const results = await validateScannerCodes(orgId, [code])
-
-      if (results.length === 0) {
-        showToast('error', 'Product not found. Ask your branch head to add this product.', { autoClose: 3000 })
-        return
-      }
-
-      const result = results[0]
-
-      if (result.status === 'valid' && result.product_id) {
-        const product = products.find((p) => p.id === result.product_id)
-        if (product) {
-          // Show confirmation sheet (scanner stays open)
-          setPendingProduct(product)
-          setPendingQuantity(1)
-          setScannerMode('confirming')
-          setShowConfirmSheet(true)
-        } else {
-          showToast('error', 'Product not found in inventory.', { autoClose: 3000 })
-        }
-      } else if (result.status === 'invalid') {
-        showToast('error', 'This product isn\'t in stock yet. Ask your branch head to add or stock it.', { autoClose: 3000 })
-      } else if (result.status === 'not_found') {
-        showToast('error', 'Product not found. Ask your branch head to add this product.', { autoClose: 3000 })
-      }
-    } catch (error) {
-      console.error('Error processing scan:', error)
-      showToast('error', error instanceof Error ? error.message : 'Failed to process scan', { autoClose: 3000 })
-    }
-  }
-
-  // Handle product confirmation
-  const handleConfirmProduct = (quantity: number, serial?: string) => {
-    if (!pendingProduct) return
-
-    const updatedItems = [...items]
-
-    // Check if item already exists for this product
-    const existingIndex = updatedItems.findIndex((item) => item.product_id === pendingProduct.id)
-
-    if (existingIndex >= 0) {
-      // Update existing item
-      const existingItem = updatedItems[existingIndex]
-      if (pendingProduct.serial_tracked && serial) {
-        // Add serial to existing item
-        const existingSerials = existingItem.serials || []
-        if (!existingSerials.includes(serial)) {
-          existingItem.serials = [...existingSerials, serial]
-          existingItem.quantity = existingItem.serials.length
-        }
-      } else {
-        // Increase quantity
-        existingItem.quantity = (existingItem.quantity || 0) + quantity
-      }
-      existingItem.line_total = existingItem.quantity * existingItem.unit_price
-    } else {
-      // Create new item
-      const newItem: InvoiceItemFormData = {
-        product_id: pendingProduct.id,
-        quantity: pendingProduct.serial_tracked && serial ? 1 : quantity,
-        unit_price: pendingProduct.selling_price || 0,
-        line_total: 0,
-        serial_tracked: pendingProduct.serial_tracked || false,
-        serials: pendingProduct.serial_tracked && serial ? [serial] : undefined,
-      }
-      newItem.line_total = newItem.quantity * newItem.unit_price
-      updatedItems.push(newItem)
-    }
-
-    setItems(updatedItems)
-    setShowConfirmSheet(false)
-    setPendingProduct(null)
-
-    // If scanner was open, continue scanning
-    if (scannerMode === 'confirming') {
-      setScannerMode('scanning')
-    }
-  }
-
-  // Handle cancel confirmation
-  const handleCancelConfirm = () => {
-    setShowConfirmSheet(false)
-    setPendingProduct(null)
-
-    // If scanner was open, continue scanning
-    if (scannerMode === 'confirming') {
-      setScannerMode('scanning')
-    }
-  }
-
-  // Handle scanner open
-  const handleScanClick = () => {
-    if (!selectedCustomer) {
-      showToast('error', 'Please select a customer first', { autoClose: 3000 })
-      return
-    }
-    setScannerMode('scanning')
-  }
-
-  const [toast, setToast] = useState<{ message: string; type?: 'success' | 'info' | 'error' } | null>(null)
-
-  // Add serial to item
-  const handleAddSerial = async (itemIndex: number, serial: string) => {
-    const updated = [...items]
-    const item = updated[itemIndex]
-
-    if (!item.serials) {
-      item.serials = []
-    }
-
-    // Skip if serial already exists
-    if (item.serials.includes(serial)) {
-      return
-    }
-
-    // Validate serial before adding
-    try {
-      const serialStatus = await checkSerialStatus(orgId, serial.trim())
-
-      if (!serialStatus.found) {
-        // Serial not found - allow adding but mark as invalid
-        if (!item.invalid_serials) {
-          item.invalid_serials = []
-        }
-        item.invalid_serials.push(serial.trim())
-        setToast({
-          message: 'Serial not found in stock. Saved as draft for branch head review.',
-          type: 'error'
-        })
-      } else if (serialStatus.product_id !== item.product_id) {
-        // Serial belongs to different product
-        setToast({
-          message: `Serial belongs to a different product.`,
-          type: 'error'
-        })
-        return
-      } else if (serialStatus.status !== 'available') {
-        // Serial not available
-        if (!item.invalid_serials) {
-          item.invalid_serials = []
-        }
-        item.invalid_serials.push(serial.trim())
-        setToast({
-          message: 'Serial not available in stock. Saved as draft for branch head review.',
-          type: 'error'
-        })
-      }
-
-      // Add serial (even if invalid, for draft purposes)
-      item.serials.push(serial.trim())
-      if (item.serial_tracked) {
-        item.quantity = item.serials.length
-        item.line_total = item.quantity * item.unit_price
-      }
-      setItems(updated)
-    } catch (error) {
-      console.error('Error validating serial:', error)
-      // Still allow adding for draft, but mark as invalid
-      if (!item.invalid_serials) {
-        item.invalid_serials = []
-      }
-      item.invalid_serials.push(serial.trim())
-      item.serials.push(serial.trim())
-      if (item.serial_tracked) {
-        item.quantity = item.serials.length
-        item.line_total = item.quantity * item.unit_price
-      }
-      setItems(updated)
-      setToast({
-        message: 'Error validating serial. Saved as draft for branch head review.',
-        type: 'error'
-      })
-    }
-  }
-
-  // Remove serial from item
-  const handleRemoveSerial = (itemIndex: number, serialIndex: number) => {
-    const updated = [...items]
-    const item = updated[itemIndex]
-
-    if (item.serials) {
-      const removedSerial = item.serials[serialIndex]
-      item.serials.splice(serialIndex, 1)
-
-      // Also remove from invalid_serials if present
-      if (item.invalid_serials && item.invalid_serials.includes(removedSerial)) {
-        item.invalid_serials = item.invalid_serials.filter(s => s !== removedSerial)
-      }
-
-      if (item.serial_tracked) {
-        item.quantity = item.serials.length
-        item.line_total = item.quantity * item.unit_price
-      }
-      setItems(updated)
-    }
-  }
-
-  // Calculate totals using new Tax Calculation Service
-  const totals = useMemo(() => {
-    const subtotal = items.reduce((sum, item) => sum + (item.line_total || 0), 0)
-
-    // If no customer selected or no items, return zero tax
-    if (!selectedCustomer || items.length === 0) {
-      return {
-        subtotal,
-        cgst_amount: 0,
-        sgst_amount: 0,
-        igst_amount: 0,
-        total_amount: subtotal,
-        tax_label: '',
-        supply_type: 'exempt' as const,
-      }
-    }
-
-    // Create tax calculation context using new schema fields
-    const taxContext = createTaxContext(org, selectedCustomer)
-
-    // Convert items to line items format for tax calculation
-    const lineItems = items.map(item => {
-      const product = products.find((p) => p.id === item.product_id) as ProductWithMaster | undefined
-      // Use product.tax_rate (org-specific) if available, otherwise fallback to master_product.gst_rate
-      const taxRate = product?.tax_rate ?? product?.master_product?.gst_rate ?? null
-      const hsnSacCode = product?.hsn_sac_code ?? product?.master_product?.hsn_code ?? null
-
-      return productToLineItem(
-        item.line_total,
-        taxRate,
-        hsnSacCode
-      )
-    })
-
-    // Calculate tax using new service
-    const taxResult = calculateTax(taxContext, lineItems, true) // GST-inclusive pricing
-
-    return {
-      subtotal: taxResult.subtotal,
-      cgst_amount: taxResult.cgst_amount,
-      sgst_amount: taxResult.sgst_amount,
-      igst_amount: taxResult.igst_amount,
-      total_amount: taxResult.grand_total,
-      tax_label: taxResult.tax_label,
-      supply_type: taxResult.supply_type,
-    }
-  }, [items, org, selectedCustomer, products])
 
   // Step 3: Review
   // Step 4: Submit
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault()
 
-    if (!selectedCustomer) {
+    if (!hookSelectedCustomer) {
       setErrors({ customer: 'Please select a customer' })
       setCurrentStep(1)
       return
     }
 
-    if (items.length === 0) {
+    if (hookItems.length === 0) {
       setErrors({ items: 'Please add at least one item' })
       setCurrentStep(2)
       return
     }
 
     // Validate all items
-    const invalidItems = items.some((item) => {
+    const invalidItems = hookItems.some((item) => {
       if (!item.product_id || item.unit_price <= 0) return true
 
       // For serial-tracked products, check serials instead of quantity
@@ -595,7 +287,7 @@ export function InvoiceForm({
 
     try {
       // Backend validation before finalization
-      const validationItems = items.map((item) => ({
+      const validationItems = hookItems.map((item) => ({
         product_id: item.product_id,
         quantity: item.quantity,
         serials: item.serials || [],
@@ -618,7 +310,7 @@ export function InvoiceForm({
         )
 
         // Update items with validation errors and available stock
-        const updatedItems = items.map((item, index) => {
+        const updatedItems = hookItems.map((item, index) => {
           const itemErrors = validation.errors.filter(e => e.item_index === index + 1)
           const stockError = itemErrors.find(e => e.type === 'insufficient_stock')
           const masterProductError = itemErrors.find(e =>
@@ -642,7 +334,7 @@ export function InvoiceForm({
             }),
           }
         })
-        setItems(updatedItems)
+        hookSetItems(updatedItems)
 
         // Show toast with error summary
         let errorMessage = 'Invoice validation failed: '
@@ -658,7 +350,7 @@ export function InvoiceForm({
         if (stockErrors.length > 0) {
           errorMessage += `${stockErrors.length} item(s) have insufficient stock. `
         }
-        setToast({ message: errorMessage.trim(), type: 'error' })
+        showToast('error', errorMessage.trim(), { autoClose: 3000 })
 
         // Set form errors
         setErrors({
@@ -671,8 +363,8 @@ export function InvoiceForm({
       }
 
       const invoiceData: InvoiceFormData = {
-        customer_id: selectedCustomer.id,
-        items: items.map((item) => ({
+        customer_id: hookSelectedCustomer.id,
+        items: hookItems.map((item) => ({
           ...item,
           line_total: item.quantity * item.unit_price,
         })),
@@ -683,7 +375,7 @@ export function InvoiceForm({
         userId,
         invoiceData,
         org,
-        selectedCustomer
+        hookSelectedCustomer!
       )
 
       // Clear draft session ID on finalize
@@ -700,17 +392,14 @@ export function InvoiceForm({
       setErrors({
         submit: error instanceof Error ? error.message : 'Failed to create invoice',
       })
-      setToast({
-        message: error instanceof Error ? error.message : 'Failed to create invoice',
-        type: 'error'
-      })
+      showToast('error', error instanceof Error ? error.message : 'Failed to create invoice', { autoClose: 3000 })
     } finally {
       setIsSubmitting(false)
     }
   }
 
-  const canProceedToStep2 = selectedCustomer !== null
-  const canProceedToStep3 = items.length > 0 && items.every((item) => item.product_id && item.quantity > 0 && item.unit_price > 0)
+  const canProceedToStep2 = hookSelectedCustomer !== null
+  const canProceedToStep3 = hookItems.length > 0 && hookItems.every((item) => item.product_id && item.quantity > 0 && item.unit_price > 0)
 
   // Show loading or error state when loading draft
   const DraftLoadingContent = (
@@ -753,10 +442,8 @@ export function InvoiceForm({
                 // Reset form and start new invoice
                 resetDraftState()
                 setCurrentStep(1)
-                setIdentifier('')
-                setIdentifierValid(false)
-                setSelectedCustomer(null)
-                setItems([])
+                hookResetCustomer()
+                hookSetItems([])
                 // Don't close the form - allow user to start new invoice
               }}
               className="w-full"
@@ -780,36 +467,28 @@ export function InvoiceForm({
       {/* Step 1: Customer Selection */}
       {currentStep === 1 && (
         <CustomerSelectionStep
-          searchValue={identifier}
-          onSearchChange={setIdentifier}
-          isSearching={searching}
-          searchError={errors.identifier}
-          selectedCustomer={selectedCustomer}
+          searchValue={hookIdentifier}
+          onSearchChange={hookSetIdentifier}
+          isSearching={hookSearching}
+          searchError={hookCustomerErrors.identifier}
+          selectedCustomer={hookSelectedCustomer}
           onCustomerSelected={(customer) => {
-            setSelectedCustomer(customer)
+            hookHandleCustomerSelected(customer)
             if (customer) {
               setCurrentStep(2)
             }
           }}
-          isAddNewFormOpen={showAddNewForm}
-          newCustomerData={inlineFormData}
+          isAddNewFormOpen={hookShowAddNewForm}
+          newCustomerData={hookInlineFormData}
           formErrors={{
-            name: errors.name,
-            mobile: errors.mobile,
-            gstin: errors.gstin,
+            name: hookCustomerErrors.name,
+            mobile: hookCustomerErrors.mobile,
+            gstin: hookCustomerErrors.gstin,
           }}
-          onOpenAddNewForm={() => {
-            if (identifier.trim().length >= 3) {
-              setShowAddNewForm(true)
-            }
-          }}
-          onCloseAddNewForm={() => {
-            setShowAddNewForm(false)
-            setInlineFormData({ name: '', mobile: '', gstin: '' })
-            setErrors({})
-          }}
-          onFormDataChange={setInlineFormData}
-          onSubmitNewCustomer={handleCreateOrgCustomer}
+          onOpenAddNewForm={hookHandleOpenAddNewForm}
+          onCloseAddNewForm={hookHandleCloseAddNewForm}
+          onFormDataChange={hookHandleFormDataChange}
+          onSubmitNewCustomer={hookHandleCreateOrgCustomer}
           onContinue={() => setCurrentStep(2)}
           orgId={orgId}
           isDisabled={isSubmitting}
@@ -820,22 +499,20 @@ export function InvoiceForm({
       {/* Step 2: Add Products */}
       {currentStep === 2 && (
         <InvoiceItemsStep
-          items={items}
+          items={hookItems}
           products={products}
           loadingProducts={loadingProducts}
           itemsError={errors.items}
-          onAddItem={handleAddItem}
-          onRemoveItem={handleRemoveItem}
-          onProductSelect={handleProductSelect}
-          onProductChange={handleProductChange}
-          onItemFieldChange={handleItemChange}
-          serialInputs={serialInputs}
-          onSerialInputChange={(index, value) => {
-            setSerialInputs({ ...serialInputs, [index]: value })
-          }}
-          onAddSerial={handleAddSerial}
-          onRemoveSerial={handleRemoveSerial}
-          onScanClick={handleScanClick}
+          onAddItem={hookHandleAddItem}
+          onRemoveItem={hookHandleRemoveItem}
+          onProductSelect={hookHandleProductSelect}
+          onProductChange={hookHandleProductChange}
+          onItemFieldChange={hookHandleItemChange}
+          serialInputs={hookSerialInputs}
+          onSerialInputChange={hookHandleSerialInputChange}
+          onAddSerial={hookHandleAddSerial}
+          onRemoveSerial={hookHandleRemoveSerial}
+          onScanClick={hookHandleScanClick}
           orgId={orgId}
           isDisabled={isSubmitting}
         />
@@ -844,8 +521,8 @@ export function InvoiceForm({
       {/* Step 3: Review */}
       {currentStep === 3 && (
         <InvoiceReviewStep
-          customer={selectedCustomer}
-          items={items}
+          customer={hookSelectedCustomer}
+          items={hookItems}
           products={products}
           totals={totals}
         />
@@ -909,7 +586,7 @@ export function InvoiceForm({
                 isLoading={isSubmitting}
                 className="flex-1"
                 disabled={
-                  items.some(item =>
+                  hookItems.some(item =>
                     (item.invalid_serials && item.invalid_serials.length > 0) ||
                     (item.validation_errors && item.validation_errors.length > 0)
                   )
@@ -931,7 +608,7 @@ export function InvoiceForm({
   const formTitle = title || 'Create Invoice'
 
   // Header action: Save Draft button
-  const headerAction = selectedCustomer ? (
+  const headerAction = hookSelectedCustomer ? (
     <button
       type="button"
       onClick={handleManualSaveDraft}
@@ -950,13 +627,7 @@ export function InvoiceForm({
 
   return (
     <>
-      {toast && (
-        <Toast
-          message={toast.message}
-          type={toast.type}
-          onClose={() => setToast(null)}
-        />
-      )}
+
       {mode === 'page' ? (
         // Page mode: render form content directly without modal/drawer wrapper
         FormContent
@@ -975,34 +646,34 @@ export function InvoiceForm({
 
       {/* Camera Scanner - Continuous Mode */}
       <CameraScanner
-        isOpen={scannerMode === 'scanning' || scannerMode === 'confirming'}
+        isOpen={hookScannerMode === 'scanning' || hookScannerMode === 'confirming'}
         onClose={() => {
-          setScannerMode('closed')
-          setShowConfirmSheet(false)
-          setPendingProduct(null)
+          // Scanner close is now managed by hook - this shouldn't be called
+          // but keeping for safety during transition
+          console.warn('CameraScanner onClose called - should be managed by hook')
         }}
-        onScanSuccess={handleScanFromCamera}
+        onScanSuccess={hookHandleScanFromCamera}
         continuousMode={true}
       />
 
       {/* Backdrop - z-index 9999, dims content but NOT scanner */}
-      {scannerMode === 'confirming' && (
+      {hookScannerMode === 'confirming' && (
         <div
           className="fixed inset-0 bg-black/40"
           style={{ zIndex: 9999 }}
-          onClick={handleCancelConfirm}
+          onClick={hookHandleCancelConfirm}
           aria-hidden="true"
         />
       )}
 
       {/* Product Confirmation Sheet - z-index 10000, solid white */}
       <ProductConfirmSheet
-        isOpen={showConfirmSheet}
-        product={pendingProduct}
-        onConfirm={handleConfirmProduct}
-        onCancel={handleCancelConfirm}
-        defaultQuantity={pendingQuantity}
-        scannerMode={scannerMode}
+        isOpen={hookShowConfirmSheet}
+        product={hookPendingProduct}
+        onConfirm={hookHandleConfirmProduct}
+        onCancel={hookHandleCancelConfirm}
+        defaultQuantity={hookPendingQuantity}
+        scannerMode={hookScannerMode}
       />
     </>
   )

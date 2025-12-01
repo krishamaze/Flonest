@@ -1,21 +1,4 @@
-/**
- * Purchase Bill View Component
- * 
- * Displays purchase bills with status-based workflow actions
- * States: Draft → Approved → Posted
- */
-
-import { useState, useEffect } from 'react'
-import { toast } from 'react-toastify'
-import { 
-  getPurchaseBillById, 
-  approvePurchaseBill, 
-  postPurchaseBill,
-  revertPurchaseBillToDraft,
-  type PurchaseBillWithItems 
-} from '../../lib/api/purchaseBills'
-import { getOrgById } from '../../lib/api/orgs'
-import type { Org } from '../../types'
+import { usePurchaseBill } from '../../hooks/usePurchaseBill'
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/Card'
 import { Button } from '../ui/Button'
 import { LoadingSpinner } from '../ui/LoadingSpinner'
@@ -28,96 +11,17 @@ interface PurchaseBillViewProps {
 }
 
 export function PurchaseBillView({ billId, orgId, userId, onClose }: PurchaseBillViewProps) {
-  const [bill, setBill] = useState<PurchaseBillWithItems | null>(null)
-  const [org, setOrg] = useState<Org | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [actionLoading, setActionLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-
-  useEffect(() => {
-    loadBill()
-  }, [billId, orgId])
-
-  const loadBill = async () => {
-    try {
-      setLoading(true)
-      setError(null)
-
-      const [billData, orgData] = await Promise.all([
-        getPurchaseBillById(billId, orgId),
-        getOrgById(orgId),
-      ])
-
-      setBill(billData)
-      setOrg(orgData)
-    } catch (err) {
-      console.error('Error loading purchase bill:', err)
-      setError(err instanceof Error ? err.message : 'Failed to load purchase bill')
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  // APPROVE ACTION: draft → approved
-  const handleApprove = async () => {
-    if (!bill || bill.status !== 'draft') return
-
-    try {
-      setActionLoading(true)
-      setError(null)
-      
-      const approvedBill = await approvePurchaseBill(billId, orgId, userId)
-      setBill(approvedBill)
-      toast.success('Purchase bill approved successfully')
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to approve purchase bill'
-      setError(errorMessage)
-      toast.error(errorMessage)
-    } finally {
-      setActionLoading(false)
-    }
-  }
-
-  // POST ACTION: approved → posted (calls RPC)
-  const handlePost = async () => {
-    if (!bill || bill.status !== 'approved') return
-
-    try {
-      setActionLoading(true)
-      setError(null)
-      
-      const postedBill = await postPurchaseBill(billId, orgId, userId)
-      setBill(postedBill)
-      toast.success('Purchase bill posted to inventory successfully')
-    } catch (err) {
-      // Error message is already translated by getUserFriendlyError in API
-      const errorMessage = err instanceof Error ? err.message : 'Failed to post purchase bill'
-      setError(errorMessage)
-      toast.error(errorMessage)
-    } finally {
-      setActionLoading(false)
-    }
-  }
-
-  // REVERT ACTION: flagged_hsn_mismatch → draft
-  const handleRevertToDraft = async () => {
-    if (!bill || bill.status !== 'flagged_hsn_mismatch') return
-
-    try {
-      setActionLoading(true)
-      setError(null)
-      
-      const revertedBill = await revertPurchaseBillToDraft(billId, orgId)
-      setBill(revertedBill)
-      toast.success('Bill reverted to draft. You can now edit items and correct HSN codes.')
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to revert bill to draft'
-      setError(errorMessage)
-      toast.error(errorMessage)
-    } finally {
-      setActionLoading(false)
-    }
-  }
+  const {
+    bill,
+    org,
+    loading,
+    actionLoading,
+    error,
+    loadBill,
+    approveBill,
+    postBill,
+    revertToDraft
+  } = usePurchaseBill(billId, orgId, userId)
 
   // Status-based action buttons
   const renderActionButtons = () => {
@@ -129,7 +33,7 @@ export function PurchaseBillView({ billId, orgId, userId, onClose }: PurchaseBil
           <div className="flex gap-4">
             <Button
               variant="primary"
-              onClick={handleApprove}
+              onClick={approveBill}
               disabled={actionLoading}
               isLoading={actionLoading}
             >
@@ -143,7 +47,7 @@ export function PurchaseBillView({ billId, orgId, userId, onClose }: PurchaseBil
           <div className="flex gap-4">
             <Button
               variant="primary"
-              onClick={handlePost}
+              onClick={postBill}
               disabled={actionLoading}
               isLoading={actionLoading}
             >
@@ -153,16 +57,16 @@ export function PurchaseBillView({ billId, orgId, userId, onClose }: PurchaseBil
         )
 
       case 'posted':
-        const postedDate = bill.posted_at 
+        const postedDate = bill.posted_at
           ? new Date(bill.posted_at).toLocaleDateString('en-IN', {
-              day: '2-digit',
-              month: 'short',
-              year: 'numeric',
-              hour: '2-digit',
-              minute: '2-digit',
-            })
+            day: '2-digit',
+            month: 'short',
+            year: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit',
+          })
           : 'N/A'
-        
+
         return (
           <div className="text-sm text-muted-text">
             ✓ Bill posted to inventory on {postedDate}
@@ -181,7 +85,7 @@ export function PurchaseBillView({ billId, orgId, userId, onClose }: PurchaseBil
             </div>
             <Button
               variant="primary"
-              onClick={handleRevertToDraft}
+              onClick={revertToDraft}
               disabled={actionLoading}
               isLoading={actionLoading}
             >
@@ -249,10 +153,10 @@ export function PurchaseBillView({ billId, orgId, userId, onClose }: PurchaseBil
 
   const billDate = bill.bill_date
     ? new Date(bill.bill_date).toLocaleDateString('en-IN', {
-        day: '2-digit',
-        month: 'short',
-        year: 'numeric',
-      })
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric',
+    })
     : 'N/A'
 
   return (
@@ -340,20 +244,20 @@ export function PurchaseBillView({ billId, orgId, userId, onClose }: PurchaseBil
                 <tbody>
                   {bill.items?.map((item, index) => {
                     const product = (item as any).product
-                    const productName = 
-                      product?.name || 
-                      product?.master_product?.name || 
-                      item.description || 
+                    const productName =
+                      product?.name ||
+                      product?.master_product?.name ||
+                      item.description ||
                       'Unknown Product'
-                    
+
                     // Check for HSN mismatch
                     const hasMismatch = (item as any).hsn_mismatch === true
                     const matchStatus = (item as any).hsn_match_status
                     const systemHsn = product?.hsn_sac_code || product?.master_product?.hsn_code || null
 
                     return (
-                      <tr 
-                        key={item.id || index} 
+                      <tr
+                        key={item.id || index}
                         className={`border-b ${hasMismatch ? 'bg-yellow-50' : ''}`}
                       >
                         <td className="p-2">
@@ -427,4 +331,3 @@ export function PurchaseBillView({ billId, orgId, userId, onClose }: PurchaseBil
     </div>
   )
 }
-

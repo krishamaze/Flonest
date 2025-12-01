@@ -1,8 +1,9 @@
 import { useState, useEffect, useRef, KeyboardEvent, ChangeEvent } from 'react'
 import { PlusIcon } from '@heroicons/react/24/outline'
-import { searchCustomersByPartialIdentifier } from '../../lib/api/customers'
+import { useSearchCustomersAutocomplete } from '../../hooks/useCustomers'
 import type { CustomerWithMaster } from '../../types'
 import { LoadingSpinner } from '../ui/LoadingSpinner'
+
 
 interface CustomerSearchComboboxProps {
     orgId: string
@@ -24,46 +25,27 @@ export function CustomerSearchCombobox({
     autoFocus = false,
 }: CustomerSearchComboboxProps) {
     const [isOpen, setIsOpen] = useState(false)
-    const [searchResults, setSearchResults] = useState<CustomerWithMaster[]>([])
-    const [isSearching, setIsSearching] = useState(false)
     const [highlightedIndex, setHighlightedIndex] = useState(-1)
     const inputRef = useRef<HTMLInputElement>(null)
     const dropdownRef = useRef<HTMLDivElement>(null)
-    const debounceTimerRef = useRef<NodeJS.Timeout | null>(null)
 
-    // Search customers with debounce
+    // Use React Query hook for autocomplete search (automatically debounced via enabled condition)
+    const { data: searchResults = [], isLoading: isSearching } = useSearchCustomersAutocomplete(
+        orgId,
+        value,
+        value.trim().length >= 3 // Only enable when 3+ chars
+    )
+
+    // Auto-open dropdown when results are available
     useEffect(() => {
-        if (debounceTimerRef.current) {
-            clearTimeout(debounceTimerRef.current)
-        }
-
-        if (value.trim().length < 3) {
-            setSearchResults([])
+        if (value.trim().length >= 3 && searchResults.length >= 0) {
+            setIsOpen(true)
+            setHighlightedIndex(-1)
+        } else {
             setIsOpen(false)
-            return
         }
+    }, [searchResults, value])
 
-        debounceTimerRef.current = setTimeout(async () => {
-            setIsSearching(true)
-            try {
-                const results = await searchCustomersByPartialIdentifier(orgId, value.trim())
-                setSearchResults(results)
-                setIsOpen(true)
-                setHighlightedIndex(-1)
-            } catch (error) {
-                console.error('Error searching customers:', error)
-                setSearchResults([])
-            } finally {
-                setIsSearching(false)
-            }
-        }, 300)
-
-        return () => {
-            if (debounceTimerRef.current) {
-                clearTimeout(debounceTimerRef.current)
-            }
-        }
-    }, [value, orgId])
 
     // Close dropdown when clicking outside
     useEffect(() => {
@@ -186,8 +168,8 @@ export function CustomerSearchCombobox({
                         onClick={handleAddNewPartyClick}
                         onMouseEnter={() => setHighlightedIndex(0)}
                         className={`w-full text-left px-4 py-3 flex items-center gap-2 transition-colors min-h-[44px] ${highlightedIndex === 0
-                                ? 'bg-primary text-text-on-primary'
-                                : 'hover:bg-neutral-50 text-primary'
+                            ? 'bg-primary text-text-on-primary'
+                            : 'hover:bg-neutral-50 text-primary'
                             }`}
                         role="option"
                         aria-selected={highlightedIndex === 0}

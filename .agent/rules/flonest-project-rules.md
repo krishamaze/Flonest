@@ -14,6 +14,11 @@ trigger: always_on
 * Do ensure the local migrations directory contains all migration versions present on the remote database.
 * Do synchronize local migration files to match the remote history.
 * Do convert existing unregulated documentation into Architecture Decision Records (ADR).
+* Run `npm run build` against preview branch before requesting review
+* Verify migration applied via Supabase MCP dashboard before marking done
+* Check existing hooks in `src/hooks/` before creating new ones
+* Document RPC signature changes in migration comments
+* Use `supabase db diff` to validate migration matches local schema
 
 
 ### Negative Rules
@@ -25,3 +30,6 @@ trigger: always_on
 * do not link the CLI to the production environment
 * do not push or merge directly to the main branch
 * Do not proceed if remote migration versions are missing from the local directory.
+* Apply migrations without verifying local/remote version sync
+* Create duplicate hooks for similar data fetching patterns
+* Merge PRs with failing Vercel preview builds

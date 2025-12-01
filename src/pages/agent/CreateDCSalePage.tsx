@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { useAuth } from '../../contexts/AuthContext'
 import { useNavigate } from 'react-router-dom'
 import { AgentPortalLayout } from '../../components/layout/AgentPortalLayout'
@@ -6,229 +6,54 @@ import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/Ca
 import { Button } from '../../components/ui/Button'
 import { Input } from '../../components/ui/Input'
 import { LoadingSpinner } from '../../components/ui/LoadingSpinner'
-import { toast } from 'react-toastify'
-import { supabase } from '../../lib/supabase'
-import { getDCStock, type DCStockSummary } from '../../lib/api/dcStock'
-import { createDCSale } from '../../lib/api/dcSales'
-import { lookupOrCreateCustomer } from '../../lib/api/customers'
-import { recordCashReceived, validateSection269ST, getCashSettings, type OrgCashSettings } from '../../lib/api/agentCash'
-import type { CustomerWithMaster } from '../../types'
+import { useCreateDCSale, type PaymentMethod } from '../../hooks/agent/useCreateDCSale'
 import { TrashIcon, PlusIcon, CubeIcon, BanknotesIcon, ExclamationTriangleIcon } from '@heroicons/react/24/outline'
-
-interface SaleItem {
-  product_id: string
-  product_name: string
-  product_sku: string
-  quantity: number
-  unit_price: number
-  line_total: number
-  max_quantity: number
-}
 
 export function CreateDCSalePage() {
   const { user, currentAgentContext } = useAuth()
   const navigate = useNavigate()
-  const [loading, setLoading] = useState(true)
-  const [submitting, setSubmitting] = useState(false)
-  const [dcStock, setDcStock] = useState<DCStockSummary[]>([])
-  const [customer, setCustomer] = useState<CustomerWithMaster | null>(null)
+
+  // Local UI state
   const [customerInput, setCustomerInput] = useState('')
-  const [searchingCustomer, setSearchingCustomer] = useState(false)
-  const [items, setItems] = useState<SaleItem[]>([])
   const [selectedProduct, setSelectedProduct] = useState('')
-  const [paymentMethod, setPaymentMethod] = useState<'upi' | 'payment_link' | 'cash' | 'unpaid'>('unpaid')
   const [showCashWarning, setShowCashWarning] = useState(false)
-  const [cashSettings, setCashSettings] = useState<OrgCashSettings | null>(null)
 
-  useEffect(() => {
-    if (!user || !currentAgentContext) return
-    loadDCStock()
-    loadCashSettings()
-  }, [user?.id, currentAgentContext?.relationshipId])
-
-  const loadCashSettings = async () => {
-    if (!currentAgentContext) return
-    try {
-      const settings = await getCashSettings(currentAgentContext.senderOrgId)
-      setCashSettings(settings)
-    } catch (error) {
-      console.error('Error loading cash settings:', error)
-    }
-  }
-
-  const loadDCStock = async () => {
-    if (!user || !currentAgentContext) {
-      navigate('/')
-      return
-    }
-
-    try {
-      setLoading(true)
-      const data = await getDCStock(currentAgentContext.senderOrgId, user.id)
-      setDcStock(data)
-    } catch (error) {
-      console.error('Error loading DC stock:', error)
-      toast.error('Failed to load DC stock')
-    } finally {
-      setLoading(false)
-    }
-  }
+  // Business logic hook
+  const {
+    loading,
+    submitting,
+    dcStock,
+    customer,
+    searchingCustomer,
+    items,
+    paymentMethod,
+    cashSettings,
+    subtotal,
+    setCustomer,
+    setPaymentMethod,
+    searchCustomer,
+    addItem,
+    updateItemQuantity,
+    updateItemPrice,
+    removeItem,
+    submitSale
+  } = useCreateDCSale()
 
   const handleCustomerSearch = async () => {
-    if (!customerInput.trim() || !currentAgentContext || !user) return
-
-    try {
-      setSearchingCustomer(true)
-      const result = await lookupOrCreateCustomer(
-        customerInput,
-        currentAgentContext.senderOrgId,
-        user.id
-      )
-      setCustomer(result.customer as CustomerWithMaster)
-      toast.success('Customer found')
-    } catch (error: any) {
-      console.error('Error finding customer:', error)
-      toast.error(error.message || 'Failed to find customer')
-    } finally {
-      setSearchingCustomer(false)
-    }
+    await searchCustomer(customerInput)
   }
 
   const handleAddItem = () => {
-    if (!selectedProduct) {
-      toast.error('Please select a product')
-      return
-    }
-
-    const stockItem = dcStock.find(s => s.product_id === selectedProduct)
-    if (!stockItem) return
-
-    // Check if product already added
-    if (items.find(i => i.product_id === selectedProduct)) {
-      toast.error('Product already added')
-      return
-    }
-
-    const newItem: SaleItem = {
-      product_id: stockItem.product_id,
-      product_name: stockItem.product.name,
-      product_sku: stockItem.product.sku,
-      quantity: 1,
-      unit_price: stockItem.product.selling_price || 0,
-      line_total: stockItem.product.selling_price || 0,
-      max_quantity: stockItem.current_stock,
-    }
-
-    setItems([...items, newItem])
+    addItem(selectedProduct)
     setSelectedProduct('')
   }
 
-  const handleUpdateQuantity = (index: number, quantity: number) => {
-    const item = items[index]
-    if (quantity > item.max_quantity) {
-      toast.error(`Only ${item.max_quantity} units available`)
-      return
-    }
-
-    const updatedItems = [...items]
-    updatedItems[index].quantity = quantity
-    updatedItems[index].line_total = quantity * item.unit_price
-    setItems(updatedItems)
-  }
-
-  const handleUpdatePrice = (index: number, price: number) => {
-    const updatedItems = [...items]
-    updatedItems[index].unit_price = price
-    updatedItems[index].line_total = updatedItems[index].quantity * price
-    setItems(updatedItems)
-  }
-
-  const handleRemoveItem = (index: number) => {
-    setItems(items.filter((_, i) => i !== index))
-  }
-
   const handleSubmit = async () => {
-    if (!currentAgentContext || !user || !customer) {
-      toast.error('Please select a customer')
-      return
-    }
-
-    if (items.length === 0) {
-      toast.error('Please add at least one item')
-      return
-    }
-
-    if (paymentMethod === 'unpaid') {
-      toast.error('Please select a payment method')
-      return
-    }
-
-    // ENFORCE Section 269ST for cash payments
-    if (paymentMethod === 'cash' && cashSettings) {
-      const validation = validateSection269ST(subtotal, cashSettings.section_269st_limit)
-      if (!validation.valid) {
-        toast.error(validation.error)
-        return
-      }
-    }
-
-    try {
-      setSubmitting(true)
-
-      // Create sale
-      const result = await createDCSale(
-        currentAgentContext.senderOrgId,
-        user.id,
-        null,
-        {
-          customer_id: customer.id,
-          items: items.map(i => ({
-            product_id: i.product_id,
-            quantity: i.quantity,
-            unit_price: i.unit_price,
-            line_total: i.line_total,
-          })),
-        },
-        user.id
-      )
-
-      // Update invoice payment method
-      await supabase
-        .from('invoices')
-        .update({
-          payment_method: paymentMethod,
-          payment_status: paymentMethod === 'cash' ? 'paid' : 'unpaid',
-          paid_amount: paymentMethod === 'cash' ? subtotal : 0,
-          paid_at: paymentMethod === 'cash' ? new Date().toISOString() : null,
-        })
-        .eq('id', result.invoice.id)
-
-      // If cash payment, record in cash ledger
-      if (paymentMethod === 'cash') {
-        await recordCashReceived(
-          currentAgentContext.senderOrgId,
-          user.id,
-          result.invoice.id,
-          subtotal,
-          user.id
-        )
-      }
-
-      toast.success(
-        paymentMethod === 'cash'
-          ? 'Sale created and cash recorded. Please deposit to seller account within allowed timeframe.'
-          : 'Sale created successfully'
-      )
+    const success = await submitSale()
+    if (success) {
       navigate('/agent/dashboard')
-    } catch (error: any) {
-      console.error('Error creating DC sale:', error)
-      toast.error(error.message || 'Failed to create sale')
-    } finally {
-      setSubmitting(false)
     }
   }
-
-  const subtotal = items.reduce((sum, item) => sum + item.line_total, 0)
 
   if (loading) {
     return (
@@ -238,6 +63,11 @@ export function CreateDCSalePage() {
         </div>
       </AgentPortalLayout>
     )
+  }
+
+  // Auth check fallback (though hook handles data loading protection)
+  if (!user || !currentAgentContext) {
+    return null
   }
 
   if (dcStock.length === 0) {
@@ -340,7 +170,7 @@ export function CreateDCSalePage() {
                         <p className="text-xs text-text-muted">Max: {item.max_quantity} units</p>
                       </div>
                       <button
-                        onClick={() => handleRemoveItem(index)}
+                        onClick={() => removeItem(index)}
                         className="text-error hover:text-error-dark"
                       >
                         <TrashIcon className="h-5 w-5" />
@@ -354,7 +184,7 @@ export function CreateDCSalePage() {
                           min="1"
                           max={item.max_quantity}
                           value={item.quantity}
-                          onChange={(e) => handleUpdateQuantity(index, parseInt(e.target.value) || 1)}
+                          onChange={(e) => updateItemQuantity(index, parseInt(e.target.value) || 1)}
                           className="text-sm"
                         />
                       </div>
@@ -365,7 +195,7 @@ export function CreateDCSalePage() {
                           min="0"
                           step="0.01"
                           value={item.unit_price}
-                          onChange={(e) => handleUpdatePrice(index, parseFloat(e.target.value) || 0)}
+                          onChange={(e) => updateItemPrice(index, parseFloat(e.target.value) || 0)}
                           className="text-sm"
                         />
                       </div>
@@ -398,7 +228,7 @@ export function CreateDCSalePage() {
                     name="paymentMethod"
                     value="upi"
                     checked={paymentMethod === 'upi'}
-                    onChange={(e) => setPaymentMethod(e.target.value as 'upi')}
+                    onChange={(e) => setPaymentMethod(e.target.value as PaymentMethod)}
                     className="w-4 h-4 mt-1"
                   />
                   <div className="flex-1">
@@ -413,7 +243,7 @@ export function CreateDCSalePage() {
                     name="paymentMethod"
                     value="payment_link"
                     checked={paymentMethod === 'payment_link'}
-                    onChange={(e) => setPaymentMethod(e.target.value as 'payment_link')}
+                    onChange={(e) => setPaymentMethod(e.target.value as PaymentMethod)}
                     className="w-4 h-4 mt-1"
                   />
                   <div className="flex-1">
@@ -430,7 +260,7 @@ export function CreateDCSalePage() {
                     value="cash"
                     checked={paymentMethod === 'cash'}
                     onChange={(e) => {
-                      setPaymentMethod(e.target.value as 'cash')
+                      setPaymentMethod(e.target.value as PaymentMethod)
                       setShowCashWarning(true)
                     }}
                     className="w-4 h-4 mt-1"
@@ -458,7 +288,7 @@ export function CreateDCSalePage() {
                     name="paymentMethod"
                     value="unpaid"
                     checked={paymentMethod === 'unpaid'}
-                    onChange={(e) => setPaymentMethod(e.target.value as 'unpaid')}
+                    onChange={(e) => setPaymentMethod(e.target.value as PaymentMethod)}
                     className="w-4 h-4 mt-1"
                   />
                   <div className="flex-1">
@@ -513,5 +343,3 @@ export function CreateDCSalePage() {
     </AgentPortalLayout>
   )
 }
-
-

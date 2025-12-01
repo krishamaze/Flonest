@@ -6,6 +6,8 @@ import {
   lookupOrCreateCustomer,
   checkCustomerExists,
   searchCustomersByIdentifier,
+  searchCustomersByPartialIdentifier,
+  addOrgCustomer,
   type LookupResult,
 } from '../lib/api/customers'
 import type { CustomerWithMaster } from '../types'
@@ -191,3 +193,60 @@ export const useLookupOrCreateCustomer = (orgId: string | null | undefined, user
     },
   })
 }
+
+/**
+ * Query hook to search customers by partial identifier (autocomplete-style)
+ * Searches in mobile and GSTIN fields with partial matching
+ * Returns results sorted by recently invoiced, then alphabetically
+ * Requires minimum 3 characters to search
+ */
+export const useSearchCustomersAutocomplete = (
+  orgId: string | null | undefined,
+  query: string | null | undefined,
+  enabled: boolean = true
+) => {
+  return useQuery<CustomerWithMaster[]>({
+    queryKey: ['customer-autocomplete', orgId, query],
+    queryFn: async () => {
+      if (!orgId || !query || query.trim().length < 3) return []
+      return searchCustomersByPartialIdentifier(orgId, query.trim())
+    },
+    enabled: enabled && !!orgId && !!query && query.trim().length >= 3,
+    staleTime: 10 * 1000, // 10 seconds
+    refetchOnWindowFocus: false,
+  })
+}
+
+/**
+ * Mutation hook to add a new org customer
+ * Uses add_org_customer RPC
+ */
+export const useAddOrgCustomer = (orgId: string | null | undefined) => {
+  const queryClient = useQueryClient()
+
+  return useMutation<
+    string, // Returns customer ID
+    Error,
+    {
+      name: string
+      mobile: string | null
+      gstin: string | null
+    }
+  >({
+    mutationFn: async ({ name, mobile, gstin }) => {
+      if (!orgId) throw new Error('Organization ID is required')
+      return addOrgCustomer(orgId, name, mobile, gstin)
+    },
+    onSuccess: () => {
+      // Invalidate customers list to include the new customer
+      queryClient.invalidateQueries({ queryKey: ['customers', orgId] })
+      // Invalidate search queries to refresh autocomplete
+      queryClient.invalidateQueries({ queryKey: ['customer-autocomplete', orgId] })
+      queryClient.invalidateQueries({ queryKey: ['customer-search'] })
+      queryClient.invalidateQueries({ queryKey: ['customer-exists'] })
+
+      // Note: Return value is just the ID, caller should fetch full customer if needed
+    },
+  })
+}
+
