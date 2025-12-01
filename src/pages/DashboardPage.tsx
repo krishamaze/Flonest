@@ -32,6 +32,11 @@ export function DashboardPage() {
   const { registerRefreshHandler, unregisterRefreshHandler } = useRefresh()
   const [showAddAdvisorForm, setShowAddAdvisorForm] = useState(false)
 
+  // Ensure modal state is cleared on mount
+  useEffect(() => {
+    setShowAddAdvisorForm(false)
+  }, [])
+
   // React Query hooks - parallel queries eliminate loading waterfalls
   const { data: stats, isLoading: statsLoading, error: statsError } = useDashboardStats(user?.orgId)
   const { data: pendingMemberships = [], isLoading: membershipsLoading } = usePendingMemberships(

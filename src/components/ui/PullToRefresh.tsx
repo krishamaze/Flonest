@@ -15,15 +15,16 @@ export function PullToRefresh({
   onRefresh,
   children,
   disabled = false,
-  threshold = 80,
-  maxPull = 120,
+  threshold = 120, // Increased from 80
+  maxPull = 180,   // Increased from 120
 }: PullToRefreshProps) {
   const [state, setState] = useState<RefreshState>('idle')
   const [pullDistance, setPullDistance] = useState(0)
   const [isRefreshing, setIsRefreshing] = useState(false)
   const [refreshMessage, setRefreshMessage] = useState('Refreshing...')
-  
+
   const touchStartY = useRef(0)
+  const touchStartX = useRef(0) // Track X to detect horizontal swipes
   const scrollableElement = useRef<HTMLDivElement>(null)
   const isDragging = useRef(false)
   // Performance: Store latest state values in refs to avoid event listener thrashing
@@ -43,7 +44,7 @@ export function PullToRefresh({
 
     const handleTouchStart = (e: TouchEvent) => {
       if (isRefreshingRef.current) return
-      
+
       const scrollable = scrollableElement.current
       if (!scrollable) return
 
@@ -52,12 +53,13 @@ export function PullToRefresh({
       if (!isAtTop) return
 
       touchStartY.current = e.touches[0].clientY
+      touchStartX.current = e.touches[0].clientX
       isDragging.current = false
     }
 
     const handleTouchMove = (e: TouchEvent) => {
       if (isRefreshingRef.current) return
-      
+
       const scrollable = scrollableElement.current
       if (!scrollable) return
 
@@ -65,26 +67,32 @@ export function PullToRefresh({
       if (!isAtTop && !isDragging.current) return
 
       const currentY = e.touches[0].clientY
-      const diff = currentY - touchStartY.current
+      const currentX = e.touches[0].clientX
 
-      // Only activate on downward pull
-      if (diff > 0 && isAtTop) {
+      const diffY = currentY - touchStartY.current
+      const diffX = Math.abs(currentX - touchStartX.current)
+
+      // Only activate on downward pull AND if vertical movement > horizontal movement
+      if (diffY > 0 && isAtTop && diffY > diffX) {
         // Prevent default scroll behavior while pulling
-        if (diff > 5) {
-          e.preventDefault()
+        // Increased minimum drag distance to avoid accidental triggers
+        if (diffY > 10) {
+          if (e.cancelable) e.preventDefault()
           isDragging.current = true
         }
 
-        // Apply resistance - pulls get harder as you go further
-        const resistance = 2.5
-        const distance = Math.min(diff / resistance, maxPull)
-        
-        setPullDistance(distance)
+        if (isDragging.current) {
+          // Apply resistance - pulls get harder as you go further
+          const resistance = 2.5
+          const distance = Math.min(diffY / resistance, maxPull)
 
-        if (distance >= threshold) {
-          setState('ready')
-        } else if (distance > 0) {
-          setState('pulling')
+          setPullDistance(distance)
+
+          if (distance >= threshold) {
+            setState('ready')
+          } else if (distance > 0) {
+            setState('pulling')
+          }
         }
       }
     }
@@ -229,8 +237,8 @@ export function PullToRefresh({
               {state === 'refreshing'
                 ? refreshMessage
                 : state === 'ready'
-                ? 'Release to refresh'
-                : 'Pull to refresh'}
+                  ? 'Release to refresh'
+                  : 'Pull to refresh'}
             </p>
           )}
         </div>
