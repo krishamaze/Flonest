@@ -102,18 +102,10 @@ export function useInvoiceCustomer({
     return 'name'
   }, [detectedType])
 
-  // Determine if GSTIN is required (only if user searched by GSTIN)
-  const gstinRequired = useMemo(() => {
-    return detectedType === 'gstin' || detectedType === 'partial_gstin'
-  }, [detectedType])
-
-  // Determine if Mobile is required (only if user searched by COMPLETE mobile - 10 digits)
-  const mobileRequired = useMemo(() => {
-    if (detectedType !== 'mobile') return false
-    // Only make mobile mandatory if search was a complete 10-digit number
-    const cleaned = searchedIdentifier.trim().replace(/\s+/g, '')
-    return cleaned.length === 10
-  }, [detectedType, searchedIdentifier])
+  // GSTIN and Mobile are always optional now
+  // Name is the only mandatory field
+  const gstinRequired = false
+  const mobileRequired = false
 
   // When customer is fetched after creation, update state
   useEffect(() => {
@@ -205,17 +197,13 @@ export function useInvoiceCustomer({
       formErrors.name = 'Customer name is required (min 2 chars)'
     }
 
-    // Mobile is mandatory only if detected type is mobile
-    if (mobileRequired && !inlineFormData.mobile) {
-      formErrors.mobile = 'Mobile number is required'
-    } else if (inlineFormData.mobile && !validateMobile(inlineFormData.mobile)) {
+    // Mobile is optional - only validate if entered
+    if (inlineFormData.mobile && !validateMobile(inlineFormData.mobile)) {
       formErrors.mobile = 'Mobile must be 10 digits starting with 6-9'
     }
 
-    // GSTIN is mandatory only if detected type is gstin/partial_gstin
-    if (gstinRequired && !inlineFormData.gstin) {
-      formErrors.gstin = 'GSTIN is required'
-    } else if (inlineFormData.gstin && !validateGSTIN(inlineFormData.gstin)) {
+    // GSTIN is optional - only validate if entered
+    if (inlineFormData.gstin && !validateGSTIN(inlineFormData.gstin)) {
       formErrors.gstin = 'Invalid GSTIN format (15 characters)'
     }
 

@@ -110,8 +110,6 @@ export function InvoiceForm({
     inlineFormData: hookInlineFormData,
     errors: hookCustomerErrors,
     fieldPriority: hookFieldPriority,
-    gstinRequired: hookGstinRequired,
-    mobileRequired: hookMobileRequired,
     setIdentifier: hookSetIdentifier,
     setIdentifierValid: _hookSetIdentifierValid,
     setSearching: _hookSetSearching,
@@ -495,8 +493,6 @@ export function InvoiceForm({
           onSubmitNewCustomer={hookHandleCreateOrgCustomer}
           onFieldBlur={hookHandleValidateField}
           fieldPriority={hookFieldPriority}
-          gstinRequired={hookGstinRequired}
-          mobileRequired={hookMobileRequired}
           onContinue={() => setCurrentStep(2)}
           orgId={orgId}
           isDisabled={isSubmitting}

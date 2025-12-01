@@ -37,8 +37,6 @@ interface CustomerSelectionStepProps {
 
     // Smart Form Metadata
     fieldPriority: FieldPriority
-    gstinRequired: boolean
-    mobileRequired: boolean
 
     // Navigation Group
     onContinue: () => void
@@ -65,13 +63,23 @@ export const CustomerSelectionStep: React.FC<CustomerSelectionStepProps> = ({
     onSubmitNewCustomer,
     onFieldBlur,
     fieldPriority,
-    gstinRequired,
-    mobileRequired,
     onContinue,
     orgId,
     isDisabled,
     autoFocus,
 }) => {
+    // Track GSTIN field visibility (hidden by default for mobile/name searches)
+    const [showGstinField, setShowGstinField] = React.useState(false)
+
+    // Auto-show GSTIN if search was by GSTIN
+    React.useEffect(() => {
+        if (isAddNewFormOpen && fieldPriority === 'gstin') {
+            setShowGstinField(true)
+        } else if (!isAddNewFormOpen) {
+            setShowGstinField(false)
+        }
+    }, [isAddNewFormOpen, fieldPriority])
+
     // Helper to render individual fields
     const renderNameField = (autoFocus = false) => (
         <Input
@@ -93,7 +101,7 @@ export const CustomerSelectionStep: React.FC<CustomerSelectionStepProps> = ({
     const renderMobileField = (autoFocus = false) => (
         <Input
             key="mobile-field"
-            label={mobileRequired ? "Mobile Number *" : "Mobile Number (optional)"}
+            label="Mobile Number"
             type="tel"
             value={newCustomerData.mobile}
             onChange={(e) =>
@@ -103,7 +111,6 @@ export const CustomerSelectionStep: React.FC<CustomerSelectionStepProps> = ({
             disabled={isDisabled || isSearching}
             placeholder="Enter 10-digit mobile number"
             error={formErrors.mobile}
-            required={mobileRequired}
             autoFocus={autoFocus}
         />
     )
@@ -111,7 +118,7 @@ export const CustomerSelectionStep: React.FC<CustomerSelectionStepProps> = ({
     const renderGstinField = (autoFocus = false) => (
         <Input
             key="gstin-field"
-            label={gstinRequired ? "GSTIN *" : "GSTIN (optional)"}
+            label="GSTIN"
             type="text"
             value={newCustomerData.gstin}
             onChange={(e) =>
@@ -121,31 +128,42 @@ export const CustomerSelectionStep: React.FC<CustomerSelectionStepProps> = ({
             disabled={isDisabled || isSearching}
             placeholder="Enter 15-character GSTIN"
             error={formErrors.gstin}
-            required={gstinRequired}
             autoFocus={autoFocus}
         />
+    )
+
+    const renderGstinToggle = () => (
+        <button
+            type="button"
+            onClick={() => setShowGstinField(true)}
+            className="text-xs text-primary hover:text-primary-dark underline"
+        >
+            + Add GSTIN
+        </button>
     )
 
     // Render fields in priority order
     const renderFormFields = () => {
         if (fieldPriority === 'gstin') {
+            // GSTIN search: Show GSTIN first, always visible
             return [
                 renderGstinField(true),
                 renderMobileField(),
                 renderNameField(),
             ]
         } else if (fieldPriority === 'mobile') {
+            // Mobile search: Mobile first, GSTIN hidden with toggle
             return [
                 renderMobileField(true),
-                renderGstinField(),
+                showGstinField ? renderGstinField() : renderGstinToggle(),
                 renderNameField(),
             ]
         } else {
-            // Default: name first
+            // Name search: Name first, GSTIN hidden with toggle
             return [
                 renderNameField(true),
                 renderMobileField(),
-                renderGstinField(),
+                showGstinField ? renderGstinField() : renderGstinToggle(),
             ]
         }
     }
