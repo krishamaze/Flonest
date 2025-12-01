@@ -2,14 +2,15 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { useRefresh } from '../contexts/RefreshContext'
-import { useCustomers, useUpdateOrgCustomer } from '../hooks/useCustomers'
+import { useCustomers, useUpdateOrgCustomer, useSoftDeleteCustomer, useCanDeleteCustomer } from '../hooks/useCustomers'
 import { useCustomerBalances } from '../hooks/useCustomerBalances'
 import type { CustomerWithMaster } from '../types'
 import { Card, CardContent } from '../components/ui/Card'
 import { LoadingSpinner } from '../components/ui/LoadingSpinner'
 import { Button } from '../components/ui/Button'
 import { CustomerForm } from '../components/forms/CustomerForm'
-import { PlusIcon, MagnifyingGlassIcon, PencilIcon } from '@heroicons/react/24/outline'
+import { ActionSheet } from '../components/ui/ActionSheet'
+import { PlusIcon, MagnifyingGlassIcon, PencilIcon, EllipsisVerticalIcon, TrashIcon } from '@heroicons/react/24/outline'
 import { toast } from 'react-toastify'
 
 export function CustomersPage() {
@@ -18,11 +19,17 @@ export function CustomersPage() {
   const [searchQuery, setSearchQuery] = useState('')
   const [isFormOpen, setIsFormOpen] = useState(false)
   const [editingCustomer, setEditingCustomer] = useState<CustomerWithMaster | null>(null)
+  const [activeCustomer, setActiveCustomer] = useState<CustomerWithMaster | null>(null)
+  const [showActionSheet, setShowActionSheet] = useState(false)
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false)
+  const [customerToDelete, setCustomerToDelete] = useState<CustomerWithMaster | null>(null)
 
   // React Query hooks
   const { data: customers = [], isLoading: loading, refetch } = useCustomers(user?.orgId)
   const { data: balances = [] } = useCustomerBalances(user?.orgId)
   const { mutate: updateCustomer } = useUpdateOrgCustomer(user?.orgId)
+  const { mutate: deleteCustomer } = useSoftDeleteCustomer(user?.orgId)
+  const { data: deleteCheck } = useCanDeleteCustomer(customerToDelete?.id)
 
   // Create a map of customer balances for quick lookup
   const balanceMap = new Map(balances.map(b => [b.customer_id, b]))
@@ -193,11 +200,16 @@ export function CustomersPage() {
                         )}
                         <div className="mt-2 flex items-center justify-end gap-2">
                           <button
-                            onClick={() => handleEditClick(customer)}
-                            className="rounded-md p-sm min-w-[44px] min-h-[44px] flex items-center justify-center text-secondary-text hover:bg-neutral-100 hover:text-primary-text transition-colors duration-200"
-                            aria-label={`Edit customer ${displayName}`}
+                            onClick={(e) => {
+                              e.preventDefault()
+                              e.stopPropagation()
+                              setActiveCustomer(customer)
+                              setShowActionSheet(true)
+                            }}
+                            className="rounded-md p-2 min-w-[44px] min-h-[44px] flex items-center justify-center text-secondary-text hover:bg-neutral-100 hover:text-primary-text transition-colors duration-200"
+                            aria-label={`More actions for ${displayName}`}
                           >
-                            <PencilIcon className="h-4 w-4" aria-hidden="true" />
+                            <EllipsisVerticalIcon className="h-5 w-5" aria-hidden="true" />
                           </button>
                         </div>
                       </div>
@@ -218,6 +230,100 @@ export function CustomersPage() {
           onSubmit={handleUpdateCustomer}
           customer={editingCustomer}
         />
+      )}
+
+      {/* Action Sheet */}
+      <ActionSheet
+        isOpen={showActionSheet}
+        onClose={() => setShowActionSheet(false)}
+        title={activeCustomer?.alias_name || activeCustomer?.master_customer?.legal_name}
+        items={[
+          {
+            id: 'edit',
+            label: 'Edit Customer',
+            icon: <PencilIcon className="h-5 w-5" />,
+            onClick: () => handleEditClick(activeCustomer!)
+          },
+          {
+            id: 'delete',
+            label: 'Delete Customer',
+            icon: <TrashIcon className="h-5 w-5" />,
+            onClick: () => {
+              setCustomerToDelete(activeCustomer)
+              setDeleteConfirmOpen(true)
+            },
+            variant: 'destructive' as const
+          }
+        ]}
+      />
+
+      {/* Delete Confirmation Dialog */}
+      {deleteConfirmOpen && customerToDelete && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/25">
+          <div className="bg-bg-card rounded-lg shadow-xl max-w-md w-full mx-4 p-6">
+            <h3 className="text-lg font-semibold text-primary-text mb-2">
+              Delete Customer?
+            </h3>
+            {deleteCheck?.can_delete ? (
+              <>
+                <p className="text-sm text-secondary-text mb-4">
+                  This will soft delete <strong>{customerToDelete.alias_name || customerToDelete.master_customer?.legal_name}</strong>.
+                  You can restore within 30 days.
+                </p>
+                <div className="flex gap-3 justify-end">
+                  <Button
+                    variant="secondary"
+                    onClick={() => {
+                      setDeleteConfirmOpen(false)
+                      setCustomerToDelete(null)
+                    }}
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    variant="primary"
+                    className="bg-error hover:bg-error/90"
+                    onClick={() => {
+                      deleteCustomer(
+                        { customerId: customerToDelete.id },
+                        {
+                          onSuccess: (result) => {
+                            toast.success(`Customer deleted. Recoverable until ${new Date(result.expires_at).toLocaleDateString()}`)
+                            setDeleteConfirmOpen(false)
+                            setCustomerToDelete(null)
+                            setActiveCustomer(null)
+                          },
+                          onError: (error) => {
+                            toast.error(error.message || 'Failed to delete customer')
+                          }
+                        }
+                      )
+                    }}
+                  >
+                    Delete
+                  </Button>
+                </div>
+              </>
+            ) : (
+              <>
+                <p className="text-sm text-error mb-4">
+                  Cannot delete this customer because they have {deleteCheck?.invoice_count || 0} existing transaction(s).
+                </p>
+                <div className="flex justify-end">
+                  <Button
+                    variant="primary"
+                    onClick={() => {
+                      setDeleteConfirmOpen(false)
+                      setCustomerToDelete(null)
+                    }}
+                  >
+                    OK
+                  </Button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
       )}
     </div>
   )

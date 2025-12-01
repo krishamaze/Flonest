@@ -306,10 +306,10 @@ export interface RestoreResult {
  */
 export async function canDeleteCustomer(customerId: string): Promise<DeleteCheckResult> {
   const { data, error } = await supabase
-    .rpc('can_delete_customer', { p_customer_id: customerId })
+    .rpc('can_delete_customer' as any, { p_customer_id: customerId })
   
   if (error) throw new Error(`Failed to check delete eligibility: ${error.message}`)
-  return data as DeleteCheckResult
+  return data as unknown as DeleteCheckResult
 }
 
 /**
@@ -319,7 +319,7 @@ export async function canDeleteCustomer(customerId: string): Promise<DeleteCheck
  */
 export async function softDeleteCustomer(customerId: string): Promise<DeleteResult> {
   const { data, error } = await supabase
-    .rpc('soft_delete_customer', { p_customer_id: customerId })
+    .rpc('soft_delete_customer' as any, { p_customer_id: customerId })
   
   if (error) {
     if (error.message.includes('existing transactions')) {
@@ -328,7 +328,7 @@ export async function softDeleteCustomer(customerId: string): Promise<DeleteResu
     throw new Error(`Failed to delete customer: ${error.message}`)
   }
   
-  return data as DeleteResult
+  return data as unknown as DeleteResult
 }
 
 /**
@@ -337,7 +337,7 @@ export async function softDeleteCustomer(customerId: string): Promise<DeleteResu
  */
 export async function restoreCustomer(customerId: string): Promise<RestoreResult> {
   const { data, error } = await supabase
-    .rpc('restore_customer', { p_customer_id: customerId })
+    .rpc('restore_customer' as any, { p_customer_id: customerId })
   
   if (error) {
     if (error.message.includes('not deleted')) {
@@ -349,7 +349,7 @@ export async function restoreCustomer(customerId: string): Promise<RestoreResult
     throw new Error(`Failed to restore customer: ${error.message}`)
   }
   
-  return data as RestoreResult
+  return data as unknown as RestoreResult
 }
 
 /**
