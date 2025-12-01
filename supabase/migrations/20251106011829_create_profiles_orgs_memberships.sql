@@ -62,9 +62,18 @@ END $$;
 ALTER TABLE inventory DROP COLUMN IF EXISTS tenant_id;
 
 -- Add foreign key constraint for org_id
-ALTER TABLE inventory 
-    ADD CONSTRAINT inventory_org_id_fkey 
-    FOREIGN KEY (org_id) REFERENCES orgs(id) ON DELETE CASCADE;
+DO $$ 
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.table_constraints 
+        WHERE constraint_name = 'inventory_org_id_fkey' 
+          AND table_name = 'inventory'
+    ) THEN
+        ALTER TABLE inventory 
+            ADD CONSTRAINT inventory_org_id_fkey 
+            FOREIGN KEY (org_id) REFERENCES orgs(id) ON DELETE CASCADE;
+    END IF;
+END $$;
 
 -- Step 6: Update invoices table foreign key (tenant_id → org_id)
 -- Drop old RLS policies that depend on tenant_id
@@ -87,9 +96,18 @@ END $$;
 ALTER TABLE invoices DROP COLUMN IF EXISTS tenant_id;
 
 -- Add foreign key constraint for org_id
-ALTER TABLE invoices 
-    ADD CONSTRAINT invoices_org_id_fkey 
-    FOREIGN KEY (org_id) REFERENCES orgs(id) ON DELETE CASCADE;
+DO $$ 
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.table_constraints 
+        WHERE constraint_name = 'invoices_org_id_fkey' 
+          AND table_name = 'invoices'
+    ) THEN
+        ALTER TABLE invoices 
+            ADD CONSTRAINT invoices_org_id_fkey 
+            FOREIGN KEY (org_id) REFERENCES orgs(id) ON DELETE CASCADE;
+    END IF;
+END $$;
 
 -- Step 7: Create indexes for performance
 CREATE INDEX IF NOT EXISTS idx_profiles_id ON profiles(id);
