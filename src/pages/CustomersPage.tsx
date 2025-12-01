@@ -132,7 +132,7 @@ export function CustomersPage() {
         <div className="space-y-3">
           {filteredCustomers.map((customer) => {
             const master = customer.master_customer
-            const displayName = customer.alias_name || master.legal_name
+            const displayName = customer.alias_name || master?.legal_name || 'Unknown'
 
             return (
               <Card key={customer.id} className="shadow-sm hover:shadow-md transition-shadow">
@@ -142,21 +142,21 @@ export function CustomersPage() {
                       <h3 className="text-base font-medium text-primary-text truncate">
                         {displayName}
                       </h3>
-                      {customer.alias_name && master.legal_name && (
+                      {customer.alias_name && master?.legal_name && (
                         <p className="text-xs text-muted-text mt-xs">Legal: {master.legal_name}</p>
                       )}
                       <div className="mt-sm flex flex-wrap items-center gap-sm text-xs text-secondary-text">
-                        {master.mobile && (
+                        {master?.mobile && (
                           <span>Mobile: {master.mobile}</span>
                         )}
-                        {master.gstin && (
+                        {master?.gstin && (
                           <span>• GSTIN: {master.gstin}</span>
                         )}
-                        {master.email && (
+                        {master?.email && (
                           <span>• Email: {master.email}</span>
                         )}
                       </div>
-                      {master.address && (
+                      {master?.address && (
                         <p className="text-xs text-gray-500 mt-1 line-clamp-1">
                           {master.address}
                         </p>
