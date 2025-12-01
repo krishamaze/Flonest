@@ -6,6 +6,23 @@
 const SESSION_KEY_PREFIX = 'draft_session_'
 
 /**
+ * Generate a UUID v4
+ * Fallback for environments where crypto.randomUUID is not available
+ */
+const generateUUID = (): string => {
+  if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+    return crypto.randomUUID()
+  }
+  
+  // Fallback implementation using crypto.getRandomValues or Math.random
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+    const r = (Math.random() * 16) | 0
+    const v = c === 'x' ? r : (r & 0x3) | 0x8
+    return v.toString(16)
+  })
+}
+
+/**
  * Get or create a draft session ID from sessionStorage
  * @param invoiceId - Optional invoice ID (for existing drafts) or 'new' for new drafts
  * @returns Draft session ID (UUID)
@@ -16,7 +33,7 @@ export const getDraftSessionId = (invoiceId?: string): string => {
     let sessionId = sessionStorage.getItem(key)
 
     if (!sessionId) {
-      sessionId = crypto.randomUUID()
+      sessionId = generateUUID()
       sessionStorage.setItem(key, sessionId)
     }
 
@@ -24,7 +41,7 @@ export const getDraftSessionId = (invoiceId?: string): string => {
   } catch (error) {
     // Fallback if sessionStorage is disabled (incognito mode, private browsing)
     console.warn('SessionStorage unavailable, using transient session ID:', error)
-    return crypto.randomUUID()
+    return generateUUID()
   }
 }
 
