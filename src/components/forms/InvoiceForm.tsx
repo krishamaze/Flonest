@@ -109,6 +109,9 @@ export function InvoiceForm({
     showAddNewForm: hookShowAddNewForm,
     inlineFormData: hookInlineFormData,
     errors: hookCustomerErrors,
+    fieldPriority: hookFieldPriority,
+    gstinRequired: hookGstinRequired,
+    mobileRequired: hookMobileRequired,
     setIdentifier: hookSetIdentifier,
     setIdentifierValid: _hookSetIdentifierValid,
     setSearching: _hookSetSearching,
@@ -118,6 +121,7 @@ export function InvoiceForm({
     handleCloseAddNewForm: hookHandleCloseAddNewForm,
     handleFormDataChange: hookHandleFormDataChange,
     handleCreateOrgCustomer: hookHandleCreateOrgCustomer,
+    handleValidateField: hookHandleValidateField,
     resetCustomer: hookResetCustomer,
   } = useInvoiceCustomer({
     orgId,
@@ -489,6 +493,10 @@ export function InvoiceForm({
           onCloseAddNewForm={hookHandleCloseAddNewForm}
           onFormDataChange={hookHandleFormDataChange}
           onSubmitNewCustomer={hookHandleCreateOrgCustomer}
+          onFieldBlur={hookHandleValidateField}
+          fieldPriority={hookFieldPriority}
+          gstinRequired={hookGstinRequired}
+          mobileRequired={hookMobileRequired}
           onContinue={() => setCurrentStep(2)}
           orgId={orgId}
           isDisabled={isSubmitting}

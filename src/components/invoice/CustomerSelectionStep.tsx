@@ -4,6 +4,7 @@ import { CustomerSearchCombobox } from '../customers/CustomerSearchCombobox'
 import { Card, CardContent } from '../ui/Card'
 import { Input } from '../ui/Input'
 import { Button } from '../ui/Button'
+import type { FieldPriority } from '../../hooks/invoice/useInvoiceCustomer'
 
 interface CustomerSelectionStepProps {
     // Search Group
@@ -32,6 +33,12 @@ interface CustomerSelectionStepProps {
     onCloseAddNewForm: () => void
     onFormDataChange: (data: { name: string; mobile: string; gstin: string }) => void
     onSubmitNewCustomer: () => void
+    onFieldBlur: (field: 'mobile' | 'gstin', value: string) => void
+
+    // Smart Form Metadata
+    fieldPriority: FieldPriority
+    gstinRequired: boolean
+    mobileRequired: boolean
 
     // Navigation Group
     onContinue: () => void
@@ -56,11 +63,93 @@ export const CustomerSelectionStep: React.FC<CustomerSelectionStepProps> = ({
     onCloseAddNewForm,
     onFormDataChange,
     onSubmitNewCustomer,
+    onFieldBlur,
+    fieldPriority,
+    gstinRequired,
+    mobileRequired,
     onContinue,
     orgId,
     isDisabled,
     autoFocus,
 }) => {
+    // Helper to render individual fields
+    const renderNameField = (autoFocus = false) => (
+        <Input
+            key="name-field"
+            label="Customer Name *"
+            type="text"
+            value={newCustomerData.name}
+            onChange={(e) =>
+                onFormDataChange({ ...newCustomerData, name: e.target.value })
+            }
+            disabled={isDisabled || isSearching}
+            placeholder="Enter customer name"
+            error={formErrors.name}
+            required
+            autoFocus={autoFocus}
+        />
+    )
+
+    const renderMobileField = (autoFocus = false) => (
+        <Input
+            key="mobile-field"
+            label={mobileRequired ? "Mobile Number *" : "Mobile Number (optional)"}
+            type="tel"
+            value={newCustomerData.mobile}
+            onChange={(e) =>
+                onFormDataChange({ ...newCustomerData, mobile: e.target.value })
+            }
+            onBlur={(e) => onFieldBlur('mobile', e.target.value)}
+            disabled={isDisabled || isSearching}
+            placeholder="Enter 10-digit mobile number"
+            error={formErrors.mobile}
+            required={mobileRequired}
+            autoFocus={autoFocus}
+        />
+    )
+
+    const renderGstinField = (autoFocus = false) => (
+        <Input
+            key="gstin-field"
+            label={gstinRequired ? "GSTIN *" : "GSTIN (optional)"}
+            type="text"
+            value={newCustomerData.gstin}
+            onChange={(e) =>
+                onFormDataChange({ ...newCustomerData, gstin: e.target.value.toUpperCase() })
+            }
+            onBlur={(e) => onFieldBlur('gstin', e.target.value)}
+            disabled={isDisabled || isSearching}
+            placeholder="Enter 15-character GSTIN"
+            error={formErrors.gstin}
+            required={gstinRequired}
+            autoFocus={autoFocus}
+        />
+    )
+
+    // Render fields in priority order
+    const renderFormFields = () => {
+        if (fieldPriority === 'gstin') {
+            return [
+                renderGstinField(true),
+                renderMobileField(),
+                renderNameField(),
+            ]
+        } else if (fieldPriority === 'mobile') {
+            return [
+                renderMobileField(true),
+                renderGstinField(),
+                renderNameField(),
+            ]
+        } else {
+            // Default: name first
+            return [
+                renderNameField(true),
+                renderMobileField(),
+                renderGstinField(),
+            ]
+        }
+    }
+
     return (
         <div className="space-y-4">
             <div>
@@ -78,43 +167,8 @@ export const CustomerSelectionStep: React.FC<CustomerSelectionStepProps> = ({
                             </div>
                         </div>
 
-                        <Input
-                            label="Customer Name *"
-                            type="text"
-                            value={newCustomerData.name}
-                            onChange={(e) =>
-                                onFormDataChange({ ...newCustomerData, name: e.target.value })
-                            }
-                            disabled={isDisabled || isSearching}
-                            placeholder="Enter customer name"
-                            error={formErrors.name}
-                            required
-                            autoFocus
-                        />
-
-                        <Input
-                            label="Mobile Number (optional)"
-                            type="tel"
-                            value={newCustomerData.mobile}
-                            onChange={(e) =>
-                                onFormDataChange({ ...newCustomerData, mobile: e.target.value })
-                            }
-                            disabled={isDisabled || isSearching}
-                            placeholder="Enter 10-digit mobile number"
-                            error={formErrors.mobile}
-                        />
-
-                        <Input
-                            label="GSTIN (optional)"
-                            type="text"
-                            value={newCustomerData.gstin}
-                            onChange={(e) =>
-                                onFormDataChange({ ...newCustomerData, gstin: e.target.value })
-                            }
-                            disabled={isDisabled || isSearching}
-                            placeholder="Enter 15-character GSTIN"
-                            error={formErrors.gstin}
-                        />
+                        {/* Dynamic field rendering based on search type */}
+                        {renderFormFields()}
 
                         <div className="flex gap-2 pt-2">
                             <Button

@@ -1,7 +1,7 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import type { CustomerWithMaster } from '../../types'
 import { useAddOrgCustomer, useCustomerById } from '../../hooks/useCustomers'
-import { detectIdentifierType } from '../../lib/utils/identifierValidation'
+import { detectIdentifierTypeEnhanced, type EnhancedIdentifierType } from '../../lib/utils/identifierValidation'
 import { validateMobile, validateGSTIN } from '../../lib/utils/identifierValidation'
 
 /**
@@ -12,6 +12,11 @@ export interface UseInvoiceCustomerProps {
   onError: (message: string) => void
   onCustomerCreated?: (customer: CustomerWithMaster) => void
 }
+
+/**
+ * Field priority for dynamic form rendering
+ */
+export type FieldPriority = 'gstin' | 'mobile' | 'name'
 
 /**
  * Hook outputs
@@ -32,6 +37,12 @@ export interface UseInvoiceCustomerReturn {
     submit?: string
   }
   
+  // Metadata for smart form rendering
+  detectedType: EnhancedIdentifierType
+  fieldPriority: FieldPriority
+  gstinRequired: boolean
+  mobileRequired: boolean
+  
   // Setters
   setIdentifier: (value: string) => void
   setIdentifierValid: (valid: boolean) => void
@@ -44,6 +55,7 @@ export interface UseInvoiceCustomerReturn {
   handleCloseAddNewForm: () => void
   handleFormDataChange: (data: { name: string; mobile: string; gstin: string }) => void
   handleCreateOrgCustomer: () => Promise<void>
+  handleValidateField: (field: 'mobile' | 'gstin', value: string) => void
   resetCustomer: () => void
 }
 
@@ -69,12 +81,36 @@ export function useInvoiceCustomer({
   const [searching, setSearching] = useState(false)
   const [selectedCustomer, setSelectedCustomer] = useState<CustomerWithMaster | null>(null)
   const [showAddNewForm, setShowAddNewForm] = useState(false)
+  const [searchedIdentifier, setSearchedIdentifier] = useState('') // Snapshot of identifier when "Add New" clicked
   const [inlineFormData, setInlineFormData] = useState<{ name: string; mobile: string; gstin: string }>({
     name: '',
     mobile: '',
     gstin: '',
   })
   const [errors, setErrors] = useState<Record<string, string>>({})
+
+  // Detect identifier type from search input (snapshot when form opens)
+  const detectedType = useMemo<EnhancedIdentifierType>(() => {
+    if (!showAddNewForm || !searchedIdentifier) return 'text'
+    return detectIdentifierTypeEnhanced(searchedIdentifier)
+  }, [showAddNewForm, searchedIdentifier])
+
+  // Determine field rendering priority based on detected type
+  const fieldPriority = useMemo<FieldPriority>(() => {
+    if (detectedType === 'gstin' || detectedType === 'partial_gstin') return 'gstin'
+    if (detectedType === 'mobile') return 'mobile'
+    return 'name'
+  }, [detectedType])
+
+  // Determine if GSTIN is required (only if user searched by GSTIN)
+  const gstinRequired = useMemo(() => {
+    return detectedType === 'gstin' || detectedType === 'partial_gstin'
+  }, [detectedType])
+
+  // Determine if Mobile is required (only if user searched by Mobile)
+  const mobileRequired = useMemo(() => {
+    return detectedType === 'mobile'
+  }, [detectedType])
 
   // When customer is fetched after creation, update state
   useEffect(() => {
@@ -83,25 +119,26 @@ export function useInvoiceCustomer({
       setIdentifier(fetchedCustomer.alias_name || fetchedCustomer.name || fetchedCustomer.master_customer.legal_name)
       setShowAddNewForm(false)
       setInlineFormData({ name: '', mobile: '', gstin: '' })
+      setSearchedIdentifier('') // Reset snapshot
       onCustomerCreated?.(fetchedCustomer)
       setNewlyCreatedCustomerId(null) // Reset after successful load
     }
   }, [fetchedCustomer, onCustomerCreated])
 
 
-  // Prefill inline form when opening
+  // Prefill inline form when opening (use enhanced detection)
   useEffect(() => {
     if (showAddNewForm) {
-      const type = detectIdentifierType(identifier)
+      const type = detectIdentifierTypeEnhanced(identifier)
       if (type === 'mobile') {
         setInlineFormData({ name: '', mobile: identifier, gstin: '' })
-      } else if (type === 'gstin') {
-        setInlineFormData({ name: '', mobile: '', gstin: identifier })
+      } else if (type === 'gstin' || type === 'partial_gstin') {
+        setInlineFormData({ name: '', mobile: '', gstin: identifier.toUpperCase() })
       } else {
         setInlineFormData({ name: identifier, mobile: '', gstin: '' })
       }
     }
-  }, [showAddNewForm]) // Intentionally omit identifier to avoid overwriting user edits
+  }, [showAddNewForm, identifier])
 
   // Reset selectedCustomer when identifier changes
   useEffect(() => {
@@ -118,6 +155,7 @@ export function useInvoiceCustomer({
 
   const handleOpenAddNewForm = () => {
     if (identifier.trim().length >= 3) {
+      setSearchedIdentifier(identifier) // Snapshot identifier at time of "Add New" click
       setShowAddNewForm(true)
     }
   }
@@ -125,6 +163,7 @@ export function useInvoiceCustomer({
   const handleCloseAddNewForm = () => {
     setShowAddNewForm(false)
     setInlineFormData({ name: '', mobile: '', gstin: '' })
+    setSearchedIdentifier('')
     setErrors({})
   }
 
@@ -132,19 +171,49 @@ export function useInvoiceCustomer({
     setInlineFormData(data)
   }
 
+  // Field validation handler (onBlur validation)
+  const handleValidateField = (field: 'mobile' | 'gstin', value: string) => {
+    const newErrors = { ...errors }
+    
+    if (field === 'mobile') {
+      if (value && !validateMobile(value)) {
+        newErrors.mobile = 'Mobile must be 10 digits starting with 6-9'
+      } else {
+        delete newErrors.mobile
+      }
+    }
+    
+    if (field === 'gstin') {
+      if (value && !validateGSTIN(value)) {
+        newErrors.gstin = 'Invalid GSTIN format (15 characters)'
+      } else {
+        delete newErrors.gstin
+      }
+    }
+    
+    setErrors(newErrors)
+  }
+
   const handleCreateOrgCustomer = async () => {
     const formErrors: Record<string, string> = {}
 
+    // Name is ALWAYS mandatory
     if (!inlineFormData.name || inlineFormData.name.trim().length < 2) {
       formErrors.name = 'Customer name is required (min 2 chars)'
     }
 
-    if (inlineFormData.mobile && !validateMobile(inlineFormData.mobile)) {
-      formErrors.mobile = 'Mobile must be 10 digits'
+    // Mobile is mandatory only if detected type is mobile
+    if (mobileRequired && !inlineFormData.mobile) {
+      formErrors.mobile = 'Mobile number is required'
+    } else if (inlineFormData.mobile && !validateMobile(inlineFormData.mobile)) {
+      formErrors.mobile = 'Mobile must be 10 digits starting with 6-9'
     }
 
-    if (inlineFormData.gstin && !validateGSTIN(inlineFormData.gstin)) {
-      formErrors.gstin = 'Invalid GSTIN format'
+    // GSTIN is mandatory only if detected type is gstin/partial_gstin
+    if (gstinRequired && !inlineFormData.gstin) {
+      formErrors.gstin = 'GSTIN is required'
+    } else if (inlineFormData.gstin && !validateGSTIN(inlineFormData.gstin)) {
+      formErrors.gstin = 'Invalid GSTIN format (15 characters)'
     }
 
     if (Object.keys(formErrors).length > 0) {
@@ -183,6 +252,7 @@ export function useInvoiceCustomer({
     setSelectedCustomer(null)
     setShowAddNewForm(false)
     setInlineFormData({ name: '', mobile: '', gstin: '' })
+    setSearchedIdentifier('')
     setErrors({})
   }
 
@@ -194,6 +264,10 @@ export function useInvoiceCustomer({
     showAddNewForm,
     inlineFormData,
     errors,
+    detectedType,
+    fieldPriority,
+    gstinRequired,
+    mobileRequired,
     setIdentifier,
     setIdentifierValid,
     setSearching,
@@ -203,6 +277,7 @@ export function useInvoiceCustomer({
     handleCloseAddNewForm,
     handleFormDataChange,
     handleCreateOrgCustomer,
+    handleValidateField,
     resetCustomer,
   }
 }
