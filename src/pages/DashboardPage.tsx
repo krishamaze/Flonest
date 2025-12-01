@@ -30,11 +30,11 @@ export function DashboardPage() {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const { registerRefreshHandler, unregisterRefreshHandler } = useRefresh()
-  const [showAddAdvisorForm, setShowAddAdvisorForm] = useState(false)
+  const [isAddAdvisorModalOpen, setIsAddAdvisorModalOpen] = useState(false)
 
   // Ensure modal state is cleared on mount
   useEffect(() => {
-    setShowAddAdvisorForm(false)
+    setIsAddAdvisorModalOpen(false)
   }, [])
 
   // React Query hooks - parallel queries eliminate loading waterfalls
@@ -256,7 +256,11 @@ export function DashboardPage() {
             </button>
             {canManageUsers(user) && (
               <button
-                onClick={() => setShowAddAdvisorForm(true)}
+                onClick={(e) => {
+                  e.preventDefault()
+                  e.stopPropagation()
+                  setIsAddAdvisorModalOpen(true)
+                }}
                 className="flex items-center gap-md rounded-md border border-neutral-200 p-md text-left min-h-[44px] transition-all duration-200 hover:bg-neutral-50 hover:border-neutral-300 active:scale-[0.98]"
                 aria-label="Add Staff"
               >
@@ -299,8 +303,8 @@ export function DashboardPage() {
       {/* Add Staff Form Modal */}
       {canManageUsers(user) && (
         <AddAdvisorForm
-          isOpen={showAddAdvisorForm}
-          onClose={() => setShowAddAdvisorForm(false)}
+          isOpen={isAddAdvisorModalOpen}
+          onClose={() => setIsAddAdvisorModalOpen(false)}
           onSuccess={() => {
             // Mutation already invalidates pending-memberships cache
           }}
