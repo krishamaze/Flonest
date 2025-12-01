@@ -174,6 +174,7 @@ export async function lookupOrCreateCustomer(
 
 /**
  * Find org-scoped customer by master customer ID
+ * IMPORTANT: Excludes soft-deleted customers
  */
 async function findOrgCustomer(orgId: string, masterCustomerId: string): Promise<Customer | null> {
   const { data, error } = await supabase
@@ -181,6 +182,7 @@ async function findOrgCustomer(orgId: string, masterCustomerId: string): Promise
     .select('*')
     .eq('org_id', orgId)
     .eq('master_customer_id', masterCustomerId)
+    .is('deleted_at', null)  // ← ADDED: Exclude soft-deleted customers
     .single()
 
   if (error && error.code !== 'PGRST116') {
