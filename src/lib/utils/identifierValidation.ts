@@ -88,6 +88,7 @@ export function normalizeIdentifier(identifier: string, type: IdentifierType): s
  *
  * This function provides smarter detection than detectIdentifierType():
  * - Detects partial GSTIN patterns (3+ characters starting with state code)
+ * - Detects partial mobile numbers (3-9 digits starting with 6-9)
  * - Returns 'text' instead of 'invalid' for customer names
  * - Used for adaptive form field ordering in invoice creation
  */
@@ -99,8 +100,17 @@ export function detectIdentifierTypeEnhanced(identifier: string): EnhancedIdenti
     return 'text'
   }
 
-  // Check if it's a mobile number (10 digits starting with 6-9)
-  if (/^[6-9][0-9]{9}$/.test(cleaned)) {
+  // Check if it's all digits
+  const isAllDigits = /^\d+$/.test(cleaned)
+
+  // Check if it's a complete mobile number (10 digits starting with 6-9)
+  if (isAllDigits && /^[6-9][0-9]{9}$/.test(cleaned)) {
+    return 'mobile'
+  }
+
+  // Check if it's a partial mobile number (3-9 digits starting with 6-9)
+  // This allows early detection when user types just "987" or "98765"
+  if (isAllDigits && cleaned.length >= 3 && cleaned.length <= 9 && /^[6-9]/.test(cleaned)) {
     return 'mobile'
   }
 

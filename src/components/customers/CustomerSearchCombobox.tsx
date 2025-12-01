@@ -111,9 +111,23 @@ export function CustomerSearchCombobox({
     }
 
     const getInputMode = (): 'text' | 'tel' => {
-        if (!value) return 'text'
-        const firstChar = value.charAt(0)
-        return /\d/.test(firstChar) ? 'tel' : 'text'
+        if (!value || value.length < 3) {
+            // Default to text for short inputs
+            const firstChar = value.charAt(0)
+            return /[6-9]/.test(firstChar) ? 'tel' : 'text'
+        }
+
+        // Use enhanced detection for 3+ characters
+        const cleaned = value.trim().replace(/\s+/g, '')
+        const isAllDigits = /^\d+$/.test(cleaned)
+
+        // If starts with 6-9 and all digits, likely mobile number
+        if (isAllDigits && /^[6-9]/.test(cleaned)) {
+            return 'tel'
+        }
+
+        // Otherwise use text keyboard (for GSTIN, names)
+        return 'text'
     }
 
     const formatLastInvoiceDate = (dateString: string | null | undefined) => {

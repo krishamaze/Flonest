@@ -107,10 +107,13 @@ export function useInvoiceCustomer({
     return detectedType === 'gstin' || detectedType === 'partial_gstin'
   }, [detectedType])
 
-  // Determine if Mobile is required (only if user searched by Mobile)
+  // Determine if Mobile is required (only if user searched by COMPLETE mobile - 10 digits)
   const mobileRequired = useMemo(() => {
-    return detectedType === 'mobile'
-  }, [detectedType])
+    if (detectedType !== 'mobile') return false
+    // Only make mobile mandatory if search was a complete 10-digit number
+    const cleaned = searchedIdentifier.trim().replace(/\s+/g, '')
+    return cleaned.length === 10
+  }, [detectedType, searchedIdentifier])
 
   // When customer is fetched after creation, update state
   useEffect(() => {
