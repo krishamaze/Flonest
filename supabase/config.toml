@@ -349,7 +349,6 @@ s3_secret_key = "env(S3_SECRET_KEY)"
 [functions.admin-mfa-enroll]
 enabled = true
 verify_jwt = true
-import_map = "./functions/admin-mfa-enroll/deno.json"
 # Uncomment to specify a custom file path to the entrypoint.
 # Supported file extensions are: .ts, .js, .mjs, .jsx, .tsx
 entrypoint = "./functions/admin-mfa-enroll/index.ts"
