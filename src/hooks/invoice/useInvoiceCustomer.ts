@@ -232,6 +232,38 @@ export function useInvoiceCustomer({
       return
     }
 
+    // DUPLICATE CHECK: Prevent creating same customer multiple times
+    // Check by mobile or GSTIN if provided
+    if (inlineFormData.mobile || inlineFormData.gstin) {
+      try {
+        const searchQuery = inlineFormData.mobile || inlineFormData.gstin || ''
+        const existingCustomers = await import('../../lib/api/customers')
+          .then(m => m.searchCustomersByPartialIdentifier(orgId, searchQuery))
+        
+        // Check if exact match exists
+        const exactMatch = existingCustomers.find(c => {
+          if (inlineFormData.mobile && c.master_customer.mobile === inlineFormData.mobile) {
+            return true
+          }
+          if (inlineFormData.gstin && c.master_customer.gstin === inlineFormData.gstin) {
+            return true
+          }
+          return false
+        })
+
+        if (exactMatch) {
+          const duplicateField = inlineFormData.mobile ? 'Mobile' : 'GSTIN'
+          const duplicateValue = inlineFormData.mobile || inlineFormData.gstin
+          formErrors.submit = `Customer with ${duplicateField} "${duplicateValue}" already exists. Please search and select from dropdown.`
+          setErrors(formErrors)
+          return
+        }
+      } catch (error) {
+        console.warn('Duplicate check failed, proceeding with creation:', error)
+        // Don't block creation if duplicate check fails - better to allow than block unfairly
+      }
+    }
+
     setSearching(true)
     setErrors({})
 
