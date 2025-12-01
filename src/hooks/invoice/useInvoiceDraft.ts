@@ -19,6 +19,7 @@ interface UseInvoiceDraftParams {
   orgId: string
   userId: string
   org: Org
+  currentStep: number // Added to control auto-save timing
   
   // Container signals
   isOpen: boolean
@@ -54,12 +55,14 @@ interface UseInvoiceDraftReturn {
  * - Draft revalidation
  * - Draft session cleanup
  */
+
 export function useInvoiceDraft({
   customerId,
   items,
   orgId,
   userId,
   org: _org,
+  currentStep,
   isOpen,
   initialDraftInvoiceId,
   mode: _mode,
@@ -318,7 +321,8 @@ export function useInvoiceDraft({
     {
       localDebounce: 1500,  // 1.5s debounce for localStorage
       rpcInterval: 5000,     // 5s interval for RPC calls
-      enabled: customerId !== null && draftSessionId.current !== null
+      // Only enable auto-save if we have a customer, a session ID, AND we are at least on step 2
+      enabled: customerId !== null && draftSessionId.current !== null && currentStep >= 2
     }
   )
 

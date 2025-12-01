@@ -7,10 +7,11 @@ import {
   checkCustomerExists,
   searchCustomersByIdentifier,
   searchCustomersByPartialIdentifier,
+  searchGlobalCustomers,
   addOrgCustomer,
   type LookupResult,
 } from '../lib/api/customers'
-import type { CustomerWithMaster } from '../types'
+import type { CustomerWithMaster, CustomerSearchResult } from '../types'
 import type { Database } from '../types/database'
 
 type MasterCustomer = Database['public']['Tables']['master_customers']['Row']
@@ -198,18 +199,47 @@ export const useLookupOrCreateCustomer = (orgId: string | null | undefined, user
  * Query hook to search customers by partial identifier (autocomplete-style)
  * Searches in mobile and GSTIN fields with partial matching
  * Returns results sorted by recently invoiced, then alphabetically
- * Requires minimum 3 characters to search
+ * Limit: 10 results
+ * 
+ * UPDATED: Now searches both Org customers and Global Master customers
  */
 export const useSearchCustomersAutocomplete = (
   orgId: string | null | undefined,
   query: string | null | undefined,
   enabled: boolean = true
 ) => {
-  return useQuery<CustomerWithMaster[]>({
+  return useQuery<CustomerSearchResult[]>({
     queryKey: ['customer-autocomplete', orgId, query],
     queryFn: async () => {
       if (!orgId || !query || query.trim().length < 3) return []
-      return searchCustomersByPartialIdentifier(orgId, query.trim())
+      
+      const cleanQuery = query.trim()
+      
+      // Run both searches in parallel
+      const [orgResults, globalResults] = await Promise.all([
+        searchCustomersByPartialIdentifier(orgId, cleanQuery),
+        searchGlobalCustomers(cleanQuery)
+      ])
+
+      const results: CustomerSearchResult[] = []
+      const orgMasterIds = new Set<string>()
+
+      // 1. Add Org results first
+      orgResults.forEach(customer => {
+        results.push({ type: 'org', data: customer })
+        if (customer.master_customer_id) {
+          orgMasterIds.add(customer.master_customer_id)
+        }
+      })
+
+      // 2. Add Global results if not already in Org results
+      globalResults.forEach(master => {
+        if (!orgMasterIds.has(master.id)) {
+          results.push({ type: 'global', data: master })
+        }
+      })
+
+      return results
     },
     enabled: enabled && !!orgId && !!query && query.trim().length >= 3,
     staleTime: 10 * 1000, // 10 seconds

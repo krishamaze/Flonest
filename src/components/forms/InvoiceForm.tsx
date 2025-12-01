@@ -145,6 +145,7 @@ export function InvoiceForm({
     orgId,
     userId,
     org,
+    currentStep, // Pass current step to control auto-save
     isOpen,
     initialDraftInvoiceId: draftInvoiceId,
     mode,

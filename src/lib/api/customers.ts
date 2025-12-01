@@ -458,5 +458,48 @@ export async function addOrgCustomer(
   return data
 }
 
+/**
+ * Search global master customers by partial identifier (mobile or GSTIN)
+ * Excludes customers that are already linked to the org (handled by UI or separate query)
+ * 
+ * Policy:
+ * - Mobile: Partial match allowed (starts with)
+ * - GSTIN: Partial match allowed (starts with)
+ * - Name: NOT SEARCHABLE globally (privacy)
+ */
+export async function searchGlobalCustomers(
+  query: string
+): Promise<MasterCustomer[]> {
+  if (!query || query.trim().length < 3) {
+    return []
+  }
+
+  const cleanQuery = query.trim().toUpperCase()
+  const isDigit = /^\d+$/.test(cleanQuery)
+
+  let queryBuilder = supabase
+    .from('master_customers')
+    .select('*')
+    .limit(5)
+
+  if (isDigit) {
+    // Search by mobile
+    queryBuilder = queryBuilder.ilike('mobile', `${cleanQuery}%`)
+  } else {
+    // Search by GSTIN (if it looks like one)
+    // We don't search names globally
+    queryBuilder = queryBuilder.ilike('gstin', `${cleanQuery}%`)
+  }
+
+  const { data, error } = await queryBuilder
+
+  if (error) {
+    console.error('Error searching global customers:', error)
+    return []
+  }
+
+  return data || []
+}
+
 
 

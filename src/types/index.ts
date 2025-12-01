@@ -177,3 +177,7 @@ export interface DCStockSummary {
   current_stock: number
 }
 
+export type CustomerSearchResult = 
+  | { type: 'org'; data: CustomerWithMaster }
+  | { type: 'global'; data: MasterCustomer }
+
