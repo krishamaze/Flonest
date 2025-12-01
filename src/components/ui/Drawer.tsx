@@ -1,4 +1,5 @@
 import { ReactNode, useEffect, useRef } from 'react'
+import { createPortal } from 'react-dom'
 import { XMarkIcon } from '@heroicons/react/24/outline'
 
 interface DrawerProps {
@@ -12,12 +13,12 @@ interface DrawerProps {
   customZIndex?: number // Custom z-index for drawer
 }
 
-export function Drawer({ 
-  isOpen, 
-  onClose, 
-  title, 
-  children, 
-  className = '', 
+export function Drawer({
+  isOpen,
+  onClose,
+  title,
+  children,
+  className = '',
   headerAction,
   hideBackdrop = false,
   customZIndex,
@@ -97,7 +98,7 @@ export function Drawer({
   const drawerZIndex = customZIndex ?? 101
   const backdropZIndex = drawerZIndex - 1
 
-  return (
+  return createPortal(
     <>
       {/* Backdrop */}
       {isOpen && !hideBackdrop && (
@@ -114,9 +115,8 @@ export function Drawer({
 
       {/* Drawer */}
       <div
-        className={`fixed top-0 bottom-0 left-0 right-0 safe-top safe-bottom ${
-          isOpen ? 'drawer-enter' : ''
-        } ${className}`}
+        className={`fixed top-0 bottom-0 left-0 right-0 safe-top safe-bottom ${isOpen ? 'drawer-enter' : ''
+          } ${className}`}
         style={{
           zIndex: drawerZIndex,
           transform: isOpen ? 'translateY(0)' : 'translateY(100%)',
@@ -129,7 +129,7 @@ export function Drawer({
         aria-modal="true"
         aria-labelledby={title ? 'drawer-title' : undefined}
       >
-        <div 
+        <div
           ref={drawerRef}
           className="mx-auto h-full w-full max-w-lg bg-bg-card flex flex-col"
           style={{
@@ -139,7 +139,7 @@ export function Drawer({
         >
           {/* Handle bar */}
           <div className="flex justify-center pt-3 pb-2 flex-shrink-0">
-            <div 
+            <div
               className="h-1 w-12 rounded-full bg-neutral-300 cursor-grab active:cursor-grabbing"
               onClick={onClose}
               aria-label="Close drawer"
@@ -177,7 +177,8 @@ export function Drawer({
           </div>
         </div>
       </div>
-    </>
+    </>,
+    document.body
   )
 }
 

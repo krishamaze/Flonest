@@ -1,4 +1,5 @@
 import { ReactNode, useEffect, useRef } from 'react'
+import { createPortal } from 'react-dom'
 import { XMarkIcon } from '@heroicons/react/24/outline'
 
 interface ModalProps {
@@ -85,8 +86,8 @@ export function Modal({ isOpen, onClose, title, children, className = '', header
 
   if (!isOpen) return null
 
-  return (
-    <div 
+  return createPortal(
+    <div
       className="fixed inset-0 z-[100] flex items-center justify-center p-md safe-top safe-bottom"
       role="dialog"
       aria-modal="true"
@@ -132,7 +133,8 @@ export function Modal({ isOpen, onClose, title, children, className = '', header
         {/* Content */}
         <div className="px-md py-md overflow-y-auto flex-1 min-h-0">{children}</div>
       </div>
-    </div>
+    </div>,
+    document.body
   )
 }
 
