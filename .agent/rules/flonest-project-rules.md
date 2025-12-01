@@ -5,7 +5,7 @@ trigger: always_on
 ## Project Specific Rules
 
 ### Positive Rules
-* do use Supabase Managed Cloud Platform (MCP) for database operations
+* do use Supabase MCP for database operations
 * do test on the Vercel preview branch before merging to main
 * do match return types to actual Remote Procedure Call (RPC) responses
 * do use existing UI components from `src/components/ui/`
