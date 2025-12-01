@@ -170,7 +170,7 @@ export function CustomerSearchCombobox({
                     }}
                     disabled={disabled}
                     autoFocus={autoFocus}
-                    placeholder="Enter Mobile No (10 digits) or GSTIN"
+                    placeholder="Search by Name, Mobile, or GSTIN"
                     className="w-full h-12 px-md py-sm border border-neutral-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary disabled:bg-neutral-100 disabled:cursor-not-allowed text-base"
                     aria-autocomplete="list"
                     aria-controls="customer-search-results"

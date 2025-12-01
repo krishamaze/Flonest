@@ -37,7 +37,7 @@ test.describe('Smart Customer Form - Single Flow', () => {
     
     // Type mobile number
     console.log('Typing mobile number')
-    const searchBox = page.getByPlaceholder('Search by name, mobile, or GSTIN...')
+    const searchBox = page.getByPlaceholder('Search by Name, Mobile, or GSTIN')
     await searchBox.fill(mobileNumber)
     await page.waitForTimeout(1000) // Wait for debounce and fields to appear
 
@@ -58,7 +58,7 @@ test.describe('Smart Customer Form - Single Flow', () => {
     const gstin = '22AAAAA0000A1Z5'
     
     // Type GSTIN
-    const searchBox = page.getByPlaceholder('Search by name, mobile, or GSTIN...')
+    const searchBox = page.getByPlaceholder('Search by Name, Mobile, or GSTIN')
     await searchBox.fill(gstin)
     await page.waitForTimeout(1000)
 
@@ -73,7 +73,7 @@ test.describe('Smart Customer Form - Single Flow', () => {
     const name = 'John Doe'
     
     // Type Name
-    const searchBox = page.getByPlaceholder('Search by name, mobile, or GSTIN...')
+    const searchBox = page.getByPlaceholder('Search by Name, Mobile, or GSTIN')
     await searchBox.fill(name)
     await page.waitForTimeout(1000)
 
