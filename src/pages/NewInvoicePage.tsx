@@ -1,11 +1,51 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, Component, ErrorInfo, ReactNode } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { supabase } from '../lib/supabase'
 import type { Org } from '../types'
 import { InvoiceForm } from '../components/forms/InvoiceForm'
 import { LoadingSpinner } from '../components/ui/LoadingSpinner'
-import { ArrowLeftIcon, XMarkIcon } from '@heroicons/react/24/outline'
+import { ArrowLeftIcon, XMarkIcon, ExclamationTriangleIcon } from '@heroicons/react/24/outline'
+import { Button } from '../components/ui/Button'
+
+class ErrorBoundary extends Component<{ children: ReactNode }, { hasError: boolean; error: Error | null }> {
+    constructor(props: { children: ReactNode }) {
+        super(props)
+        this.state = { hasError: false, error: null }
+    }
+
+    static getDerivedStateFromError(error: Error) {
+        return { hasError: true, error }
+    }
+
+    componentDidCatch(error: Error, errorInfo: ErrorInfo) {
+        console.error('InvoiceForm crashed:', error, errorInfo)
+    }
+
+    render() {
+        if (this.state.hasError) {
+            return (
+                <div className="flex flex-col items-center justify-center h-full p-6 text-center">
+                    <div className="bg-error/10 p-4 rounded-full mb-4">
+                        <ExclamationTriangleIcon className="h-8 w-8 text-error" />
+                    </div>
+                    <h2 className="text-lg font-semibold text-primary-text mb-2">Something went wrong</h2>
+                    <p className="text-sm text-secondary-text mb-6 max-w-md">
+                        {this.state.error?.message || 'An unexpected error occurred while loading the invoice form.'}
+                    </p>
+                    <Button
+                        variant="primary"
+                        onClick={() => window.location.reload()}
+                    >
+                        Reload Page
+                    </Button>
+                </div>
+            )
+        }
+
+        return this.props.children
+    }
+}
 
 /**
  * Full-page invoice creation view for mobile devices
@@ -20,6 +60,8 @@ export function NewInvoicePage() {
 
     // Load organization data
     useEffect(() => {
+        let mounted = true
+
         async function loadOrg() {
             if (!user || !user.orgId) {
                 navigate('/inventory')
@@ -34,16 +76,25 @@ export function NewInvoicePage() {
                     .single()
 
                 if (error) throw error
-                setOrg(data)
+
+                if (mounted) {
+                    setOrg(data)
+                    setLoading(false)
+                }
             } catch (error) {
                 console.error('Error loading org:', error)
-                navigate('/inventory')
-            } finally {
-                setLoading(false)
+                if (mounted) {
+                    // Don't set loading false here - let the spinner show until redirect
+                    navigate('/inventory')
+                }
             }
         }
 
         loadOrg()
+
+        return () => {
+            mounted = false
+        }
     }, [user, navigate])
 
     // Warn user before leaving with unsaved changes
@@ -89,7 +140,11 @@ export function NewInvoicePage() {
     }
 
     if (!user || !org) {
-        return null
+        return (
+            <div className="flex h-screen items-center justify-center p-4 text-center">
+                <p className="text-secondary-text">Unable to load organization details.</p>
+            </div>
+        )
     }
 
     return (
@@ -123,16 +178,18 @@ export function NewInvoicePage() {
             {/* Content */}
             <main className="flex-1 overflow-y-auto">
                 <div className="container mx-auto px-4 py-6 max-w-4xl">
-                    <InvoiceForm
-                        isOpen={true}
-                        onClose={handleClose}
-                        onSubmit={handleSubmit}
-                        orgId={user.orgId!}
-                        userId={user.id}
-                        org={org}
-                        mode="page"
-                        onFormChange={(hasChanges: boolean) => setHasUnsavedChanges(hasChanges)}
-                    />
+                    <ErrorBoundary>
+                        <InvoiceForm
+                            isOpen={true}
+                            onClose={handleClose}
+                            onSubmit={handleSubmit}
+                            orgId={user.orgId!}
+                            userId={user.id}
+                            org={org}
+                            mode="page"
+                            onFormChange={(hasChanges: boolean) => setHasUnsavedChanges(hasChanges)}
+                        />
+                    </ErrorBoundary>
                 </div>
             </main>
         </div>
