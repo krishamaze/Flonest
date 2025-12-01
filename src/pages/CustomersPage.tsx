@@ -33,10 +33,10 @@ export function CustomersPage() {
     const query = searchQuery.toLowerCase()
     const master = customer.master_customer
     const alias = customer.alias_name?.toLowerCase() || ''
-    const legalName = master.legal_name?.toLowerCase() || ''
-    const mobile = master.mobile || ''
-    const gstin = master.gstin?.toLowerCase() || ''
-    const email = master.email?.toLowerCase() || ''
+    const legalName = master?.legal_name?.toLowerCase() || ''
+    const mobile = master?.mobile || ''
+    const gstin = master?.gstin?.toLowerCase() || ''
+    const email = master?.email?.toLowerCase() || ''
 
     return (
       alias.includes(query) ||
