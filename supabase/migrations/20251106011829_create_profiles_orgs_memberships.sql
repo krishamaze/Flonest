@@ -19,7 +19,7 @@ CREATE TABLE IF NOT EXISTS profiles (
 );
 
 -- Step 3: Create orgs table (replaces tenants)
-CREATE TABLE orgs (
+CREATE TABLE IF NOT EXISTS orgs (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     name TEXT NOT NULL,
     slug TEXT UNIQUE NOT NULL,
@@ -31,7 +31,7 @@ CREATE TABLE orgs (
 );
 
 -- Step 4: Create memberships table (replaces team_members)
-CREATE TABLE memberships (
+CREATE TABLE IF NOT EXISTS memberships (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     profile_id UUID REFERENCES profiles(id) ON DELETE CASCADE,
     org_id UUID REFERENCES orgs(id) ON DELETE CASCADE,
