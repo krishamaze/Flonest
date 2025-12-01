@@ -8,7 +8,6 @@ interface PageQueryWrapperProps {
     children: ReactNode
     onRetry?: () => void
     loadingTimeout?: number
-    isTimeout?: boolean
 }
 
 /**
@@ -35,7 +34,6 @@ export function PageQueryWrapper({
     children,
     onRetry,
     loadingTimeout = 15000,
-    isTimeout = false,
 }: PageQueryWrapperProps) {
     return (
         <QueryErrorHandler

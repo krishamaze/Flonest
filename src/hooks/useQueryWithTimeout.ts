@@ -1,7 +1,7 @@
 import { useQuery, UseQueryOptions, UseQueryResult } from '@tanstack/react-query'
 import { useState, useEffect } from 'react'
 
-export interface EnhancedQueryResult<TData, TError> extends UseQueryResult<TData, TError> {
+export type EnhancedQueryResult<TData, TError> = UseQueryResult<TData, TError> & {
   isTimeout: boolean
   timeoutDuration: number
 }
