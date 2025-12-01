@@ -101,22 +101,9 @@ export function CustomerSearchCombobox({
     }
 
     const getInputMode = (): 'text' | 'tel' => {
-        if (!value || value.length < 3) {
-            // Default to text for short inputs
-            const firstChar = value.charAt(0)
-            return /[6-9]/.test(firstChar) ? 'tel' : 'text'
-        }
-
-        // Use enhanced detection for 3+ characters
-        const cleaned = value.trim().replace(/\s+/g, '')
-        const isAllDigits = /^\d+$/.test(cleaned)
-
-        // If starts with 6-9 and all digits, likely mobile number
-        if (isAllDigits && /^[6-9]/.test(cleaned)) {
-            return 'tel'
-        }
-
-        // Otherwise use text keyboard (for GSTIN, names)
+        // Always return text to allow mixed input (names, alphanumeric GSTIN, etc.)
+        // The user can switch to numeric keypad manually if they want, 
+        // but forcing 'tel' prevents typing names like "9th Avenue" easily.
         return 'text'
     }
 

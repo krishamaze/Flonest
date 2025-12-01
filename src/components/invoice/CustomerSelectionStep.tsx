@@ -149,24 +149,32 @@ export const CustomerSelectionStep: React.FC<CustomerSelectionStepProps> = ({
     )
 
     const renderFormFields = () => {
+        // If a customer is selected, show all fields (read-only confirmation)
+        // If creating new, HIDE the field that matches the search input to avoid duplication
+        const hideMatchingField = !selectedCustomer
+
         if (fieldPriority === 'gstin') {
             return [
-                renderGstinField(true),
+                // Hide GSTIN field if search is GSTIN
+                (!hideMatchingField || fieldPriority !== 'gstin') && renderGstinField(true),
                 renderMobileField(),
                 renderNameField(),
-            ]
+            ].filter(Boolean)
         } else if (fieldPriority === 'mobile') {
             return [
-                renderMobileField(true),
+                // Hide Mobile field if search is Mobile
+                (!hideMatchingField || fieldPriority !== 'mobile') && renderMobileField(true),
                 showGstinField ? renderGstinField() : renderGstinToggle(),
                 renderNameField(),
-            ]
+            ].filter(Boolean)
         } else {
+            // Default: Name priority
             return [
-                renderNameField(true),
+                // Hide Name field if search is Name
+                (!hideMatchingField || fieldPriority !== 'name') && renderNameField(true),
                 renderMobileField(),
                 showGstinField ? renderGstinField() : renderGstinToggle(),
-            ]
+            ].filter(Boolean)
         }
     }
 

@@ -170,6 +170,14 @@ function AppRoutes() {
               }
             />
             <Route
+              path="/invoices/new"
+              element={
+                <ProtectedRoute>
+                  <NewInvoicePage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
               path="/"
               element={
                 <ProtectedRoute>
@@ -190,7 +198,6 @@ function AppRoutes() {
                 path="invoices/:id"
                 element={<InvoiceDetailsPage />}
               />
-              <Route path="invoices/new" element={<NewInvoicePage />} />
               <Route path="inventory" element={<InventoryPage />} />
               <Route
                 path="stock-ledger"
