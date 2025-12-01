@@ -9,7 +9,7 @@ DROP TABLE IF EXISTS team_members CASCADE;
 DROP TABLE IF EXISTS tenants CASCADE;
 
 -- Step 2: Create profiles table (linked to auth.users)
-CREATE TABLE profiles (
+CREATE TABLE IF NOT EXISTS profiles (
     id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
     email TEXT NOT NULL,
     full_name TEXT,
