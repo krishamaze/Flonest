@@ -109,6 +109,8 @@ export function InvoiceForm({
     inlineFormData: hookInlineFormData,
     errors: hookCustomerErrors,
     fieldPriority: hookFieldPriority,
+    completeCustomerData: hookCompleteCustomerData,
+    isCustomerDataComplete: hookIsCustomerDataComplete,
     setIdentifier: hookSetIdentifier,
     setIdentifierValid: _hookSetIdentifierValid,
     setSearching: _hookSetSearching,
@@ -398,7 +400,11 @@ export function InvoiceForm({
     }
   }
 
+  // Step 1 validation: Use hook's computed validation (merges identifier + form fields)
+  // This properly accounts for mobile/GSTIN in combobox + name/other fields in form
+  const isAddNewCustomerMode = !hookSelectedCustomer && hookIdentifier.trim().length >= 3
   const canProceedToStep2 = hookSelectedCustomer !== null
+
   const canProceedToStep3 = hookItems.length > 0 && hookItems.every((item) => item.product_id && item.quantity > 0 && item.unit_price > 0)
 
   // Show loading or error state when loading draft
@@ -546,16 +552,53 @@ export function InvoiceForm({
             <Button
               type="button"
               variant="primary"
-              onClick={() => {
-                if (currentStep === 1 && canProceedToStep2) {
-                  setCurrentStep(2)
+              onClick={async () => {
+                if (currentStep === 1) {
+                  // Step 1 → Step 2: Validate and create customer if needed
+                  if (canProceedToStep2) {
+                    // Customer already selected, proceed
+                    setCurrentStep(2)
+                  } else if (isAddNewCustomerMode) {
+                    // In "add new" mode - validate and create
+                    if (!hookIsCustomerDataComplete) {
+                      // Show specific error message
+                      let errorMsg = 'Please complete the customer information: '
+                      const issues = []
+
+                      if (hookCompleteCustomerData.name.trim().length < 3) {
+                        issues.push('Name must be at least 3 characters')
+                      }
+                      if (!hookCompleteCustomerData.mobile.trim() && !hookCompleteCustomerData.gstin.trim()) {
+                        issues.push('Provide at least Mobile Number or GSTIN')
+                      }
+                      if (hookCustomerErrors.name) issues.push(hookCustomerErrors.name)
+                      if (hookCustomerErrors.mobile) issues.push(hookCustomerErrors.mobile)
+                      if (hookCustomerErrors.gstin) issues.push(hookCustomerErrors.gstin)
+
+                      errorMsg += issues.join('; ')
+                      showToast('error', errorMsg, { autoClose: 5000 })
+                      return
+                    }
+
+                    // Valid data - create customer then proceed
+                    try {
+                      await hookHandleCreateOrgCustomer()
+                      // Customer creation will trigger onCustomerCreated callback which sets step to 2
+                    } catch (error) {
+                      // Error already handled in the hook
+                      console.error('Failed to create customer:', error)
+                    }
+                  } else {
+                    // No customer selected and no form data entered
+                    showToast('error', 'Please select a customer or enter customer details', { autoClose: 3000 })
+                  }
                 } else if (currentStep === 2 && canProceedToStep3) {
                   setCurrentStep(3)
                 }
               }}
               disabled={
                 isSubmitting ||
-                (currentStep === 1 && !canProceedToStep2) ||
+                (currentStep === 1 && !canProceedToStep2 && !hookIsCustomerDataComplete) ||
                 (currentStep === 2 && !canProceedToStep3)
               }
               className="w-full"

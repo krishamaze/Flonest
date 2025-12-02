@@ -30,6 +30,15 @@ export function CustomerSearchCombobox({
     const [isModeFinalized, setIsModeFinalized] = useState(false)
     const inputRef = useRef<HTMLInputElement>(null)
     const dropdownRef = useRef<HTMLDivElement>(null)
+    const prevValue = useRef(value)
+
+    // Reset finalization on any edit
+    useEffect(() => {
+        if (value !== prevValue.current) {
+            setIsModeFinalized(false)
+            prevValue.current = value
+        }
+    }, [value])
 
     // Track base query (first 3 chars) for server fetch
     const [baseQuery, setBaseQuery] = useState('')
@@ -320,21 +329,7 @@ export function CustomerSearchCombobox({
                     className="absolute z-50 w-full mt-1 bg-white border border-neutral-300 rounded-md shadow-lg max-h-80 overflow-y-auto"
                     role="listbox"
                 >
-                    {/* Finalize name mode button */}
-                    {searchMode === 'name' && value.trim().length >= 3 && (
-                        <button
-                            type="button"
-                            onClick={() => {
-                                setIsOpen(false)
-                                setIsModeFinalized(true)
-                                onModeFinalized?.(searchMode, value)
-                            }}
-                            className="w-full text-left px-4 py-3 border-b-2 border-neutral-200 bg-success-50 hover:bg-success-100 transition-colors font-medium text-success flex items-center gap-2"
-                        >
-                            <span className="text-xl">✓</span>
-                            <span>Use "{value.trim()}"</span>
-                        </button>
-                    )}
+
 
                     {searchResults.length > 0 ? (
                         searchResults.map((result, index) => {

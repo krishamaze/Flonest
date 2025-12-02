@@ -2,10 +2,10 @@ import React from 'react'
 import { CustomerWithMaster, CustomerSearchResult } from '../../types'
 import { CustomerSearchCombobox } from '../customers/CustomerSearchCombobox'
 import { Input } from '../ui/Input'
-import { Button } from '../ui/Button'
 import { Toggle } from '../ui/Toggle'
 import type { FieldPriority } from '../../hooks/invoice/useInvoiceCustomer'
 import { classifySearchMode, type SearchMode } from '../../lib/utils/customerSearchMode'
+import { validateMobile, validateGSTIN } from '../../lib/utils/identifierValidation'
 import { CheckCircleIcon } from '@heroicons/react/24/solid'
 
 interface CustomerSelectionStepProps {
@@ -59,7 +59,7 @@ export const CustomerSelectionStep: React.FC<CustomerSelectionStepProps> = ({
     newCustomerData,
     formErrors,
     onFormDataChange,
-    onSubmitNewCustomer,
+    onSubmitNewCustomer: _onSubmitNewCustomer, // Deprecated - parent navigation handles submit
     onFieldBlur,
     fieldPriority,
     orgId,
@@ -70,6 +70,8 @@ export const CustomerSelectionStep: React.FC<CustomerSelectionStepProps> = ({
     const [showGstinField, setShowGstinField] = React.useState(false)
     // Track if identifier mode is finalized (user selected or blurred)
     const [isModeFinalized, setIsModeFinalized] = React.useState(false)
+    // Store dropdown selection temporarily until ✓ is clicked
+    const [pendingResult, setPendingResult] = React.useState<CustomerSearchResult | null>(null)
 
     // Refs for auto-focusing next field
     const nameInputRef = React.useRef<HTMLInputElement>(null)
@@ -79,10 +81,19 @@ export const CustomerSelectionStep: React.FC<CustomerSelectionStepProps> = ({
     // Show fields only after mode is finalized OR customer is selected
     const showFields = selectedCustomer !== null || isModeFinalized
 
+    // Sync isModeFinalized with selectedCustomer on navigation back
+    React.useEffect(() => {
+        // When navigating back from step 2, if customer is selected, keep field locked
+        if (selectedCustomer && !isModeFinalized) {
+            setIsModeFinalized(true)
+        }
+    }, [selectedCustomer, isModeFinalized])
+
     // Track previous value to detect actual edits
     const prevSearchValue = React.useRef(searchValue)
+    const isProgrammaticUpdate = React.useRef(false) // Track if update is from dropdown selection
 
-    // Reset finalization and clear fields when user edits identifier
+    // Reset finalization and clear fields when user MANUALLY edits identifier
     React.useEffect(() => {
         const trimmed = searchValue.trim()
         const prevTrimmed = prevSearchValue.current.trim()
@@ -92,7 +103,17 @@ export const CustomerSelectionStep: React.FC<CustomerSelectionStepProps> = ({
             return
         }
 
-        // If finalized or customer selected, ALWAYS reset on any change
+        // IMPORTANT: Check programmatic flag FIRST before any reset logic
+        if (isProgrammaticUpdate.current) {
+            isProgrammaticUpdate.current = false // Reset flag
+            prevSearchValue.current = searchValue
+            return // Skip all reset logic
+        }
+
+        // Clear pending dropdown selection on ANY manual edit
+        setPendingResult(null)
+
+        // If finalized or customer selected, reset on MANUAL change only
         if (isModeFinalized || selectedCustomer) {
             setIsModeFinalized(false)
             onCustomerSelected(null)
@@ -111,58 +132,213 @@ export const CustomerSelectionStep: React.FC<CustomerSelectionStepProps> = ({
         setShowGstinField(false)
     }, [fieldPriority])
 
-    // Handle selection from combobox
+    // Handle selection from combobox - IMMEDIATELY finalize and fill form
     const handleSearchResultSelect = (result: CustomerSearchResult | null) => {
         if (!result) {
+            // "+ Add New Customer" clicked - clear everything, show empty form
             onCustomerSelected(null)
+            setPendingResult(null)
+            setIsModeFinalized(true) // Show fields
+            onFormDataChange({ name: '', mobile: '', gstin: '' })
+            setWasEdited(false)
             return
         }
 
+        // Customer selected - immediately fill form (no ✓ button)
+        const mode = classifySearchMode(searchValue)
+
         if (result.type === 'org') {
-            // Existing Org Customer -> Select it directly
-            onCustomerSelected(result.data)
+            const customer = result.data
+
+            // Autocomplete identifier
+            if (mode === 'mobile') {
+                isProgrammaticUpdate.current = true
+                onSearchChange(customer.master_customer.mobile || searchValue)
+            } else if (mode === 'gstin') {
+                isProgrammaticUpdate.current = true
+                onSearchChange(customer.master_customer.gstin || searchValue)
+            } else {
+                isProgrammaticUpdate.current = true
+                onSearchChange(customer.alias_name || customer.master_customer.legal_name || searchValue)
+            }
+
+            // Fill complementary fields immediately
+            if (mode === 'mobile') {
+                onFormDataChange({
+                    name: customer.alias_name || customer.master_customer.legal_name,
+                    mobile: '',
+                    gstin: customer.master_customer.gstin || '',
+                })
+            } else if (mode === 'gstin') {
+                onFormDataChange({
+                    name: customer.alias_name || customer.master_customer.legal_name,
+                    mobile: customer.master_customer.mobile || '',
+                    gstin: '',
+                })
+            } else {
+                onFormDataChange({
+                    name: '',
+                    mobile: customer.master_customer.mobile || '',
+                    gstin: customer.master_customer.gstin || '',
+                })
+            }
+
+            onCustomerSelected(customer)
         } else {
-            // Global Master Customer -> Pre-fill form as "New Customer"
-            // This allows user to confirm/edit details before linking
             const master = result.data
-            onFormDataChange({
-                name: master.legal_name || '',
-                mobile: master.mobile || '',
-                gstin: master.gstin || '',
-            })
-            // Ensure we clear any previously selected customer
-            onCustomerSelected(null)
+
+            // Autocomplete identifier
+            if (mode === 'mobile') {
+                isProgrammaticUpdate.current = true
+                onSearchChange(master.mobile || searchValue)
+            } else if (mode === 'gstin') {
+                isProgrammaticUpdate.current = true
+                onSearchChange(master.gstin || searchValue)
+            } else {
+                isProgrammaticUpdate.current = true
+                onSearchChange(master.legal_name || searchValue)
+            }
+
+            // Fill complementary fields
+            if (mode === 'mobile') {
+                onFormDataChange({
+                    name: master.legal_name || '',
+                    mobile: '',
+                    gstin: master.gstin || '',
+                })
+            } else if (mode === 'gstin') {
+                onFormDataChange({
+                    name: master.legal_name || '',
+                    mobile: master.mobile || '',
+                    gstin: '',
+                })
+            } else {
+                onFormDataChange({
+                    name: '',
+                    mobile: master.mobile || '',
+                    gstin: master.gstin || '',
+                })
+            }
         }
+
+        // Finalize mode
+        setIsModeFinalized(true)
+        setWasEdited(false)
     }
 
-    // Handle mode finalization with auto-copy to form fields
-    const handleModeFinalized = (mode: SearchMode, value: string) => {
-        if (!mode) return // Skip if null
+    // Handle mode finalization with validation
+    const handleModeFinalized = (mode: SearchMode) => {
+        if (!mode) return
+
+        const trimmed = searchValue.trim()
+
+        // Validate based on mode
+        if (mode === 'mobile') {
+            if (!validateMobile(trimmed)) {
+                alert('Invalid mobile number. Must be 10 digits starting with 6-9.')
+                return
+            }
+        } else if (mode === 'gstin') {
+            if (!validateGSTIN(trimmed)) {
+                alert('Invalid GSTIN. Must be 15 characters in valid Indian GSTIN format.')
+                return
+            }
+        } else if (mode === 'name') {
+            // Validate name: No extra spaces, auto-convert to title case
+            const normalized = trimmed.replace(/\s+/g, ' ') // Single spaces only
+            const words = normalized.split(' ')
+
+            if (trimmed !== normalized) {
+                alert('Name has extra spaces. Please remove extra spaces.')
+                return
+            }
+
+            // Auto-convert to title case (handles existing lowercase data like "krishnakumar")
+            const titleCased = words.map(word =>
+                word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
+            ).join(' ')
+
+            // Update to title case if needed
+            if (titleCased !== trimmed) {
+                isProgrammaticUpdate.current = true
+                onSearchChange(titleCased)
+            }
+        }
+
+        // Validation passed - finalize
         setIsModeFinalized(true)
 
-        const trimmed = value.trim()
+        // Fill complementary form fields from pendingResult (if any)
+        if (pendingResult) {
+            if (pendingResult.type === 'org') {
+                const customer = pendingResult.data
+                // Fill complementary fields based on mode
+                if (mode === 'mobile') {
+                    onFormDataChange({
+                        name: customer.alias_name || customer.master_customer.legal_name,
+                        mobile: '', // In combobox
+                        gstin: customer.master_customer.gstin || '',
+                    })
+                } else if (mode === 'gstin') {
+                    onFormDataChange({
+                        name: customer.alias_name || customer.master_customer.legal_name,
+                        mobile: customer.master_customer.mobile || '',
+                        gstin: '', // In combobox
+                    })
+                } else {
+                    // Name mode
+                    onFormDataChange({
+                        name: '', // In combobox
+                        mobile: customer.master_customer.mobile || '',
+                        gstin: customer.master_customer.gstin || '',
+                    })
+                }
+                // Select the customer
+                onCustomerSelected(customer)
+            } else {
+                // Global master customer
+                const master = pendingResult.data
+                if (mode === 'mobile') {
+                    onFormDataChange({
+                        name: master.legal_name || '',
+                        mobile: '', // In combobox
+                        gstin: master.gstin || '',
+                    })
+                } else if (mode === 'gstin') {
+                    onFormDataChange({
+                        name: master.legal_name || '',
+                        mobile: master.mobile || '',
+                        gstin: '', // In combobox
+                    })
+                } else {
+                    // Name mode
+                    onFormDataChange({
+                        name: '', // In combobox
+                        mobile: master.mobile || '',
+                        gstin: master.gstin || '',
+                    })
+                }
+                // New customer - don't select
+            }
+            setPendingResult(null) // Clear after use
+        } else {
+            // No dropdown selection - manual entry, clear form
+            onFormDataChange({ name: '', mobile: '', gstin: '' })
+        }
 
-        if (mode === 'mobile') {
-            // Copy mobile to form, keep name/GSTIN empty
-            onFormDataChange({ name: '', mobile: trimmed, gstin: '' })
-            // Focus name field
-            setTimeout(() => nameInputRef.current?.focus(), 50)
-        } else if (mode === 'gstin') {
-            // Copy GSTIN to form, keep name/mobile empty
-            onFormDataChange({ name: '', mobile: '', gstin: trimmed.toUpperCase() })
-            // Focus name field
+        // Focus the first complementary field
+        if (mode === 'mobile' || mode === 'gstin') {
             setTimeout(() => nameInputRef.current?.focus(), 50)
         } else if (mode === 'name') {
-            // Copy name to form, keep mobile/GSTIN empty
-            onFormDataChange({ name: trimmed, mobile: '', gstin: '' })
-            // No need to focus - fields just appeared
+            setTimeout(() => mobileInputRef.current?.focus(), 50)
         }
     }
 
-    // Determine field locking (read-only) state
-    const isMobileReadOnly = (selectedCustomer && !!selectedCustomer.master_customer.mobile) || (!selectedCustomer && fieldPriority === 'mobile')
-    const isGstinReadOnly = (selectedCustomer && !!selectedCustomer.master_customer.gstin) || (!selectedCustomer && fieldPriority === 'gstin')
-    const isNameReadOnly = !selectedCustomer && fieldPriority === 'name'
+    // Determine current search mode to exclude that field
+    const currentMode = classifySearchMode(searchValue)
+
+    // Track if fields were edited (for smart edit-to-create flow)
+    const [wasEdited, setWasEdited] = React.useState(false)
 
     // Name completion check (3+ chars)
     const isNameComplete = newCustomerData.name.trim().length >= 3
@@ -175,16 +351,19 @@ export const CustomerSelectionStep: React.FC<CustomerSelectionStepProps> = ({
                 label="Customer Name *"
                 type="text"
                 value={newCustomerData.name}
-                onChange={(e) =>
+                onChange={(e) => {
                     onFormDataChange({ ...newCustomerData, name: e.target.value })
-                }
-                disabled={isDisabled || isSearching || isNameReadOnly}
-                readOnly={isNameReadOnly}
-                className={isNameReadOnly ? 'bg-neutral-50 text-secondary-text' : ''}
+                    // Smart edit: if customer was selected and user edits, mark as edited
+                    if (selectedCustomer && e.target.value !== (selectedCustomer.alias_name || selectedCustomer.master_customer.legal_name)) {
+                        setWasEdited(true)
+                        onCustomerSelected(null) // Switch to create new mode
+                    }
+                }}
+                disabled={isDisabled || isSearching}
                 placeholder="Enter customer name"
                 error={formErrors.name}
                 required
-                autoFocus={autoFocus && !isNameReadOnly}
+                autoFocus={autoFocus}
             />
             {(isModeFinalized || selectedCustomer) && isNameComplete && !formErrors.name && (
                 <CheckCircleIcon className="absolute right-3 top-[calc(1.5rem+0.25rem+12px)] h-5 w-5 text-success" />
@@ -199,16 +378,26 @@ export const CustomerSelectionStep: React.FC<CustomerSelectionStepProps> = ({
             label="Mobile Number"
             type="tel"
             value={newCustomerData.mobile}
-            onChange={(e) =>
-                onFormDataChange({ ...newCustomerData, mobile: e.target.value })
-            }
+            onChange={(e) => {
+                const value = e.target.value
+                onFormDataChange({ ...newCustomerData, mobile: value })
+
+                // Real-time validation: show error immediately if length >= 10
+                if (value.length >= 10) {
+                    onFieldBlur('mobile', value)
+                }
+
+                // Smart edit: if customer was selected and user edits, mark as edited
+                if (selectedCustomer && value !== selectedCustomer.master_customer.mobile) {
+                    setWasEdited(true)
+                    onCustomerSelected(null)
+                }
+            }}
             onBlur={(e) => onFieldBlur('mobile', e.target.value)}
-            disabled={isDisabled || isSearching || isMobileReadOnly}
-            readOnly={isMobileReadOnly}
-            className={isMobileReadOnly ? 'bg-neutral-50 text-secondary-text' : ''}
+            disabled={isDisabled || isSearching}
             placeholder="Enter 10-digit mobile number"
             error={formErrors.mobile}
-            autoFocus={autoFocus && !isMobileReadOnly}
+            autoFocus={autoFocus}
         />
     )
 
@@ -219,16 +408,26 @@ export const CustomerSelectionStep: React.FC<CustomerSelectionStepProps> = ({
             label="GSTIN"
             type="text"
             value={newCustomerData.gstin}
-            onChange={(e) =>
-                onFormDataChange({ ...newCustomerData, gstin: e.target.value.toUpperCase() })
-            }
+            onChange={(e) => {
+                const value = e.target.value.toUpperCase()
+                onFormDataChange({ ...newCustomerData, gstin: value })
+
+                // Real-time validation: show error immediately if length >= 15
+                if (value.length >= 15) {
+                    onFieldBlur('gstin', value)
+                }
+
+                // Smart edit: if customer was selected and user edits, mark as edited
+                if (selectedCustomer && value !== selectedCustomer.master_customer.gstin) {
+                    setWasEdited(true)
+                    onCustomerSelected(null)
+                }
+            }}
             onBlur={(e) => onFieldBlur('gstin', e.target.value)}
-            disabled={isDisabled || isSearching || isGstinReadOnly}
-            readOnly={isGstinReadOnly}
-            className={isGstinReadOnly ? 'bg-neutral-50 text-secondary-text' : ''}
+            disabled={isDisabled || isSearching}
             placeholder="Enter 15-character GSTIN"
             error={formErrors.gstin}
-            autoFocus={autoFocus && !isGstinReadOnly}
+            autoFocus={autoFocus}
         />
     )
 
@@ -242,31 +441,30 @@ export const CustomerSelectionStep: React.FC<CustomerSelectionStepProps> = ({
     )
 
     const renderFormFields = () => {
-        // Always hide the field that matches the search input to avoid duplication
-        const hideMatchingField = true
-
-        if (fieldPriority === 'gstin') {
+        // Smart exclusion: Don't render the field that's already in the combobox
+        if (currentMode === 'mobile') {
+            // Mobile in combobox → Show only Name + GSTIN
             return [
-                // Hide GSTIN field if search is GSTIN
-                (!hideMatchingField || fieldPriority !== 'gstin') && renderGstinField(true),
-                renderMobileField(),
-                renderNameField(),
+                renderNameField(true),
+                renderGstinToggle(),
+                showGstinField ? renderGstinField() : null,
             ].filter(Boolean)
-        } else if (fieldPriority === 'mobile') {
+        } else if (currentMode === 'gstin') {
+            // GSTIN in combobox → Show only Mobile + Name
             return [
-                // Hide Mobile field if search is Mobile
-                (!hideMatchingField || fieldPriority !== 'mobile') && renderMobileField(true),
-                renderNameField(),
-                showGstinField ? renderGstinField() : renderGstinToggle(),
+                renderNameField(true),
+                renderMobileField(),
+            ].filter(Boolean)
+        } else if (currentMode === 'name') {
+            // Name in combobox → Show only Mobile + GSTIN
+            return [
+                renderMobileField(true),
+                renderGstinToggle(),
+                showGstinField ? renderGstinField() : null,
             ].filter(Boolean)
         } else {
-            // Default: Name priority
-            return [
-                // Hide Name field if search is Name
-                (!hideMatchingField || fieldPriority !== 'name') && renderNameField(true),
-                renderMobileField(),
-                showGstinField ? renderGstinField() : renderGstinToggle(),
-            ].filter(Boolean)
+            // No mode yet (< 3 chars) - don't show anything
+            return []
         }
     }
 
@@ -286,27 +484,15 @@ export const CustomerSelectionStep: React.FC<CustomerSelectionStepProps> = ({
                                 onChange={onSearchChange}
                                 onCustomerSelect={handleSearchResultSelect}
                                 onModeFinalized={handleModeFinalized}
+                                onResetMode={() => {
+                                    setIsModeFinalized(false)
+                                    onCustomerSelected(null)
+                                    onFormDataChange({ name: '', mobile: '', gstin: '' })
+                                }}
+                                isFinalizedExternal={isModeFinalized}
                                 disabled={isDisabled}
                                 autoFocus={autoFocus}
                             />
-
-
-                            {/* ✓ button for name mode - show when user typed 3+ chars in NAME mode but hasn't finalized */}
-                            {(() => {
-                                const currentMode = classifySearchMode(searchValue)
-                                const isNameMode = currentMode === 'name'
-                                return isNameMode && searchValue.trim().length >= 3 && !selectedCustomer && !isModeFinalized && (
-                                    <button
-                                        type="button"
-                                        onClick={() => handleModeFinalized('name', searchValue)}
-                                        className="absolute right-3 top-[calc(1.5rem+0.25rem+12px)] h-8 w-8 flex items-center justify-center rounded-full bg-success hover:bg-success-dark text-white transition-colors shadow-sm"
-                                        title="Add as new customer"
-                                        aria-label="Add as new customer"
-                                    >
-                                        <CheckCircleIcon className="h-5 w-5" />
-                                    </button>
-                                )
-                            })()}
                         </div>
                         {searchError && (
                             <p className="text-sm text-error mt-1">{searchError}</p>
@@ -314,26 +500,22 @@ export const CustomerSelectionStep: React.FC<CustomerSelectionStepProps> = ({
 
                         {/* Other fields - conditionally rendered */}
                         {showFields && (
-                            <div className="space-y-4 animate-in fade-in slide-in-from-top-2 duration-200">
-                                {renderFormFields()}
-                            </div>
+                            <>
+                                {wasEdited && (
+                                    <div className="flex items-center gap-2 p-2 bg-warning-light border-l-4 border-warning rounded text-sm text-warning-dark">
+                                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4">
+                                            <path strokeLinecap="round" strokeLinejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0 1 15.75 21H5.25A2.25 2.25 0 0 1 3 18.75V8.25A2.25 2.25 0 0 1 5.25 6H10" />
+                                        </svg>
+                                        <span>Edited - will save as new customer</span>
+                                    </div>
+                                )}
+
+                                <div className="space-y-4 animate-in fade-in slide-in-from-top-2 duration-200">
+                                    {renderFormFields()}
+                                </div>
+                            </>
                         )}
                     </div>
-
-                    {/* Next button - only shown when other fields are visible */}
-                    {showFields && (
-                        <div className="mt-4 flex justify-end">
-                            <Button
-                                type="button"
-                                variant="primary"
-                                onClick={onSubmitNewCustomer}
-                                disabled={isDisabled || isSearching}
-                                className="w-full sm:w-auto"
-                            >
-                                Next
-                            </Button>
-                        </div>
-                    )}
                 </div>
             </div>
         </div>

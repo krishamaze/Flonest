@@ -43,6 +43,10 @@ export interface UseInvoiceCustomerReturn {
   gstinRequired: boolean
   mobileRequired: boolean
   
+  // Computed validation data (merges identifier + form fields)
+  completeCustomerData: { name: string; mobile: string; gstin: string }
+  isCustomerDataComplete: boolean
+  
   // Setters
   setIdentifier: (value: string) => void
   setIdentifierValid: (valid: boolean) => void
@@ -101,20 +105,48 @@ export function useInvoiceCustomer({
     if (detectedType === 'mobile') return 'mobile'
     return 'name'
   }, [detectedType])
-
-  // Sync inlineFormData with identifier (when no customer selected)
-  // This ensures the search box value is reflected in the appropriate field
-  useEffect(() => {
-    if (!selectedCustomer) {
-      if (detectedType === 'mobile') {
-        setInlineFormData(prev => ({ ...prev, mobile: identifier, name: '', gstin: '' }))
-      } else if (detectedType === 'gstin' || detectedType === 'partial_gstin') {
-        setInlineFormData(prev => ({ ...prev, gstin: identifier.toUpperCase(), mobile: '', name: '' }))
-      } else {
-        setInlineFormData(prev => ({ ...prev, name: identifier, mobile: '', gstin: '' }))
+  
+  // Compute complete customer data by merging identifier with form fields
+  // This is the ACTUAL data that will be used for customer creation
+  const completeCustomerData = useMemo(() => {
+    const data = { ...inlineFormData }
+    const trimmedIdentifier = identifier.trim()
+    
+    // Override with identifier value based on detected type
+    if (detectedType === 'mobile') {
+      data.mobile = trimmedIdentifier
+    } else if (detectedType === 'gstin' || detectedType === 'partial_gstin') {
+      data.gstin = trimmedIdentifier.toUpperCase()
+    } else if (detectedType === 'name' || detectedType === 'unknown') {
+      // For name mode, identifier becomes the name (unless form has name already)
+      if (!data.name || trimmedIdentifier.length >= data.name.length) {
+        data.name = trimmedIdentifier
       }
     }
-  }, [identifier, detectedType, selectedCustomer])
+    
+    return data
+  }, [identifier, inlineFormData, detectedType])
+
+  // Validation state: is the complete customer data valid and ready for creation?
+  const isCustomerDataComplete = useMemo(() => {
+    // Name is mandatory (min 3 chars)
+    if (completeCustomerData.name.trim().length < 3) return false
+    
+    // At least one contact method required
+    if (!completeCustomerData.mobile.trim() && !completeCustomerData.gstin.trim()) return false
+    
+    // If mobile provided, must be valid
+    if (completeCustomerData.mobile && !validateMobile(completeCustomerData.mobile)) return false
+    
+    // If GSTIN provided, must be valid
+    if (completeCustomerData.gstin && !validateGSTIN(completeCustomerData.gstin)) return false
+    
+    return true
+  }, [completeCustomerData])
+
+  // NOTE: identifier is NOT auto-synced to inlineFormData
+  // The combobox (identifier) is the source of truth for ONE field (mobile/GSTIN/name)
+  // The form fields (inlineFormData) hold the OTHER complementary fields
 
   // When customer is fetched after creation, update state
   useEffect(() => {
@@ -184,18 +216,41 @@ export function useInvoiceCustomer({
   const handleCreateOrgCustomer = async () => {
     const formErrors: Record<string, string> = {}
 
-    // Name is ALWAYS mandatory
-    if (!inlineFormData.name || inlineFormData.name.trim().length < 2) {
-      formErrors.name = 'Customer name is required (min 2 chars)'
+    // Build complete customer data by merging identifier with form fields
+    const completeData = {
+      name: inlineFormData.name,
+      mobile: inlineFormData.mobile,
+      gstin: inlineFormData.gstin,
+    }
+
+    // Override with identifier value based on detected type
+    const trimmedIdentifier = identifier.trim()
+    if (detectedType === 'mobile') {
+      completeData.mobile = trimmedIdentifier
+    } else if (detectedType === 'gstin' || detectedType === 'partial_gstin') {
+      completeData.gstin = trimmedIdentifier.toUpperCase()
+    } else {
+      // name or unknown
+      completeData.name = trimmedIdentifier
+    }
+
+    // Name is ALWAYS mandatory (min 3 chars for quality)
+    if (!completeData.name || completeData.name.trim().length < 3) {
+      formErrors.name = 'Customer name is required (min 3 chars)'
+    }
+
+    // Require at least one contact method for business records (mobile or GSTIN)
+    if (!completeData.mobile && !completeData.gstin) {
+      formErrors.submit = 'Please provide at least Mobile Number or GSTIN for the customer'
     }
 
     // Mobile is optional - only validate if entered
-    if (inlineFormData.mobile && !validateMobile(inlineFormData.mobile)) {
+    if (completeData.mobile && !validateMobile(completeData.mobile)) {
       formErrors.mobile = 'Mobile must be 10 digits starting with 6-9'
     }
 
     // GSTIN is optional - only validate if entered
-    if (inlineFormData.gstin && !validateGSTIN(inlineFormData.gstin)) {
+    if (completeData.gstin && !validateGSTIN(completeData.gstin)) {
       formErrors.gstin = 'Invalid GSTIN format (15 characters)'
     }
 
@@ -205,22 +260,22 @@ export function useInvoiceCustomer({
     }
 
     // DUPLICATE CHECK: Prevent creating same customer multiple times (ONLY FOR NEW CUSTOMERS)
-    if (!selectedCustomer && (inlineFormData.mobile || inlineFormData.gstin)) {
+    if (!selectedCustomer && (completeData.mobile || completeData.gstin)) {
       try {
-        const searchQuery = inlineFormData.mobile || inlineFormData.gstin || ''
+        const searchQuery = completeData.mobile || completeData.gstin || ''
         const existingCustomers = await import('../../lib/api/customers')
           .then(m => m.searchCustomersByPartialIdentifier(orgId, searchQuery))
         
         // Check if exact match exists
         const exactMatch = existingCustomers.find(c => {
-          if (inlineFormData.mobile && c.master_customer.mobile === inlineFormData.mobile) return true
-          if (inlineFormData.gstin && c.master_customer.gstin === inlineFormData.gstin) return true
+          if (completeData.mobile && c.master_customer.mobile === completeData.mobile) return true
+          if (completeData.gstin && c.master_customer.gstin === completeData.gstin) return true
           return false
         })
 
         if (exactMatch) {
-          const duplicateField = inlineFormData.mobile ? 'Mobile' : 'GSTIN'
-          const duplicateValue = inlineFormData.mobile || inlineFormData.gstin
+          const duplicateField = completeData.mobile ? 'Mobile' : 'GSTIN'
+          const duplicateValue = completeData.mobile || completeData.gstin
           formErrors.submit = `Customer with ${duplicateField} "${duplicateValue}" already exists. Please search and select from dropdown.`
           setErrors(formErrors)
           return
@@ -239,16 +294,16 @@ export function useInvoiceCustomer({
           await updateCustomerMutation.mutateAsync({
               customerId: selectedCustomer.id,
               data: {
-                  alias_name: inlineFormData.name,
+                  alias_name: completeData.name,
               }
           })
           onCustomerCreated?.(selectedCustomer)
       } else {
-          // Create new customer
+          // Create new customer with merged data
           const customerId = await addCustomerMutation.mutateAsync({
-            name: inlineFormData.name,
-            mobile: inlineFormData.mobile || null,
-            gstin: inlineFormData.gstin || null,
+            name: completeData.name,
+            mobile: completeData.mobile || null,
+            gstin: completeData.gstin || null,
           })
           setNewlyCreatedCustomerId(customerId)
       }
@@ -272,6 +327,8 @@ export function useInvoiceCustomer({
     setErrors({})
   }
 
+
+
   return {
     identifier,
     identifierValid,
@@ -284,6 +341,8 @@ export function useInvoiceCustomer({
     fieldPriority,
     gstinRequired: false, // Deprecated
     mobileRequired: false, // Deprecated
+    completeCustomerData,
+    isCustomerDataComplete,
     setIdentifier,
     setIdentifierValid,
     setSearching,
