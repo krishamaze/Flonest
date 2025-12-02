@@ -5,7 +5,7 @@ import { Input } from '../ui/Input'
 import { Button } from '../ui/Button'
 import { Toggle } from '../ui/Toggle'
 import type { FieldPriority } from '../../hooks/invoice/useInvoiceCustomer'
-import type { SearchMode } from '../../lib/utils/customerSearchMode'
+import { classifySearchMode, type SearchMode } from '../../lib/utils/customerSearchMode'
 import { CheckCircleIcon } from '@heroicons/react/24/solid'
 
 interface CustomerSelectionStepProps {
@@ -290,18 +290,23 @@ export const CustomerSelectionStep: React.FC<CustomerSelectionStepProps> = ({
                                 autoFocus={autoFocus}
                             />
 
-                            {/* ✓ button for name mode - show when user typed 3+ chars but hasn't finalized */}
-                            {searchValue.trim().length >= 3 && !selectedCustomer && !isModeFinalized && (
-                                <button
-                                    type="button"
-                                    onClick={() => handleModeFinalized('name', searchValue)}
-                                    className="absolute right-3 top-[calc(1.5rem+0.25rem+12px)] h-8 w-8 flex items-center justify-center rounded-full bg-success hover:bg-success-dark text-white transition-colors shadow-sm"
-                                    title="Add as new customer"
-                                    aria-label="Add as new customer"
-                                >
-                                    <CheckCircleIcon className="h-5 w-5" />
-                                </button>
-                            )}
+
+                            {/* ✓ button for name mode - show when user typed 3+ chars in NAME mode but hasn't finalized */}
+                            {(() => {
+                                const currentMode = classifySearchMode(searchValue)
+                                const isNameMode = currentMode === 'name'
+                                return isNameMode && searchValue.trim().length >= 3 && !selectedCustomer && !isModeFinalized && (
+                                    <button
+                                        type="button"
+                                        onClick={() => handleModeFinalized('name', searchValue)}
+                                        className="absolute right-3 top-[calc(1.5rem+0.25rem+12px)] h-8 w-8 flex items-center justify-center rounded-full bg-success hover:bg-success-dark text-white transition-colors shadow-sm"
+                                        title="Add as new customer"
+                                        aria-label="Add as new customer"
+                                    >
+                                        <CheckCircleIcon className="h-5 w-5" />
+                                    </button>
+                                )
+                            })()}
                         </div>
                         {searchError && (
                             <p className="text-sm text-error mt-1">{searchError}</p>

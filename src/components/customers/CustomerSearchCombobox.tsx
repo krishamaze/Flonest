@@ -206,8 +206,9 @@ export function CustomerSearchCombobox({
         // Close dropdown
         setIsOpen(false)
 
-        // Finalize on complete input (mobile: 10 digits, GSTIN: 15 chars, name: 3+ chars)
-        if (searchMode && !isModeFinalized && isCompleteInput(value, searchMode)) {
+        // Finalize ONLY for mobile/GSTIN on complete input
+        // Name mode requires explicit ✓ button click in CustomerSelectionStep
+        if (searchMode && searchMode !== 'name' && !isModeFinalized && isCompleteInput(value, searchMode)) {
             setIsModeFinalized(true)
             onModeFinalized?.(searchMode, value)
         }
