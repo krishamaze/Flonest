@@ -72,6 +72,8 @@ export const CustomerSelectionStep: React.FC<CustomerSelectionStepProps> = ({
     const [isModeFinalized, setIsModeFinalized] = React.useState(false)
     // Store dropdown selection temporarily until ✓ is clicked
     const [pendingResult, setPendingResult] = React.useState<CustomerSearchResult | null>(null)
+    // Track identifier validation error
+    const [identifierError, setIdentifierError] = React.useState<string>('')
 
     // Refs for auto-focusing next field
     const nameInputRef = React.useRef<HTMLInputElement>(null)
@@ -113,6 +115,11 @@ export const CustomerSelectionStep: React.FC<CustomerSelectionStepProps> = ({
         // Clear pending dropdown selection on ANY manual edit
         setPendingResult(null)
 
+        // Clear identifier error on manual edit
+        if (identifierError) {
+            setIdentifierError('')
+        }
+
         // If finalized or customer selected, reset on MANUAL change only
         if (isModeFinalized || selectedCustomer) {
             setIsModeFinalized(false)
@@ -122,7 +129,7 @@ export const CustomerSelectionStep: React.FC<CustomerSelectionStepProps> = ({
 
         // Update ref
         prevSearchValue.current = searchValue
-    }, [searchValue, isModeFinalized, selectedCustomer, onCustomerSelected, onFormDataChange])
+    }, [searchValue, isModeFinalized, selectedCustomer, onCustomerSelected, onFormDataChange, identifierError])
 
     // Auto-focus removed - focus stays in identifier field until user manually moves
 
@@ -135,7 +142,42 @@ export const CustomerSelectionStep: React.FC<CustomerSelectionStepProps> = ({
     // Handle selection from combobox - IMMEDIATELY finalize and fill form
     const handleSearchResultSelect = (result: CustomerSearchResult | null) => {
         if (!result) {
-            // "+ Add New Customer" clicked - clear everything, show empty form
+            // "+ Add New Customer" clicked - validate identifier first
+            const mode = classifySearchMode(searchValue)
+            const trimmed = searchValue.trim()
+
+            // Validate identifier completeness based on mode
+            if (mode === 'mobile') {
+                if (trimmed.length < 10) {
+                    setIdentifierError('Mobile number must be at least 10 digits')
+                    return
+                }
+                if (!validateMobile(trimmed)) {
+                    setIdentifierError('Invalid mobile number. Must be 10 digits starting with 6-9')
+                    return
+                }
+            } else if (mode === 'gstin') {
+                if (trimmed.length < 15) {
+                    setIdentifierError('GSTIN must be at least 15 characters')
+                    return
+                }
+                if (!validateGSTIN(trimmed)) {
+                    setIdentifierError('Invalid GSTIN format')
+                    return
+                }
+            } else if (mode === 'name') {
+                if (trimmed.length < 3) {
+                    setIdentifierError('Name must be at least 3 characters')
+                    return
+                }
+            } else {
+                // Unknown mode or < 3 chars
+                setIdentifierError('Please enter at least 3 characters')
+                return
+            }
+
+            // Validation passed - clear error and show form
+            setIdentifierError('')
             onCustomerSelected(null)
             setPendingResult(null)
             setIsModeFinalized(true) // Show fields
@@ -494,6 +536,9 @@ export const CustomerSelectionStep: React.FC<CustomerSelectionStepProps> = ({
                                 autoFocus={autoFocus}
                             />
                         </div>
+                        {identifierError && (
+                            <p className="text-sm text-error mb-2">{identifierError}</p>
+                        )}
                         {searchError && (
                             <p className="text-sm text-error mt-1">{searchError}</p>
                         )}
