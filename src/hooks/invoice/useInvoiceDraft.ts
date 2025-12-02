@@ -297,7 +297,7 @@ export function useInvoiceDraft({
         const result = await autoSaveInvoiceDraft(
           orgId,
           userId,
-          internalDraftInvoiceId || '',
+          draftSessionId.current || '',
           data
         )
         setInternalDraftInvoiceId(result.invoiceId)
