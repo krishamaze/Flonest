@@ -5,6 +5,7 @@ import { Button } from '../ui/Button'
 import { Select } from '../ui/Select'
 import { Input } from '../ui/Input'
 import { PlusIcon, TrashIcon, XCircleIcon } from '@heroicons/react/24/outline'
+import { CURRENCY_SYMBOL } from '../../lib/utils/currency'
 
 interface InvoiceItemsStepProps {
     // Items Data Group
@@ -132,7 +133,7 @@ export const InvoiceItemsStep: React.FC<InvoiceItemsStepProps> = ({
                                             { value: '', label: 'Select a product' },
                                             ...products.map((p) => ({
                                                 value: p.id,
-                                                label: `${p.name} (${p.sku}) - $${p.selling_price?.toFixed(2) || '0.00'}`,
+                                                label: `${p.name} (${p.sku}) - ${CURRENCY_SYMBOL}${p.selling_price?.toFixed(2) || '0.00'}`,
                                             })),
                                         ] : [{ value: '', label: 'No products available' }]}
                                         disabled={isDisabled || loadingProducts}
@@ -260,7 +261,7 @@ export const InvoiceItemsStep: React.FC<InvoiceItemsStepProps> = ({
 
                                     <div className="text-right">
                                         <p className="text-sm text-secondary-text">
-                                            Line Total: <span className="font-semibold text-primary-text">${item.line_total.toFixed(2)}</span>
+                                            Line Total: <span className="font-semibold text-primary-text">{CURRENCY_SYMBOL}{item.line_total.toFixed(2)}</span>
                                         </p>
                                     </div>
                                 </div>

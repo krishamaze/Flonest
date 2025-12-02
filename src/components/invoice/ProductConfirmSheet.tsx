@@ -4,6 +4,7 @@ import { Button } from '../ui/Button'
 import { Input } from '../ui/Input'
 import type { ProductWithMaster } from '../../types'
 import { MinusIcon, PlusIcon } from '@heroicons/react/24/outline'
+import { CURRENCY_SYMBOL } from '../../lib/utils/currency'
 
 interface ProductConfirmSheetProps {
   isOpen: boolean
@@ -109,14 +110,14 @@ export function ProductConfirmSheet({
           <div className="flex justify-between items-center">
             <span className="text-sm font-medium text-secondary-text">Price:</span>
             <span className="text-lg font-semibold text-primary-text">
-              ${product.selling_price?.toFixed(2) || '0.00'}
+              {CURRENCY_SYMBOL}{product.selling_price?.toFixed(2) || '0.00'}
             </span>
           </div>
           {quantity > 1 && (
             <div className="flex justify-between items-center pt-xs border-t border-neutral-200">
               <span className="text-sm font-medium text-secondary-text">Total:</span>
               <span className="text-lg font-semibold text-primary">
-                ${((product.selling_price || 0) * quantity).toFixed(2)}
+                {CURRENCY_SYMBOL}{((product.selling_price || 0) * quantity).toFixed(2)}
               </span>
             </div>
           )}

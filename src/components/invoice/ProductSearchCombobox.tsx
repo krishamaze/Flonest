@@ -3,6 +3,7 @@ import { CameraIcon } from '@heroicons/react/24/outline'
 import { getProducts } from '../../lib/api/products'
 import type { ProductWithMaster } from '../../types'
 import { debounce } from '../../lib/utils/debounce'
+import { CURRENCY_SYMBOL } from '../../lib/utils/currency'
 
 interface ProductSearchComboboxProps {
   onProductSelect: (product: ProductWithMaster) => void
@@ -38,9 +39,9 @@ export function ProductSearchCombobox({
   // Memoize filtered products from props (local search)
   const localSearchResults = useMemo(() => {
     if (!search.trim()) return []
-    
+
     const searchTerm = search.toLowerCase()
-    return products.filter(p => 
+    return products.filter(p =>
       p.name?.toLowerCase().includes(searchTerm) ||
       p.sku?.toLowerCase().includes(searchTerm) ||
       p.ean?.toLowerCase().includes(searchTerm) ||
@@ -60,9 +61,9 @@ export function ProductSearchCombobox({
 
       setIsSearching(true)
       try {
-        const result = await getProducts(orgId, { 
+        const result = await getProducts(orgId, {
           status: 'active',
-          search: term 
+          search: term
         }, { page: 1, pageSize: 20 })
         setSearchResults(result.data as ProductWithMaster[])
       } catch (error) {
@@ -95,7 +96,7 @@ export function ProductSearchCombobox({
     // Merge local and API results, removing duplicates
     const combined = [...localSearchResults]
     const existingIds = new Set(combined.map(p => p.id))
-    
+
     searchResults.forEach(product => {
       if (!existingIds.has(product.id)) {
         combined.push(product)
@@ -148,7 +149,7 @@ export function ProductSearchCombobox({
     switch (e.key) {
       case 'ArrowDown':
         e.preventDefault()
-        setFocusedIndex(prev => 
+        setFocusedIndex(prev =>
           prev < allResults.length - 1 ? prev + 1 : prev
         )
         break
@@ -194,11 +195,11 @@ export function ProductSearchCombobox({
   // Highlight matched text
   const highlightMatch = (text: string, query: string) => {
     if (!query.trim()) return text
-    
+
     const parts = text.split(new RegExp(`(${query})`, 'gi'))
     return (
       <>
-        {parts.map((part, index) => 
+        {parts.map((part, index) =>
           part.toLowerCase() === query.toLowerCase() ? (
             <mark key={index} className="bg-yellow-200 font-semibold">{part}</mark>
           ) : (
@@ -277,18 +278,17 @@ export function ProductSearchCombobox({
               role="option"
               aria-selected={index === focusedIndex}
               onClick={() => handleProductSelect(product)}
-              className={`px-md py-sm cursor-pointer min-h-[44px] flex flex-col justify-center transition-colors ${
-                index === focusedIndex
+              className={`px-md py-sm cursor-pointer min-h-[44px] flex flex-col justify-center transition-colors ${index === focusedIndex
                   ? 'bg-primary text-text-on-primary'
                   : 'hover:bg-neutral-100 text-primary-text'
-              }`}
+                }`}
             >
               <div className="font-medium">
                 {highlightMatch(product.name || 'Unnamed Product', search)}
               </div>
               <div className={`text-xs ${index === focusedIndex ? 'text-text-on-primary/80' : 'text-secondary-text'}`}>
                 {product.sku && `SKU: ${product.sku}`}
-                {product.selling_price && ` • $${product.selling_price.toFixed(2)}`}
+                {product.selling_price && ` • ${CURRENCY_SYMBOL}${product.selling_price.toFixed(2)}`}
               </div>
             </li>
           ))}
