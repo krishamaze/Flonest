@@ -5,8 +5,9 @@ import { supabase } from '../lib/supabase'
 import type { Org } from '../types'
 import { InvoiceForm } from '../components/forms/InvoiceForm'
 import { LoadingSpinner } from '../components/ui/LoadingSpinner'
-import { ArrowLeftIcon, XMarkIcon, ExclamationTriangleIcon } from '@heroicons/react/24/outline'
+import { ExclamationTriangleIcon } from '@heroicons/react/24/outline'
 import { Button } from '../components/ui/Button'
+import { FocusPageLayout } from '../components/layout/FocusPageLayout'
 
 class ErrorBoundary extends Component<{ children: ReactNode }, { hasError: boolean; error: Error | null }> {
     constructor(props: { children: ReactNode }) {
@@ -110,10 +111,6 @@ export function NewInvoicePage() {
         return () => window.removeEventListener('beforeunload', handleBeforeUnload)
     }, [hasUnsavedChanges])
 
-    const handleBack = () => {
-        navigate('/inventory')
-    }
-
     const handleClose = () => {
         if (hasUnsavedChanges) {
             const confirmed = window.confirm(
@@ -148,50 +145,25 @@ export function NewInvoicePage() {
     }
 
     return (
-        <div className="flex flex-col h-screen bg-background">
-            {/* Header */}
-            <header className="sticky top-0 z-50 bg-white border-b border-neutral-200 shadow-sm">
-                <div className="flex items-center justify-between px-4 py-3">
-                    {/* Left: Back button */}
-                    <button
-                        onClick={handleBack}
-                        className="p-2 -ml-2 text-muted-text hover:text-primary-text transition-colors rounded-md hover:bg-neutral-100"
-                        aria-label="Go back"
-                    >
-                        <ArrowLeftIcon className="h-6 w-6" />
-                    </button>
-
-                    {/* Center: Title */}
-                    <h1 className="text-lg font-semibold text-primary-text">New Invoice</h1>
-
-                    {/* Right: Close button */}
-                    <button
-                        onClick={handleClose}
-                        className="p-2 -mr-2 text-muted-text hover:text-primary-text transition-colors rounded-md hover:bg-neutral-100"
-                        aria-label="Close"
-                    >
-                        <XMarkIcon className="h-6 w-6" />
-                    </button>
-                </div>
-            </header>
-
-            {/* Content */}
-            <main className="flex-1 overflow-y-auto">
-                <div className="container mx-auto px-4 py-6 max-w-4xl">
-                    <ErrorBoundary>
-                        <InvoiceForm
-                            isOpen={true}
-                            onClose={handleClose}
-                            onSubmit={handleSubmit}
-                            orgId={user.orgId!}
-                            userId={user.id}
-                            org={org}
-                            mode="page"
-                            onFormChange={(hasChanges: boolean) => setHasUnsavedChanges(hasChanges)}
-                        />
-                    </ErrorBoundary>
-                </div>
-            </main>
-        </div>
+        <FocusPageLayout
+            title="New Invoice"
+            backTo="/inventory"
+            onClose={handleClose}
+        >
+            <div className="container mx-auto px-4 py-6 max-w-4xl">
+                <ErrorBoundary>
+                    <InvoiceForm
+                        isOpen={true}
+                        onClose={handleClose}
+                        onSubmit={handleSubmit}
+                        orgId={user.orgId!}
+                        userId={user.id}
+                        org={org}
+                        mode="page"
+                        onFormChange={(hasChanges: boolean) => setHasUnsavedChanges(hasChanges)}
+                    />
+                </ErrorBoundary>
+            </div>
+        </FocusPageLayout>
     )
 }
