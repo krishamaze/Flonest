@@ -3,14 +3,16 @@ import { useSearchCustomersAutocomplete } from '../../hooks/useCustomers'
 import type { CustomerWithMaster, CustomerSearchResult } from '../../types'
 import { LoadingSpinner } from '../ui/LoadingSpinner'
 import { UserIcon, GlobeAltIcon } from '@heroicons/react/24/outline'
-import { classifySearchMode, isCompleteInput, type SearchMode } from '../../lib/utils/customerSearchMode'
+import { classifySearchMode, type SearchMode } from '../../lib/utils/customerSearchMode'
 
 interface CustomerSearchComboboxProps {
     orgId: string
     value: string
     onChange: (value: string) => void
     onCustomerSelect: (result: CustomerSearchResult | null) => void
-    onModeFinalized?: (mode: SearchMode, value: string) => void  // Pass value for auto-copy
+    onModeFinalized?: (mode: SearchMode) => void
+    onResetMode?: () => void  // Callback to unlock/reset the field
+    isFinalizedExternal?: boolean  // External finalization state from parent
     disabled?: boolean
     autoFocus?: boolean
 }
@@ -20,40 +22,36 @@ export function CustomerSearchCombobox({
     value,
     onChange,
     onCustomerSelect,
-    onModeFinalized,
+    onModeFinalized: _onModeFinalized, // Called by parent via ✓ button, not internally
+    onResetMode,
+    isFinalizedExternal = false,
     disabled = false,
     autoFocus = false,
 }: CustomerSearchComboboxProps) {
     const [isOpen, setIsOpen] = useState(false)
     const [highlightedIndex, setHighlightedIndex] = useState(-1)
     const [searchMode, setSearchMode] = useState<SearchMode>(null)
-    const [isModeFinalized, setIsModeFinalized] = useState(false)
+    const [hasSelected, setHasSelected] = useState(false) // Track if user selected from dropdown
     const inputRef = useRef<HTMLInputElement>(null)
     const dropdownRef = useRef<HTMLDivElement>(null)
-    const prevValue = useRef(value)
-
-    // Reset finalization on any edit
-    useEffect(() => {
-        if (value !== prevValue.current) {
-            setIsModeFinalized(false)
-            prevValue.current = value
-        }
-    }, [value])
 
     // Track base query (first 3 chars) for server fetch
     const [baseQuery, setBaseQuery] = useState('')
 
-    // Classify mode and set base query at 3+ chars
+    // Classify mode and set base query at 3+ chars (debounced)
     useEffect(() => {
         const trimmed = value.trim()
 
         if (trimmed.length < 3) {
-            // Reset mode when below 3 chars
+            // Reset mode when below 3 chars (immediate, no debounce)
             setSearchMode(null)
             setBaseQuery('')
             setIsOpen(false)
-            setIsModeFinalized(false)
-        } else {
+            return
+        }
+
+        // Debounce baseQuery updates by 300ms to reduce flickering
+        const debounceTimer = setTimeout(() => {
             const first3 = trimmed.substring(0, 3)
             const newMode = classifySearchMode(first3)
 
@@ -61,17 +59,18 @@ export function CustomerSearchCombobox({
             if (newMode && newMode !== searchMode) {
                 setSearchMode(newMode)
                 setBaseQuery(trimmed) // Use full input for better search
-                setIsModeFinalized(false)
             } else if (!searchMode && newMode) {
                 // Initial classification
                 setSearchMode(newMode)
                 setBaseQuery(trimmed) // Use full input for better search
-                setIsModeFinalized(false)
             } else if (searchMode) {
                 // Mode already set, update query with more chars for better results
                 setBaseQuery(trimmed)
             }
-        }
+        }, 300)
+
+        // Cleanup timeout on value change
+        return () => clearTimeout(debounceTimer)
         // Above 3 chars with mode already set: mode stays locked, baseQuery unchanged
     }, [value, searchMode])
 
@@ -139,49 +138,28 @@ export function CustomerSearchCombobox({
         return sorted.slice(0, 5)
     }, [value, serverResults, searchMode])
 
-    // Auto-open dropdown at 3+ chars
+    // Auto-open dropdown at 3+ chars (but NOT when finalized/locked or after selection)
     useEffect(() => {
+        if (isFinalizedExternal) {
+            // Don't auto-open when locked
+            setIsOpen(false)
+            return
+        }
+
+        if (hasSelected) {
+            // Don't auto-open after user selected from dropdown
+            // Will reset when user edits the value
+            return
+        }
+
         if (value.trim().length >= 3 && searchMode) {
             setIsOpen(true)
             setHighlightedIndex(-1)
         } else {
             setIsOpen(false)
         }
-    }, [value, searchMode])
+    }, [value, searchMode, isFinalizedExternal, hasSelected])
 
-    // Auto-select on complete input (mobile/GSTIN only, not names)
-    useEffect(() => {
-        if (searchMode === 'name') return // Names require manual selection
-        if (!searchMode || !isCompleteInput(value, searchMode)) return
-        if (isSearching) return // Wait for search to complete
-        if (searchResults.length === 0) {
-            setIsOpen(false)
-            return
-        }
-
-        const cleaned = value.trim().replace(/\s+/g, '')
-
-        // Find exact match
-        const exactMatch = searchResults.find(result => {
-            const customer = result.type === 'org' ? result.data as any : result.data as any
-            const matchMobile = result.type === 'org'
-                ? customer.master_customer?.mobile
-                : customer.mobile
-            const matchGstin = result.type === 'org'
-                ? customer.master_customer?.gstin
-                : customer.gstin
-
-            return searchMode === 'mobile'
-                ? matchMobile === cleaned
-                : matchGstin?.toUpperCase() === cleaned.toUpperCase()
-        })
-
-        if (exactMatch) {
-            handleResultSelect(exactMatch)
-        } else {
-            setIsOpen(false)
-        }
-    }, [value, searchResults, searchMode, isSearching])
 
     // Close on click outside
     useEffect(() => {
@@ -201,26 +179,17 @@ export function CustomerSearchCombobox({
     }, [])
 
     const handleResultSelect = (result: CustomerSearchResult) => {
-        // Finalize mode on selection
-        if (searchMode && !isModeFinalized) {
-            setIsModeFinalized(true)
-            onModeFinalized?.(searchMode, value)
-        }
-
-        setIsOpen(false)
+        // Autocomplete the identifier but DON'T lock yet
+        // User must click ✓ button to finalize/lock
         onCustomerSelect(result)
+        setIsOpen(false)
+        setHasSelected(true) // Mark that user selected from dropdown
     }
 
     const handleBlur = () => {
-        // Close dropdown
+        // Just close dropdown - no auto-finalize
+        // User must click ✓ button to finalize/lock
         setIsOpen(false)
-
-        // Finalize ONLY for mobile/GSTIN on complete input
-        // Name mode requires explicit ✓ button click in CustomerSelectionStep
-        if (searchMode && searchMode !== 'name' && !isModeFinalized && isCompleteInput(value, searchMode)) {
-            setIsModeFinalized(true)
-            onModeFinalized?.(searchMode, value)
-        }
     }
 
     const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -258,7 +227,6 @@ export function CustomerSearchCombobox({
         return 'Customer Identifier'
     }
 
-
     return (
         <div className="relative w-full">
             <div className="relative">
@@ -294,31 +262,47 @@ export function CustomerSearchCombobox({
                         }
 
                         onChange(newValue)
+                        setHasSelected(false) // Reset on manual edit - allow dropdown to reopen
                     }}
                     onKeyDown={handleKeyDown}
                     onBlur={handleBlur}
                     onClick={() => {
-                        if (value.trim().length >= 3 && searchMode) {
+                        if (value.trim().length >= 3 && searchMode && !isFinalizedExternal) {
                             setIsOpen(true)
                         }
                     }}
                     onFocus={() => {
-                        if (value.trim().length >= 3 && searchMode) {
+                        if (value.trim().length >= 3 && searchMode && !isFinalizedExternal) {
                             setIsOpen(true)
                         }
                     }}
                     disabled={disabled}
+                    readOnly={isFinalizedExternal}
                     autoFocus={autoFocus}
                     placeholder="Search by Mobile, GSTIN, or Name"
-                    className="w-full h-12 px-md py-sm border border-neutral-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary disabled:bg-neutral-100 disabled:cursor-not-allowed text-base"
+                    className={`w-full h-12 px-md py-sm border border-neutral-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary disabled:bg-neutral-100 disabled:cursor-not-allowed text-base ${isFinalizedExternal ? 'bg-neutral-50 cursor-default' : ''
+                        }`}
                     aria-autocomplete="list"
                     aria-controls="customer-search-results"
                     aria-expanded={isOpen}
                 />
-                {isSearching && (
+                {isSearching && !isFinalizedExternal && (
                     <div className="absolute right-3 top-[calc(1.5rem+0.25rem+24px)] transform -translate-y-1/2">
                         <LoadingSpinner size="sm" />
                     </div>
+                )}
+                {isFinalizedExternal && onResetMode && (
+                    <button
+                        type="button"
+                        onClick={onResetMode}
+                        className="absolute right-3 top-[calc(1.5rem+0.25rem+24px)] transform -translate-y-1/2 p-1 text-primary hover:text-primary-dark transition-colors"
+                        title="Edit identifier"
+                        aria-label="Edit identifier"
+                    >
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0 1 15.75 21H5.25A2.25 2.25 0 0 1 3 18.75V8.25A2.25 2.25 0 0 1 5.25 6H10" />
+                        </svg>
+                    </button>
                 )}
             </div>
 
@@ -329,7 +313,29 @@ export function CustomerSearchCombobox({
                     className="absolute z-50 w-full mt-1 bg-white border border-neutral-300 rounded-md shadow-lg max-h-80 overflow-y-auto"
                     role="listbox"
                 >
-
+                    {/* Add New Customer option - always first */}
+                    <button
+                        type="button"
+                        onMouseDown={(e) => {
+                            e.preventDefault()
+                            e.stopPropagation()
+                        }}
+                        onClick={() => {
+                            onCustomerSelect(null) // Clear selection, trigger add new mode
+                            setIsOpen(false)
+                        }}
+                        onMouseEnter={() => setHighlightedIndex(-1)}
+                        className={`w-full text-left px-4 py-3 transition-colors min-h-[44px] border-b border-neutral-200 bg-primary-light hover:bg-primary text-primary hover:text-text-on-primary font-medium`}
+                        role="option"
+                        aria-selected={highlightedIndex === -1}
+                    >
+                        <div className="flex items-center gap-2">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5">
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+                            </svg>
+                            <span>Add New Customer</span>
+                        </div>
+                    </button>
 
                     {searchResults.length > 0 ? (
                         searchResults.map((result, index) => {
@@ -353,6 +359,10 @@ export function CustomerSearchCombobox({
                                 <button
                                     key={isOrg ? (data as any).id : `global-${(data as any).id}`}
                                     type="button"
+                                    onMouseDown={(e) => {
+                                        e.preventDefault() // Prevent blur on click
+                                        e.stopPropagation() // Prevent click-outside handler
+                                    }}
                                     onClick={() => handleResultSelect(result)}
                                     onMouseEnter={() => setHighlightedIndex(index)}
                                     className={`w-full text-left px-4 py-3 transition-colors min-h-[44px] border-b border-neutral-100 last:border-0 ${isHighlighted ? 'bg-primary text-text-on-primary' : 'hover:bg-neutral-50'
