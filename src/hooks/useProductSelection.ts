@@ -1,7 +1,8 @@
 import { useState, useCallback, useMemo } from 'react'
-import type { ProductWithMaster } from '../types'
+import type { ProductWithMaster, MasterProduct } from '../types'
 import { useCreateProduct } from './useProducts'
 import { getProducts } from '../lib/api/products'
+import { searchMasterProducts } from '../lib/api/master-products'
 
 /**
  * Hook inputs
@@ -22,6 +23,7 @@ export interface UseProductSelectionReturn {
   setSearchTerm: (value: string) => void
   isSearching: boolean
   searchResults: ProductWithMaster[]
+  masterResults: MasterProduct[] // NEW: master catalog results
   
   // Selection state
   selectedProduct: ProductWithMaster | null
@@ -47,6 +49,7 @@ export interface UseProductSelectionReturn {
   handleCloseAddNewForm: () => void
   handleFormDataChange: (data: Partial<UseProductSelectionReturn['inlineFormData']>) => void
   handleCreateProduct: () => Promise<void>
+  handleLinkMasterProduct: (masterProduct: MasterProduct) => Promise<void> // NEW: link master product
   resetSelection: () => void
 }
 
@@ -70,6 +73,7 @@ export function useProductSelection({
   const [searchTerm, setSearchTerm] = useState('')
   const [isSearching, setIsSearching] = useState(false)
   const [searchResults, setSearchResults] = useState<ProductWithMaster[]>([])
+  const [masterResults, setMasterResults] = useState<MasterProduct[]>([])
   
   // Selection state
   const [selectedProduct, setSelectedProduct] = useState<ProductWithMaster | null>(null)
@@ -105,26 +109,37 @@ export function useProductSelection({
     return true
   }, [inlineFormData])
   
-  // Debounced search handler (caller should debounce)
+  // Enhanced search handler (searches both org products AND master catalog)
   const handleSearch = useCallback(async (query: string) => {
     if (!query || query.trim().length < 2) {
       setSearchResults([])
+      setMasterResults([])
       return
     }
     
     setIsSearching(true)
     try {
-      const result = await getProducts(orgId, { 
-        status: 'active',
-        search: query.trim() 
-      }, { 
-        page: 1, 
-        pageSize: 10 
-      })
-      setSearchResults(result.data as ProductWithMaster[])
+      // Search org products and master catalog in parallel
+      const [orgProductsResult, masterProductsResult] = await Promise.all([
+        getProducts(orgId, { 
+          status: 'active',
+          search: query.trim() 
+        }, { 
+          page: 1, 
+          pageSize: 10 
+        }),
+        searchMasterProducts({
+          q: query.trim(),
+          limit: 5, // Limit master results to avoid overwhelming the dropdown
+        }),
+      ])
+      
+      setSearchResults(orgProductsResult.data as ProductWithMaster[])
+      setMasterResults(masterProductsResult)
     } catch (error) {
       console.error('Error searching products:', error)
       setSearchResults([])
+      setMasterResults([])
     } finally {
       setIsSearching(false)
     }
@@ -257,10 +272,52 @@ export function useProductSelection({
     }
   }, [orgId, inlineFormData, createProductMutation, onError, onProductCreated, onProductSelected])
   
+  // NEW: Link a master product (creates org product linked to master)
+  const handleLinkMasterProduct = useCallback(async (masterProduct: MasterProduct) => {
+    setIsSearching(true)
+    try {
+      // Create org product linked to this master product
+      await createProductMutation.mutateAsync({
+        orgId,
+        data: {
+          name: masterProduct.name,
+          sku: masterProduct.sku,
+          selling_price: masterProduct.base_price || undefined,
+          hsn_sac_code: masterProduct.hsn_code || undefined,
+          unit: masterProduct.base_unit || 'pcs',
+          tax_rate: masterProduct.gst_rate || undefined,
+          // Note: The backend should set master_product_id automatically based on SKU matching
+        },
+      })
+      
+      // Fetch the newly created product
+      const newProducts = await getProducts(orgId, {
+        status: 'active',
+        search: masterProduct.sku
+      }, { page: 1, pageSize: 1 })
+      
+      if (newProducts.data.length > 0) {
+        const newProduct = newProducts.data[0] as ProductWithMaster
+        setSelectedProduct(newProduct)
+        setSearchTerm(newProduct.name)
+        setShowAddNewForm(false)
+        onProductCreated?.(newProduct)
+        onProductSelected?.(newProduct)
+      }
+    } catch (error) {
+      console.error('Error linking master product:', error)
+      const errorMessage = error instanceof Error ? error.message : 'Failed to link master product'
+      onError(errorMessage)
+    } finally {
+      setIsSearching(false)
+    }
+  }, [orgId, createProductMutation, onError, onProductCreated, onProductSelected])
+  
   const resetSelection = useCallback(() => {
     setSearchTerm('')
     setSelectedProduct(null)
     setSearchResults([])
+    setMasterResults([])
     setShowAddNewForm(false)
     setInlineFormData({
       name: '',
@@ -286,6 +343,7 @@ export function useProductSelection({
     },
     isSearching,
     searchResults,
+    masterResults, // NEW: expose master results
     
     // Selection state
     selectedProduct,
@@ -305,6 +363,7 @@ export function useProductSelection({
     handleCloseAddNewForm,
     handleFormDataChange,
     handleCreateProduct,
+    handleLinkMasterProduct, // NEW: expose link function
     resetSelection,
   }
 }
