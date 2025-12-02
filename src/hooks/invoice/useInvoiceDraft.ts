@@ -76,7 +76,6 @@ export function useInvoiceDraft({
   const [draftLoadError, setDraftLoadError] = useState<string | null>(null)
   const [isRetrying, setIsRetrying] = useState(false)
   const [internalDraftInvoiceId, setInternalDraftInvoiceId] = useState<string | null>(null)
-  const [lastAutoSaveTime, setLastAutoSaveTime] = useState<number | null>(null)
   
   // Refs
   const draftLoadRetries = useRef(0)
@@ -306,12 +305,7 @@ export function useInvoiceDraft({
             setDraftSessionId(result.invoiceId, result.sessionId)
           }
         }
-        const now = Date.now()
-        // Only show toast if it's been more than 3 seconds since last auto-save (avoid spam)
-        if (!lastAutoSaveTime || now - lastAutoSaveTime > 3000) {
-          showToast('success', 'Draft saved automatically', { autoClose: 2000 })
-          setLastAutoSaveTime(now)
-        }
+        // Auto-save is silent - no toast needed
       } catch (error) {
         console.error('Auto-save failed:', error)
       }
