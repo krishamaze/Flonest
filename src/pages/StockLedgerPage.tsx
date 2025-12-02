@@ -19,8 +19,7 @@ import type { StockLedgerFormData } from '../types'
 export function StockLedgerPage() {
   const { user } = useAuth()
   const { registerRefreshHandler, unregisterRefreshHandler } = useRefresh()
-  const [isTransactionFormOpen, setIsTransactionFormOpen] = useState(false)
-  const [isAdjustmentModalOpen, setIsAdjustmentModalOpen] = useState(false)
+  const [isStockModalOpen, setIsStockModalOpen] = useState(false)
   const [filterType, setFilterType] = useState<'all' | 'in' | 'out' | 'adjustment'>('all')
   const queryClient = useQueryClient()
   const stockLedgerQueryKey = useMemo(
@@ -141,23 +140,9 @@ export function StockLedgerPage() {
     await loadLatestLedger()
   }
 
-  // Unified handler for StockAdjustmentModal (routes based on modal type)
+  // Unified handler for StockAdjustmentModal (always uses signed delta)
   const handleStockSubmit = async (data: { product_id: string; quantity: number; notes?: string }) => {
-    if (isAdjustmentModalOpen) {
-      // Manual adjustment - use adjustStockLevel RPC
-      await handleAdjustment(data)
-    } else {
-      // Regular transaction - convert to StockLedgerFormData
-      //Note: Manual adjustments use signed quantity, regular transactions need type
-      // For now, treat positive as 'in' and negative as 'out'
-      const ledgerData: StockLedgerFormData = {
-        product_id: data.product_id,
-        transaction_type: data.quantity >= 0 ? 'in' : 'out',
-        quantity: Math.abs(data.quantity),
-        notes: data.notes,
-      }
-      await handleCreateTransaction(ledgerData)
-    }
+    await handleAdjustment(data)
   }
 
   const filteredLedger = useMemo(() => {
@@ -206,24 +191,15 @@ export function StockLedgerPage() {
       {/* Page Header */}
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-semibold text-primary-text">Stock Ledger</h1>
-        <div className="flex items-center gap-2">
-          <Button
-            variant="secondary"
-            size="sm"
-            onClick={() => setIsAdjustmentModalOpen(true)}
-          >
-            Manual Adjustment
-          </Button>
-          <Button
-            variant="primary"
-            size="sm"
-            className="flex items-center gap-1.5"
-            onClick={() => setIsTransactionFormOpen(true)}
-          >
-            <PlusIcon className="h-4 w-4" />
-            <span className="hidden sm:inline text-sm">New Transaction</span>
-          </Button>
-        </div>
+        <Button
+          variant="primary"
+          size="sm"
+          className="flex items-center gap-1.5"
+          onClick={() => setIsStockModalOpen(true)}
+        >
+          <PlusIcon className="h-4 w-4" />
+          <span className="hidden sm:inline text-sm">Adjust Stock</span>
+        </Button>
       </div>
 
       {/* Filter Buttons */}
@@ -294,11 +270,11 @@ export function StockLedgerPage() {
               <Button
                 variant="primary"
                 size="sm"
-                onClick={() => setIsTransactionFormOpen(true)}
+                onClick={() => setIsStockModalOpen(true)}
                 className="min-h-[44px]"
               >
                 <PlusIcon className="h-4 w-4 mr-2" />
-                Create First Transaction
+                Adjust Stock
               </Button>
             )}
           </CardContent>
@@ -347,17 +323,14 @@ export function StockLedgerPage() {
         </div>
       )}
 
-      {/* Stock Adjustment Modal (handles both transactions and manual adjustments) */}
+      {/* Stock Adjustment Modal */}
       {user && (
         <StockAdjustmentModal
-          isOpen={isTransactionFormOpen || isAdjustmentModalOpen}
-          onClose={() => {
-            setIsTransactionFormOpen(false)
-            setIsAdjustmentModalOpen(false)
-          }}
+          isOpen={isStockModalOpen}
+          onClose={() => setIsStockModalOpen(false)}
           onSubmit={handleStockSubmit}
           orgId={user.orgId!}
-          title={isAdjustmentModalOpen ? 'Manual Stock Adjustment' : 'Stock Transaction'}
+          title="Adjust Stock"
         />
       )}
     </div>
