@@ -17,12 +17,23 @@ export function Modal({ isOpen, onClose, title, children, className = '', header
 
   useEffect(() => {
     if (isOpen) {
-      // Prevent body scroll when modal is open
+      // Save current scroll position
+      const scrollY = window.scrollY
       const scrollbarWidth = window.innerWidth - document.documentElement.clientWidth
+
+      // Apply scroll lock with position: fixed to prevent scroll on mobile
+      document.body.style.position = 'fixed'
+      document.body.style.top = `-${scrollY}px`
+      document.body.style.width = '100%'
       document.body.style.overflow = 'hidden'
       document.body.style.paddingRight = `${scrollbarWidth}px`
+
+      // Store scroll position for restoration
+      document.body.dataset.scrollY = scrollY.toString()
+
       // Store previous focus
       previousFocusRef.current = document.activeElement as HTMLElement
+
       // Focus trap - focus first focusable element
       setTimeout(() => {
         const firstFocusable = modalRef.current?.querySelector(
@@ -31,15 +42,37 @@ export function Modal({ isOpen, onClose, title, children, className = '', header
         firstFocusable?.focus()
       }, 100)
     } else {
+      // Restore scroll position
+      const scrollY = document.body.dataset.scrollY
+
+      // Remove scroll lock styles
+      document.body.style.position = ''
+      document.body.style.top = ''
+      document.body.style.width = ''
       document.body.style.overflow = ''
       document.body.style.paddingRight = ''
+
+      // Restore scroll position
+      if (scrollY) {
+        window.scrollTo(0, parseInt(scrollY))
+        delete document.body.dataset.scrollY
+      }
+
       // Restore previous focus
       previousFocusRef.current?.focus()
     }
 
     return () => {
+      const scrollY = document.body.dataset.scrollY
+      document.body.style.position = ''
+      document.body.style.top = ''
+      document.body.style.width = ''
       document.body.style.overflow = ''
       document.body.style.paddingRight = ''
+      if (scrollY) {
+        window.scrollTo(0, parseInt(scrollY))
+        delete document.body.dataset.scrollY
+      }
     }
   }, [isOpen])
 
@@ -100,6 +133,7 @@ export function Modal({ isOpen, onClose, title, children, className = '', header
           animation: 'fade-in 200ms cubic-bezier(0.0, 0.0, 0.2, 1)',
         }}
         onClick={onClose}
+        onTouchMove={(e) => e.preventDefault()}
         aria-hidden="true"
       />
 
