@@ -1,4 +1,4 @@
-import { useState, FormEvent, useEffect } from 'react'
+import { useState, FormEvent, useEffect, useCallback } from 'react'
 import { Button } from '../ui/Button'
 import { Modal } from '../ui/Modal'
 import { Drawer } from '../ui/Drawer'
@@ -8,7 +8,7 @@ import { CustomerSelectionStep } from '../invoice/CustomerSelectionStep'
 import { InvoiceItemsStep } from '../invoice/InvoiceItemsStep'
 import { ProductConfirmSheet } from '../invoice/ProductConfirmSheet'
 import { CameraScanner } from '../invoice/CameraScanner'
-import type { InvoiceFormData, Org, ProductWithMaster } from '../../types'
+import type { InvoiceFormData, Org, ProductWithMaster, CustomerWithMaster, InvoiceItemFormData } from '../../types'
 
 import { getAllProducts } from '../../lib/api/products'
 import { createInvoice, validateInvoiceItems, clearDraftSessionId } from '../../lib/api/invoices'
@@ -92,10 +92,7 @@ export function InvoiceForm({
     onError: (message) => {
       showToast('error', message, { autoClose: 3000 })
     },
-    // We'll wire this up later if needed
-    onItemsChange: (_items) => {
-      // Optional: trigger draft save or validation
-    }
+    // onItemsChange not needed - draft hook reads items directly
   })
 
 
@@ -131,6 +128,22 @@ export function InvoiceForm({
     }
   })
 
+  // Memoized callbacks for draft management to prevent render loops
+  const handleDraftRestored = useCallback(({ customer, items: restoredItems }: { customer: CustomerWithMaster | null; items: InvoiceItemFormData[] }) => {
+    if (customer) {
+      hookSetSelectedCustomer(customer)
+    }
+    hookSetItems(restoredItems)
+    setCurrentStep(2)
+  }, [hookSetSelectedCustomer, hookSetItems])
+
+  const handleDraftReset = useCallback(() => {
+    setCurrentStep(1)
+    hookResetCustomer()
+    hookSetItems([])
+    setErrors({})
+  }, [hookResetCustomer, hookSetItems])
+
   // Draft management hook
   const {
     draftInvoiceId: internalDraftInvoiceId,
@@ -151,19 +164,8 @@ export function InvoiceForm({
     isOpen,
     initialDraftInvoiceId: draftInvoiceId,
     mode,
-    onDraftRestored: ({ customer, items: restoredItems }) => {
-      if (customer) {
-        hookSetSelectedCustomer(customer)
-      }
-      hookSetItems(restoredItems)
-      setCurrentStep(2)
-    },
-    onReset: () => {
-      setCurrentStep(1)
-      hookResetCustomer()
-      hookSetItems([])
-      setErrors({})
-    },
+    onDraftRestored: handleDraftRestored,
+    onReset: handleDraftReset,
   })
 
   // Scanner management hook
