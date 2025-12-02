@@ -1,16 +1,18 @@
 import { useState, useEffect, useRef } from 'react'
-import type { ProductWithMaster } from '../../types'
+import type { ProductWithMaster, MasterProduct } from '../../types'
 import { LoadingSpinner } from '../ui/LoadingSpinner'
-import { CubeIcon, PlusIcon, CameraIcon } from '@heroicons/react/24/outline'
+import { CubeIcon, PlusIcon, CameraIcon, LinkIcon } from '@heroicons/react/24/outline'
 
 interface ProductSelectionComboboxProps {
     searchTerm: string
     setSearchTerm: (value: string) => void
     isSearching: boolean
     searchResults: ProductWithMaster[]
+    masterResults?: MasterProduct[] // NEW: master catalog results
     selectedProduct: ProductWithMaster | null
     onProductSelect: (product: ProductWithMaster | null) => void
     onOpenAddNewForm: () => void
+    onLinkMasterProduct?: (masterProduct: MasterProduct) => void // NEW: link master product
     onCameraScan?: () => void
     disabled?: boolean
     autoFocus?: boolean
@@ -22,9 +24,11 @@ export function ProductSelectionCombobox({
     setSearchTerm,
     isSearching,
     searchResults,
+    masterResults = [], // NEW: default to empty array
     selectedProduct,
     onProductSelect,
     onOpenAddNewForm,
+    onLinkMasterProduct, // NEW: link master product handler
     onCameraScan,
     disabled = false,
     autoFocus = false,
@@ -210,8 +214,8 @@ export function ProductSelectionCombobox({
                             }}
                             onMouseEnter={() => setHighlightedIndex(0)}
                             className={`w-full text-left px-4 py-3 transition-colors min-h-[44px] border-b border-neutral-200 ${highlightedIndex === 0
-                                    ? 'bg-primary text-text-on-primary'
-                                    : 'hover:bg-neutral-50'
+                                ? 'bg-primary text-text-on-primary'
+                                : 'hover:bg-neutral-50'
                                 }`}
                             role="option"
                             aria-selected={highlightedIndex === 0}
@@ -223,55 +227,121 @@ export function ProductSelectionCombobox({
                         </button>
                     )}
 
-                    {searchResults.length > 0 ? (
-                        searchResults.map((product, index) => {
-                            const adjustedIndex = onCameraScan ? index + 1 : index
-                            const isHighlighted = highlightedIndex === adjustedIndex
+                    {/* Org Products Section */}
+                    {searchResults.length > 0 && (
+                        <>
+                            <div className="px-3 py-2 text-xs font-semibold text-secondary-text bg-neutral-50 border-b border-neutral-200">
+                                Your Products
+                            </div>
+                            {searchResults.map((product, index) => {
+                                const adjustedIndex = onCameraScan ? index + 1 : index
+                                const isHighlighted = highlightedIndex === adjustedIndex
 
-                            return (
-                                <button
-                                    key={product.id}
-                                    type="button"
-                                    onMouseDown={(e) => {
-                                        e.preventDefault() // Prevent blur on click
-                                        e.stopPropagation() // Prevent click-outside handler
-                                    }}
-                                    onClick={() => handleResultSelect(product)}
-                                    onMouseEnter={() => setHighlightedIndex(adjustedIndex)}
-                                    className={`w-full text-left px-4 py-3 transition-colors min-h-[44px] border-b border-neutral-100 last:border-0 ${isHighlighted ? 'bg-primary text-text-on-primary' : 'hover:bg-neutral-50'
-                                        }`}
-                                    role="option"
-                                    aria-selected={isHighlighted}
-                                >
-                                    <div className="space-y-0.5">
-                                        <div className="flex items-center justify-between gap-2">
-                                            <div className="flex items-center gap-2">
-                                                <CubeIcon className={`h-4 w-4 ${isHighlighted ? 'text-text-on-primary' : 'text-primary'}`} />
-                                                <div className={`text-base font-semibold ${isHighlighted ? 'text-text-on-primary' : 'text-primary-text'}`}>
-                                                    {product.name}
+                                return (
+                                    <button
+                                        key={product.id}
+                                        type="button"
+                                        onMouseDown={(e) => {
+                                            e.preventDefault() // Prevent blur on click
+                                            e.stopPropagation() // Prevent click-outside handler
+                                        }}
+                                        onClick={() => handleResultSelect(product)}
+                                        onMouseEnter={() => setHighlightedIndex(adjustedIndex)}
+                                        className={`w-full text-left px-4 py-3 transition-colors min-h-[44px] border-b border-neutral-100 ${isHighlighted ? 'bg-primary text-text-on-primary' : 'hover:bg-neutral-50'
+                                            }`}
+                                        role="option"
+                                        aria-selected={isHighlighted}
+                                    >
+                                        <div className="space-y-0.5">
+                                            <div className="flex items-center justify-between gap-2">
+                                                <div className="flex items-center gap-2">
+                                                    <CubeIcon className={`h-4 w-4 ${isHighlighted ? 'text-text-on-primary' : 'text-primary'}`} />
+                                                    <div className={`text-base font-semibold ${isHighlighted ? 'text-text-on-primary' : 'text-primary-text'}`}>
+                                                        {product.name}
+                                                    </div>
                                                 </div>
+                                                {product.selling_price && (
+                                                    <span className={`text-sm font-medium ${isHighlighted ? 'text-text-on-primary' : 'text-primary'}`}>
+                                                        ₹{product.selling_price.toFixed(2)}
+                                                    </span>
+                                                )}
                                             </div>
-                                            {product.selling_price && (
-                                                <span className={`text-sm font-medium ${isHighlighted ? 'text-text-on-primary' : 'text-primary'}`}>
-                                                    ₹{product.selling_price.toFixed(2)}
-                                                </span>
-                                            )}
-                                        </div>
 
-                                        <div className={`text-sm pl-6 ${isHighlighted ? 'text-text-on-primary opacity-90' : 'text-secondary-text'}`}>
-                                            SKU: {product.sku}
-                                            {product.ean && ` • EAN: ${product.ean}`}
-                                            {product.hsn_sac_code && ` • HSN: ${product.hsn_sac_code}`}
+                                            <div className={`text-sm pl-6 ${isHighlighted ? 'text-text-on-primary opacity-90' : 'text-secondary-text'}`}>
+                                                SKU: {product.sku}
+                                                {product.ean && ` • EAN: ${product.ean}`}
+                                                {product.hsn_sac_code && ` • HSN: ${product.hsn_sac_code}`}
+                                            </div>
                                         </div>
-                                    </div>
-                                </button>
-                            )
-                        })
-                    ) : !isSearching ? (
+                                    </button>
+                                )
+                            })}
+                        </>
+                    )}
+
+                    {/* Master Catalog Section */}
+                    {masterResults.length > 0 && onLinkMasterProduct && (
+                        <>
+                            <div className="px-3 py-2 text-xs font-semibold text-secondary-text bg-blue-50 border-b border-blue-200 flex items-center gap-1.5">
+                                <LinkIcon className="h-3.5 w-3.5" />
+                                <span>Link from Master Catalog</span>
+                            </div>
+                            {masterResults.map((masterProduct, index) => {
+                                const masterStartIndex = searchResults.length + (onCameraScan ? 1 : 0)
+                                const adjustedIndex = masterStartIndex + index
+                                const isHighlighted = highlightedIndex === adjustedIndex
+
+                                return (
+                                    <button
+                                        key={masterProduct.id}
+                                        type="button"
+                                        onMouseDown={(e) => {
+                                            e.preventDefault()
+                                            e.stopPropagation()
+                                        }}
+                                        onClick={() => {
+                                            onLinkMasterProduct(masterProduct)
+                                            setIsOpen(false)
+                                        }}
+                                        onMouseEnter={() => setHighlightedIndex(adjustedIndex)}
+                                        className={`w-full text-left px-4 py-3 transition-colors min-h-[44px] border-b border-neutral-100 last:border-0 ${isHighlighted ? 'bg-blue-600 text-white' : 'hover:bg-blue-50'
+                                            }`}
+                                        role="option"
+                                        aria-selected={isHighlighted}
+                                    >
+                                        <div className="space-y-0.5">
+                                            <div className="flex items-center justify-between gap-2">
+                                                <div className="flex items-center gap-2">
+                                                    <LinkIcon className={`h-4 w-4 ${isHighlighted ? 'text-white' : 'text-blue-600'}`} />
+                                                    <div className={`text-base font-semibold ${isHighlighted ? 'text-white' : 'text-primary-text'}`}>
+                                                        {masterProduct.name}
+                                                    </div>
+                                                </div>
+                                                {masterProduct.base_price && (
+                                                    <span className={`text-sm font-medium ${isHighlighted ? 'text-white' : 'text-blue-600'}`}>
+                                                        ₹{masterProduct.base_price.toFixed(2)}
+                                                    </span>
+                                                )}
+                                            </div>
+
+                                            <div className={`text-sm pl-6 ${isHighlighted ? 'text-white opacity-90' : 'text-secondary-text'}`}>
+                                                SKU: {masterProduct.sku}
+                                                {masterProduct.barcode_ean && ` • EAN: ${masterProduct.barcode_ean}`}
+                                                {masterProduct.hsn_code && ` • HSN: ${masterProduct.hsn_code}`}
+                                            </div>
+                                        </div>
+                                    </button>
+                                )
+                            })}
+                        </>
+                    )}
+
+                    {/* No Results */}
+                    {searchResults.length === 0 && masterResults.length === 0 && !isSearching && (
                         <div className="px-4 py-3 text-sm text-secondary-text text-center">
                             No matching products found
                         </div>
-                    ) : null}
+                    )}
                 </div>
             )}
         </div>

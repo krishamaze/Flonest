@@ -122,6 +122,7 @@ export function StockAdjustmentModal({
                 setSearchTerm={productSelection.setSearchTerm}
                 isSearching={productSelection.isSearching}
                 searchResults={productSelection.searchResults}
+                masterResults={productSelection.masterResults}
                 selectedProduct={productSelection.selectedProduct}
                 onProductSelect={(product) => {
                     if (product) {
@@ -129,6 +130,7 @@ export function StockAdjustmentModal({
                     }
                 }}
                 onOpenAddNewForm={productSelection.handleOpenAddNewForm}
+                onLinkMasterProduct={productSelection.handleLinkMasterProduct}
                 autoFocus={true}
             />
             {errors.product && (
