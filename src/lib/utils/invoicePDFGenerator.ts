@@ -279,8 +279,8 @@ export function generateInvoiceHTML(
     
     .parties-section {
       display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 30px;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 20px;
       margin-bottom: 20px;
     }
     
@@ -522,6 +522,16 @@ export function generateInvoiceHTML(
         ` : ''}
         ${customer.master_customer?.mobile ? `
           <div class="party-detail"><strong>Phone:</strong> ${customer.master_customer.mobile}</div>
+        ` : ''}
+      </div>
+      
+      <!-- Ship To -->
+      <div class="party-box">
+        <div class="party-label">Ship To</div>
+        <div class="party-name">${customer.master_customer?.legal_name || customer.alias_name || 'Same as Bill To'}</div>
+        <div class="party-detail">${customer.shipping_address || customer.billing_address || customer.master_customer?.address || ''}</div>
+        ${customer.state_code || customer.master_customer?.state_code ? `
+          <div class="party-detail">${getStateName(customer.state_code || customer.master_customer?.state_code || null)}</div>
         ` : ''}
       </div>
     </div>
