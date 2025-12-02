@@ -259,7 +259,7 @@ export function useInvoiceCustomer({
       return
     }
 
-    // DUPLICATE CHECK: Prevent creating same customer multiple times (ONLY FOR NEW CUSTOMERS)
+    // DUPLICATE CHECK: Silently reuse existing customer on match (ONLY FOR NEW CUSTOMERS)
     if (!selectedCustomer && (completeData.mobile || completeData.gstin)) {
       try {
         const searchQuery = completeData.mobile || completeData.gstin || ''
@@ -274,10 +274,16 @@ export function useInvoiceCustomer({
         })
 
         if (exactMatch) {
-          const duplicateField = completeData.mobile ? 'Mobile' : 'GSTIN'
-          const duplicateValue = completeData.mobile || completeData.gstin
-          formErrors.submit = `Customer with ${duplicateField} "${duplicateValue}" already exists. Please search and select from dropdown.`
-          setErrors(formErrors)
+          // Silently reuse existing customer instead of showing error
+          setSelectedCustomer(exactMatch)
+          setIdentifier(exactMatch.alias_name || exactMatch.master_customer.legal_name)
+          setInlineFormData({
+            name: exactMatch.alias_name || exactMatch.master_customer.legal_name,
+            mobile: exactMatch.master_customer.mobile || '',
+            gstin: exactMatch.master_customer.gstin || ''
+          })
+          onCustomerCreated?.(exactMatch)
+          setSearching(false)
           return
         }
       } catch (error) {
