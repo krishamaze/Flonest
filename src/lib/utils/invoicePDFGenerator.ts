@@ -24,6 +24,7 @@ export interface InvoiceWithDetails extends Invoice {
     total_amount: number
     description?: string | null
     product?: ProductWithMaster
+    serials?: Array<{ serial_number: string }>
   }>
   customer?: CustomerWithMaster
   org?: Org
@@ -561,12 +562,16 @@ export function generateInvoiceHTML(
           const quantity = invoiceItem?.quantity || 0
           const unit = invoiceItem?.unit || 'pcs'
           const unitPrice = invoiceItem?.unit_price || 0
+          const serialNumbers = invoiceItem?.serials?.map(s => s.serial_number).join(', ') || ''
           
           if (isIntrastateBase) {
             return `
               <tr>
                 <td class="text-center">${index + 1}</td>
-                <td>${productName}</td>
+                <td>
+                  ${productName}
+                  ${serialNumbers ? `<div style="font-size: 9px; color: #666; margin-top: 2px;">S/N: ${serialNumbers}</div>` : ''}
+                </td>
                 <td class="text-center">${item.hsn_sac_code || 'N/A'}</td>
                 <td class="text-center">${quantity}</td>
                 <td class="text-center">${unit}</td>
@@ -583,8 +588,11 @@ export function generateInvoiceHTML(
             // Interstate (including zero-rated SEZ interstate supplies)
             return `
               <tr>
-                <td class="text-center">${index + 1}</td>
-                <td>${productName}</td>
+                <td class=\"text-center\">${index + 1}</td>
+                <td>
+                  ${productName}
+                  ${serialNumbers ? `<div style=\"font-size: 9px; color: #666; margin-top: 2px;\">S/N: ${serialNumbers}</div>` : ''}
+                </td>
                 <td class="text-center">${item.hsn_sac_code || 'N/A'}</td>
                 <td class="text-center">${quantity}</td>
                 <td class="text-center">${unit}</td>
@@ -599,8 +607,11 @@ export function generateInvoiceHTML(
             // Exempt (unregistered/consumer) - no tax columns
             return `
               <tr>
-                <td class="text-center">${index + 1}</td>
-                <td>${productName}</td>
+                <td class=\"text-center\">${index + 1}</td>
+                <td>
+                  ${productName}
+                  ${serialNumbers ? `<div style=\"font-size: 9px; color: #666; margin-top: 2px;\">S/N: ${serialNumbers}</div>` : ''}
+                </td>
                 <td class="text-center">${item.hsn_sac_code || 'N/A'}</td>
                 <td class="text-center">${quantity}</td>
                 <td class="text-center">${unit}</td>

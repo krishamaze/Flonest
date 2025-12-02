@@ -16,7 +16,8 @@ export async function getInvoiceById(invoiceId: string): Promise<Invoice & {
           product:products(
             *,
             master_product:master_products(*)
-          )
+          ),
+          serials:invoice_item_serials(serial_number)
         ),
         customer:customers(
           *,
