@@ -93,8 +93,8 @@ export function ProductSelectionCombobox({
     const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
         if (!isOpen) return
 
-        // Total items: Add New + Camera (if available) + search results
-        const totalItems = searchResults.length + 1 + (onCameraScan ? 1 : 0)
+        // Total items: Add New + Camera (if available) + org products + master products
+        const totalItems = searchResults.length + masterResults.length + 1 + (onCameraScan ? 1 : 0)
 
         switch (e.key) {
             case 'ArrowDown':

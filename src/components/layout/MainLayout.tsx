@@ -22,8 +22,7 @@ function MainLayoutContent() {
 
   // Hide navigation on full-screen detail pages
   const hideNavigation =
-    (location.pathname.startsWith('/customers/') && location.pathname !== '/customers') ||
-    location.pathname === '/stock-ledger'
+    location.pathname.startsWith('/customers/') && location.pathname !== '/customers'
 
   return (
     <div className="flex viewport-height flex-col bg-bg-page overflow-hidden">

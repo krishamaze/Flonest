@@ -126,17 +126,25 @@ export function InventoryPage() {
         // Toast will be shown in InvoiceForm when it loads
       }
 
-      // Open form with draft
-      setSelectedDraftId(invoiceId)
-      setIsInvoiceFormOpen(true)
+      // Mobile: Navigate to edit page, Desktop: Open modal
+      if (isMobile) {
+        navigate(`/invoices/${invoiceId}/edit`)
+      } else {
+        setSelectedDraftId(invoiceId)
+        setIsInvoiceFormOpen(true)
+      }
 
       // Reload invoices to reflect any status changes
       await loadInvoices()
     } catch (error) {
       console.error('Error opening draft:', error)
       // Still open the form even if revalidation fails
-      setSelectedDraftId(invoiceId)
-      setIsInvoiceFormOpen(true)
+      if (isMobile) {
+        navigate(`/invoices/${invoiceId}/edit`)
+      } else {
+        setSelectedDraftId(invoiceId)
+        setIsInvoiceFormOpen(true)
+      }
     }
   }
 

@@ -53,6 +53,7 @@ const JoinOrgPage = lazy(() => import('./pages/JoinOrgPage').then(m => ({ defaul
 const PurchaseBillsPage = lazy(() => import('./pages/PurchaseBillsPage').then(m => ({ default: m.PurchaseBillsPage })))
 const PurchaseBillDetailsPage = lazy(() => import('./pages/PurchaseBillDetailsPage').then(m => ({ default: m.PurchaseBillDetailsPage })))
 const NewInvoicePage = lazy(() => import('./pages/NewInvoicePage').then(m => ({ default: m.NewInvoicePage })))
+const EditInvoicePage = lazy(() => import('./pages/EditInvoicePage').then(m => ({ default: m.EditInvoicePage })))
 
 /**
  * Redirect platform admins away from org routes to /platform-admin
@@ -175,6 +176,14 @@ function AppRoutes() {
               element={
                 <ProtectedRoute>
                   <NewInvoicePage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/invoices/:id/edit"
+              element={
+                <ProtectedRoute>
+                  <EditInvoicePage />
                 </ProtectedRoute>
               }
             />
