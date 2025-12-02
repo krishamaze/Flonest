@@ -5,15 +5,14 @@ import type { StockLedger, Product } from '../types'
 import { Card, CardContent } from '../components/ui/Card'
 import { LoadingSpinner } from '../components/ui/LoadingSpinner'
 import { Button } from '../components/ui/Button'
-import { StockTransactionForm } from '../components/forms/StockTransactionForm'
-import { ManualAdjustmentModal } from '../components/forms/ManualAdjustmentModal'
+import { StockAdjustmentModal } from '../components/stock/StockAdjustmentModal'
 import {
   PlusIcon,
   ArrowDownTrayIcon,
   ArrowUpTrayIcon,
   AdjustmentsHorizontalIcon,
 } from '@heroicons/react/24/outline'
-import { getStockLedgerWithProducts, createStockTransaction } from '../lib/api/stockLedger'
+import { getStockLedgerWithProducts, createStockTransaction, adjustStockLevel } from '../lib/api/stockLedger'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import type { StockLedgerFormData } from '../types'
 
@@ -135,6 +134,32 @@ export function StockLedgerPage() {
     await createTransactionMutation.mutateAsync({ formData: data, product })
   }
 
+  // Wrapper to handle stock adjustments (calls adjust_stock_level RPC)
+  const handleAdjustment = async (data: { product_id: string; quantity: number; notes?: string }) => {
+    if (!user?.orgId) return
+    await adjustStockLevel(user.orgId, data.product_id, data.quantity, data.notes || '')
+    await loadLatestLedger()
+  }
+
+  // Unified handler for StockAdjustmentModal (routes based on modal type)
+  const handleStockSubmit = async (data: { product_id: string; quantity: number; notes?: string }) => {
+    if (isAdjustmentModalOpen) {
+      // Manual adjustment - use adjustStockLevel RPC
+      await handleAdjustment(data)
+    } else {
+      // Regular transaction - convert to StockLedgerFormData
+      //Note: Manual adjustments use signed quantity, regular transactions need type
+      // For now, treat positive as 'in' and negative as 'out'
+      const ledgerData: StockLedgerFormData = {
+        product_id: data.product_id,
+        transaction_type: data.quantity >= 0 ? 'in' : 'out',
+        quantity: Math.abs(data.quantity),
+        notes: data.notes,
+      }
+      await handleCreateTransaction(ledgerData)
+    }
+  }
+
   const filteredLedger = useMemo(() => {
     if (filterType === 'all') return stockLedger
     return stockLedger.filter((entry) => entry.transaction_type === filterType)
@@ -205,11 +230,10 @@ export function StockLedgerPage() {
       <div className="flex gap-2">
         <button
           onClick={() => setFilterType('all')}
-          className={`px-md py-sm min-h-[44px] rounded-md text-sm font-medium transition-colors duration-200 ${
-            filterType === 'all'
-              ? 'bg-primary text-on-primary font-semibold'
-              : 'bg-neutral-100 text-secondary-text hover:bg-neutral-200'
-          }`}
+          className={`px-md py-sm min-h-[44px] rounded-md text-sm font-medium transition-colors duration-200 ${filterType === 'all'
+            ? 'bg-primary text-on-primary font-semibold'
+            : 'bg-neutral-100 text-secondary-text hover:bg-neutral-200'
+            }`}
           aria-label="Show all transactions"
           aria-pressed={filterType === 'all'}
         >
@@ -217,11 +241,10 @@ export function StockLedgerPage() {
         </button>
         <button
           onClick={() => setFilterType('in')}
-          className={`px-md py-sm min-h-[44px] rounded-md text-sm font-medium transition-colors duration-200 ${
-            filterType === 'in'
-              ? 'bg-success text-on-dark font-semibold'
-              : 'bg-neutral-100 text-secondary-text hover:bg-neutral-200'
-          }`}
+          className={`px-md py-sm min-h-[44px] rounded-md text-sm font-medium transition-colors duration-200 ${filterType === 'in'
+            ? 'bg-success text-on-dark font-semibold'
+            : 'bg-neutral-100 text-secondary-text hover:bg-neutral-200'
+            }`}
           aria-label="Show stock in transactions"
           aria-pressed={filterType === 'in'}
         >
@@ -229,11 +252,10 @@ export function StockLedgerPage() {
         </button>
         <button
           onClick={() => setFilterType('out')}
-          className={`px-md py-sm min-h-[44px] rounded-md text-sm font-medium transition-colors duration-200 ${
-            filterType === 'out'
-              ? 'bg-error text-on-dark font-semibold'
-              : 'bg-neutral-100 text-secondary-text hover:bg-neutral-200'
-          }`}
+          className={`px-md py-sm min-h-[44px] rounded-md text-sm font-medium transition-colors duration-200 ${filterType === 'out'
+            ? 'bg-error text-on-dark font-semibold'
+            : 'bg-neutral-100 text-secondary-text hover:bg-neutral-200'
+            }`}
           aria-label="Show stock out transactions"
           aria-pressed={filterType === 'out'}
         >
@@ -241,11 +263,10 @@ export function StockLedgerPage() {
         </button>
         <button
           onClick={() => setFilterType('adjustment')}
-          className={`px-md py-sm min-h-[44px] rounded-md text-sm font-medium transition-colors duration-200 ${
-            filterType === 'adjustment'
-              ? 'bg-warning text-on-dark font-semibold'
-              : 'bg-neutral-100 text-secondary-text hover:bg-neutral-200'
-          }`}
+          className={`px-md py-sm min-h-[44px] rounded-md text-sm font-medium transition-colors duration-200 ${filterType === 'adjustment'
+            ? 'bg-warning text-on-dark font-semibold'
+            : 'bg-neutral-100 text-secondary-text hover:bg-neutral-200'
+            }`}
           aria-label="Show adjustment transactions"
           aria-pressed={filterType === 'adjustment'}
         >
@@ -326,23 +347,17 @@ export function StockLedgerPage() {
         </div>
       )}
 
-      {/* Stock Transaction Form */}
+      {/* Stock Adjustment Modal (handles both transactions and manual adjustments) */}
       {user && (
-        <StockTransactionForm
-          isOpen={isTransactionFormOpen}
-          onClose={() => setIsTransactionFormOpen(false)}
-          onSubmit={handleCreateTransaction}
+        <StockAdjustmentModal
+          isOpen={isTransactionFormOpen || isAdjustmentModalOpen}
+          onClose={() => {
+            setIsTransactionFormOpen(false)
+            setIsAdjustmentModalOpen(false)
+          }}
+          onSubmit={handleStockSubmit}
           orgId={user.orgId!}
-        />
-      )}
-
-      {/* Manual Adjustment Modal */}
-      {user && (
-        <ManualAdjustmentModal
-          isOpen={isAdjustmentModalOpen}
-          onClose={() => setIsAdjustmentModalOpen(false)}
-          onSuccess={loadLatestLedger}
-          orgId={user.orgId!}
+          title={isAdjustmentModalOpen ? 'Manual Stock Adjustment' : 'Stock Transaction'}
         />
       )}
     </div>

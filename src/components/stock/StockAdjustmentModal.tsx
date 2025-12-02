@@ -7,8 +7,7 @@ import { Textarea } from '../ui/Textarea'
 import { isMobileDevice } from '../../lib/deviceDetection'
 import { ProductSelectionCombobox } from '../products/ProductSelectionCombobox'
 import { useProductSelection, type UseProductSelectionReturn } from '../../hooks/useProductSelection'
-import type { ProductWithMaster } from '../../types'
-import { getCurrentStock, calculateStockAfterTransaction } from '../../lib/api/stockCalculations'
+import { getCurrentStock } from '../../lib/api/stockCalculations'
 
 interface StockAdjustmentModalProps {
     isOpen: boolean
@@ -75,7 +74,7 @@ export function StockAdjustmentModal({
             setCurrentStock(null)
             setErrors({})
         }
-    }, [isOpen])
+    }, [isOpen, productSelection])
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
@@ -103,7 +102,7 @@ export function StockAdjustmentModal({
         try {
             await onSubmit({
                 product_id: productSelection.selectedProduct!.id,
-                quantity: Math.abs(adjustmentQty),
+                quantity: adjustmentQty, // Pass signed delta (not Math.abs)
                 notes: reason || undefined,
             })
             onClose()
