@@ -745,6 +745,23 @@ export function generateInvoiceHTML(
       </div>
     </div>
     
+    <!-- Payment Details -->
+    <div style="border: 1px solid #000; padding: 10px; margin-bottom: 15px;">
+      <div style="font-weight: bold; font-size: 11px; text-transform: uppercase; margin-bottom: 8px; border-bottom: 1px solid #000; padding-bottom: 3px;">Payment Details</div>
+      <div style="display: flex; justify-content: space-between; padding: 4px 0; font-size: 11px;">
+        <span>Total Amount:</span>
+        <span style="font-weight: 600;">₹${taxResult.grand_total.toFixed(2)}</span>
+      </div>
+      <div style="display: flex; justify-content: space-between; padding: 4px 0; font-size: 11px;">
+        <span>Amount Received:</span>
+        <span style="font-weight: 600;">₹${((invoice as any).amount_paid || 0).toFixed(2)}</span>
+      </div>
+      <div style="display: flex; justify-content: space-between; padding: 6px 0; font-size: 12px; border-top: 1px solid #000; margin-top: 4px; padding-top: 6px;">
+        <span><strong>Balance Due:</strong></span>
+        <span style="font-weight: bold; ${(taxResult.grand_total - ((invoice as any).amount_paid || 0)) > 0 ? 'color: #d32f2f;' : 'color: #2e7d32;'}">₹${(taxResult.grand_total - ((invoice as any).amount_paid || 0)).toFixed(2)}</span>
+      </div>
+    </div>
+    
     <!-- Amount in Words -->
     <div class="amount-in-words">
       <span class="amount-in-words-label">Amount in Words:</span>
