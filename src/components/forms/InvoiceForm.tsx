@@ -152,7 +152,9 @@ export function InvoiceForm({
     initialDraftInvoiceId: draftInvoiceId,
     mode,
     onDraftRestored: ({ customer, items: restoredItems }) => {
-      hookSetSelectedCustomer(customer)
+      if (customer) {
+        hookSetSelectedCustomer(customer)
+      }
       hookSetItems(restoredItems)
       setCurrentStep(2)
     },

@@ -27,7 +27,7 @@ interface UseInvoiceDraftParams {
   mode: 'modal' | 'page'
   
   // Callbacks
-  onDraftRestored: (data: { customer: CustomerWithMaster; items: InvoiceItemFormData[] }) => void
+  onDraftRestored: (data: { customer: CustomerWithMaster | null; items: InvoiceItemFormData[] }) => void
   onReset: () => void
 }
 
@@ -184,10 +184,8 @@ export function useInvoiceDraft({
 
         setInternalDraftInvoiceId(invoiceId)
         
-        // Notify container
-        if (customer) {
-          onDraftRestored({ customer, items: restoredItems })
-        }
+        // Always restore items, conditionally restore customer
+        onDraftRestored({ customer: customer || null, items: restoredItems })
 
         // Reset retry counter on success
         draftLoadRetries.current = 0
@@ -198,14 +196,14 @@ export function useInvoiceDraft({
           const revalidation = await revalidateDraftInvoice(invoiceId, orgId)
           if (revalidation.updated) {
             showToast('success', 'Draft revalidated — missing items are now available.', { autoClose: 3000 })
-            if (revalidation.valid && customer) {
+            if (revalidation.valid) {
               const cleanedItems = restoredItems.map(item => ({
                 ...item,
                 invalid_serials: [],
                 validation_errors: [],
               }))
               // Update items again with cleaned version
-              onDraftRestored({ customer, items: cleanedItems })
+              onDraftRestored({ customer: customer || null, items: cleanedItems })
             }
           }
         } catch (revalError) {
