@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useCallback } from 'react'
 import type { CustomerWithMaster } from '../../types'
 import { useAddOrgCustomer, useCustomerById, useUpdateOrgCustomer } from '../../hooks/useCustomers'
 import { detectIdentifierTypeEnhanced, type EnhancedIdentifierType } from '../../lib/utils/identifierValidation'
@@ -325,13 +325,13 @@ export function useInvoiceCustomer({
     }
   }
 
-  const resetCustomer = () => {
+  const resetCustomer = useCallback(() => {
     setIdentifier('')
     setIdentifierValid(false)
     setSelectedCustomer(null)
     setInlineFormData({ name: '', mobile: '', gstin: '' })
     setErrors({})
-  }
+  }, [])
 
 
 

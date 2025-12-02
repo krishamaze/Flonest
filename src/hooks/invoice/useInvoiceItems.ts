@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useCallback } from 'react'
 import type { InvoiceItemFormData, ProductWithMaster } from '../../types'
 import { checkSerialStatus } from '../../lib/api/serials'
 
@@ -54,11 +54,11 @@ export function useInvoiceItems({
   const [items, setItemsState] = useState<InvoiceItemFormData[]>(initialItems)
   const [serialInputs, setSerialInputs] = useState<Record<number, string>>({})
 
-  // Wrapper for setItems to trigger callback
-  const setItems = (newItems: InvoiceItemFormData[]) => {
+  // Wrapper for setItems to trigger callback (memoized for stability)
+  const setItems = useCallback((newItems: InvoiceItemFormData[]) => {
     setItemsState(newItems)
     onItemsChange?.(newItems)
-  }
+  }, [onItemsChange])
 
   // Handlers
 
