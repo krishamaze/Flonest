@@ -249,6 +249,7 @@ export const useSearchCustomersAutocomplete = (
     },
     enabled: enabled && !!orgId && !!query && query.trim().length >= 3,
     staleTime: 10 * 1000, // 10 seconds
+    placeholderData: (previousData) => previousData, // Keep previous results while loading
     refetchOnWindowFocus: false,
   })
 }
