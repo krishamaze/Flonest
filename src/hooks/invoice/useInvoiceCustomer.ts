@@ -133,19 +133,8 @@ export function useInvoiceCustomer({
     }
   }, [fetchedCustomer, onCustomerCreated])
 
-  // Reset selectedCustomer when identifier changes (user types new search)
-  // Note: We need to be careful not to reset when we programmatically set identifier
-  // But since we use the search box as the input, typing SHOULD reset selection.
-  useEffect(() => {
-    // If we have a selected customer, but the identifier doesn't match their name/alias,
-    // it means user is typing something new.
-    if (selectedCustomer) {
-        const currentName = selectedCustomer.alias_name || selectedCustomer.master_customer.legal_name
-        if (identifier !== currentName) {
-            setSelectedCustomer(null)
-        }
-    }
-  }, [identifier, selectedCustomer])
+  // Customer reset is now handled by the search combobox onChange
+  // No automatic reset needed here to avoid double-click issues
 
   // Handlers
 
@@ -159,8 +148,7 @@ export function useInvoiceCustomer({
             mobile: customer.master_customer.mobile || '',
             gstin: customer.master_customer.gstin || ''
         })
-        // Update identifier to show selected customer name
-        setIdentifier(customer.alias_name || customer.master_customer.legal_name)
+        // Don't update identifier - search box shows what user typed, name field shows actual customer name
     }
   }
 

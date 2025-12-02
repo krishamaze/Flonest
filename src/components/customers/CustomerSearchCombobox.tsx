@@ -1,14 +1,16 @@
-import { useState, useEffect, useRef, KeyboardEvent, ChangeEvent } from 'react'
+import { useState, useEffect, useRef, useMemo } from 'react'
 import { useSearchCustomersAutocomplete } from '../../hooks/useCustomers'
 import type { CustomerWithMaster, CustomerSearchResult } from '../../types'
 import { LoadingSpinner } from '../ui/LoadingSpinner'
 import { UserIcon, GlobeAltIcon } from '@heroicons/react/24/outline'
+import { classifySearchMode, isCompleteInput, type SearchMode } from '../../lib/utils/customerSearchMode'
 
 interface CustomerSearchComboboxProps {
     orgId: string
     value: string
     onChange: (value: string) => void
     onCustomerSelect: (result: CustomerSearchResult | null) => void
+    onModeFinalized?: (mode: SearchMode, value: string) => void  // Pass value for auto-copy
     disabled?: boolean
     autoFocus?: boolean
 }
@@ -18,70 +20,161 @@ export function CustomerSearchCombobox({
     value,
     onChange,
     onCustomerSelect,
+    onModeFinalized,
     disabled = false,
     autoFocus = false,
 }: CustomerSearchComboboxProps) {
     const [isOpen, setIsOpen] = useState(false)
     const [highlightedIndex, setHighlightedIndex] = useState(-1)
+    const [searchMode, setSearchMode] = useState<SearchMode>(null)
+    const [isModeFinalized, setIsModeFinalized] = useState(false)
     const inputRef = useRef<HTMLInputElement>(null)
     const dropdownRef = useRef<HTMLDivElement>(null)
 
-    // Use React Query hook for autocomplete search (automatically debounced via enabled condition)
-    const { data: searchResults = [], isLoading: isSearching } = useSearchCustomersAutocomplete(
+    // Track base query (first 3 chars) for server fetch
+    const [baseQuery, setBaseQuery] = useState('')
+
+    // Classify mode and set base query at 3+ chars
+    useEffect(() => {
+        const trimmed = value.trim()
+
+        if (trimmed.length < 3) {
+            // Reset mode when below 3 chars
+            setSearchMode(null)
+            setBaseQuery('')
+            setIsOpen(false)
+            setIsModeFinalized(false)
+        } else {
+            const first3 = trimmed.substring(0, 3)
+            const newMode = classifySearchMode(first3)
+
+            // If mode changes (user switched from mobile to GSTIN or vice versa), reset
+            if (newMode && newMode !== searchMode) {
+                setSearchMode(newMode)
+                setBaseQuery(trimmed) // Use full input for better search
+                setIsModeFinalized(false)
+            } else if (!searchMode && newMode) {
+                // Initial classification
+                setSearchMode(newMode)
+                setBaseQuery(trimmed) // Use full input for better search
+                setIsModeFinalized(false)
+            } else if (searchMode) {
+                // Mode already set, update query with more chars for better results
+                setBaseQuery(trimmed)
+            }
+        }
+        // Above 3 chars with mode already set: mode stays locked, baseQuery unchanged
+    }, [value, searchMode])
+
+    // Fetch from server using base query
+    const { data: serverResults = [], isLoading: isSearching } = useSearchCustomersAutocomplete(
         orgId,
-        value,
-        value.trim().length >= 3 // Only enable when 3+ chars
+        baseQuery,
+        baseQuery.length >= 3
     )
 
-    // Auto-open dropdown when results are available
+    // Client-side filter and order results
+    const searchResults = useMemo(() => {
+        const trimmed = value.trim().toLowerCase()
+        if (trimmed.length < 3 || !searchMode) return []
+
+        // Filter results based on current input
+        const filtered = serverResults.filter(result => {
+            const customer = result.type === 'org'
+                ? result.data as CustomerWithMaster
+                : result.data as any
+
+            const name = result.type === 'org'
+                ? (customer.alias_name || customer.master_customer?.legal_name || '').toLowerCase()
+                : (customer.legal_name || '').toLowerCase()
+            const mobile = result.type === 'org'
+                ? (customer.master_customer?.mobile || '')
+                : (customer.mobile || '')
+            const gstin = result.type === 'org'
+                ? (customer.master_customer?.gstin || '').toLowerCase()
+                : (customer.gstin || '').toLowerCase()
+
+            return name.includes(trimmed) ||
+                mobile.startsWith(trimmed) ||
+                gstin.startsWith(trimmed)
+        })
+
+        // Sort: primary matches first, then secondary
+        const sorted = filtered.sort((a, b) => {
+            const customerA = a.type === 'org' ? a.data as any : a.data as any
+            const customerB = b.type === 'org' ? b.data as any : b.data as any
+
+            const mobileA = a.type === 'org' ? customerA.master_customer?.mobile : customerA.mobile
+            const mobileB = b.type === 'org' ? customerB.master_customer?.mobile : customerB.mobile
+            const gstinA = a.type === 'org' ? customerA.master_customer?.gstin : customerA.gstin
+            const gstinB = b.type === 'org' ? customerB.master_customer?.gstin : customerB.gstin
+
+            // Primary match for mobile mode
+            if (searchMode === 'mobile') {
+                const aPrimary = mobileA?.startsWith(trimmed) ? 1 : 0
+                const bPrimary = mobileB?.startsWith(trimmed) ? 1 : 0
+                if (aPrimary !== bPrimary) return bPrimary - aPrimary
+            }
+
+            // Primary match for GSTIN mode
+            if (searchMode === 'gstin') {
+                const aPrimary = gstinA?.toLowerCase().startsWith(trimmed) ? 1 : 0
+                const bPrimary = gstinB?.toLowerCase().startsWith(trimmed) ? 1 : 0
+                if (aPrimary !== bPrimary) return bPrimary - aPrimary
+            }
+
+            return 0 // Keep original order for secondary matches
+        })
+
+        // Limit to 5 results
+        return sorted.slice(0, 5)
+    }, [value, serverResults, searchMode])
+
+    // Auto-open dropdown at 3+ chars
     useEffect(() => {
-        if (value.trim().length >= 3 && searchResults.length >= 0) {
+        if (value.trim().length >= 3 && searchMode) {
             setIsOpen(true)
             setHighlightedIndex(-1)
         } else {
             setIsOpen(false)
         }
-    }, [searchResults, value])
+    }, [value, searchMode])
 
-    // Auto-fill when complete identifier is typed and matches search result
+    // Auto-select on complete input (mobile/GSTIN only, not names)
     useEffect(() => {
-        if (!value || isSearching || searchResults.length === 0) return
+        if (searchMode === 'name') return // Names require manual selection
+        if (!searchMode || !isCompleteInput(value, searchMode)) return
+        if (isSearching) return // Wait for search to complete
+        if (searchResults.length === 0) {
+            setIsOpen(false)
+            return
+        }
 
         const cleaned = value.trim().replace(/\s+/g, '')
 
-        // Check if it's a complete mobile (10 digits) or GSTIN (15 chars)
-        const isCompleteMobile = /^[6-9][0-9]{9}$/.test(cleaned)
-        const isCompleteGSTIN = cleaned.length === 15 && /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/.test(cleaned.toUpperCase())
+        // Find exact match
+        const exactMatch = searchResults.find(result => {
+            const customer = result.type === 'org' ? result.data as any : result.data as any
+            const matchMobile = result.type === 'org'
+                ? customer.master_customer?.mobile
+                : customer.mobile
+            const matchGstin = result.type === 'org'
+                ? customer.master_customer?.gstin
+                : customer.gstin
 
-        if (isCompleteMobile || isCompleteGSTIN) {
-            // Find exact match in search results
-            const exactMatch = searchResults.find(result => {
-                if (result.type === 'org') {
-                    const customer = result.data as any
-                    if (isCompleteMobile) {
-                        return customer.master_customer?.mobile === cleaned
-                    } else {
-                        return customer.master_customer?.gstin?.toUpperCase() === cleaned.toUpperCase()
-                    }
-                } else {
-                    const master = result.data as any
-                    if (isCompleteMobile) {
-                        return master.mobile === cleaned
-                    } else {
-                        return master.gstin?.toUpperCase() === cleaned.toUpperCase()
-                    }
-                }
-            })
+            return searchMode === 'mobile'
+                ? matchMobile === cleaned
+                : matchGstin?.toUpperCase() === cleaned.toUpperCase()
+        })
 
-            // Auto-select if exact match found
-            if (exactMatch) {
-                handleResultSelect(exactMatch)
-            }
+        if (exactMatch) {
+            handleResultSelect(exactMatch)
+        } else {
+            setIsOpen(false)
         }
-    }, [value, searchResults, isSearching])
+    }, [value, searchResults, searchMode, isSearching])
 
-
-    // Close dropdown when clicking outside
+    // Close on click outside
     useEffect(() => {
         const handleClickOutside = (event: MouseEvent) => {
             if (
@@ -98,143 +191,115 @@ export function CustomerSearchCombobox({
         return () => document.removeEventListener('mousedown', handleClickOutside)
     }, [])
 
-    const handleInputChange = (e: ChangeEvent<HTMLInputElement>) => {
-        onChange(e.target.value)
+    const handleResultSelect = (result: CustomerSearchResult) => {
+        // Finalize mode on selection
+        if (searchMode && !isModeFinalized) {
+            setIsModeFinalized(true)
+            onModeFinalized?.(searchMode, value)
+        }
+
+        setIsOpen(false)
+        onCustomerSelect(result)
     }
 
-    const handleKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
-        if (!isOpen || searchResults.length === 0) return
+    const handleBlur = () => {
+        // Close dropdown
+        setIsOpen(false)
 
-        const totalItems = searchResults.length
+        // Finalize on complete input (mobile: 10 digits, GSTIN: 15 chars, name: 3+ chars)
+        if (searchMode && !isModeFinalized && isCompleteInput(value, searchMode)) {
+            setIsModeFinalized(true)
+            onModeFinalized?.(searchMode, value)
+        }
+    }
+
+    const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+        if (!isOpen || searchResults.length === 0) return
 
         switch (e.key) {
             case 'ArrowDown':
                 e.preventDefault()
-                setHighlightedIndex((prev) => (prev < totalItems - 1 ? prev + 1 : prev))
+                setHighlightedIndex(prev =>
+                    prev < searchResults.length - 1 ? prev + 1 : prev
+                )
                 break
             case 'ArrowUp':
                 e.preventDefault()
-                setHighlightedIndex((prev) => (prev > -1 ? prev - 1 : -1))
+                setHighlightedIndex(prev => prev > -1 ? prev - 1 : -1)
                 break
             case 'Enter':
                 e.preventDefault()
                 if (highlightedIndex >= 0 && highlightedIndex < searchResults.length) {
-                    const selectedResult = searchResults[highlightedIndex]
-                    handleResultSelect(selectedResult)
+                    handleResultSelect(searchResults[highlightedIndex])
                 }
                 break
             case 'Escape':
                 e.preventDefault()
                 setIsOpen(false)
-                setHighlightedIndex(-1)
                 break
         }
     }
 
-    const handleResultSelect = (result: CustomerSearchResult) => {
-        // Extract the identifier (mobile or GSTIN) to display in the input field
-        const identifier = (() => {
-            if (result.type === 'org') {
-                const customer = result.data as CustomerWithMaster
-                return customer.master_customer.mobile || customer.master_customer.gstin || ''
-            } else {
-                const master = result.data as any
-                return master.mobile || master.gstin || ''
-            }
-        })()
-
-        onChange(identifier)
-        setIsOpen(false)
-        onCustomerSelect(result)
-
-        // Blur the input to unfocus it
-        setTimeout(() => {
-            inputRef.current?.blur()
-        }, 0)
+    const getLabel = (): string => {
+        if (value.length < 3) return 'Customer Identifier'
+        if (searchMode === 'mobile') return 'Mobile Number'
+        if (searchMode === 'gstin') return 'GSTIN'
+        if (searchMode === 'name') return 'Customer Name'
+        return 'Customer Identifier'
     }
 
-    const getInputMode = (): 'text' | 'tel' => {
-        // Always return text to allow mixed input (names, alphanumeric GSTIN, etc.)
-        // The user can switch to numeric keypad manually if they want, 
-        // but forcing 'tel' prevents typing names like "9th Avenue" easily.
-        return 'text'
-    }
-
-    // Dynamic maxLength based on detected input type
-    const getMaxLength = (): number | undefined => {
-        if (!value || value.length < 3) {
-            return undefined // No limit until we detect type
-        }
-
-        const cleaned = value.trim().replace(/\s+/g, '')
-        const isAllDigits = /^\d+$/.test(cleaned)
-
-        // Detect mobile (3-10 digits starting with 6-9)
-        if (isAllDigits && /^[6-9]/.test(cleaned)) {
-            return 10
-        }
-
-        // Detect GSTIN (starts with 2 digits + letter)
-        if (cleaned.length >= 3 && /^[0-9]{2}[A-Z]/i.test(cleaned)) {
-            return 15
-        }
-
-        // Name: no strict limit
-        return undefined
-    }
-
-    // Dynamic label based on detected input type
-    const getInputLabel = (): string => {
-        if (!value || value.length < 3) {
-            return 'Customer Identifier'
-        }
-
-        const cleaned = value.trim().replace(/\s+/g, '')
-        const isAllDigits = /^\d+$/.test(cleaned)
-
-        // Detect mobile (3-10 digits starting with 6-9)
-        if (isAllDigits && /^[6-9]/.test(cleaned)) {
-            return 'Mobile Number'
-        }
-
-        // Detect GSTIN (starts with 2 digits + letter)
-        if (cleaned.length >= 3 && /^[0-9]{2}[A-Z]/i.test(cleaned)) {
-            return 'GSTIN'
-        }
-
-        // Default to customer name for text
-        return 'Customer Name'
-    }
-
-    const formatLastInvoiceDate = (dateString: string | null | undefined) => {
-        if (!dateString) return null
-        const date = new Date(dateString)
-        return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
-    }
 
     return (
         <div className="relative w-full">
             <div className="relative">
                 <label htmlFor="customer-search" className="block text-sm font-medium text-secondary-text mb-xs">
-                    {getInputLabel()} <span className="text-error">*</span>
+                    {getLabel()} <span className="text-error">*</span>
                 </label>
                 <input
                     ref={inputRef}
                     id="customer-search"
                     type="text"
-                    inputMode={getInputMode()}
-                    maxLength={getMaxLength()}
+                    inputMode="text"
+                    autoCapitalize={searchMode === 'gstin' ? 'characters' : 'none'}
                     value={value}
-                    onChange={handleInputChange}
+                    onChange={(e) => {
+                        let newValue = e.target.value
+
+                        // Remove spaces only for mobile/GSTIN modes
+                        if (searchMode === 'mobile' || searchMode === 'gstin') {
+                            newValue = newValue.replace(/\s+/g, '')
+                        }
+
+                        // Uppercase for GSTIN
+                        if (searchMode === 'gstin') {
+                            newValue = newValue.toUpperCase()
+                        }
+
+                        // Title case for names (capitalize first letter of each word)
+                        if (searchMode === 'name') {
+                            // Remove periods (from double-space shortcuts)
+                            newValue = newValue.replace(/\./g, '')
+                            // Normalize multiple spaces to single space
+                            newValue = newValue.replace(/\s+/g, ' ')
+                        }
+
+                        onChange(newValue)
+                    }}
                     onKeyDown={handleKeyDown}
+                    onBlur={handleBlur}
+                    onClick={() => {
+                        if (value.trim().length >= 3 && searchMode) {
+                            setIsOpen(true)
+                        }
+                    }}
                     onFocus={() => {
-                        if (value.trim().length >= 3) {
+                        if (value.trim().length >= 3 && searchMode) {
                             setIsOpen(true)
                         }
                     }}
                     disabled={disabled}
                     autoFocus={autoFocus}
-                    placeholder="Search by Name, Mobile, or GSTIN"
+                    placeholder="Search by Mobile, GSTIN, or Name"
                     className="w-full h-12 px-md py-sm border border-neutral-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary disabled:bg-neutral-100 disabled:cursor-not-allowed text-base"
                     aria-autocomplete="list"
                     aria-controls="customer-search-results"
@@ -254,11 +319,25 @@ export function CustomerSearchCombobox({
                     className="absolute z-50 w-full mt-1 bg-white border border-neutral-300 rounded-md shadow-lg max-h-80 overflow-y-auto"
                     role="listbox"
                 >
+                    {/* Finalize name mode button */}
+                    {searchMode === 'name' && value.trim().length >= 3 && (
+                        <button
+                            type="button"
+                            onClick={() => {
+                                setIsOpen(false)
+                                setIsModeFinalized(true)
+                                onModeFinalized?.(searchMode, value)
+                            }}
+                            className="w-full text-left px-4 py-3 border-b-2 border-neutral-200 bg-success-50 hover:bg-success-100 transition-colors font-medium text-success flex items-center gap-2"
+                        >
+                            <span className="text-xl">✓</span>
+                            <span>Use "{value.trim()}"</span>
+                        </button>
+                    )}
+
                     {searchResults.length > 0 ? (
                         searchResults.map((result, index) => {
                             const isHighlighted = highlightedIndex === index
-
-                            // Extract display data based on type
                             const isOrg = result.type === 'org'
                             const data = result.data
 
@@ -273,10 +352,6 @@ export function CustomerSearchCombobox({
                             const gstin = isOrg
                                 ? (data as CustomerWithMaster).master_customer.gstin
                                 : (data as any).gstin
-
-                            const lastInvoiceDate = isOrg
-                                ? ((data as any).last_invoice_date as string | null | undefined)
-                                : null
 
                             return (
                                 <button
@@ -310,18 +385,8 @@ export function CustomerSearchCombobox({
                                         </div>
 
                                         <div className={`text-sm pl-6 ${isHighlighted ? 'text-text-on-primary opacity-90' : 'text-secondary-text'}`}>
-                                            {mobile
-                                                ? `${mobile}`
-                                                : gstin
-                                                    ? `GSTIN: ${gstin}`
-                                                    : 'No contact info'}
+                                            {mobile ? mobile : gstin ? `GSTIN: ${gstin}` : 'No contact info'}
                                         </div>
-
-                                        {lastInvoiceDate && (
-                                            <div className={`text-xs pl-6 ${isHighlighted ? 'text-text-on-primary opacity-75' : 'text-muted-text'}`}>
-                                                Last invoice: {formatLastInvoiceDate(lastInvoiceDate)}
-                                            </div>
-                                        )}
                                     </div>
                                 </button>
                             )

@@ -5,7 +5,7 @@
 
 export type IdentifierType = 'mobile' | 'gstin' | 'invalid'
 
-export type EnhancedIdentifierType = 'mobile' | 'gstin' | 'partial_gstin' | 'text'
+export type EnhancedIdentifierType = 'mobile' | 'gstin' | 'partial_gstin' | 'name'
 
 /**
  * Detect identifier type from input string
@@ -84,12 +84,12 @@ export function normalizeIdentifier(identifier: string, type: IdentifierType): s
 
 /**
  * Enhanced identifier detection for invoice "Add New Party" flow
- * Returns 'mobile', 'gstin', 'partial_gstin', or 'text'
+ * Returns 'mobile', 'gstin', 'partial_gstin', or 'name'
  *
  * This function provides smarter detection than detectIdentifierType():
  * - Detects partial GSTIN patterns (3+ characters starting with state code)
  * - Detects partial mobile numbers (3-9 digits starting with 6-9)
- * - Returns 'text' instead of 'invalid' for customer names
+ * - Returns 'name' for customer names
  * - Used for adaptive form field ordering in invoice creation
  */
 export function detectIdentifierTypeEnhanced(identifier: string): EnhancedIdentifierType {
@@ -97,7 +97,7 @@ export function detectIdentifierTypeEnhanced(identifier: string): EnhancedIdenti
 
   // Empty input
   if (!cleaned) {
-    return 'text'
+    return 'name'
   }
 
   // Check if it's all digits
@@ -131,8 +131,8 @@ export function detectIdentifierTypeEnhanced(identifier: string): EnhancedIdenti
     }
   }
 
-  // Default: treat as customer name text
-  return 'text'
+  // Default: treat as customer name
+  return 'name'
 }
 
 /**

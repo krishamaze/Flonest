@@ -3,7 +3,9 @@ import { CustomerWithMaster, CustomerSearchResult } from '../../types'
 import { CustomerSearchCombobox } from '../customers/CustomerSearchCombobox'
 import { Input } from '../ui/Input'
 import { Button } from '../ui/Button'
+import { Toggle } from '../ui/Toggle'
 import type { FieldPriority } from '../../hooks/invoice/useInvoiceCustomer'
+import type { SearchMode } from '../../lib/utils/customerSearchMode'
 import { CheckCircleIcon } from '@heroicons/react/24/solid'
 
 interface CustomerSelectionStepProps {
@@ -66,74 +68,48 @@ export const CustomerSelectionStep: React.FC<CustomerSelectionStepProps> = ({
 }) => {
     // Track GSTIN field visibility
     const [showGstinField, setShowGstinField] = React.useState(false)
+    // Track if identifier mode is finalized (user selected or blurred)
+    const [isModeFinalized, setIsModeFinalized] = React.useState(false)
 
     // Refs for auto-focusing next field
     const nameInputRef = React.useRef<HTMLInputElement>(null)
     const mobileInputRef = React.useRef<HTMLInputElement>(null)
     const gstinInputRef = React.useRef<HTMLInputElement>(null)
 
-    // Determine if fields should be shown
-    // Show fields only after:
-    // 1. Customer is selected from dropdown, OR
-    // 2. Valid complete identifier is typed:
-    //    - Mobile: exactly 10 digits starting with 6-9
-    //    - GSTIN: exactly 15 characters matching GSTIN pattern
-    //    - Name: at least 3 characters (default)
-    const isValidCompleteIdentifier = () => {
-        const cleaned = searchValue.trim().replace(/\s+/g, '')
+    // Show fields only after mode is finalized OR customer is selected
+    const showFields = selectedCustomer !== null || isModeFinalized
 
-        // Complete mobile number (10 digits starting with 6-9)
-        if (/^[6-9][0-9]{9}$/.test(cleaned)) {
-            return true
-        }
+    // Track previous value to detect actual edits
+    const prevSearchValue = React.useRef(searchValue)
 
-        // Complete GSTIN (15 characters with GSTIN pattern)
-        if (cleaned.length === 15 && /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/.test(cleaned.toUpperCase())) {
-            return true
-        }
-
-        // Name: at least 3 characters (and not a partial mobile/GSTIN)
-        const isPartialMobile = /^[6-9]\d{1,8}$/.test(cleaned) // 2-9 digits starting with 6-9
-        const isPartialGSTIN = cleaned.length >= 3 && cleaned.length < 15 && /^[0-9]{2}[A-Z]/i.test(cleaned)
-
-        if (!isPartialMobile && !isPartialGSTIN && cleaned.length >= 3) {
-            return true
-        }
-
-        return false
-    }
-
-    const showFields = selectedCustomer !== null || (!isSearching && isValidCompleteIdentifier())
-
-    // Auto-focus to first available field when fields become visible
+    // Reset finalization and clear fields when user edits identifier
     React.useEffect(() => {
-        if (showFields && !selectedCustomer) {
-            // Focus on first non-readonly field based on priority
-            setTimeout(() => {
-                if (fieldPriority === 'mobile' && !isMobileReadOnly && mobileInputRef.current) {
-                    mobileInputRef.current.focus()
-                } else if (fieldPriority === 'gstin' && !isGstinReadOnly && gstinInputRef.current) {
-                    gstinInputRef.current.focus()
-                } else if (fieldPriority === 'name' && !isNameReadOnly && nameInputRef.current) {
-                    nameInputRef.current.focus()
-                } else if (mobileInputRef.current && !isMobileReadOnly) {
-                    mobileInputRef.current.focus()
-                } else if (nameInputRef.current && !isNameReadOnly) {
-                    nameInputRef.current.focus()
-                } else if (gstinInputRef.current && !isGstinReadOnly) {
-                    gstinInputRef.current.focus()
-                }
-            }, 100)
+        const trimmed = searchValue.trim()
+        const prevTrimmed = prevSearchValue.current.trim()
+
+        // Only check reset if value actually changed
+        if (trimmed === prevTrimmed) {
+            return
         }
-    }, [showFields, selectedCustomer, fieldPriority])
+
+        // If finalized or customer selected, ALWAYS reset on any change
+        if (isModeFinalized || selectedCustomer) {
+            setIsModeFinalized(false)
+            onCustomerSelected(null)
+            onFormDataChange({ name: '', mobile: '', gstin: '' })
+        }
+
+        // Update ref
+        prevSearchValue.current = searchValue
+    }, [searchValue, isModeFinalized, selectedCustomer, onCustomerSelected, onFormDataChange])
+
+    // Auto-focus removed - focus stays in identifier field until user manually moves
 
 
-    // Auto-show GSTIN if search was by GSTIN or if selected customer has GSTIN
+    // GST toggle always OFF/hidden by default - user must manually toggle ON
     React.useEffect(() => {
-        if (fieldPriority === 'gstin' || (selectedCustomer && selectedCustomer.master_customer.gstin)) {
-            setShowGstinField(true)
-        }
-    }, [fieldPriority, selectedCustomer])
+        setShowGstinField(false)
+    }, [fieldPriority])
 
     // Handle selection from combobox
     const handleSearchResultSelect = (result: CustomerSearchResult | null) => {
@@ -156,6 +132,30 @@ export const CustomerSelectionStep: React.FC<CustomerSelectionStepProps> = ({
             })
             // Ensure we clear any previously selected customer
             onCustomerSelected(null)
+        }
+    }
+
+    // Handle mode finalization with auto-copy to form fields
+    const handleModeFinalized = (mode: SearchMode, value: string) => {
+        if (!mode) return // Skip if null
+        setIsModeFinalized(true)
+
+        const trimmed = value.trim()
+
+        if (mode === 'mobile') {
+            // Copy mobile to form, keep name/GSTIN empty
+            onFormDataChange({ name: '', mobile: trimmed, gstin: '' })
+            // Focus name field
+            setTimeout(() => nameInputRef.current?.focus(), 50)
+        } else if (mode === 'gstin') {
+            // Copy GSTIN to form, keep name/mobile empty
+            onFormDataChange({ name: '', mobile: '', gstin: trimmed.toUpperCase() })
+            // Focus name field
+            setTimeout(() => nameInputRef.current?.focus(), 50)
+        } else if (mode === 'name') {
+            // Copy name to form, keep mobile/GSTIN empty
+            onFormDataChange({ name: trimmed, mobile: '', gstin: '' })
+            // No need to focus - fields just appeared
         }
     }
 
@@ -186,7 +186,7 @@ export const CustomerSelectionStep: React.FC<CustomerSelectionStepProps> = ({
                 required
                 autoFocus={autoFocus && !isNameReadOnly}
             />
-            {isNameComplete && !formErrors.name && (
+            {(isModeFinalized || selectedCustomer) && isNameComplete && !formErrors.name && (
                 <CheckCircleIcon className="absolute right-3 top-[calc(1.5rem+0.25rem+12px)] h-5 w-5 text-success" />
             )}
         </div>
@@ -233,13 +233,12 @@ export const CustomerSelectionStep: React.FC<CustomerSelectionStepProps> = ({
     )
 
     const renderGstinToggle = () => (
-        <button
-            type="button"
-            onClick={() => setShowGstinField(true)}
-            className="text-xs text-primary hover:text-primary-dark underline"
-        >
-            + Add GSTIN
-        </button>
+        <Toggle
+            checked={showGstinField}
+            onChange={setShowGstinField}
+            label="GST Bill"
+            size="sm"
+        />
     )
 
     const renderFormFields = () => {
@@ -257,8 +256,8 @@ export const CustomerSelectionStep: React.FC<CustomerSelectionStepProps> = ({
             return [
                 // Hide Mobile field if search is Mobile
                 (!hideMatchingField || fieldPriority !== 'mobile') && renderMobileField(true),
-                showGstinField ? renderGstinField() : renderGstinToggle(),
                 renderNameField(),
+                showGstinField ? renderGstinField() : renderGstinToggle(),
             ].filter(Boolean)
         } else {
             // Default: Name priority
@@ -279,15 +278,31 @@ export const CustomerSelectionStep: React.FC<CustomerSelectionStepProps> = ({
                 {/* Bordered form box containing all fields */}
                 <div className="p-4 border border-neutral-200 rounded-md bg-neutral-50/50">
                     <div className="space-y-4">
-                        {/* Customer identifier input - always visible */}
-                        <CustomerSearchCombobox
-                            orgId={orgId}
-                            value={searchValue}
-                            onChange={onSearchChange}
-                            onCustomerSelect={handleSearchResultSelect}
-                            disabled={isDisabled}
-                            autoFocus={autoFocus}
-                        />
+                        {/* Customer identifier input with optional ✓ button for name mode */}
+                        <div className="relative">
+                            <CustomerSearchCombobox
+                                orgId={orgId}
+                                value={searchValue}
+                                onChange={onSearchChange}
+                                onCustomerSelect={handleSearchResultSelect}
+                                onModeFinalized={handleModeFinalized}
+                                disabled={isDisabled}
+                                autoFocus={autoFocus}
+                            />
+
+                            {/* ✓ button for name mode - show when user typed 3+ chars but hasn't finalized */}
+                            {searchValue.trim().length >= 3 && !selectedCustomer && !isModeFinalized && (
+                                <button
+                                    type="button"
+                                    onClick={() => handleModeFinalized('name', searchValue)}
+                                    className="absolute right-3 top-[calc(1.5rem+0.25rem+12px)] h-8 w-8 flex items-center justify-center rounded-full bg-success hover:bg-success-dark text-white transition-colors shadow-sm"
+                                    title="Add as new customer"
+                                    aria-label="Add as new customer"
+                                >
+                                    <CheckCircleIcon className="h-5 w-5" />
+                                </button>
+                            )}
+                        </div>
                         {searchError && (
                             <p className="text-sm text-error mt-1">{searchError}</p>
                         )}
