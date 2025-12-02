@@ -105,6 +105,48 @@ export function getStateName(stateCode: string | null): string {
 }
 
 /**
+ * Group line items by HSN/SAC code for tax summary
+ */
+function groupByHSN(lineItems: Array<{
+  hsn_sac_code: string | null
+  taxable_amount: number
+  cgst_amount: number
+  sgst_amount: number
+  igst_amount: number
+}>): Map<string, {
+  hsn: string
+  taxable: number
+  cgst: number
+  sgst: number
+  igst: number
+  total_tax: number
+}> {
+  const grouped = new Map()
+  
+  for (const item of lineItems) {
+    const hsn = item.hsn_sac_code || 'N/A'
+    const existing = grouped.get(hsn) || { 
+      hsn, 
+      taxable: 0, 
+      cgst: 0, 
+      sgst: 0, 
+      igst: 0, 
+      total_tax: 0 
+    }
+    
+    existing.taxable += item.taxable_amount
+    existing.cgst += item.cgst_amount
+    existing.sgst += item.sgst_amount
+    existing.igst += item.igst_amount
+    existing.total_tax += item.cgst_amount + item.sgst_amount + item.igst_amount
+    
+    grouped.set(hsn, existing)
+  }
+  
+  return grouped
+}
+
+/**
  * Generate invoice HTML for PDF printing
  */
 export function generateInvoiceHTML(
@@ -132,6 +174,9 @@ export function generateInvoiceHTML(
   
   const taxResult: TaxCalculationResult = calculateTax(taxContext, lineItems, true)
   const supplyType = determineSupplyType(taxContext.org, taxContext.customer)
+  
+  // Group by HSN for tax summary table
+  const hsnGroups = groupByHSN(taxResult.line_items)
   
   // Determine base supply type (intrastate vs interstate) for column display
   // Zero-rated supplies can still be interstate (SEZ → different state)
@@ -569,6 +614,58 @@ export function generateInvoiceHTML(
         }).join('')}
       </tbody>
     </table>
+    
+    <!-- HSN-wise Tax Summary -->
+    <div style="margin-bottom: 20px;">
+      <div style="font-weight: bold; font-size: 12px; margin-bottom: 8px; text-transform: uppercase;">HSN/SAC-wise Summary</div>
+      <table class="items-table">
+        <thead>
+          <tr>
+            <th style="width: 20%;">HSN/SAC</th>
+            <th style="width: 20%;" class="text-right">Taxable Value</th>
+            ${isIntrastateBase ? `
+              <th style="width: 15%;" class="text-right">CGST</th>
+              <th style="width: 15%;" class="text-right">SGST</th>
+            ` : isInterstateBase ? `
+              <th style="width: 15%;" class="text-right">IGST</th>
+            ` : ''}
+            <th style="width: 15%;" class="text-right">Total Tax</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${[...hsnGroups.values()].map(g => {
+            if (isIntrastateBase) {
+              return `
+                <tr>
+                  <td>${g.hsn}</td>
+                  <td class="text-right">₹${g.taxable.toFixed(2)}</td>
+                  <td class="text-right">₹${g.cgst.toFixed(2)}</td>
+                  <td class="text-right">₹${g.sgst.toFixed(2)}</td>
+                  <td class="text-right">₹${g.total_tax.toFixed(2)}</td>
+                </tr>
+              `
+            } else if (isInterstateBase) {
+              return `
+                <tr>
+                  <td>${g.hsn}</td>
+                  <td class="text-right">₹${g.taxable.toFixed(2)}</td>
+                  <td class="text-right">₹${g.igst.toFixed(2)}</td>
+                  <td class="text-right">₹${g.total_tax.toFixed(2)}</td>
+                </tr>
+              `
+            } else {
+              return `
+                <tr>
+                  <td>${g.hsn}</td>
+                  <td class="text-right">₹${g.taxable.toFixed(2)}</td>
+                  <td class="text-right">₹${g.total_tax.toFixed(2)}</td>
+                </tr>
+              `
+            }
+          }).join('')}
+        </tbody>
+      </table>
+    </div>
     
     <!-- Tax Summary and Totals -->
     <div class="tax-summary">
