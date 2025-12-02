@@ -121,7 +121,10 @@ export function ManualAdjustmentModal({
         label="Product *"
         value={formData.product_id}
         onChange={(e) => setFormData({ ...formData, product_id: e.target.value })}
-        options={productOptions}
+        options={[
+          { value: '', label: 'Select a product' },
+          ...productOptions
+        ]}
         error={errors.product_id}
         required
         disabled={isSubmitting || loadingProducts}

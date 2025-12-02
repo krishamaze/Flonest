@@ -151,7 +151,10 @@ export function StockTransactionForm({
         label="Product *"
         value={formData.product_id}
         onChange={(e) => setFormData({ ...formData, product_id: e.target.value })}
-        options={productOptions}
+        options={[
+          { value: '', label: 'Select a product' },
+          ...productOptions
+        ]}
         error={errors.product_id}
         required
         disabled={isSubmitting || loadingProducts}
@@ -212,13 +215,12 @@ export function StockTransactionForm({
         <div className="rounded-md border border-primary-light bg-primary-light p-md">
           <div className="flex items-center justify-between">
             <span className="text-sm font-medium text-primary-text">Stock After Transaction:</span>
-            <span className={`text-base font-semibold ${
-              stockAfterTransaction < 0 
-                ? 'text-error' 
+            <span className={`text-base font-semibold ${stockAfterTransaction < 0
+                ? 'text-error'
                 : stockAfterTransaction < (selectedProduct?.min_stock_level || 0)
-                ? 'text-warning'
-                : 'text-primary-text'
-            }`}>
+                  ? 'text-warning'
+                  : 'text-primary-text'
+              }`}>
               {stockAfterTransaction < 0 ? '0' : stockAfterTransaction} {selectedProduct?.unit || 'pcs'}
             </span>
           </div>
