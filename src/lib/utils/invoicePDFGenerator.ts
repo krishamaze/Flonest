@@ -504,6 +504,7 @@ export function generateInvoiceHTML(
         ${org.tax_identifier ? `<div class="party-detail"><strong>PAN:</strong> ${org.tax_identifier}</div>` : ''}
         ${org.state_code ? `<div class="party-detail"><strong>State:</strong> ${sellerState} (Code: ${org.state_code})</div>` : ''}
         ${org.phone ? `<div class="party-detail"><strong>Phone:</strong> ${org.phone}</div>` : ''}
+        ${(org as any).email ? `<div class="party-detail"><strong>Email:</strong> ${(org as any).email}</div>` : ''}
       </div>
       
       <!-- Buyer Details -->
