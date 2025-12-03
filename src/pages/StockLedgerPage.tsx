@@ -1,6 +1,5 @@
-import { useEffect, useState, useMemo, useCallback } from 'react'
+import { useState, useMemo, useCallback } from 'react'
 import { useAuth } from '../contexts/AuthContext'
-import { useRefresh } from '../contexts/RefreshContext'
 import type { StockLedger, Product } from '../types'
 import { Card, CardContent } from '../components/ui/Card'
 import { LoadingSpinner } from '../components/ui/LoadingSpinner'
@@ -19,7 +18,6 @@ import type { StockLedgerFormData } from '../types'
 
 export function StockLedgerPage() {
   const { user } = useAuth()
-  const { registerRefreshHandler, unregisterRefreshHandler } = useRefresh()
   const [isStockModalOpen, setIsStockModalOpen] = useState(false)
   const [filterType, setFilterType] = useState<'all' | 'in' | 'out' | 'adjustment'>('all')
   const queryClient = useQueryClient()
@@ -125,11 +123,6 @@ export function StockLedgerPage() {
     if (!user?.orgId) return
     await queryClient.invalidateQueries({ queryKey: stockLedgerQueryKey })
   }, [queryClient, stockLedgerQueryKey, user?.orgId])
-
-  useEffect(() => {
-    registerRefreshHandler(loadLatestLedger)
-    return () => unregisterRefreshHandler()
-  }, [registerRefreshHandler, unregisterRefreshHandler, loadLatestLedger])
 
 
 
