@@ -16,10 +16,21 @@ This document outlines the mandatory 7-step GitOps process for applying database
 ## The 7-Step GitOps Process
 
 ### Step 1: Develop & Test Locally
-Create your migration file and test it locally.
+Create your migration file manually and test it locally.
+
+**Critical Rules:**
+1. ❌ NEVER use `supabase migration new`
+2. ✅ Create manually: `YYYYMMDDHHMMSS_description.sql`
+3. ✅ Write idempotent SQL (IF NOT EXISTS, CREATE OR REPLACE, etc.)
+
 ```bash
-npm run supabase:migration:new your_migration_name
-# Edit the file, then apply locally:
+# Get timestamp (PowerShell)
+Get-Date -Format "yyyyMMddHHmmss"
+
+# Create file: supabase/migrations/YYYYMMDDHHMMSS_your_migration_name.sql
+# Example: supabase/migrations/20251203151330_add_inventory_alerts.sql
+
+# Write idempotent SQL, then apply locally:
 npx supabase start  # or npx supabase restart
 ```
 

@@ -16,7 +16,7 @@
     "supabase:db:push": "npx supabase db push --linked --yes",
     "supabase:db:reset": "npx supabase db reset --linked",
     "supabase:types": "node scripts/generate-types.cjs",
-    "supabase:migration:new": "npx supabase migration new",
+    "migration:new": "echo ❌ NEVER use supabase migration new. Create manually: YYYYMMDDHHMMSS_description.sql (see .agent/workflows/create-migration.md) && exit 1",
     "db:migrate": "npm run supabase:db:push",
     "db:types": "npm run supabase:types",
     "create:internal-user": "node scripts/create-internal-user.cjs",

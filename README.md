@@ -99,9 +99,10 @@ The database uses Supabase migrations for schema management. All migrations are 
 
 **Migrations are managed via:**
 ```bash
-npm run supabase:migration:new <name>  # Create new migration
-# Use Supabase MCP in Cursor to apply migrations
-npm run supabase:types                 # Generate TypeScript types
+npm run supabase:status           # Check Supabase project status
+# Migration: Create manually with YYYYMMDDHHMMSS_description.sql format
+npm run db:migrate                # Push migrations to database
+npm run db:types                  # Generate TypeScript types
 ```
 
 ## 📁 Project Structure

@@ -47,15 +47,23 @@ Use semantic versioning (major.minor.patch):
 
 ### Step 1: Create Migration File
 
+**Critical Rules:**
+1. ❌ NEVER use `supabase migration new` command
+2. ✅ Create files manually with format: `YYYYMMDDHHMMSS_description.sql`
+3. ✅ Write idempotent SQL that handles "already exists" gracefully
+
 ```bash
-npm run supabase:migration:new add_tax_rate_to_products
+# Get timestamp (PowerShell)
+Get-Date -Format "yyyyMMddHHmmss"
+
+# Example: 20251203151330_add_tax_rate_to_products.sql
 ```
 
 This creates a new migration file in `supabase/migrations/` with a timestamp prefix.
 
-### Step 2: Write Migration SQL
+### Step 2: Write Idempotent Migration SQL
 
-Edit the migration file and write your SQL:
+Edit the migration file and write your **idempotent** SQL:
 
 ```sql
 -- Migration: Add tax_rate column to products table
@@ -63,16 +71,30 @@ Edit the migration file and write your SQL:
 
 BEGIN;
 
--- Add tax_rate column
-ALTER TABLE products 
-ADD COLUMN tax_rate DECIMAL(5,2) DEFAULT 0.00;
+-- Add tax_rate column (idempotent with DO block)
+DO $$ 
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns 
+    WHERE table_name = 'products' AND column_name = 'tax_rate'
+  ) THEN
+    ALTER TABLE products ADD COLUMN tax_rate DECIMAL(5,2) DEFAULT 0.00;
+  END IF;
+END $$;
 
--- Add check constraint
-ALTER TABLE products
-ADD CONSTRAINT check_tax_rate_range 
-CHECK (tax_rate >= 0 AND tax_rate <= 100);
+-- Add check constraint (idempotent with IF NOT EXISTS)
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint WHERE conname = 'check_tax_rate_range'
+  ) THEN
+    ALTER TABLE products
+    ADD CONSTRAINT check_tax_rate_range 
+    CHECK (tax_rate >= 0 AND tax_rate <= 100);
+  END IF;
+END $$;
 
--- Update existing rows (if needed)
+-- Update existing rows (idempotent - WHERE clause prevents re-update)
 UPDATE products 
 SET tax_rate = 18.00 
 WHERE tax_rate IS NULL;

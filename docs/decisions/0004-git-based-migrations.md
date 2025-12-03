@@ -47,31 +47,41 @@ main              →  yzrwkznkfisfpnwzbwfw        →  Production
 
 ### Workflow
 
-```bash
-# 1. Create migration file
-npm run supabase:migration:new add_new_feature
+**Critical Rules:**
+1. ❌ NEVER use `supabase migration new` - create files manually
+2. ✅ Files must follow format: `YYYYMMDDHHMMSS_description.sql`
+3. ✅ Write idempotent SQL that handles "already exists" gracefully
 
-# 2. Write SQL in supabase/migrations/[timestamp]_add_new_feature.sql
+```bash
+# 1. Get timestamp (PowerShell)
+Get-Date -Format "yyyyMMddHHmmss"
+
+# 2. Create migration file manually
+# supabase/migrations/YYYYMMDDHHMMSS_add_new_feature.sql
+# Example: supabase/migrations/20251203151330_add_new_feature.sql
+
+# 3. Write idempotent SQL
+# Use: CREATE TABLE IF NOT EXISTS, CREATE OR REPLACE FUNCTION, etc.
 # Example: ALTER TABLE products ADD COLUMN is_featured BOOLEAN DEFAULT false;
 
-# 3. Commit to git
+# 4. Commit to git
 git add supabase/migrations/
 git commit -m "migration: add is_featured to products"
 
-# 4. Push to preview branch
+# 5. Push to preview branch
 git push origin preview
 # → Supabase automatically applies migration to preview branch
 
-# 5. Test on preview environment
+# 6. Test on preview environment
 # Verify schema change: https://supabase.com/dashboard/project/evbbdlzwfqhvcuojlahr
 
-# 6. Merge to main for production
+# 7. Merge to main for production
 git checkout main
 git merge preview
 git push origin main
 # → Supabase automatically applies migration to production branch
 
-# 7. Generate TypeScript types (after migration applied)
+# 8. Generate TypeScript types (after migration applied)
 npm run supabase:types
 git add src/types/database.ts
 git commit -m "chore: update database types"
@@ -183,7 +193,11 @@ If a migration causes production issues:
 # DO NOT delete the migration file
 # Instead, create a new "down" migration
 
-npm run supabase:migration:new revert_feature_x
+# Get timestamp
+Get-Date -Format "yyyyMMddHHmmss"
+
+# Create rollback migration manually
+# Example: supabase/migrations/20251203152000_revert_feature_x.sql
 
 # Write SQL to undo the change
 # Example: ALTER TABLE products DROP COLUMN is_featured;

@@ -62,13 +62,23 @@ npx supabase branches create feature/my-new-feature
 
 Make changes to your application and database.
 
--   **Schema Changes**: Create migration files using the CLI.
+-   **Schema Changes**: Create migration files manually.
+
+    **Critical Rules:**
+    1. ❌ NEVER use `supabase migration new`
+    2. ✅ Create manually: `YYYYMMDDHHMMSS_description.sql`
+    3. ✅ Write idempotent SQL (IF NOT EXISTS, CREATE OR REPLACE, etc.)
 
     ```bash
-    npx supabase migration new my_schema_change
+    # Get timestamp (PowerShell)
+    Get-Date -Format "yyyyMMddHHmmss"
+    
+    # Create file manually
+    # supabase/migrations/YYYYMMDDHHMMSS_my_schema_change.sql
+    # Example: supabase/migrations/20251203151330_add_inventory_alerts.sql
     ```
 
-    Edit the generated SQL file in `supabase/migrations`.
+    Edit the generated SQL file in `supabase/migrations` with idempotent SQL.
 
 -   **Apply Migrations**: Push your changes to the remote Supabase branch.
 

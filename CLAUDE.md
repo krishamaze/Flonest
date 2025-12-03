@@ -267,16 +267,25 @@ npm run dev
 
 #### Creating a New Migration
 
+**Critical Rules:**
+1. **Manual Creation**: NEVER use `supabase migration new` - create files manually
+2. **Idempotent SQL**: Every statement must handle "already exists" gracefully
+
 ```bash
-# Step 1: Create migration file (CLI required - file creation only)
-npm run supabase:migration:new add_new_feature
+# Step 1: Get timestamp (PowerShell)
+Get-Date -Format "yyyyMMddHHmmss"
 
-# Step 2: Write SQL in supabase/migrations/[timestamp]_add_new_feature.sql
+# Step 2: Create file manually
+# supabase/migrations/YYYYMMDDHHMMSS_description.sql
+# Example: supabase/migrations/20251203151330_add_new_feature.sql
 
-# Step 3: Apply migration (ALWAYS use MCP - NEVER CLI)
+# Step 3: Write idempotent SQL
+# Use: CREATE TABLE IF NOT EXISTS, CREATE OR REPLACE FUNCTION, etc.
+
+# Step 4: Apply migration (ALWAYS use MCP - NEVER CLI)
 # In Cursor: "Apply migration add_new_feature using Supabase MCP"
 
-# Step 4: Generate TypeScript types (use MCP)
+# Step 5: Generate TypeScript types (use MCP)
 # In Cursor: "Generate TypeScript types"
 ```
 
@@ -997,11 +1006,22 @@ type ProductUpdate = Database['public']['Tables']['products']['Update']
 
 2. **Update database schema**
    ```bash
-   # Create migration
-   npm run supabase:migration:new add_favorite_to_products
+   # Get timestamp
+   Get-Date -Format "yyyyMMddHHmmss"
+   
+   # Create migration file manually: 20251203151330_add_favorite_to_products.sql
 
-   # Write SQL in migration file
-   # ALTER TABLE products ADD COLUMN is_favorite BOOLEAN DEFAULT false;
+   # Write idempotent SQL in migration file
+   # Example:
+   # DO $$ 
+   # BEGIN
+   #   IF NOT EXISTS (
+   #     SELECT 1 FROM information_schema.columns 
+   #     WHERE table_name = 'products' AND column_name = 'is_favorite'
+   #   ) THEN
+   #     ALTER TABLE products ADD COLUMN is_favorite BOOLEAN DEFAULT false;
+   #   END IF;
+   # END $$;
 
    # Apply via MCP
    # In Cursor: "Apply migration add_favorite_to_products"
@@ -1121,15 +1141,16 @@ git push -u origin main
 See `docs/SCHEMA_MIGRATION_WORKFLOW.md` for detailed guide.
 
 **Quick Reference:**
-1. Create migration file: `npm run supabase:migration:new <name>`
-2. Write SQL in migration file
-3. Review SQL for correctness
-4. Apply via MCP: "Apply migration [name]"
-5. Generate types via MCP: "Generate TypeScript types"
-6. Update schema version if needed
-7. Update frontend code if API contracts changed
-8. Test thoroughly
-9. Commit and deploy
+1. Get timestamp: `Get-Date -Format "yyyyMMddHHmmss"`
+2. Create migration file manually: `supabase/migrations/YYYYMMDDHHMMSS_description.sql`
+3. Write idempotent SQL (IF NOT EXISTS, CREATE OR REPLACE, etc.)
+4. Review SQL for correctness and idempotency
+5. Apply via MCP: "Apply migration [name]"
+6. Generate types via MCP: "Generate TypeScript types"
+7. Update schema version if needed
+8. Update frontend code if API contracts changed
+9. Test thoroughly (run migration twice to verify idempotency)
+10. Commit and deploy
 
 ---
 

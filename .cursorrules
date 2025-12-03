@@ -105,8 +105,22 @@ This email has Vercel team access and prevents deployment errors.
 
 ALWAYS use Supabase MCP for database operations. Never use Supabase CLI commands for migrations or database changes.
 
+**Migration Rules (CRITICAL):**
+
+Rule 1: **Manual File Creation Only**
+- ❌ NEVER use `supabase migration new` or `npm run supabase:migration:new`
+- ✅ ALWAYS create files manually with format: `YYYYMMDDHHMMSS_description.sql`
+- Example: `20251203151330_add_new_column.sql`
+- Get timestamp: `Get-Date -Format "yyyyMMddHHmmss"` (PowerShell)
+
+Rule 2: **Idempotent SQL Required**
+- ✅ Every statement MUST handle "already exists" gracefully
+- Use: `CREATE TABLE IF NOT EXISTS`, `ALTER TABLE ... ADD COLUMN IF NOT EXISTS`
+- Use: `CREATE OR REPLACE FUNCTION`, `DROP ... IF EXISTS`
+- Migrations must be safely re-runnable without errors
+
 **For migrations:**
-- Create file: `npm run supabase:migration:new <name>` (CLI only for file creation)
+- Create file: Manually with YYYYMMDDHHMMSS_description.sql format (see .agent/workflows/create-migration.md)
 - Apply migration: Use Supabase MCP `apply_migration` tool (NEVER use `supabase db push`)
 - Query database: Use Supabase MCP `execute_sql` tool
 - List tables: Use Supabase MCP `list_tables` tool
@@ -115,8 +129,8 @@ ALWAYS use Supabase MCP for database operations. Never use Supabase CLI commands
 - List migrations: Use Supabase MCP `list_migrations` tool
 
 **When deploying with database changes:**
-1. Create migration file locally: `npm run supabase:migration:new <name>`
-2. Write migration SQL in the file
+1. Create migration file manually: `supabase/migrations/YYYYMMDDHHMMSS_description.sql`
+2. Write idempotent SQL (IF NOT EXISTS, CREATE OR REPLACE, etc.)
 3. Apply migration using Supabase MCP in Cursor
 4. Commit and push to git (Vercel deploys automatically)
 5. Verify deployment using Vercel MCP
