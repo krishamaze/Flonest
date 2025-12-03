@@ -25,7 +25,7 @@ export function ProductSelectionCombobox({
     isSearching,
     searchResults,
     masterResults = [], // NEW: default to empty array
-    selectedProduct,
+    _selectedProduct,
     onProductSelect,
     onOpenAddNewForm,
     onLinkMasterProduct, // NEW: link master product handler

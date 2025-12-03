@@ -280,11 +280,11 @@ export function useProductSelection({
       await createProductMutation.mutateAsync({
         orgId,
         data: {
-          name: masterProduct.name,
-          sku: masterProduct.sku,
+          name: masterProduct.name || '',
+          sku: masterProduct.sku || '',
           selling_price: masterProduct.base_price || undefined,
           hsn_sac_code: masterProduct.hsn_code || undefined,
-          unit: masterProduct.base_unit || 'pcs',
+          unit: masterProduct.base_unit || undefined,
           tax_rate: masterProduct.gst_rate || undefined,
           // Note: The backend should set master_product_id automatically based on SKU matching
         },
@@ -293,7 +293,7 @@ export function useProductSelection({
       // Fetch the newly created product
       const newProducts = await getProducts(orgId, {
         status: 'active',
-        search: masterProduct.sku
+        search: masterProduct.sku || ''
       }, { page: 1, pageSize: 1 })
       
       if (newProducts.data.length > 0) {

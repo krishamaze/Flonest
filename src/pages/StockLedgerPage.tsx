@@ -43,7 +43,7 @@ export function StockLedgerPage() {
     staleTime: 30_000,
   })
 
-  const createTransactionMutation = useMutation({
+  const _createTransactionMutation = useMutation({
     mutationFn: async ({ formData }: { formData: StockLedgerFormData; product?: Product }) => {
       if (!user?.orgId || !user?.id) {
         throw new Error('User not authenticated')
