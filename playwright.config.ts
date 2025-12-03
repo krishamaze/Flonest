@@ -6,7 +6,7 @@ import { defineConfig, devices } from '@playwright/test'
  * Run with: npx playwright test
  * 
  * Prerequisites:
- * - npm run dev running on localhost:5173
+ * - npm run dev running on localhost:3000
  */
 export default defineConfig({
   testDir: './tests',
@@ -29,7 +29,7 @@ export default defineConfig({
   // Shared settings for all projects
   use: {
     // Base URL to use in actions like `await page.goto('/')`
-    baseURL: 'http://localhost:5173',
+    baseURL: 'http://localhost:3000',
     
     // Collect trace when retrying the failed test
     trace: 'on-first-retry',

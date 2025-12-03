@@ -11,7 +11,7 @@
 
 import { test, expect } from '@playwright/test'
 
-const BASE_URL = 'http://localhost:5173'
+const BASE_URL = 'http://localhost:3000'
 
 const users = [
   { email: 'owner@test.com', expectedPath: '/owner', role: 'org_owner' },
