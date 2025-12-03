@@ -329,6 +329,13 @@ export function useProductSelection({
     setFormErrors({})
   }, [])
   
+  // Stable setSearchTerm callback that triggers search
+  const handleSetSearchTerm = useCallback((value: string) => {
+    setSearchTerm(value)
+    // Trigger search (caller should debounce this)
+    handleSearch(value)
+  }, [handleSearch])
+  
   // Auto-trigger search when searchTerm changes (with external debounce)
   // Note: This effect is intentionally not included - caller should manually call handleSearch
   // or implement debouncing externally
@@ -336,11 +343,7 @@ export function useProductSelection({
   return {
     // Search state
     searchTerm,
-    setSearchTerm: (value: string) => {
-      setSearchTerm(value)
-      // Trigger search (caller should debounce this)
-      handleSearch(value)
-    },
+    setSearchTerm: handleSetSearchTerm,
     isSearching,
     searchResults,
     masterResults, // NEW: expose master results

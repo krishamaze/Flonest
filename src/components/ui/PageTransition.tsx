@@ -8,16 +8,16 @@ interface PageTransitionProps {
 /**
  * PageTransition Component
  * Wraps route content with smooth Android-style fade transitions
- * 
- * BUGFIX: Prevents blank screen during rapid navigation by:
- * - Canceling pending transitions when new navigation occurs
- * - Using ref to track transition timer for proper cleanup
- * - Ensuring opacity always resets to 1 after transition
+ *
+ * Uses opacity-only transition without key-based remount to avoid
+ * breaking React Router's route reconciliation when navigating
+ * between routes with different layout structures (e.g., focus pages
+ * outside MainLayout vs nested routes inside MainLayout).
  */
 export function PageTransition({ children }: PageTransitionProps) {
   const location = useLocation()
-  const [displayLocation, setDisplayLocation] = useState(location)
   const [isTransitioning, setIsTransitioning] = useState(false)
+  const prevPathnameRef = useRef(location.pathname)
   const transitionTimerRef = useRef<NodeJS.Timeout | null>(null)
 
   useEffect(() => {
@@ -27,40 +27,34 @@ export function PageTransition({ children }: PageTransitionProps) {
       transitionTimerRef.current = null
     }
 
-    if (location.pathname !== displayLocation.pathname) {
+    if (location.pathname !== prevPathnameRef.current) {
+      // Start fade out
       setIsTransitioning(true)
 
-      // Update location after brief fade out
+      // After brief fade, update ref and fade back in
       transitionTimerRef.current = setTimeout(() => {
-        setDisplayLocation(location)
+        prevPathnameRef.current = location.pathname
         setIsTransitioning(false)
         transitionTimerRef.current = null
-      }, 150)
-    } else {
-      // Same location - ensure we're not stuck in transitioning state
-      setIsTransitioning(false)
+      }, 100) // Reduced from 150ms for snappier feel
     }
 
-    // Cleanup on unmount or location change
+    // Cleanup on unmount
     return () => {
       if (transitionTimerRef.current) {
         clearTimeout(transitionTimerRef.current)
         transitionTimerRef.current = null
       }
     }
-  }, [location, displayLocation])
+  }, [location.pathname])
 
   return (
     <div
       className="page-enter"
       style={{
-        opacity: isTransitioning ? 0 : 1,
-        transition: 'opacity 150ms cubic-bezier(0.4, 0.0, 1, 1)',
-        // Ensure content is always visible (prevent stuck invisible state)
-        visibility: 'visible',
-        display: 'block',
+        opacity: isTransitioning ? 0.3 : 1, // Subtle fade instead of full disappear
+        transition: 'opacity 100ms ease-out',
       }}
-      key={displayLocation.pathname}
     >
       {children}
     </div>

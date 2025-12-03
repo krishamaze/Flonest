@@ -72,6 +72,17 @@ export function InvoiceForm({
   // Toast deduplication hook
   const { showToast } = useToastDedupe()
 
+  // Memoized error handler for hooks (prevents infinite loops)
+  const handleHookError = useCallback((message: string) => {
+    showToast('error', message, { autoClose: 3000 })
+  }, [showToast])
+
+  // Memoized customer created handler (prevents infinite loops)
+  const handleCustomerCreated = useCallback(() => {
+    showToast('success', 'Customer saved successfully', { autoClose: 3000 })
+    setCurrentStep(2)
+  }, [showToast])
+
   // Items management hook
   const {
     items: hookItems,
@@ -89,9 +100,7 @@ export function InvoiceForm({
     products,
     orgId,
     initialItems: [], // Will be replaced by draft items when switching
-    onError: (message) => {
-      showToast('error', message, { autoClose: 3000 })
-    },
+    onError: handleHookError,
     // onItemsChange not needed - draft hook reads items directly
   })
 
@@ -119,13 +128,8 @@ export function InvoiceForm({
     resetCustomer: hookResetCustomer,
   } = useInvoiceCustomer({
     orgId,
-    onError: (message) => {
-      showToast('error', message, { autoClose: 3000 })
-    },
-    onCustomerCreated: (_customer) => {
-      showToast('success', 'Customer saved successfully', { autoClose: 3000 })
-      setCurrentStep(2)
-    }
+    onError: handleHookError,
+    onCustomerCreated: handleCustomerCreated,
   })
 
   // Memoized callbacks for draft management to prevent render loops

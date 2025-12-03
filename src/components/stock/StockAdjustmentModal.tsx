@@ -38,6 +38,10 @@ export function StockAdjustmentModal({
         },
     })
 
+    // Extract stable references to avoid infinite loop
+    const resetSelection = productSelection.resetSelection
+    const selectedProduct = productSelection.selectedProduct
+
     // Local state for adjustment
     const [adjustmentQty, setAdjustmentQty] = useState<number>(0)
     const [reason, setReason] = useState('')
@@ -47,8 +51,8 @@ export function StockAdjustmentModal({
 
     // Load current stock when product is selected
     useEffect(() => {
-        if (productSelection.selectedProduct && orgId) {
-            getCurrentStock(productSelection.selectedProduct.id, orgId)
+        if (selectedProduct && orgId) {
+            getCurrentStock(selectedProduct.id, orgId)
                 .then(setCurrentStock)
                 .catch((error) => {
                     console.error('Error loading current stock:', error)
@@ -57,7 +61,7 @@ export function StockAdjustmentModal({
         } else {
             setCurrentStock(null)
         }
-    }, [productSelection.selectedProduct, orgId])
+    }, [selectedProduct, orgId])
 
     // Calculate stock after adjustment
     const stockAfterAdjustment = useMemo(() => {
@@ -68,13 +72,13 @@ export function StockAdjustmentModal({
     // Reset form when modal closes
     useEffect(() => {
         if (!isOpen) {
-            productSelection.resetSelection()
+            resetSelection()
             setAdjustmentQty(0)
             setReason('')
             setCurrentStock(null)
             setErrors({})
         }
-    }, [isOpen, productSelection])
+    }, [isOpen, resetSelection])
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
