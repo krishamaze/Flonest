@@ -19,7 +19,6 @@ import {
   saveAgentContextMode,
   type AgentContextInfo,
 } from '../lib/agentContext'
-import { MOCK_ENABLED, mockSignIn, createMockSupabaseSession } from '../lib/mockAuth'
 
 type OrgContextSummary = OrgMembershipSummary | null
 
@@ -209,18 +208,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // Update session in React Query cache immediately
       // This ensures session state is always synchronized with Supabase auth
       queryClient.setQueryData(['auth', 'session'], newSession)
-      
+
       if (!isInitialized) {
         setIsInitialized(true)
       }
-      
+
       if (newSession?.user) {
         stripSupabaseAuthHash()
-        
+
         // Invalidate auth data query to refetch profile/memberships
         // This handles: SIGNED_IN, TOKEN_REFRESHED, USER_UPDATED
         queryClient.invalidateQueries({ queryKey: ['auth', 'data'] })
-        
+
         // Also invalidate admin MFA requirement query
         queryClient.invalidateQueries({ queryKey: ['auth', 'admin-mfa-requirement'] })
       } else {
@@ -241,22 +240,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // Sign in handler
   const signIn = async (email: string, password: string) => {
-    if (MOCK_ENABLED) {
-      const { error } = await mockSignIn(email, password)
-      if (error) throw error
-      // Manually update session in React Query cache to trigger re-render
-      const mockSession = createMockSupabaseSession(email)
-      queryClient.setQueryData(['auth', 'session'], mockSession)
-      // Invalidate auth data to refetch profile, memberships, etc.
-      await queryClient.invalidateQueries({ queryKey: ['auth', 'data'] })
-    } else {
-      const { error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      })
-      if (error) throw error
-      // onAuthStateChange will handle invalidation for real auth
-    }
+    const { error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    })
+    if (error) throw error
+    // onAuthStateChange will handle invalidation
   }
 
   // Sign up handler
@@ -325,12 +314,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         currentOrg: membership,
         user: effectiveAuthData.user
           ? {
-              ...effectiveAuthData.user,
-              orgId: membership.orgId,
-              role: membership.role,
-              contextMode: 'business',
-              agentContext: undefined,
-            }
+            ...effectiveAuthData.user,
+            orgId: membership.orgId,
+            role: membership.role,
+            contextMode: 'business',
+            agentContext: undefined,
+          }
           : null,
         currentAgentContext: null,
       })
@@ -356,10 +345,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         currentAgentContext: relationship,
         user: effectiveAuthData.user
           ? {
-              ...effectiveAuthData.user,
-              contextMode: 'agent',
-              agentContext: relationship,
-            }
+            ...effectiveAuthData.user,
+            contextMode: 'agent',
+            agentContext: relationship,
+          }
           : null,
       })
     }
@@ -379,10 +368,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           currentAgentContext: null,
           user: effectiveAuthData.user
             ? {
-                ...effectiveAuthData.user,
-                contextMode: 'business',
-                agentContext: undefined,
-              }
+              ...effectiveAuthData.user,
+              contextMode: 'business',
+              agentContext: undefined,
+            }
             : null,
         })
       }
@@ -406,7 +395,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     // Invalidate and refetch auth data
     await queryClient.invalidateQueries({ queryKey: ['auth', 'data'] })
-    
+
     // Wait for refetch to complete
     if (session?.user?.id) {
       await queryClient.refetchQueries({ queryKey: ['auth', 'data', session.user.id] })

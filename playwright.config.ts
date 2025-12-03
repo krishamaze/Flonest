@@ -6,7 +6,6 @@ import { defineConfig, devices } from '@playwright/test'
  * Run with: npx playwright test
  * 
  * Prerequisites:
- * - VITE_USE_MOCK=true in .env.local
  * - npm run dev running on localhost:5173
  */
 export default defineConfig({

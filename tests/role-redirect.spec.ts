@@ -2,11 +2,11 @@
  * Role Redirect Tests
  * 
  * Tests that users are redirected to their role-specific landing pages
- * after login. Uses mock auth mode (VITE_USE_MOCK=true).
+ * after login using real Supabase auth.
  * 
  * Prerequisites:
- * - VITE_USE_MOCK=true in .env.local
  * - npm run dev running on localhost:5173
+ * - Test users must exist in Supabase Auth
  */
 
 import { test, expect } from '@playwright/test'
@@ -38,7 +38,7 @@ test.describe('Role-based redirects after login', () => {
       
       // Fill in credentials
       await page.fill('input[type="email"]', user.email)
-      await page.fill('input[type="password"]', 'mockpassword123')
+      await page.fill('input[type="password"]', 'password')
       
       // Submit form
       await page.click('button[type="submit"]')

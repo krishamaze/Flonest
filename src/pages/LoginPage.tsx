@@ -3,7 +3,6 @@ import { useNavigate, useSearchParams } from 'react-router-dom'
 import { EyeIcon, EyeSlashIcon } from '@heroicons/react/24/outline'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
-import { MOCK_ENABLED } from '../lib/mockAuth'
 import { Button } from '../components/ui/Button'
 import { Input } from '../components/ui/Input'
 import { PullToRefresh } from '../components/ui/PullToRefresh'
@@ -57,16 +56,16 @@ export function LoginPage() {
   }, [searchParams])
 
   const handleRefresh = async (onStatusChange?: (status: RefreshStatus) => void) => {
-    onStatusChange?.({ 
-      phase: 'checking-version', 
-      message: 'Checking for updates...', 
-      hasUpdate: false 
+    onStatusChange?.({
+      phase: 'checking-version',
+      message: 'Checking for updates...',
+      hasUpdate: false
     })
 
-    onStatusChange?.({ 
-      phase: 'complete', 
-      message: 'Complete', 
-      hasUpdate: false 
+    onStatusChange?.({
+      phase: 'complete',
+      message: 'Complete',
+      hasUpdate: false
     })
   }
 
@@ -118,29 +117,16 @@ export function LoginPage() {
 
     try {
       if (view === 'sign_in') {
-        if (MOCK_ENABLED) {
-          // Mock mode: use auth context's signIn
-          await authSignIn(email, trimmedPassword)
-          navigate('/')
-        } else {
-          // Real mode: use Supabase directly
-          const { error: signInError } = await supabase.auth.signInWithPassword({
-            email,
-            password: trimmedPassword,
-          })
-
-          if (signInError) throw signInError
-
-          // Regular user - navigation will happen automatically via AuthContext
-          navigate('/')
-        }
+        // Use auth context's signIn which handles Supabase auth
+        await authSignIn(email, trimmedPassword)
+        navigate('/')
       } else if (view === 'sign_up') {
         const { data, error } = await supabase.auth.signUp({
           email,
           password: trimmedPassword,
         })
         if (error) throw error
-        
+
         // Check if user is immediately signed in (email confirmation disabled)
         if (data.session) {
           // User is immediately confirmed - redirect to app
@@ -154,7 +140,7 @@ export function LoginPage() {
           // Security: Use generic message to avoid leaking system configuration details
           setMessage('Account created successfully! If email confirmation is required, please check your email for further instructions.')
         }
-        
+
         // Clear form
         setEmail('')
         setPassword('')
@@ -186,19 +172,19 @@ export function LoginPage() {
             {/* Header */}
             <div className="mb-xl text-center">
               <div className="mx-auto mb-lg flex h-24 w-24 items-center justify-center rounded-lg bg-white shadow-primary p-md">
-                <img 
-                  src="/pwa-192x192.png" 
+                <img
+                  src="/pwa-192x192.png"
                   alt="Flonest logo"
                   className="w-full h-full object-contain"
                 />
               </div>
               <h1 className="text-3xl font-bold text-primary-text mb-xs">Flonest</h1>
               <p className="text-base text-secondary-text">
-                {view === 'sign_up' 
-                  ? 'Sign up to start managing your operations' 
-                  : view === 'forgot_password' 
-                  ? 'Enter your email to reset your password'
-                  : 'Sign in to your account'}
+                {view === 'sign_up'
+                  ? 'Sign up to start managing your operations'
+                  : view === 'forgot_password'
+                    ? 'Enter your email to reset your password'
+                    : 'Sign in to your account'}
               </p>
             </div>
 
@@ -207,7 +193,7 @@ export function LoginPage() {
               <form onSubmit={handleSubmit} className="space-y-md">
                 {/* Error Message */}
                 {error && (
-                  <div 
+                  <div
                     className="rounded-md p-md break-words bg-error-light border border-solid"
                     style={{ borderColor: 'var(--color-error)' }}
                     role="alert"
@@ -280,36 +266,58 @@ export function LoginPage() {
                     ? view === 'sign_in'
                       ? 'Signing in...'
                       : view === 'sign_up'
-                      ? 'Signing up...'
-                      : 'Sending...'
+                        ? 'Signing up...'
+                        : 'Sending...'
                     : view === 'sign_in'
-                    ? 'Sign In'
-                    : view === 'sign_up'
-                    ? 'Sign Up'
-                    : 'Send reset instructions'}
+                      ? 'Sign In'
+                      : view === 'sign_up'
+                        ? 'Sign Up'
+                        : 'Send reset instructions'}
                 </Button>
 
                 {/* View Switch Links */}
                 <div className="space-y-md text-center">
-                {view === 'sign_in' && (
-                  <>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setView('forgot_password')
-                        setError(null)
-                        setMessage(null)
-                      }}
-                      className="text-sm font-medium transition-base hover:opacity-80"
-                      style={{
-                        color: 'var(--color-primary)'
-                      }}
-                    >
-                      Forgot your password?
-                    </button>
+                  {view === 'sign_in' && (
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setView('forgot_password')
+                          setError(null)
+                          setMessage(null)
+                        }}
+                        className="text-sm font-medium transition-base hover:opacity-80"
+                        style={{
+                          color: 'var(--color-primary)'
+                        }}
+                      >
+                        Forgot your password?
+                      </button>
+                      <div className="pt-md border-t border-color">
+                        <span className="block mb-sm text-sm text-secondary-text">
+                          Don't have an account?
+                        </span>
+                        <Button
+                          type="button"
+                          variant="secondary"
+                          size="md"
+                          className="w-full"
+                          onClick={() => {
+                            setView('sign_up')
+                            setError(null)
+                            setMessage(null)
+                          }}
+                        >
+                          Sign up
+                        </Button>
+                      </div>
+                    </>
+                  )}
+
+                  {view === 'sign_up' && (
                     <div className="pt-md border-t border-color">
                       <span className="block mb-sm text-sm text-secondary-text">
-                        Don't have an account?
+                        Already have an account?
                       </span>
                       <Button
                         type="button"
@@ -317,58 +325,36 @@ export function LoginPage() {
                         size="md"
                         className="w-full"
                         onClick={() => {
-                          setView('sign_up')
+                          setView('sign_in')
                           setError(null)
                           setMessage(null)
                         }}
                       >
-                        Sign up
+                        Sign in
                       </Button>
                     </div>
-                  </>
-                )}
+                  )}
 
-                {view === 'sign_up' && (
-                  <div className="pt-md border-t border-color">
-                    <span className="block mb-sm text-sm text-secondary-text">
-                      Already have an account?
-                    </span>
-                    <Button
-                      type="button"
-                      variant="secondary"
-                      size="md"
-                      className="w-full"
-                      onClick={() => {
-                        setView('sign_in')
-                        setError(null)
+                  {view === 'forgot_password' && (
+                    <div className="pt-md border-t border-color">
+                      <span className="block mb-sm text-sm text-secondary-text">
+                        Remember your password?
+                      </span>
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        size="md"
+                        className="w-full"
+                        onClick={() => {
+                          setView('sign_in')
+                          setError(null)
                           setMessage(null)
-                      }}
-                    >
-                      Sign in
-                    </Button>
-                  </div>
-                )}
-
-                {view === 'forgot_password' && (
-                  <div className="pt-md border-t border-color">
-                    <span className="block mb-sm text-sm text-secondary-text">
-                      Remember your password?
-                    </span>
-                    <Button
-                      type="button"
-                      variant="secondary"
-                      size="md"
-                      className="w-full"
-                      onClick={() => {
-                        setView('sign_in')
-                        setError(null)
-                        setMessage(null)
-                      }}
-                    >
-                      Sign in
-                    </Button>
-                  </div>
-                )}
+                        }}
+                      >
+                        Sign in
+                      </Button>
+                    </div>
+                  )}
                 </div>
               </form>
 
