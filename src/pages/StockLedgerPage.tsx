@@ -43,6 +43,7 @@ export function StockLedgerPage() {
     staleTime: 30_000,
   })
 
+  // @ts-expect-error - Mutation kept for future use
   const _createTransactionMutation = useMutation({
     mutationFn: async ({ formData }: { formData: StockLedgerFormData; product?: Product }) => {
       if (!user?.orgId || !user?.id) {

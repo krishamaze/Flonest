@@ -9,7 +9,6 @@ interface ProductSelectionComboboxProps {
     isSearching: boolean
     searchResults: ProductWithMaster[]
     masterResults?: MasterProduct[] // NEW: master catalog results
-    selectedProduct: ProductWithMaster | null
     onProductSelect: (product: ProductWithMaster | null) => void
     onOpenAddNewForm: () => void
     onLinkMasterProduct?: (masterProduct: MasterProduct) => void // NEW: link master product
@@ -25,7 +24,6 @@ export function ProductSelectionCombobox({
     isSearching,
     searchResults,
     masterResults = [], // NEW: default to empty array
-    _selectedProduct,
     onProductSelect,
     onOpenAddNewForm,
     onLinkMasterProduct, // NEW: link master product handler

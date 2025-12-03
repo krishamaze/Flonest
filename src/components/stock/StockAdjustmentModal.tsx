@@ -123,7 +123,6 @@ export function StockAdjustmentModal({
                 isSearching={productSelection.isSearching}
                 searchResults={productSelection.searchResults}
                 masterResults={productSelection.masterResults}
-                selectedProduct={productSelection.selectedProduct}
                 onProductSelect={(product) => {
                     if (product) {
                         productSelection.handleProductSelected(product)
@@ -266,10 +265,10 @@ export function StockAdjustmentModal({
                         <span className="text-sm font-medium text-primary-text">Stock After Adjustment:</span>
                         <span
                             className={`text-base font-semibold ${stockAfterAdjustment < 0
-                                    ? 'text-error'
-                                    : stockAfterAdjustment < (productSelection.selectedProduct.min_stock_level || 0)
-                                        ? 'text-warning'
-                                        : 'text-primary-text'
+                                ? 'text-error'
+                                : stockAfterAdjustment < (productSelection.selectedProduct.min_stock_level || 0)
+                                    ? 'text-warning'
+                                    : 'text-primary-text'
                                 }`}
                         >
                             {stockAfterAdjustment < 0 ? '0' : stockAfterAdjustment}{' '}
