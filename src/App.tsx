@@ -72,7 +72,7 @@ function InternalUserRedirect({ children }: { children: React.ReactNode }) {
     // If MFA is satisfied (requiresAdminMfa = false), allow platform-admin routes
     // But redirect org routes to platform-admin
     if (!requiresAdminMfa) {
-      const orgRoutes = ['/', '/products', '/inventory', '/stock-ledger', '/customers', '/notifications', '/pending-products']
+      const orgRoutes = ['/', '/products', '/inventory', '/customers', '/notifications', '/pending-products']
       if (orgRoutes.includes(location.pathname)) {
         return <Navigate to="/platform-admin" replace />
       }
@@ -188,6 +188,16 @@ function AppRoutes() {
               }
             />
             <Route
+              path="/stock-ledger"
+              element={
+                <ProtectedRoute>
+                  <RoleProtectedRoute requiredRole={['org_owner', 'branch_head']}>
+                    <StockLedgerPage />
+                  </RoleProtectedRoute>
+                </ProtectedRoute>
+              }
+            />
+            <Route
               path="/"
               element={
                 <ProtectedRoute>
@@ -209,14 +219,6 @@ function AppRoutes() {
                 element={<InvoiceDetailsPage />}
               />
               <Route path="inventory" element={<InventoryPage />} />
-              <Route
-                path="stock-ledger"
-                element={
-                  <RoleProtectedRoute requiredRole={['org_owner', 'branch_head']}>
-                    <StockLedgerPage />
-                  </RoleProtectedRoute>
-                }
-              />
               <Route path="customers" element={<CustomersPage />} />
               <Route path="customers/:id" element={<PartyDetailsPage />} />
               <Route path="notifications" element={<NotificationsPage />} />
