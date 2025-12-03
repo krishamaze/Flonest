@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback } from 'react'
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import type { CustomerWithMaster } from '../../types'
 import { useAddOrgCustomer, useCustomerById, useUpdateOrgCustomer } from '../../hooks/useCustomers'
 import { detectIdentifierTypeEnhanced, type EnhancedIdentifierType } from '../../lib/utils/identifierValidation'
@@ -73,19 +73,26 @@ export function useInvoiceCustomer({
   onError,
   onCustomerCreated,
 }: UseInvoiceCustomerProps): UseInvoiceCustomerReturn {
-  
+
+  // Store callbacks in refs to avoid useEffect/useCallback dependency issues
+  // This prevents infinite loops when callers pass inline arrow functions
+  const onErrorRef = useRef(onError)
+  const onCustomerCreatedRef = useRef(onCustomerCreated)
+  useEffect(() => { onErrorRef.current = onError }, [onError])
+  useEffect(() => { onCustomerCreatedRef.current = onCustomerCreated }, [onCustomerCreated])
+
   // Hooks for customer mutations/queries
   const addCustomerMutation = useAddOrgCustomer(orgId)
   const updateCustomerMutation = useUpdateOrgCustomer(orgId)
   const [newlyCreatedCustomerId, setNewlyCreatedCustomerId] = useState<string | null>(null)
   const { data: fetchedCustomer } = useCustomerById(newlyCreatedCustomerId)
-  
+
   // State
   const [identifier, setIdentifier] = useState('')
   const [identifierValid, setIdentifierValid] = useState(false)
   const [searching, setSearching] = useState(false)
   const [selectedCustomer, setSelectedCustomer] = useState<CustomerWithMaster | null>(null)
-  
+
   // Inline form data - always active now
   const [inlineFormData, setInlineFormData] = useState<{ name: string; mobile: string; gstin: string }>({
     name: '',
@@ -153,17 +160,18 @@ export function useInvoiceCustomer({
     if (fetchedCustomer) {
       setSelectedCustomer(fetchedCustomer)
       setIdentifier(fetchedCustomer.alias_name || fetchedCustomer.name || fetchedCustomer.master_customer.legal_name)
-      
+
       setInlineFormData({
         name: fetchedCustomer.alias_name || fetchedCustomer.master_customer.legal_name,
         mobile: fetchedCustomer.master_customer.mobile || '',
         gstin: fetchedCustomer.master_customer.gstin || ''
       })
-      
-      onCustomerCreated?.(fetchedCustomer)
+
+      // Use ref to avoid dependency on callback identity
+      onCustomerCreatedRef.current?.(fetchedCustomer)
       setNewlyCreatedCustomerId(null) // Reset after successful load
     }
-  }, [fetchedCustomer, onCustomerCreated])
+  }, [fetchedCustomer])
 
   // Customer reset is now handled by the search combobox onChange
   // No automatic reset needed here to avoid double-click issues
@@ -319,7 +327,7 @@ export function useInvoiceCustomer({
       setErrors({
         submit: errorMessage,
       })
-      onError(errorMessage)
+      onErrorRef.current(errorMessage)
     } finally {
       setSearching(false)
     }

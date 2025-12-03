@@ -145,7 +145,7 @@ export function EditInvoicePage() {
     return (
         <FocusPageLayout
             title="Edit Invoice"
-            backTo="/inventory"
+            backTo={`/invoices/${id}`}
             onClose={handleClose}
         >
             <div className="container mx-auto px-4 py-6 max-w-4xl">

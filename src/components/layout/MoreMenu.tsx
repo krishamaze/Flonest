@@ -18,7 +18,7 @@ interface MoreMenuProps {
 
 const baseMenuItems = [
   {
-    to: '/stock-ledger',
+    to: '/inventory/ledger',
     label: 'Stock Ledger',
     icon: ArrowPathIcon,
     description: 'View stock transactions',
@@ -66,13 +66,13 @@ export function MoreMenu({ isOpen, onClose }: MoreMenuProps) {
     // Stock Ledger: admin and branch_head only
     if (hasPermission(user, MANAGE_INVENTORY)) {
       moreMenuItems.push({
-        to: '/stock-ledger',
+        to: '/inventory/ledger',
         label: 'Stock Ledger',
         icon: ArrowPathIcon,
         description: 'View stock transactions',
       })
     }
-    
+
     // Customers: all org users
     moreMenuItems.push({
       to: '/customers',
@@ -80,7 +80,7 @@ export function MoreMenu({ isOpen, onClose }: MoreMenuProps) {
       icon: UserGroupIcon,
       description: 'Manage customers',
     })
-    
+
     // Add pending products link for org users
     moreMenuItems.push({
       to: '/pending-products',
@@ -88,7 +88,7 @@ export function MoreMenu({ isOpen, onClose }: MoreMenuProps) {
       icon: DocumentTextIcon,
       description: 'View pending product submissions',
     })
-    
+
     // Add agents link for admin users only
     if (canManageAgents(user)) {
       moreMenuItems.push({
@@ -97,7 +97,7 @@ export function MoreMenu({ isOpen, onClose }: MoreMenuProps) {
         icon: UserGroupIcon,
         description: 'Manage sales agents',
       })
-      
+
       // Add cash oversight for admins
       moreMenuItems.push({
         to: '/agent-cash-oversight',
@@ -142,14 +142,13 @@ export function MoreMenu({ isOpen, onClose }: MoreMenuProps) {
 
       {/* Bottom Sheet */}
       <div
-        className={`fixed top-0 bottom-0 left-0 right-0 z-[101] transform transition-transform duration-300 ease-out safe-top safe-bottom ${
-          isOpen ? 'translate-y-0' : 'translate-y-full'
-        }`}
+        className={`fixed top-0 bottom-0 left-0 right-0 z-[101] transform transition-transform duration-300 ease-out safe-top safe-bottom ${isOpen ? 'translate-y-0' : 'translate-y-full'
+          }`}
         role="dialog"
         aria-modal="true"
         aria-labelledby="more-menu-title"
       >
-        <div 
+        <div
           className="mx-auto h-full w-full max-w-lg bg-bg-card"
           style={{
             boxShadow: '0 -1px 3px 0 rgba(0, 0, 0, 0.1)',
@@ -158,7 +157,7 @@ export function MoreMenu({ isOpen, onClose }: MoreMenuProps) {
         >
           {/* Handle bar */}
           <div className="flex justify-center pt-3 pb-2">
-            <div 
+            <div
               className="h-1 w-12 rounded-full bg-neutral-300 cursor-grab active:cursor-grabbing"
               onClick={onClose}
               aria-label="Close menu"
@@ -196,10 +195,9 @@ export function MoreMenu({ isOpen, onClose }: MoreMenuProps) {
                     to={item.to}
                     onClick={onClose}
                     className={({ isActive }) =>
-                      `flex items-center gap-md p-md rounded-md min-h-[56px] transition-all duration-150 ${
-                        isActive
-                          ? 'bg-primary/5 text-primary font-semibold border-l-2 border-primary'
-                          : 'text-primary-text hover:bg-neutral-50'
+                      `flex items-center gap-md p-md rounded-md min-h-[56px] transition-all duration-150 ${isActive
+                        ? 'bg-primary/5 text-primary font-semibold border-l-2 border-primary'
+                        : 'text-primary-text hover:bg-neutral-50'
                       }`
                     }
                   >

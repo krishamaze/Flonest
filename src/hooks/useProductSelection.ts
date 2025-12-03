@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo } from 'react'
+import { useState, useCallback, useMemo, useRef, useEffect } from 'react'
 import type { ProductWithMaster, MasterProduct } from '../types'
 import { useCreateProduct } from './useProducts'
 import { getProducts } from '../lib/api/products'
@@ -65,16 +65,25 @@ export function useProductSelection({
   onProductCreated,
   onProductSelected,
 }: UseProductSelectionProps): UseProductSelectionReturn {
-  
+
+  // Store callbacks in refs to avoid useCallback dependency issues
+  // This prevents infinite loops when callers pass inline arrow functions
+  const onErrorRef = useRef(onError)
+  const onProductCreatedRef = useRef(onProductCreated)
+  const onProductSelectedRef = useRef(onProductSelected)
+  useEffect(() => { onErrorRef.current = onError }, [onError])
+  useEffect(() => { onProductCreatedRef.current = onProductCreated }, [onProductCreated])
+  useEffect(() => { onProductSelectedRef.current = onProductSelected }, [onProductSelected])
+
   // Hooks for product mutations
   const createProductMutation = useCreateProduct()
-  
+
   // Search state
   const [searchTerm, setSearchTerm] = useState('')
   const [isSearching, setIsSearching] = useState(false)
   const [searchResults, setSearchResults] = useState<ProductWithMaster[]>([])
   const [masterResults, setMasterResults] = useState<MasterProduct[]>([])
-  
+
   // Selection state
   const [selectedProduct, setSelectedProduct] = useState<ProductWithMaster | null>(null)
   
@@ -150,8 +159,8 @@ export function useProductSelection({
     setSelectedProduct(product)
     setSearchTerm(product.name)
     setShowAddNewForm(false)
-    onProductSelected?.(product)
-  }, [onProductSelected])
+    onProductSelectedRef.current?.(product)
+  }, [])
   
   const handleOpenAddNewForm = useCallback(() => {
     setShowAddNewForm(true)
@@ -228,12 +237,12 @@ export function useProductSelection({
         setSelectedProduct(productWithMaster)
         setSearchTerm(productWithMaster.name)
         setShowAddNewForm(false)
-        onProductCreated?.(productWithMaster)
-        onProductSelected?.(productWithMaster)
+        onProductCreatedRef.current?.(productWithMaster)
+        onProductSelectedRef.current?.(productWithMaster)
         setIsSearching(false)
         return
       }
-      
+
       // Create new product
       await createProductMutation.mutateAsync({
         orgId,
@@ -245,20 +254,20 @@ export function useProductSelection({
           unit: inlineFormData.unit || 'pcs',
         },
       })
-      
+
       // Fetch the newly created product to get complete data
       const newProducts = await getProducts(orgId, {
         status: 'active',
         search: inlineFormData.sku
       }, { page: 1, pageSize: 1 })
-      
+
       if (newProducts.data.length > 0) {
         const newProduct = newProducts.data[0] as ProductWithMaster
         setSelectedProduct(newProduct)
         setSearchTerm(newProduct.name)
         setShowAddNewForm(false)
-        onProductCreated?.(newProduct)
-        onProductSelected?.(newProduct)
+        onProductCreatedRef.current?.(newProduct)
+        onProductSelectedRef.current?.(newProduct)
       }
     } catch (error) {
       console.error('Error creating product:', error)
@@ -266,11 +275,11 @@ export function useProductSelection({
       setFormErrors({
         submit: errorMessage,
       })
-      onError(errorMessage)
+      onErrorRef.current(errorMessage)
     } finally {
       setIsSearching(false)
     }
-  }, [orgId, inlineFormData, createProductMutation, onError, onProductCreated, onProductSelected])
+  }, [orgId, inlineFormData, createProductMutation])
   
   // NEW: Link a master product (creates org product linked to master)
   const handleLinkMasterProduct = useCallback(async (masterProduct: MasterProduct) => {
@@ -289,29 +298,29 @@ export function useProductSelection({
           // Note: The backend should set master_product_id automatically based on SKU matching
         },
       })
-      
+
       // Fetch the newly created product
       const newProducts = await getProducts(orgId, {
         status: 'active',
         search: masterProduct.sku || ''
       }, { page: 1, pageSize: 1 })
-      
+
       if (newProducts.data.length > 0) {
         const newProduct = newProducts.data[0] as ProductWithMaster
         setSelectedProduct(newProduct)
         setSearchTerm(newProduct.name)
         setShowAddNewForm(false)
-        onProductCreated?.(newProduct)
-        onProductSelected?.(newProduct)
+        onProductCreatedRef.current?.(newProduct)
+        onProductSelectedRef.current?.(newProduct)
       }
     } catch (error) {
       console.error('Error linking master product:', error)
       const errorMessage = error instanceof Error ? error.message : 'Failed to link master product'
-      onError(errorMessage)
+      onErrorRef.current(errorMessage)
     } finally {
       setIsSearching(false)
     }
-  }, [orgId, createProductMutation, onError, onProductCreated, onProductSelected])
+  }, [orgId, createProductMutation])
   
   const resetSelection = useCallback(() => {
     setSearchTerm('')

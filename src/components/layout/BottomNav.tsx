@@ -90,7 +90,7 @@ export function BottomNav() {
   // Check if any "More" menu route is active
   // For platform admin, check admin-specific sub-routes that are in the More menu
   const platformAdminMoreRoutes = ['/platform-admin/hsn', '/platform-admin/gst-verification', '/platform-admin/blocked-invoices']
-  const orgMoreRoutes = ['/stock-ledger', '/customers', '/pending-products', '/settings']
+  const orgMoreRoutes = ['/inventory/ledger', '/customers', '/pending-products', '/settings']
 
   const moreRoutes = user?.platformAdmin ? platformAdminMoreRoutes : orgMoreRoutes
 

@@ -187,8 +187,9 @@ function AppRoutes() {
                 </ProtectedRoute>
               }
             />
+            {/* Hierarchical route: /inventory/ledger */}
             <Route
-              path="/stock-ledger"
+              path="/inventory/ledger"
               element={
                 <ProtectedRoute>
                   <RoleProtectedRoute requiredRole={['org_owner', 'branch_head']}>
@@ -196,6 +197,11 @@ function AppRoutes() {
                   </RoleProtectedRoute>
                 </ProtectedRoute>
               }
+            />
+            {/* Redirect from old flat route for backwards compatibility */}
+            <Route
+              path="/stock-ledger"
+              element={<Navigate to="/inventory/ledger" replace />}
             />
             <Route
               path="/"
