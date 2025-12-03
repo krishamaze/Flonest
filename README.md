@@ -157,7 +157,7 @@ The app uses a custom design token system in `src/styles/design-tokens.css`:
 - `npm run lint` - Run ESLint
 
 ### Database
-- `npm run supabase:migration:new <name>` - Create new migration
+- Create migrations manually with YYYYMMDDHHMMSS_description.sql format (see .agent/workflows/create-migration.md)
 - `npm run supabase:types` - Generate TypeScript types
 - `npm run supabase:status` - Check Supabase project status
 

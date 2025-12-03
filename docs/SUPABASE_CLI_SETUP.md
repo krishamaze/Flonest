@@ -57,22 +57,28 @@ This links your local project to the cloud Supabase project, enabling the Branch
 - Direct database access
 - See [MCP Setup Guide](.cursor/MCP_SETUP.md) for details
 
-### ⚙️ Use CLI (ONLY for file creation tasks)
+### ⚙️ Use CLI (Limited use only)
 
 | Operation | CLI Command | Why CLI is needed |
 |-----------|-------------|-------------------|
-| Create migration file | `npm run supabase:migration:new <name>` | Creates local file in `supabase/migrations/` |
-| Generate schema diff | `npm run supabase:db:diff` | Compares local vs remote schema |
 | Check status | `npm run supabase:status` | Shows local Supabase status |
+| Generate schema diff | `npm run supabase:db:diff` | Compares local vs remote schema |
+
+**⚠️ Migration Creation:**
+- ❌ DO NOT use `npm run supabase:migration:new`
+- ✅ Create manually: `YYYYMMDDHHMMSS_description.sql` format
+- ✅ Write idempotent SQL (IF NOT EXISTS, CREATE OR REPLACE, etc.)
+- See `.agent/workflows/create-migration.md` for full workflow
 
 **⚠️ Never use CLI for:**
+- ❌ Creating migration files (`supabase migration new`)
 - ❌ Applying migrations (`supabase db push`)
 - ❌ Running SQL queries
 - ❌ Generating types (use MCP instead)
 
 ## Available Commands
 
-### CLI Commands (Use when MCP can't do it)
+### CLI Commands (Limited use)
 
 ```bash
 # Link to cloud project (one-time)
@@ -81,12 +87,12 @@ npm run supabase:link
 # Check status
 npm run supabase:status
 
-# Create new migration file (CLI only)
-npm run supabase:migration:new <name>
-
-# Generate schema diff (CLI only)
+# Generate schema diff
 npm run supabase:db:diff
 ```
+
+**For migrations:** Create files manually with YYYYMMDDHHMMSS_description.sql format.  
+See `.agent/workflows/create-migration.md` for the workflow.
 
 ### MCP Operations (Use via Cursor chat)
 

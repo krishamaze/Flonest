@@ -17,13 +17,18 @@ This project uses **MCP (Model Context Protocol)** as the primary method for Sup
 | View logs | "Show Supabase logs" | N/A |
 | List migrations | "List all migrations" | N/A |
 
-### ⚙️ Use CLI (When MCP Can't Do It)
+### ⚙️ Use CLI (Limited use only)
 
 | Task | CLI Command | Why CLI? |
 |------|-------------|----------|
-| Create migration | `npm run supabase:migration:new <name>` | Creates local file |
 | Schema diff | `npm run supabase:db:diff` | Compares local vs remote |
 | Link project | `npm run supabase:link` | One-time setup |
+
+**Migration Creation:**
+- ❌ DO NOT use `npm run supabase:migration:new`
+- ✅ Create manually: `YYYYMMDDHHMMSS_description.sql`
+- ✅ Write idempotent SQL (IF NOT EXISTS, CREATE OR REPLACE, etc.)
+- See `.agent/workflows/create-migration.md`
 
 ## Common Workflows
 
@@ -47,12 +52,18 @@ In Cursor: "Query my database: SELECT COUNT(*) FROM products"
 
 ### Creating New Migrations
 
-**Step 1: Create Migration File (CLI required)**
+**Step 1: Create Migration File Manually**
 ```bash
-npm run supabase:migration:new add_new_feature
+# Get timestamp (PowerShell)
+Get-Date -Format "yyyyMMddHHmmss"
+
+# Create file: supabase/migrations/YYYYMMDDHHMMSS_add_new_feature.sql
 ```
 
-**Step 2: Write SQL in the migration file**
+**Step 2: Write Idempotent SQL in the migration file**
+- Use: `CREATE TABLE IF NOT EXISTS`
+- Use: `CREATE OR REPLACE FUNCTION`
+- Use: `ALTER TABLE ... ADD COLUMN` with DO blocks for IF NOT EXISTS
 
 **Step 3: Apply Migration (ALWAYS use MCP - NEVER use CLI)**
 ```

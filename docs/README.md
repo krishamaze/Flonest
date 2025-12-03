@@ -212,7 +212,11 @@ git push origin main       # Deploy to production (Vercel auto-deploys)
 
 ### Database Management
 ```bash
-npm run supabase:migration:new <name>  # Create migration file
+# Migration Rules:
+# 1. Create manually: YYYYMMDDHHMMSS_description.sql
+# 2. Write idempotent SQL (IF NOT EXISTS, CREATE OR REPLACE, etc.)
+# See .agent/workflows/create-migration.md for details
+
 # Use Supabase MCP in Cursor to apply migrations
 npm run supabase:types                 # Generate TypeScript types
 npm run supabase:status                # Check project status
