@@ -37,7 +37,7 @@ export function CustomerResultCard({ customer, onSelect, onEdit }: CustomerResul
             </div>
           )}
 
-          {/* Master Customer Info */}
+          {/* Verified Customer Info */}
           <div className="space-y-xs text-xs text-secondary-text">
             {master.email && (
               <div className="flex items-center gap-sm">
@@ -85,19 +85,19 @@ export function CustomerResultCard({ customer, onSelect, onEdit }: CustomerResul
 
           {/* Actions */}
           <div className="flex gap-sm pt-sm">
-            <Button 
-              variant="primary" 
-              size="sm" 
-              onClick={onSelect} 
+            <Button
+              variant="primary"
+              size="sm"
+              onClick={onSelect}
               className="flex-1 min-h-[44px]"
               aria-label={`Select customer ${displayName}`}
             >
               Use This Customer
             </Button>
             {onEdit && (
-              <Button 
-                variant="secondary" 
-                size="sm" 
+              <Button
+                variant="secondary"
+                size="sm"
                 onClick={onEdit}
                 className="min-h-[44px]"
                 aria-label={`Edit customer ${displayName}`}

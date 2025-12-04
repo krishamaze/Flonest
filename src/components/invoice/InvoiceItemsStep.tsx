@@ -1,11 +1,11 @@
 import React from 'react'
 import { InvoiceItemFormData, ProductWithMaster } from '../../types'
 import { ProductSearchCombobox } from './ProductSearchCombobox'
-import { Button } from '../ui/Button'
 import { Select } from '../ui/Select'
 import { Input } from '../ui/Input'
-import { PlusIcon, TrashIcon, XCircleIcon } from '@heroicons/react/24/outline'
+import { TrashIcon, XCircleIcon } from '@heroicons/react/24/outline'
 import { CURRENCY_SYMBOL } from '../../lib/utils/currency'
+import type { ProductSearchMode } from '../../lib/utils/productSearchMode'
 
 interface InvoiceItemsStepProps {
     // Items Data Group
@@ -33,6 +33,14 @@ interface InvoiceItemsStepProps {
     // Context/UI Group
     orgId: string
     isDisabled: boolean
+
+    // New Product Creation (optional)
+    onAddNewProduct?: (prefillData: {
+        name: string
+        searchMode: ProductSearchMode
+        detectedCategory?: { name: string; hsn_code: string; gst_rate: number }
+        serialNumber?: string
+    }) => void
 }
 
 export const InvoiceItemsStep: React.FC<InvoiceItemsStepProps> = ({
@@ -40,7 +48,7 @@ export const InvoiceItemsStep: React.FC<InvoiceItemsStepProps> = ({
     products,
     loadingProducts,
     itemsError,
-    onAddItem,
+    onAddItem: _onAddItem, // Reserved for future use
     onRemoveItem,
     onProductSelect,
     onProductChange,
@@ -52,35 +60,26 @@ export const InvoiceItemsStep: React.FC<InvoiceItemsStepProps> = ({
     onScanClick,
     orgId,
     isDisabled,
+    onAddNewProduct,
 }) => {
+    void _onAddItem // Suppress unused warning
     return (
         <div className="space-y-4">
             <div>
                 <h3 className="text-lg font-semibold text-primary-text mb-md">Step 2: Add Products</h3>
 
-                {/* Product Search Combobox */}
-                <div className="mb-md">
+                {/* Smart Product Search Combobox */}
+                <div className="mb-md relative pt-5">
                     <ProductSearchCombobox
                         onProductSelect={onProductSelect}
                         onScanClick={onScanClick}
                         disabled={isDisabled}
                         orgId={orgId}
                         products={products}
-                        placeholder="Search / Select Product..."
+                        placeholder="Search by Name, SKU, Barcode, or IMEI..."
+                        allowSerialSearch={true}
+                        onAddNewProduct={onAddNewProduct}
                     />
-                </div>
-
-                {/* Create New Item Button */}
-                <div className="mb-md">
-                    <Button
-                        type="button"
-                        variant="primary"
-                        onClick={onAddItem}
-                        disabled={isDisabled}
-                    >
-                        <PlusIcon className="h-4 w-4 mr-2" />
-                        Create New Item
-                    </Button>
                 </div>
 
                 {/* Items List - Auto-visible when items exist */}

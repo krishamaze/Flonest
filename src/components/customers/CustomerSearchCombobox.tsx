@@ -193,22 +193,28 @@ export function CustomerSearchCombobox({
     }
 
     const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-        if (!isOpen || searchResults.length === 0) return
+        if (!isOpen) return
+
+        const maxIndex = searchResults.length // Add New is at this index
 
         switch (e.key) {
             case 'ArrowDown':
                 e.preventDefault()
                 setHighlightedIndex(prev =>
-                    prev < searchResults.length - 1 ? prev + 1 : prev
+                    prev < maxIndex ? prev + 1 : prev
                 )
                 break
             case 'ArrowUp':
                 e.preventDefault()
-                setHighlightedIndex(prev => prev > -1 ? prev - 1 : -1)
+                setHighlightedIndex(prev => prev > 0 ? prev - 1 : 0)
                 break
             case 'Enter':
                 e.preventDefault()
-                if (highlightedIndex >= 0 && highlightedIndex < searchResults.length) {
+                if (highlightedIndex === maxIndex) {
+                    // Add New
+                    onCustomerSelect(null)
+                    setIsOpen(false)
+                } else if (highlightedIndex >= 0 && highlightedIndex < searchResults.length) {
                     handleResultSelect(searchResults[highlightedIndex])
                 }
                 break
@@ -313,29 +319,7 @@ export function CustomerSearchCombobox({
                     className="absolute z-50 w-full mt-1 bg-white border border-neutral-300 rounded-md shadow-lg max-h-80 overflow-y-auto"
                     role="listbox"
                 >
-                    {/* Add New Customer option - always first */}
-                    <button
-                        type="button"
-                        onMouseDown={(e) => {
-                            e.preventDefault()
-                            e.stopPropagation()
-                        }}
-                        onClick={() => {
-                            onCustomerSelect(null) // Clear selection, trigger add new mode
-                            setIsOpen(false)
-                        }}
-                        onMouseEnter={() => setHighlightedIndex(-1)}
-                        className={`w-full text-left px-4 py-3 transition-colors min-h-[44px] border-b border-neutral-200 bg-primary-light hover:bg-primary text-primary hover:text-text-on-primary font-medium`}
-                        role="option"
-                        aria-selected={highlightedIndex === -1}
-                    >
-                        <div className="flex items-center gap-2">
-                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5">
-                                <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
-                            </svg>
-                            <span>Add New Customer</span>
-                        </div>
-                    </button>
+
 
                     {searchResults.length > 0 ? (
                         searchResults.map((result, index) => {
@@ -398,10 +382,34 @@ export function CustomerSearchCombobox({
                             )
                         })
                     ) : !isSearching ? (
-                        <div className="px-4 py-3 text-sm text-secondary-text text-center">
+                        <div className="px-4 py-3 text-sm text-secondary-text text-center border-b border-neutral-100">
                             No matching customers found
                         </div>
                     ) : null}
+
+                    {/* Add New Customer option - always available at bottom */}
+                    <button
+                        type="button"
+                        onMouseDown={(e) => {
+                            e.preventDefault()
+                            e.stopPropagation()
+                        }}
+                        onClick={() => {
+                            onCustomerSelect(null) // Clear selection, trigger add new mode
+                            setIsOpen(false)
+                        }}
+                        onMouseEnter={() => setHighlightedIndex(searchResults.length)}
+                        className={`w-full text-left px-4 py-3 transition-colors min-h-[44px] bg-primary-light hover:bg-primary text-primary hover:text-text-on-primary font-medium`}
+                        role="option"
+                        aria-selected={highlightedIndex === searchResults.length}
+                    >
+                        <div className="flex items-center gap-2">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5">
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+                            </svg>
+                            <span>Create New Customer</span>
+                        </div>
+                    </button>
                 </div>
             )}
         </div>

@@ -8,6 +8,9 @@ import { isMobileDevice } from '../../lib/deviceDetection'
 import { ProductSelectionCombobox } from '../products/ProductSelectionCombobox'
 import { useProductSelection, type UseProductSelectionReturn } from '../../hooks/useProductSelection'
 import { getCurrentStock } from '../../lib/api/stockCalculations'
+import { InlineProductForm, type InlineProductFormData } from '../products/InlineProductForm'
+import { createProduct } from '../../lib/api/products'
+import { toast } from 'react-toastify'
 
 interface StockAdjustmentModalProps {
     isOpen: boolean
@@ -140,77 +143,35 @@ export function StockAdjustmentModal({
                 <p className="text-sm text-error mt-xs">{errors.product}</p>
             )}
 
-            {/* Inline Add New Product Form */}
+            {/* Inline Add New Product Form - Dynamic Category Specs */}
             {productSelection.showAddNewForm && (
-                <div className="rounded-md border border-primary-light bg-primary-light bg-opacity-10 p-md space-y-3">
-                    <h4 className="text-sm font-semibold text-primary-text">Add New Product</h4>
-
-                    <Input
-                        label="Product Name *"
-                        value={productSelection.inlineFormData.name}
-                        onChange={(e) =>
-                            productSelection.handleFormDataChange({ name: e.target.value })
-                        }
-                        error={productSelection.formErrors.name}
-                        placeholder="Enter product name"
-                    />
-
-                    <Input
-                        label="SKU *"
-                        value={productSelection.inlineFormData.sku}
-                        onChange={(e) =>
-                            productSelection.handleFormDataChange({ sku: e.target.value })
-                        }
-                        error={productSelection.formErrors.sku}
-                        placeholder="Enter SKU"
-                    />
-
-                    <Input
-                        label="Selling Price"
-                        type="number"
-                        step="0.01"
-                        value={productSelection.inlineFormData.selling_price?.toString() || ''}
-                        onChange={(e) =>
-                            productSelection.handleFormDataChange({
-                                selling_price: e.target.value ? parseFloat(e.target.value) : undefined,
+                <InlineProductForm
+                    initialSearchTerm={productSelection.searchTerm}
+                    onSubmit={async (formData: InlineProductFormData) => {
+                        try {
+                            const newProduct = await createProduct(orgId, {
+                                name: formData.name,
+                                sku: formData.sku,
+                                hsn_sac_code: formData.hsn_code,
+                                category: formData.category_name,
+                                selling_price: formData.selling_price || 0,
+                                unit: formData.unit,
+                                tax_rate: formData.gst_rate,
                             })
+                            // Create ProductWithMaster compatible object
+                            const productWithMaster = {
+                                ...newProduct,
+                                master_product: null,
+                            }
+                            productSelection.handleProductSelected(productWithMaster)
+                            productSelection.handleCloseAddNewForm()
+                            toast.success('Product created successfully')
+                        } catch (error) {
+                            toast.error(error instanceof Error ? error.message : 'Failed to create product')
                         }
-                        error={productSelection.formErrors.selling_price}
-                        placeholder="Enter selling price (optional)"
-                    />
-
-                    <Input
-                        label="HSN/SAC Code"
-                        value={productSelection.inlineFormData.hsn_sac_code}
-                        onChange={(e) =>
-                            productSelection.handleFormDataChange({ hsn_sac_code: e.target.value })
-                        }
-                        placeholder="Enter HSN/SAC code (optional)"
-                    />
-
-                    {productSelection.formErrors.submit && (
-                        <p className="text-sm text-error">{productSelection.formErrors.submit}</p>
-                    )}
-
-                    <div className="flex gap-2">
-                        <Button
-                            type="button"
-                            variant="primary"
-                            onClick={productSelection.handleCreateProduct}
-                            isLoading={productSelection.isSearching}
-                            disabled={!productSelection.isFormDataValid}
-                        >
-                            Create Product
-                        </Button>
-                        <Button
-                            type="button"
-                            variant="secondary"
-                            onClick={productSelection.handleCloseAddNewForm}
-                        >
-                            Cancel
-                        </Button>
-                    </div>
-                </div>
+                    }}
+                    onCancel={productSelection.handleCloseAddNewForm}
+                />
             )}
 
             {/* Current Stock Display */}

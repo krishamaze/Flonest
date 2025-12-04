@@ -6,14 +6,13 @@ import { Input } from '../components/ui/Input'
 import { Select } from '../components/ui/Select'
 import { LoadingSpinner } from '../components/ui/LoadingSpinner'
 import { SmartEntryInput, type SmartEntryInputRef } from '../components/entry/SmartEntryInput'
-import { ProductForm } from '../components/forms/ProductForm'
-import { Modal } from '../components/ui/Modal'
+import { InlineProductForm, type InlineProductFormData } from '../components/products/InlineProductForm'
 import { toast } from 'react-toastify'
-import { 
-  createPurchaseBill, 
+import {
+  createPurchaseBill,
   generatePurchaseBillNumber,
   type PurchaseBillFormData,
-  type PurchaseBillItemFormData 
+  type PurchaseBillItemFormData
 } from '../lib/api/purchaseBills'
 import { getOrgById } from '../lib/api/orgs'
 import { useBillCalculations, type BillItem } from '../hooks/useBillCalculations'
@@ -59,7 +58,7 @@ export function PurchaseBillsPage() {
     try {
       const orgData = await getOrgById(user.orgId)
       setOrg(orgData)
-      
+
       // DATA INTEGRITY: Fail fast if org state_code is missing
       if (orgData && !orgData.state_code && !orgData.state) {
         toast.error(
@@ -72,7 +71,7 @@ export function PurchaseBillsPage() {
       toast.error('Failed to load organization details')
     }
   }
-  
+
   // Prepare state code options for dropdown
   const stateCodeOptions = Object.entries(GST_STATE_CODE_MAP)
     .map(([code, name]) => ({
@@ -216,7 +215,7 @@ export function PurchaseBillsPage() {
       toast.error('Organization details not loaded. Please refresh the page.')
       return
     }
-    
+
     const orgStateCode = org.state_code || org.state
     if (!orgStateCode) {
       toast.error(
@@ -353,11 +352,10 @@ export function PurchaseBillsPage() {
               {formData.items.map((item, index) => (
                 <div
                   key={index}
-                  className={`border rounded-md p-4 space-y-3 transition-colors duration-1000 ${
-                    highlightedItemIndex === index
-                      ? 'bg-yellow-100 border-yellow-300'
-                      : 'border-neutral-200'
-                  }`}
+                  className={`border rounded-md p-4 space-y-3 transition-colors duration-1000 ${highlightedItemIndex === index
+                    ? 'bg-yellow-100 border-yellow-300'
+                    : 'border-neutral-200'
+                    }`}
                 >
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
@@ -424,7 +422,7 @@ export function PurchaseBillsPage() {
                   ₹{calculations.subtotal.toFixed(2)}
                 </span>
               </div>
-              
+
               {/* Tax Breakdown */}
               {calculations.totalTax > 0 && (
                 <>
@@ -459,14 +457,14 @@ export function PurchaseBillsPage() {
                   </div>
                 </>
               )}
-              
+
               <div className="flex justify-between items-center pt-2 border-t border-neutral-200">
                 <span className="text-lg font-semibold text-primary-text">Grand Total:</span>
                 <span className="text-xl font-bold text-primary-text">
                   ₹{calculations.grandTotal.toFixed(2)}
                 </span>
               </div>
-              
+
               {/* Place of Supply Indicator */}
               {formData.vendor_state_code && org?.state_code && (
                 <div className="mt-2 text-xs text-muted-text">
@@ -499,95 +497,101 @@ export function PurchaseBillsPage() {
         </div>
       )}
 
-      {/* Product Creation Modal */}
-      <Modal
-        isOpen={showProductForm}
-        onClose={() => {
-          setShowProductForm(false)
-          setNewProductQuery('')
-        }}
-        title="Create New Product"
-      >
-        <ProductForm
-          isOpen={showProductForm}
-          onClose={() => {
-            setShowProductForm(false)
-            setNewProductQuery('')
-          }}
-          prefillQuery={newProductQuery}
-          onSubmit={async (productData) => {
-            // Import createProduct function
-            const { createProduct } = await import('../lib/api/products')
-            
-            let createdProduct: Product
-            
-            // Try to create the product
-            // If it already exists (e.g., created from master in ProductForm), handle gracefully
-            try {
-              createdProduct = await createProduct(user.orgId!, productData)
-            } catch (error: any) {
-              // If product already exists (duplicate SKU), fetch it instead
-              if (error.message?.includes('already exists') || error.message?.includes('SKU')) {
-                // Product was likely created from master - fetch it by SKU
-                const { getProducts } = await import('../lib/api/products')
-                const result = await getProducts(user.orgId!, { search: productData.sku })
-                const existing = result.data.find(p => p.sku === productData.sku)
-                
-                if (existing) {
-                  createdProduct = existing
-                } else {
-                  // If we can't find it, re-throw the error
-                  throw error
+      {/* Inline Product Creation Form */}
+      {showProductForm && (
+        <Card>
+          <CardContent className="pt-4">
+            <InlineProductForm
+              prefillData={{
+                name: newProductQuery,
+                searchMode: 'name',
+              }}
+              onSubmit={async (productFormData: InlineProductFormData) => {
+                // Import createProduct function
+                const { createProduct } = await import('../lib/api/products')
+
+                let createdProduct: Product
+
+                // Build product data from inline form
+                const productData = {
+                  name: productFormData.name,
+                  sku: productFormData.sku,
+                  hsn_sac_code: productFormData.hsn_code,
+                  tax_rate: productFormData.gst_rate,
+                  selling_price: productFormData.selling_price || 0,
+                  unit: productFormData.unit,
+                  // Store specs as JSON in description or a dedicated field
+                  description: Object.keys(productFormData.specs).length > 0
+                    ? JSON.stringify(productFormData.specs)
+                    : undefined,
                 }
-              } else {
-                throw error
-              }
-            }
-            
-            // Automatically add the created/existing product to the bill
-            const newItem: PurchaseBillItemFormData = {
-              product_id: createdProduct.id,
-              master_product_id: null,
-              description: createdProduct.name,
-              quantity: 1,
-              unit: createdProduct.unit || 'pcs',
-              unit_price: createdProduct.selling_price || 0,
-              vendor_hsn_code: createdProduct.hsn_sac_code || null,
-              vendor_gst_rate: createdProduct.tax_rate || null,
-              total_amount: createdProduct.selling_price || 0,
-            }
 
-            const newIndex = formData.items.length
-            setFormData(prev => ({
-              ...prev,
-              items: [...prev.items, newItem],
-            }))
+                try {
+                  createdProduct = await createProduct(user.orgId!, productData)
+                } catch (error: any) {
+                  // If product already exists (duplicate SKU), fetch it instead
+                  if (error.message?.includes('already exists') || error.message?.includes('SKU')) {
+                    const { getProducts } = await import('../lib/api/products')
+                    const result = await getProducts(user.orgId!, { search: productData.sku })
+                    const existing = result.data.find(p => p.sku === productData.sku)
 
-            // Highlight the newly added item
-            setHighlightedItemIndex(newIndex)
-            setTimeout(() => {
-              setHighlightedItemIndex(null)
-            }, 1000)
+                    if (existing) {
+                      createdProduct = existing
+                    } else {
+                      throw error
+                    }
+                  } else {
+                    throw error
+                  }
+                }
 
-            toast.success(`Product "${createdProduct.name}" added to bill`)
-            
-            // Close modal and return focus to SmartEntryInput
-            setShowProductForm(false)
-            setNewProductQuery('')
-            
-            // Return focus to input after a brief delay
-            setTimeout(() => {
-              smartEntryInputRef.current?.focus()
-              smartEntryInputRef.current?.clear()
-            }, 100)
-            
-            // Return created/existing product so ProductForm can use it if needed
-            return createdProduct
-          }}
-          orgId={user.orgId}
-          userId={user.id}
-        />
-      </Modal>
+                // Automatically add the created/existing product to the bill
+                const newItem: PurchaseBillItemFormData = {
+                  product_id: createdProduct.id,
+                  master_product_id: null,
+                  description: createdProduct.name,
+                  quantity: 1,
+                  unit: createdProduct.unit || 'pcs',
+                  unit_price: createdProduct.selling_price || 0,
+                  vendor_hsn_code: createdProduct.hsn_sac_code || null,
+                  vendor_gst_rate: createdProduct.tax_rate || null,
+                  total_amount: createdProduct.selling_price || 0,
+                }
+
+                const newIndex = formData.items.length
+                setFormData(prev => ({
+                  ...prev,
+                  items: [...prev.items, newItem],
+                }))
+
+                // Highlight the newly added item
+                setHighlightedItemIndex(newIndex)
+                setTimeout(() => {
+                  setHighlightedItemIndex(null)
+                }, 1000)
+
+                toast.success(`Product "${createdProduct.name}" added to bill`)
+
+                // Close form and return focus to SmartEntryInput
+                setShowProductForm(false)
+                setNewProductQuery('')
+
+                setTimeout(() => {
+                  smartEntryInputRef.current?.focus()
+                  smartEntryInputRef.current?.clear()
+                }, 100)
+              }}
+              onCancel={() => {
+                setShowProductForm(false)
+                setNewProductQuery('')
+                setTimeout(() => {
+                  smartEntryInputRef.current?.focus()
+                }, 100)
+              }}
+            />
+          </CardContent>
+        </Card>
+      )}
     </div>
   )
 }

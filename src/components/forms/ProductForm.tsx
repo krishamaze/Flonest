@@ -334,7 +334,7 @@ export function ProductForm({ isOpen, onClose, onSubmit, product, title, orgId, 
                 : 'bg-neutral-100 text-secondary-text hover:bg-neutral-200'
                 }`}
             >
-              Search Master Catalog
+              Search Product Catalog
             </button>
             <button
               type="button"
@@ -371,7 +371,7 @@ export function ProductForm({ isOpen, onClose, onSubmit, product, title, orgId, 
       {/* Master Product Search */}
       {canUseMaster && sourceType === 'master' && (
         <div className="space-y-2">
-          <label className="block text-sm font-medium text-secondary-text">Search Master Products</label>
+          <label className="block text-sm font-medium text-secondary-text">Search Global Catalog</label>
           <div className="relative">
             <MagnifyingGlassIcon className="absolute left-md top-1/2 h-4 w-4 -translate-y-1/2 text-muted-text" />
             <input
@@ -381,7 +381,7 @@ export function ProductForm({ isOpen, onClose, onSubmit, product, title, orgId, 
               onChange={(e) => setMasterSearchQuery(e.target.value)}
               className="w-full rounded-md border border-neutral-300 bg-bg-card py-sm pl-[2.5rem] pr-md text-sm min-h-[44px] focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all"
               disabled={isSubmitting}
-              aria-label="Search master products"
+              aria-label="Search global products"
             />
           </div>
 
@@ -414,7 +414,7 @@ export function ProductForm({ isOpen, onClose, onSubmit, product, title, orgId, 
             <div className="rounded-md border border-primary-light bg-primary-light p-md">
               <div className="text-sm font-medium text-primary-text">Selected: {selectedMasterProduct.name}</div>
               <div className="text-xs text-primary-text mt-xs">
-                Master SKU: {selectedMasterProduct.sku} • Defaults will be prefilled below
+                Global SKU: {selectedMasterProduct.sku} • Defaults will be prefilled below
               </div>
             </div>
           )}
@@ -435,7 +435,7 @@ export function ProductForm({ isOpen, onClose, onSubmit, product, title, orgId, 
           type="text"
         />
         {selectedMasterProduct && sourceType === 'master' && (
-          <p className="text-xs text-muted-text -mt-sm">Using master name as alias (you can override)</p>
+          <p className="text-xs text-muted-text -mt-sm">Using catalog name as alias (you can override)</p>
         )}
 
         <div className="grid grid-cols-2 gap-4">
@@ -459,7 +459,7 @@ export function ProductForm({ isOpen, onClose, onSubmit, product, title, orgId, 
           />
         </div>
         {selectedMasterProduct && sourceType === 'master' && (
-          <p className="text-xs text-muted-text -mt-sm">Using master SKU (you can override with org-specific SKU)</p>
+          <p className="text-xs text-muted-text -mt-sm">Using catalog SKU (you can override with org-specific SKU)</p>
         )}
 
         <Textarea
@@ -568,7 +568,7 @@ export function ProductForm({ isOpen, onClose, onSubmit, product, title, orgId, 
             error={errors.tax_rate}
             disabled={isSubmitting}
             options={[
-              { value: '', label: 'Use Master Default' },
+              { value: '', label: 'Use Catalog Default' },
               ...getGSTSlabOptions(),
             ]}
           />
@@ -584,12 +584,12 @@ export function ProductForm({ isOpen, onClose, onSubmit, product, title, orgId, 
             }
             error={errors.hsn_sac_code}
             disabled={isSubmitting}
-            placeholder="Optional (uses master default if empty)"
+            placeholder="Optional (uses catalog default if empty)"
             type="text"
           />
         </div>
         <p className="text-xs text-muted-text -mt-sm">
-          Leave empty to use master product defaults. Set org-specific values to override.
+          Leave empty to use catalog product defaults. Set org-specific values to override.
         </p>
       </div>
 
@@ -603,7 +603,7 @@ export function ProductForm({ isOpen, onClose, onSubmit, product, title, orgId, 
           Cancel
         </Button>
         <Button type="submit" variant="primary" isLoading={isSubmitting}>
-          {product ? 'Update Product' : sourceType === 'master' && selectedMasterProduct ? 'Create from Master' : 'Create Product'}
+          {product ? 'Update Product' : sourceType === 'master' && selectedMasterProduct ? 'Create from Catalog' : 'Create Product'}
         </Button>
       </div>
     </form>

@@ -78,7 +78,7 @@ export function CustomerForm({ isOpen, onClose, onSubmit, customer, title }: Cus
       {/* Master Customer Info (Read-only) */}
       {master && (
         <div className="rounded-md border border-neutral-200 bg-neutral-50 p-md space-y-sm">
-          <h4 className="text-sm font-semibold text-primary-text">Master Customer Info</h4>
+          <h4 className="text-sm font-semibold text-primary-text">Verified Customer Info</h4>
           <div className="space-y-1 text-sm">
             <div>
               <span className="text-secondary-text">Legal Name: </span>
@@ -110,15 +110,15 @@ export function CustomerForm({ isOpen, onClose, onSubmit, customer, title }: Cus
             )}
           </div>
           <p className="text-xs text-muted-text mt-sm">
-            Master customer information is shared across organizations and cannot be edited here.
+            Verified customer information is shared across organizations and cannot be edited here.
           </p>
         </div>
       )}
 
       {/* Org-Specific Fields */}
       <div className="space-y-4">
-        <h3 className="text-sm font-semibold text-primary-text border-b border-neutral-200 pb-sm">Organization-Specific Information</h3>
-        
+        <h3 className="text-sm font-semibold text-primary-text border-b border-neutral-200 pb-sm">Additional Information</h3>
+
         <Input
           label="Alias Name"
           value={formData.alias_name || ''}

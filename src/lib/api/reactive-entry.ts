@@ -197,21 +197,40 @@ export function createDebouncedResolver(delayMs: number = 300) {
   }
 }
 
+/** Category spec field definition (platform-configurable) */
+export interface CategorySpecField {
+  name: string
+  label: string
+  type: 'text' | 'select' | 'number'
+  options?: string[]
+  required?: boolean
+  order?: number
+}
+
+/** Category specs schema (platform-configurable) */
+export interface CategorySpecsSchema {
+  fields: CategorySpecField[]
+}
+
+/** Master category with specs schema */
+export interface MasterCategoryWithSpecs {
+  id: string
+  name: string
+  hsn_code: string
+  gst_rate: number
+  gst_type: 'goods' | 'services'
+  description: string | null
+  parent_category_id: string | null
+  specs_schema: CategorySpecsSchema | null
+}
+
 /**
  * Get all master categories for category selector
  * Used when user needs to create a new product
+ * Includes specs_schema for dynamic form field rendering
+ * Note: specs_schema column may not exist until migration is applied
  */
-export async function getMasterCategories(): Promise<
-  Array<{
-    id: string
-    name: string
-    hsn_code: string
-    gst_rate: number
-    gst_type: 'goods' | 'services'
-    description: string | null
-    parent_category_id: string | null
-  }>
-> {
+export async function getMasterCategories(): Promise<MasterCategoryWithSpecs[]> {
   const { data, error } = await supabase
     .from('master_categories')
     .select('id, name, hsn_code, gst_rate, gst_type, description, parent_category_id')
@@ -223,9 +242,11 @@ export async function getMasterCategories(): Promise<
   }
 
   // Filter out null gst_type and cast to expected type
+  // specs_schema will be null until migration adds the column
   return (data || []).filter(cat => cat.gst_type !== null).map(cat => ({
     ...cat,
-    gst_type: cat.gst_type as 'goods' | 'services'
+    gst_type: cat.gst_type as 'goods' | 'services',
+    specs_schema: (cat as Record<string, unknown>).specs_schema as CategorySpecsSchema | null ?? null
   }))
 }
 
