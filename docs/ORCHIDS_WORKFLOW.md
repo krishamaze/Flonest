@@ -395,5 +395,193 @@ vite.config.ts                 vite.config.ts
 | Date | Change |
 |------|--------|
 | 2025-12-05 | Initial documentation based on investigation |
+| 2025-12-05 | Added scratchpad from orchid-v2 import test |
 
+---
 
+## 🧪 Scratchpad (Unverified Findings)
+
+> **Status**: Observations from testing. Verify before promoting to facts.
+
+### Import Test: orchid-v2 (Dec 5, 2025)
+
+**Branch**: `orchid-v2` from `preview` @ `fb0ca10`
+
+#### Observation 1: Plugins Array Preserved ⚠️ CONTRADICTS PREVIOUS
+
+```
+plugins: [
+  react(),
+  logErrorsPlugin(),        ← Orchids injected
+  componentTaggerPlugin(),  ← Orchids injected (our stub worked!)
+  tailwindcss(),            ← PRESERVED (unexpected)
+  VitePWA({...})            ← PRESERVED (unexpected)
+]
+```
+
+**Hypothesis**: Having `component-tagger-plugin.js` stub pre-existing may prevent full plugins replacement?
+
+**Status**: ❓ Needs more testing | **Confidence**: 40%
+
+---
+
+#### Observation 2: TooltipProvider Injection Pattern
+
+**Phase 1 - Error Created:**
+```
+Error: TooltipProvider is not defined
+Location: src/App.tsx line 1080
+```
+
+Orchids preprocessing injected UI wrapper components into App.tsx:
+- `TooltipProvider`
+- `Toaster`
+- `Sonner`
+- `HoverReceiver`
+
+**Phase 2 - Hallucinated Fix:**
+
+When asked to fix, Orchids added imports assuming shadcn/ui structure:
+```typescript
+import { TooltipProvider } from './components/ui/tooltip'
+import { Toaster } from './components/ui/toaster'
+import { Toaster as Sonner } from './components/ui/sonner'
+```
+
+**⚠️ CRITICAL**: These files may NOT exist in the project! Orchids assumed standard shadcn/ui setup.
+
+**Status**: ✅ Confirmed pattern | **Confidence**: 85%
+
+---
+
+#### Observation 3: Orchids AI Blind Spots
+
+| Blind Spot | Evidence | Confidence |
+|------------|----------|------------|
+| Cannot see browser preview | "I cannot directly see your browser preview" | 95% |
+| Claims success without proof | "server running cleanly" (errors existed) | 90% |
+| Hallucinates component existence | Added imports for non-existent files | 85% |
+| Assumes shadcn/ui structure | Imports from `./components/ui/*` | 80% |
+
+**Status**: ✅ Multiple confirmations | **Confidence**: 90%
+
+---
+
+### Questions to Test Next
+
+1. ❓ Does pre-existing `component-tagger-plugin.js` prevent plugins replacement?
+2. ✅ What triggers TooltipProvider injection? → **Answer: Orchids templates assume shadcn/ui**
+3. ❓ Does Orchids modify App.tsx every time or only sometimes?
+4. ❓ Do the injected component files exist? Verify: `./components/ui/tooltip`, `./components/ui/toaster`, `./components/ui/sonner`
+
+---
+
+## 📊 Confidence Scoring Framework
+
+> **Purpose**: Track reliability of Orchids behavior observations before promoting to facts.
+
+### Confidence Levels
+
+| Level | Score | Meaning | Action |
+|-------|-------|---------|--------|
+| Hypothesis | 0-30% | Single observation, may be coincidence | Keep testing |
+| Emerging | 31-60% | 2-3 consistent observations | Document pattern |
+| Likely | 61-85% | Multiple confirmations, consistent | Add to troubleshooting |
+| Confirmed | 86-100% | Reproduced across projects/imports | Promote to main docs |
+
+### How to Score
+
+1. **First observation**: 30%
+2. **Reproduced once**: +20%
+3. **Reproduced across different projects**: +25%
+4. **Contradicted by evidence**: -30%
+5. **Explained by Orchids docs/source**: +15%
+
+---
+
+## 🤝 Universal Orchids Collaboration Principles
+
+> These apply to ANY project, not just Flonest.
+
+### Principle 1: Verify Before Trust
+
+```
+❌ "Did it work?"
+✅ "Show me lines X-Y of [file]. Do NOT modify anything."
+```
+
+Orchids AI will claim success. Always demand proof via file content.
+
+### Principle 2: Inspect Before Fix
+
+```
+❌ "Fix the error"
+✅ "Show me the error. Show me the file causing it. Do NOT fix yet."
+```
+
+Orchids "fixes" often introduce new problems (hallucinated imports).
+
+### Principle 3: Question Assumptions
+
+Orchids assumes:
+- shadcn/ui component structure
+- Standard React + Vite setup
+- Components exist at conventional paths
+
+**Always verify**: Do these components actually exist in YOUR project?
+
+### Principle 4: Atomic Commands
+
+```
+❌ "Fix all the errors and make it work"
+✅ "Show me vite.config.ts lines 30-40"
+✅ "Add tailwindcss() to plugins array after react()"
+✅ "Show me the result. Do NOT proceed."
+```
+
+One action at a time. Verify between steps.
+
+### Principle 5: Maintain Session State
+
+Orchids AI has:
+- ✅ Access to file system
+- ✅ Access to server logs
+- ❌ No visual preview access
+- ❌ No memory of preprocessing changes
+- ❌ No awareness of what it "broke"
+
+You must track what preprocessing changed and guide corrections.
+
+---
+
+## 🧾 Session Log Template
+
+Use this to track each Orchids session:
+
+```markdown
+## Orchids Session: [DATE]
+
+**Branch imported**: 
+**Commit**: 
+
+### Preprocessing Changes Detected
+- [ ] vite.config.ts modified
+- [ ] App.tsx modified
+- [ ] postcss.config.js created/modified
+- [ ] Other: 
+
+### Errors Encountered
+1. Error: 
+   - File: 
+   - Orchids fix: 
+   - Actual fix needed: 
+
+### Commands Issued
+1. 
+2. 
+3. 
+
+### Files to Review Before Merge
+- [ ] 
+- [ ] 
+```
