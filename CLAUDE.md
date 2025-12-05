@@ -302,20 +302,51 @@ Get-Date -Format "yyyyMMddHHmmss"
 | View logs | "Show Supabase logs" |
 | List migrations | "List all migrations" |
 
-### 3. Git Workflow & Deployment
+### 3. Supabase Branching 2.0
+
+The project uses **Supabase Branching 2.0** for database environment isolation. Each git branch gets its own Supabase instance with separate credentials.
+
+#### Branch Architecture
+
+| Git Branch | Supabase Project Ref | Environment | Auto-Deploy |
+|------------|---------------------|-------------|-------------|
+| `main` | `yzrwkznkfisfpnwzbwfw` | Production | ✅ |
+| `preview` | `evbbdlzwfqhvcuojlahr` | Preview/Staging | ✅ |
+
+**Key Concepts:**
+- Each branch is a **separate database instance** with its own API credentials
+- Migrations are **auto-applied** when pushed to the corresponding git branch
+- The CLI's `supabase/.temp/project-ref` stores the **active branch ref** (not always the main project)
+
+#### CLI Commands for Branching
+
+```bash
+# List all branches for the project
+npx supabase branches list --project-ref yzrwkznkfisfpnwzbwfw
+
+# Check which branch is currently linked
+cat supabase/.temp/project-ref
+
+# Switch to a different branch (if needed)
+npx supabase link --project-ref <branch-ref>
+```
+
+#### Workflow: Testing Migrations
+
+1. **Push to `preview` branch** → Migrations auto-apply to preview DB (`evbbdlzwfqhvcuojlahr`)
+2. **Test on preview environment** → Verify migrations work correctly
+3. **Merge to `main`** → Migrations auto-apply to production DB (`yzrwkznkfisfpnwzbwfw`)
+
+**Important**: Never apply migrations directly to production. Always test on preview first.
+
+### 4. Git Workflow & Deployment
 
 #### Branch Strategy
-- **`main`** — Production branch (auto-deploys to bill.finetune.store)
-- **`beta`** — Beta testing (auto-deploys to beta environment)
+- **`main`** — Production branch (auto-deploys to bill.finetune.store + production Supabase)
+- **`preview`** — Preview/staging (auto-deploys to preview Vercel + preview Supabase)
 - **`marketing`** — Marketing site (SEPARATE Vercel project — DO NOT MIX)
 
-**⚠️ Branch Cleanup Required**: Evaluate and merge/archive stale branches:
-- `ui_role_flow` — pending evaluation for merge to main
-- `flonest_branding` — pending evaluation
-- `dev_db_testing` — experimental, evaluate for deletion
-- `solid_refactor` — evaluate for merge or archive
-
-**Active Development**: Trunk-based on `main` after branch cleanup. Use short-lived `claude/*` branches for AI-assisted features.
+**Active Development**: Trunk-based on `main` for hotfixes. Use `preview` branch for testing migrations and new features before production.
 
 #### Deployment Process
 
@@ -1206,13 +1237,25 @@ When working on this codebase:
 
 #### 1. Supabase Branching 2.0 Issues
 
+**Problem**: Confused about which project ref is linked
+
+**Solution**:
+```bash
+# Check active branch ref in CLI
+cat supabase/.temp/project-ref
+
+# List all branches for main project
+npx supabase branches list --project-ref yzrwkznkfisfpnwzbwfw
+```
+Note: The `.temp/project-ref` file contains the **branch instance ref**, not the main project ref. This is expected behavior with Supabase Branching 2.0.
+
 **Problem**: Branch creation fails with "Branch already exists"
 
 **Solution**:
 1. Check if the branch exists in Supabase Dashboard
 2. Delete the stale branch if it's no longer needed:
 ```bash
-npx supabase branches delete <branch-name>
+npx supabase branches delete <branch-name> --project-ref yzrwkznkfisfpnwzbwfw
 ```
 
 **Problem**: Migration fails on push
@@ -1227,6 +1270,7 @@ npx supabase branches delete <branch-name>
 **Solution**:
 1. Verify you are using the correct `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` for your active branch
 2. Check the Supabase Dashboard for the specific branch credentials
+3. Preview branch has different API credentials than production
 
 #### 2. Authentication Errors
 
